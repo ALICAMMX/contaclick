@@ -14,6 +14,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
+import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as DashboardReportesRouteImport } from './routes/dashboard.reportes'
 import { Route as DashboardConciliadorRouteImport } from './routes/dashboard.conciliador'
 import { Route as DashboardClientesRouteImport } from './routes/dashboard.clientes'
@@ -45,6 +46,11 @@ const DashboardIndexRoute = DashboardIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => DashboardRoute,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppRoute,
 } as any)
 const DashboardReportesRoute = DashboardReportesRouteImport.update({
   id: '/reportes',
@@ -79,7 +85,7 @@ const DashboardAsistenteRoute = DashboardAsistenteRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/app': typeof AppRoute
+  '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/dashboard/asistente': typeof DashboardAsistenteRoute
@@ -88,11 +94,11 @@ export interface FileRoutesByFullPath {
   '/dashboard/clientes': typeof DashboardClientesRoute
   '/dashboard/conciliador': typeof DashboardConciliadorRoute
   '/dashboard/reportes': typeof DashboardReportesRoute
+  '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/app': typeof AppRoute
   '/auth': typeof AuthRoute
   '/dashboard/asistente': typeof DashboardAsistenteRoute
   '/dashboard/auditor': typeof DashboardAuditorRoute
@@ -100,12 +106,13 @@ export interface FileRoutesByTo {
   '/dashboard/clientes': typeof DashboardClientesRoute
   '/dashboard/conciliador': typeof DashboardConciliadorRoute
   '/dashboard/reportes': typeof DashboardReportesRoute
+  '/app': typeof AppIndexRoute
   '/dashboard': typeof DashboardIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/app': typeof AppRoute
+  '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/dashboard/asistente': typeof DashboardAsistenteRoute
@@ -114,6 +121,7 @@ export interface FileRoutesById {
   '/dashboard/clientes': typeof DashboardClientesRoute
   '/dashboard/conciliador': typeof DashboardConciliadorRoute
   '/dashboard/reportes': typeof DashboardReportesRoute
+  '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
 }
 export interface FileRouteTypes {
@@ -129,11 +137,11 @@ export interface FileRouteTypes {
     | '/dashboard/clientes'
     | '/dashboard/conciliador'
     | '/dashboard/reportes'
+    | '/app/'
     | '/dashboard/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/app'
     | '/auth'
     | '/dashboard/asistente'
     | '/dashboard/auditor'
@@ -141,6 +149,7 @@ export interface FileRouteTypes {
     | '/dashboard/clientes'
     | '/dashboard/conciliador'
     | '/dashboard/reportes'
+    | '/app'
     | '/dashboard'
   id:
     | '__root__'
@@ -154,12 +163,13 @@ export interface FileRouteTypes {
     | '/dashboard/clientes'
     | '/dashboard/conciliador'
     | '/dashboard/reportes'
+    | '/app/'
     | '/dashboard/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AppRoute: typeof AppRoute
+  AppRoute: typeof AppRouteWithChildren
   AuthRoute: typeof AuthRoute
   DashboardRoute: typeof DashboardRouteWithChildren
 }
@@ -200,6 +210,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/'
       preLoaderRoute: typeof DashboardIndexRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/app/': {
+      id: '/app/'
+      path: '/'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
     }
     '/dashboard/reportes': {
       id: '/dashboard/reportes'
@@ -246,6 +263,16 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppRouteChildren {
+  AppIndexRoute: typeof AppIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppIndexRoute: AppIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 interface DashboardRouteChildren {
   DashboardAsistenteRoute: typeof DashboardAsistenteRoute
   DashboardAuditorRoute: typeof DashboardAuditorRoute
@@ -272,7 +299,7 @@ const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AppRoute: AppRoute,
+  AppRoute: AppRouteWithChildren,
   AuthRoute: AuthRoute,
   DashboardRoute: DashboardRouteWithChildren,
 }
