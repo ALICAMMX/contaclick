@@ -111,5 +111,3 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "ok
   );
 }
 
-// Suppress unused Button import warning by using it conditionally
-void Button;
