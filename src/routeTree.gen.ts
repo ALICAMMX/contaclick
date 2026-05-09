@@ -23,6 +23,7 @@ import { Route as DashboardAuditorRouteImport } from './routes/dashboard.auditor
 import { Route as DashboardAsistenteRouteImport } from './routes/dashboard.asistente'
 import { Route as AppClientesRouteImport } from './routes/app.clientes'
 import { Route as AppToolsIndexRouteImport } from './routes/app.tools.index'
+import { Route as AppToolsCfdiValidatorRouteImport } from './routes/app.tools.cfdi-validator'
 
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
@@ -94,6 +95,11 @@ const AppToolsIndexRoute = AppToolsIndexRouteImport.update({
   path: '/tools/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppToolsCfdiValidatorRoute = AppToolsCfdiValidatorRouteImport.update({
+  id: '/tools/cfdi-validator',
+  path: '/tools/cfdi-validator',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -109,6 +115,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/reportes': typeof DashboardReportesRoute
   '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
   '/app/tools/': typeof AppToolsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -123,6 +130,7 @@ export interface FileRoutesByTo {
   '/dashboard/reportes': typeof DashboardReportesRoute
   '/app': typeof AppIndexRoute
   '/dashboard': typeof DashboardIndexRoute
+  '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
   '/app/tools': typeof AppToolsIndexRoute
 }
 export interface FileRoutesById {
@@ -140,6 +148,7 @@ export interface FileRoutesById {
   '/dashboard/reportes': typeof DashboardReportesRoute
   '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
   '/app/tools/': typeof AppToolsIndexRoute
 }
 export interface FileRouteTypes {
@@ -158,6 +167,7 @@ export interface FileRouteTypes {
     | '/dashboard/reportes'
     | '/app/'
     | '/dashboard/'
+    | '/app/tools/cfdi-validator'
     | '/app/tools/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -172,6 +182,7 @@ export interface FileRouteTypes {
     | '/dashboard/reportes'
     | '/app'
     | '/dashboard'
+    | '/app/tools/cfdi-validator'
     | '/app/tools'
   id:
     | '__root__'
@@ -188,6 +199,7 @@ export interface FileRouteTypes {
     | '/dashboard/reportes'
     | '/app/'
     | '/dashboard/'
+    | '/app/tools/cfdi-validator'
     | '/app/tools/'
   fileRoutesById: FileRoutesById
 }
@@ -298,18 +310,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppToolsIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/tools/cfdi-validator': {
+      id: '/app/tools/cfdi-validator'
+      path: '/tools/cfdi-validator'
+      fullPath: '/app/tools/cfdi-validator'
+      preLoaderRoute: typeof AppToolsCfdiValidatorRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
   AppClientesRoute: typeof AppClientesRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppToolsCfdiValidatorRoute: typeof AppToolsCfdiValidatorRoute
   AppToolsIndexRoute: typeof AppToolsIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppClientesRoute: AppClientesRoute,
   AppIndexRoute: AppIndexRoute,
+  AppToolsCfdiValidatorRoute: AppToolsCfdiValidatorRoute,
   AppToolsIndexRoute: AppToolsIndexRoute,
 }
 
