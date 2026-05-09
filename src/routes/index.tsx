@@ -67,7 +67,7 @@ function Landing() {
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Button asChild size="lg" variant="hero">
-                <Link to="/dashboard">Probar gratis <ArrowRight className="h-4 w-4" /></Link>
+                <Link to="/app">Probar gratis <ArrowRight className="h-4 w-4" /></Link>
               </Button>
               <Button size="lg" variant="glass">Ver demo en vivo</Button>
             </div>
@@ -199,7 +199,7 @@ function Landing() {
           </p>
           <div className="mt-8 flex justify-center gap-3">
             <Button asChild size="lg" variant="hero">
-              <Link to="/dashboard">Entrar al dashboard <ArrowRight className="h-4 w-4" /></Link>
+              <Link to="/app">Entrar al dashboard <ArrowRight className="h-4 w-4" /></Link>
             </Button>
             <Button size="lg" variant="glass">Hablar con ventas</Button>
           </div>
