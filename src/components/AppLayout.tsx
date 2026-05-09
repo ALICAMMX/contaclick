@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
-import { LogOut, Wrench, Users, ChevronDown, UserRound, X } from "lucide-react";
+import { LogOut, Wrench, Users, ChevronDown, UserRound, X, FileText } from "lucide-react";
 import { Logo } from "./Logo";
 import { Button } from "./ui/button";
 import { useAuth } from "@/lib/auth";
