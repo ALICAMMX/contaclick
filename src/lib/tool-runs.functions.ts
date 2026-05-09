@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 import { z } from "zod";
 
 const SaveSchema = z.object({
@@ -12,7 +13,7 @@ const SaveSchema = z.object({
 });
 
 export const saveToolRun = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) => SaveSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
@@ -34,7 +35,7 @@ export const saveToolRun = createServerFn({ method: "POST" })
   });
 
 export const listToolRuns = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) =>
     z.object({ cliente_id: z.string().uuid().optional(), limit: z.number().min(1).max(100).default(30) }).parse(d)
   )
