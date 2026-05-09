@@ -21,9 +21,11 @@ import { Route as DashboardClientesRouteImport } from './routes/dashboard.client
 import { Route as DashboardCfdiRouteImport } from './routes/dashboard.cfdi'
 import { Route as DashboardAuditorRouteImport } from './routes/dashboard.auditor'
 import { Route as DashboardAsistenteRouteImport } from './routes/dashboard.asistente'
+import { Route as AppConciliacionRouteImport } from './routes/app.conciliacion'
 import { Route as AppClientesRouteImport } from './routes/app.clientes'
 import { Route as AppCfdiRouteImport } from './routes/app.cfdi'
 import { Route as AppToolsIndexRouteImport } from './routes/app.tools.index'
+import { Route as AppConciliacionIndexRouteImport } from './routes/app.conciliacion.index'
 import { Route as AppCfdiIndexRouteImport } from './routes/app.cfdi.index'
 import { Route as AppToolsXmlBulkReaderRouteImport } from './routes/app.tools.xml-bulk-reader'
 import { Route as AppToolsResicoCalculatorRouteImport } from './routes/app.tools.resico-calculator'
@@ -94,6 +96,11 @@ const DashboardAsistenteRoute = DashboardAsistenteRouteImport.update({
   path: '/asistente',
   getParentRoute: () => DashboardRoute,
 } as any)
+const AppConciliacionRoute = AppConciliacionRouteImport.update({
+  id: '/conciliacion',
+  path: '/conciliacion',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppClientesRoute = AppClientesRouteImport.update({
   id: '/clientes',
   path: '/clientes',
@@ -108,6 +115,11 @@ const AppToolsIndexRoute = AppToolsIndexRouteImport.update({
   id: '/tools/',
   path: '/tools/',
   getParentRoute: () => AppRoute,
+} as any)
+const AppConciliacionIndexRoute = AppConciliacionIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppConciliacionRoute,
 } as any)
 const AppCfdiIndexRoute = AppCfdiIndexRouteImport.update({
   id: '/',
@@ -164,6 +176,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRouteWithChildren
   '/app/cfdi': typeof AppCfdiRouteWithChildren
   '/app/clientes': typeof AppClientesRoute
+  '/app/conciliacion': typeof AppConciliacionRouteWithChildren
   '/dashboard/asistente': typeof DashboardAsistenteRoute
   '/dashboard/auditor': typeof DashboardAuditorRoute
   '/dashboard/cfdi': typeof DashboardCfdiRoute
@@ -181,6 +194,7 @@ export interface FileRoutesByFullPath {
   '/app/tools/resico-calculator': typeof AppToolsResicoCalculatorRoute
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
   '/app/cfdi/': typeof AppCfdiIndexRoute
+  '/app/conciliacion/': typeof AppConciliacionIndexRoute
   '/app/tools/': typeof AppToolsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -204,6 +218,7 @@ export interface FileRoutesByTo {
   '/app/tools/resico-calculator': typeof AppToolsResicoCalculatorRoute
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
   '/app/cfdi': typeof AppCfdiIndexRoute
+  '/app/conciliacion': typeof AppConciliacionIndexRoute
   '/app/tools': typeof AppToolsIndexRoute
 }
 export interface FileRoutesById {
@@ -214,6 +229,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRouteWithChildren
   '/app/cfdi': typeof AppCfdiRouteWithChildren
   '/app/clientes': typeof AppClientesRoute
+  '/app/conciliacion': typeof AppConciliacionRouteWithChildren
   '/dashboard/asistente': typeof DashboardAsistenteRoute
   '/dashboard/auditor': typeof DashboardAuditorRoute
   '/dashboard/cfdi': typeof DashboardCfdiRoute
@@ -231,6 +247,7 @@ export interface FileRoutesById {
   '/app/tools/resico-calculator': typeof AppToolsResicoCalculatorRoute
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
   '/app/cfdi/': typeof AppCfdiIndexRoute
+  '/app/conciliacion/': typeof AppConciliacionIndexRoute
   '/app/tools/': typeof AppToolsIndexRoute
 }
 export interface FileRouteTypes {
@@ -242,6 +259,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/app/cfdi'
     | '/app/clientes'
+    | '/app/conciliacion'
     | '/dashboard/asistente'
     | '/dashboard/auditor'
     | '/dashboard/cfdi'
@@ -259,6 +277,7 @@ export interface FileRouteTypes {
     | '/app/tools/resico-calculator'
     | '/app/tools/xml-bulk-reader'
     | '/app/cfdi/'
+    | '/app/conciliacion/'
     | '/app/tools/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -282,6 +301,7 @@ export interface FileRouteTypes {
     | '/app/tools/resico-calculator'
     | '/app/tools/xml-bulk-reader'
     | '/app/cfdi'
+    | '/app/conciliacion'
     | '/app/tools'
   id:
     | '__root__'
@@ -291,6 +311,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/app/cfdi'
     | '/app/clientes'
+    | '/app/conciliacion'
     | '/dashboard/asistente'
     | '/dashboard/auditor'
     | '/dashboard/cfdi'
@@ -308,6 +329,7 @@ export interface FileRouteTypes {
     | '/app/tools/resico-calculator'
     | '/app/tools/xml-bulk-reader'
     | '/app/cfdi/'
+    | '/app/conciliacion/'
     | '/app/tools/'
   fileRoutesById: FileRoutesById
 }
@@ -404,6 +426,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAsistenteRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/app/conciliacion': {
+      id: '/app/conciliacion'
+      path: '/conciliacion'
+      fullPath: '/app/conciliacion'
+      preLoaderRoute: typeof AppConciliacionRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/clientes': {
       id: '/app/clientes'
       path: '/clientes'
@@ -424,6 +453,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/tools/'
       preLoaderRoute: typeof AppToolsIndexRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/app/conciliacion/': {
+      id: '/app/conciliacion/'
+      path: '/'
+      fullPath: '/app/conciliacion/'
+      preLoaderRoute: typeof AppConciliacionIndexRouteImport
+      parentRoute: typeof AppConciliacionRoute
     }
     '/app/cfdi/': {
       id: '/app/cfdi/'
@@ -504,9 +540,22 @@ const AppCfdiRouteChildren: AppCfdiRouteChildren = {
 const AppCfdiRouteWithChildren =
   AppCfdiRoute._addFileChildren(AppCfdiRouteChildren)
 
+interface AppConciliacionRouteChildren {
+  AppConciliacionIndexRoute: typeof AppConciliacionIndexRoute
+}
+
+const AppConciliacionRouteChildren: AppConciliacionRouteChildren = {
+  AppConciliacionIndexRoute: AppConciliacionIndexRoute,
+}
+
+const AppConciliacionRouteWithChildren = AppConciliacionRoute._addFileChildren(
+  AppConciliacionRouteChildren,
+)
+
 interface AppRouteChildren {
   AppCfdiRoute: typeof AppCfdiRouteWithChildren
   AppClientesRoute: typeof AppClientesRoute
+  AppConciliacionRoute: typeof AppConciliacionRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
   AppToolsBankReconcilerRoute: typeof AppToolsBankReconcilerRoute
   AppToolsCfdiValidatorRoute: typeof AppToolsCfdiValidatorRoute
@@ -521,6 +570,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppCfdiRoute: AppCfdiRouteWithChildren,
   AppClientesRoute: AppClientesRoute,
+  AppConciliacionRoute: AppConciliacionRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
   AppToolsBankReconcilerRoute: AppToolsBankReconcilerRoute,
   AppToolsCfdiValidatorRoute: AppToolsCfdiValidatorRoute,
@@ -567,13 +617,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
