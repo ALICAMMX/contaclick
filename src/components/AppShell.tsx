@@ -1,10 +1,12 @@
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import {
   LayoutDashboard, Users, FileText, Banknote, Shield, Bot,
-  BarChart3, Settings, Bell, Search,
+  BarChart3, Settings, Bell, Search, LogOut,
 } from "lucide-react";
 import { Logo } from "./Logo";
 import { Button } from "./ui/button";
+import { useAuth } from "@/lib/auth";
+import { Toaster } from "sonner";
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -18,6 +20,8 @@ const navItems = [
 
 export function AppShell() {
   const location = useLocation();
+  const { user, signOut } = useAuth();
+  const initials = (user?.user_metadata?.full_name ?? user?.email ?? "U").slice(0, 2).toUpperCase();
   return (
     <div className="min-h-screen flex">
       <aside className="w-64 shrink-0 border-r border-sidebar-border bg-sidebar hidden lg:flex flex-col">
@@ -64,14 +68,16 @@ export function AppShell() {
           </div>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon"><Bell className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon" onClick={signOut} title="Cerrar sesión"><LogOut className="h-4 w-4" /></Button>
             <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-xs font-semibold text-primary-foreground">
-              CG
+              {initials}
             </div>
           </div>
         </header>
         <main className="flex-1 p-6 lg:p-8">
           <Outlet />
         </main>
+        <Toaster theme="dark" position="top-right" />
       </div>
     </div>
   );
