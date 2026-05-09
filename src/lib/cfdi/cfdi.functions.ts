@@ -115,7 +115,7 @@ export const uploadCfdiBatch = createServerFn({ method: "POST" })
     const despachoId = await ensureDespacho(supabase, userId);
     await ensureClienteDespacho(supabase, data.cliente_id, despachoId);
 
-    const results: Array<{ filename: string; ok: boolean; id?: string; uuid?: string; error?: string; duplicado?: boolean }> = [];
+    const results: Array<{ filename: string; ok: boolean; id?: string; uuid?: string | null; error?: string; duplicado?: boolean }> = [];
     for (const f of data.files) {
       try {
         const r = await ingestOneInternal(supabase, despachoId, data.cliente_id, f.filename, f.xml);
