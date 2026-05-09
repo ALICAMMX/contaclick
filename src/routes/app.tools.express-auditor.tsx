@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { ScanSearch, Upload, AlertTriangle, CheckCircle2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { ToolShell } from "@/components/ToolShell";
 import { parseCfdi } from "@/lib/tools/cfdi-parser";
 
