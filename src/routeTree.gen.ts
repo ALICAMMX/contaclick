@@ -32,6 +32,7 @@ import { Route as AppToolsFiscalAssistantRouteImport } from './routes/app.tools.
 import { Route as AppToolsExpressAuditorRouteImport } from './routes/app.tools.express-auditor'
 import { Route as AppToolsCfdiValidatorRouteImport } from './routes/app.tools.cfdi-validator'
 import { Route as AppToolsBankReconcilerRouteImport } from './routes/app.tools.bank-reconciler'
+import { Route as AppCfdiIdRouteImport } from './routes/app.cfdi.$id'
 
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
@@ -150,6 +151,11 @@ const AppToolsBankReconcilerRoute = AppToolsBankReconcilerRouteImport.update({
   path: '/tools/bank-reconciler',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCfdiIdRoute = AppCfdiIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppCfdiRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -166,6 +172,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/reportes': typeof DashboardReportesRoute
   '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/app/cfdi/$id': typeof AppCfdiIdRoute
   '/app/tools/bank-reconciler': typeof AppToolsBankReconcilerRoute
   '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
   '/app/tools/express-auditor': typeof AppToolsExpressAuditorRoute
@@ -188,6 +195,7 @@ export interface FileRoutesByTo {
   '/dashboard/reportes': typeof DashboardReportesRoute
   '/app': typeof AppIndexRoute
   '/dashboard': typeof DashboardIndexRoute
+  '/app/cfdi/$id': typeof AppCfdiIdRoute
   '/app/tools/bank-reconciler': typeof AppToolsBankReconcilerRoute
   '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
   '/app/tools/express-auditor': typeof AppToolsExpressAuditorRoute
@@ -214,6 +222,7 @@ export interface FileRoutesById {
   '/dashboard/reportes': typeof DashboardReportesRoute
   '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/app/cfdi/$id': typeof AppCfdiIdRoute
   '/app/tools/bank-reconciler': typeof AppToolsBankReconcilerRoute
   '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
   '/app/tools/express-auditor': typeof AppToolsExpressAuditorRoute
@@ -241,6 +250,7 @@ export interface FileRouteTypes {
     | '/dashboard/reportes'
     | '/app/'
     | '/dashboard/'
+    | '/app/cfdi/$id'
     | '/app/tools/bank-reconciler'
     | '/app/tools/cfdi-validator'
     | '/app/tools/express-auditor'
@@ -263,6 +273,7 @@ export interface FileRouteTypes {
     | '/dashboard/reportes'
     | '/app'
     | '/dashboard'
+    | '/app/cfdi/$id'
     | '/app/tools/bank-reconciler'
     | '/app/tools/cfdi-validator'
     | '/app/tools/express-auditor'
@@ -288,6 +299,7 @@ export interface FileRouteTypes {
     | '/dashboard/reportes'
     | '/app/'
     | '/dashboard/'
+    | '/app/cfdi/$id'
     | '/app/tools/bank-reconciler'
     | '/app/tools/cfdi-validator'
     | '/app/tools/express-auditor'
@@ -469,14 +481,23 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppToolsBankReconcilerRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/cfdi/$id': {
+      id: '/app/cfdi/$id'
+      path: '/$id'
+      fullPath: '/app/cfdi/$id'
+      preLoaderRoute: typeof AppCfdiIdRouteImport
+      parentRoute: typeof AppCfdiRoute
+    }
   }
 }
 
 interface AppCfdiRouteChildren {
+  AppCfdiIdRoute: typeof AppCfdiIdRoute
   AppCfdiIndexRoute: typeof AppCfdiIndexRoute
 }
 
 const AppCfdiRouteChildren: AppCfdiRouteChildren = {
+  AppCfdiIdRoute: AppCfdiIdRoute,
   AppCfdiIndexRoute: AppCfdiIndexRoute,
 }
 
