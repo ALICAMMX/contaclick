@@ -21,6 +21,7 @@ import { Route as DashboardClientesRouteImport } from './routes/dashboard.client
 import { Route as DashboardCfdiRouteImport } from './routes/dashboard.cfdi'
 import { Route as DashboardAuditorRouteImport } from './routes/dashboard.auditor'
 import { Route as DashboardAsistenteRouteImport } from './routes/dashboard.asistente'
+import { Route as AppToolsIndexRouteImport } from './routes/app.tools.index'
 
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
@@ -82,6 +83,11 @@ const DashboardAsistenteRoute = DashboardAsistenteRouteImport.update({
   path: '/asistente',
   getParentRoute: () => DashboardRoute,
 } as any)
+const AppToolsIndexRoute = AppToolsIndexRouteImport.update({
+  id: '/tools/',
+  path: '/tools/',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -96,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/reportes': typeof DashboardReportesRoute
   '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/app/tools/': typeof AppToolsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/dashboard/reportes': typeof DashboardReportesRoute
   '/app': typeof AppIndexRoute
   '/dashboard': typeof DashboardIndexRoute
+  '/app/tools': typeof AppToolsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   '/dashboard/reportes': typeof DashboardReportesRoute
   '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/app/tools/': typeof AppToolsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -139,6 +148,7 @@ export interface FileRouteTypes {
     | '/dashboard/reportes'
     | '/app/'
     | '/dashboard/'
+    | '/app/tools/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -151,6 +161,7 @@ export interface FileRouteTypes {
     | '/dashboard/reportes'
     | '/app'
     | '/dashboard'
+    | '/app/tools'
   id:
     | '__root__'
     | '/'
@@ -165,6 +176,7 @@ export interface FileRouteTypes {
     | '/dashboard/reportes'
     | '/app/'
     | '/dashboard/'
+    | '/app/tools/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -260,15 +272,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAsistenteRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/app/tools/': {
+      id: '/app/tools/'
+      path: '/tools'
+      fullPath: '/app/tools/'
+      preLoaderRoute: typeof AppToolsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
+  AppToolsIndexRoute: typeof AppToolsIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
+  AppToolsIndexRoute: AppToolsIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
