@@ -27,6 +27,7 @@ import { Route as AppToolsXmlBulkReaderRouteImport } from './routes/app.tools.xm
 import { Route as AppToolsResicoCalculatorRouteImport } from './routes/app.tools.resico-calculator'
 import { Route as AppToolsIsrIvaCalculatorRouteImport } from './routes/app.tools.isr-iva-calculator'
 import { Route as AppToolsCfdiValidatorRouteImport } from './routes/app.tools.cfdi-validator'
+import { Route as AppToolsBankReconcilerRouteImport } from './routes/app.tools.bank-reconciler'
 
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
@@ -120,6 +121,11 @@ const AppToolsCfdiValidatorRoute = AppToolsCfdiValidatorRouteImport.update({
   path: '/tools/cfdi-validator',
   getParentRoute: () => AppRoute,
 } as any)
+const AppToolsBankReconcilerRoute = AppToolsBankReconcilerRouteImport.update({
+  id: '/tools/bank-reconciler',
+  path: '/tools/bank-reconciler',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -135,6 +141,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/reportes': typeof DashboardReportesRoute
   '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/app/tools/bank-reconciler': typeof AppToolsBankReconcilerRoute
   '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
   '/app/tools/isr-iva-calculator': typeof AppToolsIsrIvaCalculatorRoute
   '/app/tools/resico-calculator': typeof AppToolsResicoCalculatorRoute
@@ -153,6 +160,7 @@ export interface FileRoutesByTo {
   '/dashboard/reportes': typeof DashboardReportesRoute
   '/app': typeof AppIndexRoute
   '/dashboard': typeof DashboardIndexRoute
+  '/app/tools/bank-reconciler': typeof AppToolsBankReconcilerRoute
   '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
   '/app/tools/isr-iva-calculator': typeof AppToolsIsrIvaCalculatorRoute
   '/app/tools/resico-calculator': typeof AppToolsResicoCalculatorRoute
@@ -174,6 +182,7 @@ export interface FileRoutesById {
   '/dashboard/reportes': typeof DashboardReportesRoute
   '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/app/tools/bank-reconciler': typeof AppToolsBankReconcilerRoute
   '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
   '/app/tools/isr-iva-calculator': typeof AppToolsIsrIvaCalculatorRoute
   '/app/tools/resico-calculator': typeof AppToolsResicoCalculatorRoute
@@ -196,6 +205,7 @@ export interface FileRouteTypes {
     | '/dashboard/reportes'
     | '/app/'
     | '/dashboard/'
+    | '/app/tools/bank-reconciler'
     | '/app/tools/cfdi-validator'
     | '/app/tools/isr-iva-calculator'
     | '/app/tools/resico-calculator'
@@ -214,6 +224,7 @@ export interface FileRouteTypes {
     | '/dashboard/reportes'
     | '/app'
     | '/dashboard'
+    | '/app/tools/bank-reconciler'
     | '/app/tools/cfdi-validator'
     | '/app/tools/isr-iva-calculator'
     | '/app/tools/resico-calculator'
@@ -234,6 +245,7 @@ export interface FileRouteTypes {
     | '/dashboard/reportes'
     | '/app/'
     | '/dashboard/'
+    | '/app/tools/bank-reconciler'
     | '/app/tools/cfdi-validator'
     | '/app/tools/isr-iva-calculator'
     | '/app/tools/resico-calculator'
@@ -376,12 +388,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppToolsCfdiValidatorRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/tools/bank-reconciler': {
+      id: '/app/tools/bank-reconciler'
+      path: '/tools/bank-reconciler'
+      fullPath: '/app/tools/bank-reconciler'
+      preLoaderRoute: typeof AppToolsBankReconcilerRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
   AppClientesRoute: typeof AppClientesRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppToolsBankReconcilerRoute: typeof AppToolsBankReconcilerRoute
   AppToolsCfdiValidatorRoute: typeof AppToolsCfdiValidatorRoute
   AppToolsIsrIvaCalculatorRoute: typeof AppToolsIsrIvaCalculatorRoute
   AppToolsResicoCalculatorRoute: typeof AppToolsResicoCalculatorRoute
@@ -392,6 +412,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppClientesRoute: AppClientesRoute,
   AppIndexRoute: AppIndexRoute,
+  AppToolsBankReconcilerRoute: AppToolsBankReconcilerRoute,
   AppToolsCfdiValidatorRoute: AppToolsCfdiValidatorRoute,
   AppToolsIsrIvaCalculatorRoute: AppToolsIsrIvaCalculatorRoute,
   AppToolsResicoCalculatorRoute: AppToolsResicoCalculatorRoute,
