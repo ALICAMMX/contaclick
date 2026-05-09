@@ -26,6 +26,7 @@ import { Route as AppToolsIndexRouteImport } from './routes/app.tools.index'
 import { Route as AppToolsXmlBulkReaderRouteImport } from './routes/app.tools.xml-bulk-reader'
 import { Route as AppToolsResicoCalculatorRouteImport } from './routes/app.tools.resico-calculator'
 import { Route as AppToolsIsrIvaCalculatorRouteImport } from './routes/app.tools.isr-iva-calculator'
+import { Route as AppToolsFiscalAssistantRouteImport } from './routes/app.tools.fiscal-assistant'
 import { Route as AppToolsExpressAuditorRouteImport } from './routes/app.tools.express-auditor'
 import { Route as AppToolsCfdiValidatorRouteImport } from './routes/app.tools.cfdi-validator'
 import { Route as AppToolsBankReconcilerRouteImport } from './routes/app.tools.bank-reconciler'
@@ -117,6 +118,11 @@ const AppToolsIsrIvaCalculatorRoute =
     path: '/tools/isr-iva-calculator',
     getParentRoute: () => AppRoute,
   } as any)
+const AppToolsFiscalAssistantRoute = AppToolsFiscalAssistantRouteImport.update({
+  id: '/tools/fiscal-assistant',
+  path: '/tools/fiscal-assistant',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppToolsExpressAuditorRoute = AppToolsExpressAuditorRouteImport.update({
   id: '/tools/express-auditor',
   path: '/tools/express-auditor',
@@ -150,6 +156,7 @@ export interface FileRoutesByFullPath {
   '/app/tools/bank-reconciler': typeof AppToolsBankReconcilerRoute
   '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
   '/app/tools/express-auditor': typeof AppToolsExpressAuditorRoute
+  '/app/tools/fiscal-assistant': typeof AppToolsFiscalAssistantRoute
   '/app/tools/isr-iva-calculator': typeof AppToolsIsrIvaCalculatorRoute
   '/app/tools/resico-calculator': typeof AppToolsResicoCalculatorRoute
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
@@ -170,6 +177,7 @@ export interface FileRoutesByTo {
   '/app/tools/bank-reconciler': typeof AppToolsBankReconcilerRoute
   '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
   '/app/tools/express-auditor': typeof AppToolsExpressAuditorRoute
+  '/app/tools/fiscal-assistant': typeof AppToolsFiscalAssistantRoute
   '/app/tools/isr-iva-calculator': typeof AppToolsIsrIvaCalculatorRoute
   '/app/tools/resico-calculator': typeof AppToolsResicoCalculatorRoute
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
@@ -193,6 +201,7 @@ export interface FileRoutesById {
   '/app/tools/bank-reconciler': typeof AppToolsBankReconcilerRoute
   '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
   '/app/tools/express-auditor': typeof AppToolsExpressAuditorRoute
+  '/app/tools/fiscal-assistant': typeof AppToolsFiscalAssistantRoute
   '/app/tools/isr-iva-calculator': typeof AppToolsIsrIvaCalculatorRoute
   '/app/tools/resico-calculator': typeof AppToolsResicoCalculatorRoute
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
@@ -217,6 +226,7 @@ export interface FileRouteTypes {
     | '/app/tools/bank-reconciler'
     | '/app/tools/cfdi-validator'
     | '/app/tools/express-auditor'
+    | '/app/tools/fiscal-assistant'
     | '/app/tools/isr-iva-calculator'
     | '/app/tools/resico-calculator'
     | '/app/tools/xml-bulk-reader'
@@ -237,6 +247,7 @@ export interface FileRouteTypes {
     | '/app/tools/bank-reconciler'
     | '/app/tools/cfdi-validator'
     | '/app/tools/express-auditor'
+    | '/app/tools/fiscal-assistant'
     | '/app/tools/isr-iva-calculator'
     | '/app/tools/resico-calculator'
     | '/app/tools/xml-bulk-reader'
@@ -259,6 +270,7 @@ export interface FileRouteTypes {
     | '/app/tools/bank-reconciler'
     | '/app/tools/cfdi-validator'
     | '/app/tools/express-auditor'
+    | '/app/tools/fiscal-assistant'
     | '/app/tools/isr-iva-calculator'
     | '/app/tools/resico-calculator'
     | '/app/tools/xml-bulk-reader'
@@ -393,6 +405,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppToolsIsrIvaCalculatorRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/tools/fiscal-assistant': {
+      id: '/app/tools/fiscal-assistant'
+      path: '/tools/fiscal-assistant'
+      fullPath: '/app/tools/fiscal-assistant'
+      preLoaderRoute: typeof AppToolsFiscalAssistantRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/tools/express-auditor': {
       id: '/app/tools/express-auditor'
       path: '/tools/express-auditor'
@@ -423,6 +442,7 @@ interface AppRouteChildren {
   AppToolsBankReconcilerRoute: typeof AppToolsBankReconcilerRoute
   AppToolsCfdiValidatorRoute: typeof AppToolsCfdiValidatorRoute
   AppToolsExpressAuditorRoute: typeof AppToolsExpressAuditorRoute
+  AppToolsFiscalAssistantRoute: typeof AppToolsFiscalAssistantRoute
   AppToolsIsrIvaCalculatorRoute: typeof AppToolsIsrIvaCalculatorRoute
   AppToolsResicoCalculatorRoute: typeof AppToolsResicoCalculatorRoute
   AppToolsXmlBulkReaderRoute: typeof AppToolsXmlBulkReaderRoute
@@ -435,6 +455,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppToolsBankReconcilerRoute: AppToolsBankReconcilerRoute,
   AppToolsCfdiValidatorRoute: AppToolsCfdiValidatorRoute,
   AppToolsExpressAuditorRoute: AppToolsExpressAuditorRoute,
+  AppToolsFiscalAssistantRoute: AppToolsFiscalAssistantRoute,
   AppToolsIsrIvaCalculatorRoute: AppToolsIsrIvaCalculatorRoute,
   AppToolsResicoCalculatorRoute: AppToolsResicoCalculatorRoute,
   AppToolsXmlBulkReaderRoute: AppToolsXmlBulkReaderRoute,
@@ -476,3 +497,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
