@@ -172,8 +172,8 @@ async function ingestOneInternal(
     clienteId,
     rfc: rfcDestino,
     regimen: rfcDestino === parsed.receptor.rfc?.toUpperCase()
-      ? parsed.receptor.regimenFiscalReceptor ?? null
-      : parsed.emisor.regimenFiscal ?? null,
+      ? parsed.receptor.regimenFiscalReceptor ?? undefined
+      : parsed.emisor.regimenFiscal ?? undefined,
   });
 
   const { data: ins, error } = await supabase
