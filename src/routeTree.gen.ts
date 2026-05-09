@@ -22,7 +22,9 @@ import { Route as DashboardCfdiRouteImport } from './routes/dashboard.cfdi'
 import { Route as DashboardAuditorRouteImport } from './routes/dashboard.auditor'
 import { Route as DashboardAsistenteRouteImport } from './routes/dashboard.asistente'
 import { Route as AppClientesRouteImport } from './routes/app.clientes'
+import { Route as AppCfdiRouteImport } from './routes/app.cfdi'
 import { Route as AppToolsIndexRouteImport } from './routes/app.tools.index'
+import { Route as AppCfdiIndexRouteImport } from './routes/app.cfdi.index'
 import { Route as AppToolsXmlBulkReaderRouteImport } from './routes/app.tools.xml-bulk-reader'
 import { Route as AppToolsResicoCalculatorRouteImport } from './routes/app.tools.resico-calculator'
 import { Route as AppToolsIsrIvaCalculatorRouteImport } from './routes/app.tools.isr-iva-calculator'
@@ -96,10 +98,20 @@ const AppClientesRoute = AppClientesRouteImport.update({
   path: '/clientes',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCfdiRoute = AppCfdiRouteImport.update({
+  id: '/cfdi',
+  path: '/cfdi',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppToolsIndexRoute = AppToolsIndexRouteImport.update({
   id: '/tools/',
   path: '/tools/',
   getParentRoute: () => AppRoute,
+} as any)
+const AppCfdiIndexRoute = AppCfdiIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppCfdiRoute,
 } as any)
 const AppToolsXmlBulkReaderRoute = AppToolsXmlBulkReaderRouteImport.update({
   id: '/tools/xml-bulk-reader',
@@ -144,6 +156,7 @@ export interface FileRoutesByFullPath {
   '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRouteWithChildren
+  '/app/cfdi': typeof AppCfdiRouteWithChildren
   '/app/clientes': typeof AppClientesRoute
   '/dashboard/asistente': typeof DashboardAsistenteRoute
   '/dashboard/auditor': typeof DashboardAuditorRoute
@@ -160,6 +173,7 @@ export interface FileRoutesByFullPath {
   '/app/tools/isr-iva-calculator': typeof AppToolsIsrIvaCalculatorRoute
   '/app/tools/resico-calculator': typeof AppToolsResicoCalculatorRoute
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
+  '/app/cfdi/': typeof AppCfdiIndexRoute
   '/app/tools/': typeof AppToolsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -181,6 +195,7 @@ export interface FileRoutesByTo {
   '/app/tools/isr-iva-calculator': typeof AppToolsIsrIvaCalculatorRoute
   '/app/tools/resico-calculator': typeof AppToolsResicoCalculatorRoute
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
+  '/app/cfdi': typeof AppCfdiIndexRoute
   '/app/tools': typeof AppToolsIndexRoute
 }
 export interface FileRoutesById {
@@ -189,6 +204,7 @@ export interface FileRoutesById {
   '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRouteWithChildren
+  '/app/cfdi': typeof AppCfdiRouteWithChildren
   '/app/clientes': typeof AppClientesRoute
   '/dashboard/asistente': typeof DashboardAsistenteRoute
   '/dashboard/auditor': typeof DashboardAuditorRoute
@@ -205,6 +221,7 @@ export interface FileRoutesById {
   '/app/tools/isr-iva-calculator': typeof AppToolsIsrIvaCalculatorRoute
   '/app/tools/resico-calculator': typeof AppToolsResicoCalculatorRoute
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
+  '/app/cfdi/': typeof AppCfdiIndexRoute
   '/app/tools/': typeof AppToolsIndexRoute
 }
 export interface FileRouteTypes {
@@ -214,6 +231,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/auth'
     | '/dashboard'
+    | '/app/cfdi'
     | '/app/clientes'
     | '/dashboard/asistente'
     | '/dashboard/auditor'
@@ -230,6 +248,7 @@ export interface FileRouteTypes {
     | '/app/tools/isr-iva-calculator'
     | '/app/tools/resico-calculator'
     | '/app/tools/xml-bulk-reader'
+    | '/app/cfdi/'
     | '/app/tools/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -251,6 +270,7 @@ export interface FileRouteTypes {
     | '/app/tools/isr-iva-calculator'
     | '/app/tools/resico-calculator'
     | '/app/tools/xml-bulk-reader'
+    | '/app/cfdi'
     | '/app/tools'
   id:
     | '__root__'
@@ -258,6 +278,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/auth'
     | '/dashboard'
+    | '/app/cfdi'
     | '/app/clientes'
     | '/dashboard/asistente'
     | '/dashboard/auditor'
@@ -274,6 +295,7 @@ export interface FileRouteTypes {
     | '/app/tools/isr-iva-calculator'
     | '/app/tools/resico-calculator'
     | '/app/tools/xml-bulk-reader'
+    | '/app/cfdi/'
     | '/app/tools/'
   fileRoutesById: FileRoutesById
 }
@@ -377,12 +399,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppClientesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/cfdi': {
+      id: '/app/cfdi'
+      path: '/cfdi'
+      fullPath: '/app/cfdi'
+      preLoaderRoute: typeof AppCfdiRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/tools/': {
       id: '/app/tools/'
       path: '/tools'
       fullPath: '/app/tools/'
       preLoaderRoute: typeof AppToolsIndexRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/app/cfdi/': {
+      id: '/app/cfdi/'
+      path: '/'
+      fullPath: '/app/cfdi/'
+      preLoaderRoute: typeof AppCfdiIndexRouteImport
+      parentRoute: typeof AppCfdiRoute
     }
     '/app/tools/xml-bulk-reader': {
       id: '/app/tools/xml-bulk-reader'
@@ -436,7 +472,19 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppCfdiRouteChildren {
+  AppCfdiIndexRoute: typeof AppCfdiIndexRoute
+}
+
+const AppCfdiRouteChildren: AppCfdiRouteChildren = {
+  AppCfdiIndexRoute: AppCfdiIndexRoute,
+}
+
+const AppCfdiRouteWithChildren =
+  AppCfdiRoute._addFileChildren(AppCfdiRouteChildren)
+
 interface AppRouteChildren {
+  AppCfdiRoute: typeof AppCfdiRouteWithChildren
   AppClientesRoute: typeof AppClientesRoute
   AppIndexRoute: typeof AppIndexRoute
   AppToolsBankReconcilerRoute: typeof AppToolsBankReconcilerRoute
@@ -450,6 +498,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppCfdiRoute: AppCfdiRouteWithChildren,
   AppClientesRoute: AppClientesRoute,
   AppIndexRoute: AppIndexRoute,
   AppToolsBankReconcilerRoute: AppToolsBankReconcilerRoute,
@@ -497,3 +546,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
