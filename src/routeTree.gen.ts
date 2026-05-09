@@ -23,6 +23,7 @@ import { Route as DashboardAuditorRouteImport } from './routes/dashboard.auditor
 import { Route as DashboardAsistenteRouteImport } from './routes/dashboard.asistente'
 import { Route as AppClientesRouteImport } from './routes/app.clientes'
 import { Route as AppToolsIndexRouteImport } from './routes/app.tools.index'
+import { Route as AppToolsXmlBulkReaderRouteImport } from './routes/app.tools.xml-bulk-reader'
 import { Route as AppToolsCfdiValidatorRouteImport } from './routes/app.tools.cfdi-validator'
 
 const DashboardRoute = DashboardRouteImport.update({
@@ -95,6 +96,11 @@ const AppToolsIndexRoute = AppToolsIndexRouteImport.update({
   path: '/tools/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppToolsXmlBulkReaderRoute = AppToolsXmlBulkReaderRouteImport.update({
+  id: '/tools/xml-bulk-reader',
+  path: '/tools/xml-bulk-reader',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppToolsCfdiValidatorRoute = AppToolsCfdiValidatorRouteImport.update({
   id: '/tools/cfdi-validator',
   path: '/tools/cfdi-validator',
@@ -116,6 +122,7 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
+  '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
   '/app/tools/': typeof AppToolsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -131,6 +138,7 @@ export interface FileRoutesByTo {
   '/app': typeof AppIndexRoute
   '/dashboard': typeof DashboardIndexRoute
   '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
+  '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
   '/app/tools': typeof AppToolsIndexRoute
 }
 export interface FileRoutesById {
@@ -149,6 +157,7 @@ export interface FileRoutesById {
   '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
+  '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
   '/app/tools/': typeof AppToolsIndexRoute
 }
 export interface FileRouteTypes {
@@ -168,6 +177,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/dashboard/'
     | '/app/tools/cfdi-validator'
+    | '/app/tools/xml-bulk-reader'
     | '/app/tools/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -183,6 +193,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/dashboard'
     | '/app/tools/cfdi-validator'
+    | '/app/tools/xml-bulk-reader'
     | '/app/tools'
   id:
     | '__root__'
@@ -200,6 +211,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/dashboard/'
     | '/app/tools/cfdi-validator'
+    | '/app/tools/xml-bulk-reader'
     | '/app/tools/'
   fileRoutesById: FileRoutesById
 }
@@ -310,6 +322,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppToolsIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/tools/xml-bulk-reader': {
+      id: '/app/tools/xml-bulk-reader'
+      path: '/tools/xml-bulk-reader'
+      fullPath: '/app/tools/xml-bulk-reader'
+      preLoaderRoute: typeof AppToolsXmlBulkReaderRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/tools/cfdi-validator': {
       id: '/app/tools/cfdi-validator'
       path: '/tools/cfdi-validator'
@@ -324,6 +343,7 @@ interface AppRouteChildren {
   AppClientesRoute: typeof AppClientesRoute
   AppIndexRoute: typeof AppIndexRoute
   AppToolsCfdiValidatorRoute: typeof AppToolsCfdiValidatorRoute
+  AppToolsXmlBulkReaderRoute: typeof AppToolsXmlBulkReaderRoute
   AppToolsIndexRoute: typeof AppToolsIndexRoute
 }
 
@@ -331,6 +351,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppClientesRoute: AppClientesRoute,
   AppIndexRoute: AppIndexRoute,
   AppToolsCfdiValidatorRoute: AppToolsCfdiValidatorRoute,
+  AppToolsXmlBulkReaderRoute: AppToolsXmlBulkReaderRoute,
   AppToolsIndexRoute: AppToolsIndexRoute,
 }
 
