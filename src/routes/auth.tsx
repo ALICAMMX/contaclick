@@ -22,7 +22,7 @@ function AuthPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/dashboard" });
+      if (data.session) navigate({ to: "/app" });
     });
   }, [navigate]);
 
@@ -35,7 +35,7 @@ function AuthPage() {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/dashboard`,
+            emailRedirectTo: `${window.location.origin}/app`,
             data: { full_name: fullName, despacho_nombre: despacho },
           },
         });
@@ -45,7 +45,7 @@ function AuthPage() {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate({ to: "/dashboard" });
+        navigate({ to: "/app" });
       }
     } catch (err: any) {
       toast.error(err.message ?? "Algo salió mal");
@@ -57,10 +57,10 @@ function AuthPage() {
   const onGoogle = async () => {
     try {
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: `${window.location.origin}/dashboard`,
+        redirect_uri: `${window.location.origin}/app`,
       });
       if (result.error) toast.error("No se pudo iniciar sesión con Google");
-      else if (!result.redirected) navigate({ to: "/dashboard" });
+      else if (!result.redirected) navigate({ to: "/app" });
     } catch {
       toast.error("Error con Google");
     }

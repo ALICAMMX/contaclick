@@ -17,37 +17,46 @@ export type Database = {
       clientes: {
         Row: {
           created_at: string
+          email: string | null
           estado_mes: string | null
           id: string
+          notas: string | null
           obligaciones: number
           razon_social: string
           regimen_fiscal: string | null
           rfc: string
           semaforo: string
+          telefono: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          email?: string | null
           estado_mes?: string | null
           id?: string
+          notas?: string | null
           obligaciones?: number
           razon_social: string
           regimen_fiscal?: string | null
           rfc: string
           semaforo?: string
+          telefono?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          email?: string | null
           estado_mes?: string | null
           id?: string
+          notas?: string | null
           obligaciones?: number
           razon_social?: string
           regimen_fiscal?: string | null
           rfc?: string
           semaforo?: string
+          telefono?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -79,6 +88,50 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      tool_runs: {
+        Row: {
+          cliente_id: string | null
+          created_at: string
+          id: string
+          input: Json | null
+          notes: string | null
+          output: Json | null
+          status: string
+          tool_key: string
+          user_id: string
+        }
+        Insert: {
+          cliente_id?: string | null
+          created_at?: string
+          id?: string
+          input?: Json | null
+          notes?: string | null
+          output?: Json | null
+          status?: string
+          tool_key: string
+          user_id: string
+        }
+        Update: {
+          cliente_id?: string | null
+          created_at?: string
+          id?: string
+          input?: Json | null
+          notes?: string | null
+          output?: Json | null
+          status?: string
+          tool_key?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tool_runs_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

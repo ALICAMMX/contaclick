@@ -11,12 +11,12 @@ export function SiteHeader() {
           <a href="/#features" className="hover:text-foreground transition-colors">Producto</a>
           <a href="/#modules" className="hover:text-foreground transition-colors">Módulos</a>
           <a href="/#pricing" className="hover:text-foreground transition-colors">Precios</a>
-          <Link to="/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link>
+          <Link to="/app" className="hover:text-foreground transition-colors">Dashboard</Link>
         </nav>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" className="hidden sm:inline-flex">Iniciar sesión</Button>
           <Button asChild size="sm" variant="hero">
-            <Link to="/dashboard">Probar gratis</Link>
+            <Link to="/app">Probar gratis</Link>
           </Button>
         </div>
       </div>
