@@ -2,11 +2,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { Building2, Save, Loader2, BadgeCheck, Calendar, Users, ChevronRight } from "lucide-react";
+import { Building2, Save, Loader2, BadgeCheck, Calendar, Users, ChevronRight, Sparkles, Trash2, PlayCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useDespacho } from "@/lib/despacho/use-despacho";
 import { updateDespacho, createDespacho } from "@/lib/despacho/despacho.functions";
+import { seedDemo, clearDemo } from "@/lib/demo/demo.functions";
+import { Tour, resetTour } from "@/components/Tour";
 
 export const Route = createFileRoute("/app/configuracion")({
   component: ConfigPage,
@@ -17,9 +19,30 @@ function ConfigPage() {
   const qc = useQueryClient();
   const fnUpd = useServerFn(updateDespacho);
   const fnCreate = useServerFn(createDespacho);
+  const fnSeed = useServerFn(seedDemo);
+  const fnClear = useServerFn(clearDemo);
+  const [tourOpen, setTourOpen] = useState(false);
 
   const [nombre, setNombre] = useState("");
   const [rfc, setRfc] = useState("");
+
+  const seed = useMutation({
+    mutationFn: () => fnSeed(),
+    onSuccess: (r: any) => {
+      if (r.alreadySeeded) toast.info("Los datos demo ya estaban cargados.");
+      else toast.success(`Demo cargado: ${r.clientes} clientes con CFDI, bancos, conciliaciones y más.`);
+      qc.invalidateQueries({ queryKey: ["clientes"] });
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+  const clear = useMutation({
+    mutationFn: () => fnClear(),
+    onSuccess: (r: any) => {
+      toast.success(r.removed > 0 ? `Demo eliminado (${r.removed} clientes).` : "No había datos demo.");
+      qc.invalidateQueries({ queryKey: ["clientes"] });
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
 
   useEffect(() => {
     if (despacho) {
@@ -122,6 +145,36 @@ function ConfigPage() {
         </div>
         <ChevronRight className="h-4 w-4 text-muted-foreground" />
       </Link>
+
+      <div className="rounded-xl border border-primary/30 bg-primary/5 p-5 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-lg bg-primary/15 flex items-center justify-center">
+            <Sparkles className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <div className="font-semibold">Datos demo y tour</div>
+            <div className="text-xs text-muted-foreground">
+              Carga 2 clientes de ejemplo con CFDI, bancos, conciliaciones, alertas y mensajes para explorar todas las herramientas.
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => seed.mutate()} disabled={seed.isPending} variant="hero" size="sm">
+            {seed.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            Cargar datos demo
+          </Button>
+          <Button onClick={() => { resetTour(); setTourOpen(true); }} variant="outline" size="sm">
+            <PlayCircle className="h-4 w-4" /> Iniciar tour
+          </Button>
+          <Button onClick={() => clear.mutate()} disabled={clear.isPending} variant="ghost" size="sm">
+            {clear.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            Limpiar demo
+          </Button>
+        </div>
+      </div>
+
+      <Tour open={tourOpen} onClose={() => setTourOpen(false)} />
     </div>
   );
+
 }
