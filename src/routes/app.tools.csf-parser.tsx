@@ -28,9 +28,7 @@ type CsfData = {
 // Lightweight PDF text extraction using pdfjs-dist if available, else fallback
 async function extractPdfText(file: File): Promise<string> {
   try {
-    // @ts-expect-error - dynamic import, optional dep
-    const pdfjs = await import("pdfjs-dist/build/pdf");
-    // worker via CDN to avoid bundler config
+    const pdfjs: any = await import("pdfjs-dist");
     pdfjs.GlobalWorkerOptions.workerSrc =
       "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs";
     const buf = await file.arrayBuffer();
