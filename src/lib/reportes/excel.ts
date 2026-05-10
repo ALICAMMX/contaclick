@@ -43,6 +43,16 @@ export function downloadReporteExcel(args: { tipo: string; payload: any }) {
   }
   if (tipo === "xml_inconsistentes") addSheet("Inconsistencias", (payload.detalle ?? []).map((x: any) => ({ ...x, motivos: (x.motivos ?? []).join(" · ") })));
   if (tipo === "depositos_no_identificados") addSheet("Depósitos", payload.detalle ?? []);
+  if (tipo === "balanza") {
+    addSheet("Ingresos por cliente", payload.ingresos ?? []);
+    addSheet("Egresos por proveedor", payload.egresos ?? []);
+  }
+  if (tipo === "balance_general") {
+    addSheet("Activo", payload.activo ?? []);
+    addSheet("Pasivo", payload.pasivo ?? []);
+    addSheet("Capital", payload.capital ?? []);
+  }
+  if (tipo === "diot") addSheet("DIOT", payload.detalle ?? []);
 
   const fname = `${tipo}_${cli.rfc ?? "cliente"}_${periodo.desde ?? ""}_${periodo.hasta ?? ""}.xlsx`;
   XLSX.writeFile(wb, fname);

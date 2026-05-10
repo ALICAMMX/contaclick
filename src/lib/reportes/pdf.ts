@@ -11,6 +11,9 @@ const TIPO_LABEL: Record<string, string> = {
   diferencias: "Diferencias Fiscales",
   xml_inconsistentes: "XML Inconsistentes",
   depositos_no_identificados: "Depósitos no Identificados",
+  balanza: "Balanza de Comprobación",
+  balance_general: "Balance General",
+  diot: "DIOT — Declaración Informativa",
 };
 
 export function downloadReportePDF(args: {
@@ -155,6 +158,24 @@ function buildKpis(tipo: string, r: any): Array<{ label: string; value: string }
     { label: "Depósitos", value: String(r.total_depositos ?? 0) },
     { label: "Monto total", value: fmtMXN(r.monto_total) },
   ];
+  if (tipo === "balanza") return [
+    { label: "Ingresos", value: fmtMXN(r.total_ingresos) },
+    { label: "Egresos", value: fmtMXN(r.total_egresos) },
+    { label: "Clientes", value: String(r.n_clientes ?? 0) },
+    { label: "Proveedores", value: String(r.n_proveedores ?? 0) },
+  ];
+  if (tipo === "balance_general") return [
+    { label: "Activo", value: fmtMXN(r.activo_total) },
+    { label: "Pasivo", value: fmtMXN(r.pasivo_total) },
+    { label: "Capital", value: fmtMXN(r.capital_contable) },
+    { label: "Banco", value: fmtMXN(r.banco) },
+  ];
+  if (tipo === "diot") return [
+    { label: "Proveedores", value: String(r.n_proveedores ?? 0) },
+    { label: "Base IVA 16%", value: fmtMXN(r.base_iva16) },
+    { label: "Base 0% / Exento", value: fmtMXN((r.base_iva0 ?? 0) + (r.base_exento ?? 0)) },
+    { label: "IVA retenido", value: fmtMXN(r.iva_retenido) },
+  ];
   return [];
 }
 
@@ -204,6 +225,30 @@ function buildTables(tipo: string, p: any): Array<{ title: string; head: string[
       title: "Depósitos por aclarar",
       head: ["Fecha", "Descripción", "Referencia", "Monto"],
       body: p.detalle.map((x: any) => [fmtDate(x.fecha), (x.descripcion ?? "").slice(0, 60), x.referencia ?? "", fmtMXN(x.abono)]),
+    });
+  }
+  if (tipo === "balanza") {
+    if (p.ingresos?.length) out.push({
+      title: "Ingresos por cliente",
+      head: ["RFC", "Nombre", "CFDI", "Subtotal", "IVA", "Total"],
+      body: p.ingresos.slice(0, 80).map((x: any) => [x.rfc, (x.nombre ?? "").slice(0, 36), x.n, fmtMXN(x.subtotal), fmtMXN(x.iva), fmtMXN(x.total)]),
+    });
+    if (p.egresos?.length) out.push({
+      title: "Egresos por proveedor",
+      head: ["RFC", "Nombre", "CFDI", "Subtotal", "IVA", "Total"],
+      body: p.egresos.slice(0, 80).map((x: any) => [x.rfc, (x.nombre ?? "").slice(0, 36), x.n, fmtMXN(x.subtotal), fmtMXN(x.iva), fmtMXN(x.total)]),
+    });
+  }
+  if (tipo === "balance_general") {
+    if (p.activo?.length) out.push({ title: "Activo", head: ["Cuenta", "Importe"], body: p.activo.map((x: any) => [x.cuenta, fmtMXN(x.importe)]) });
+    if (p.pasivo?.length) out.push({ title: "Pasivo", head: ["Cuenta", "Importe"], body: p.pasivo.map((x: any) => [x.cuenta, fmtMXN(x.importe)]) });
+    if (p.capital?.length) out.push({ title: "Capital", head: ["Cuenta", "Importe"], body: p.capital.map((x: any) => [x.cuenta, fmtMXN(x.importe)]) });
+  }
+  if (tipo === "diot" && p.detalle?.length) {
+    out.push({
+      title: "DIOT — Detalle por proveedor",
+      head: ["RFC", "Nombre", "Tipo", "Op.", "Base 16%", "Base 0%/Ex", "IVA ret.", "ISR ret."],
+      body: p.detalle.slice(0, 200).map((x: any) => [x.rfc, (x.nombre ?? "").slice(0, 28), x.tipo_tercero, x.tipo_operacion, fmtMXN(x.iva16), fmtMXN((x.iva0 ?? 0) + (x.exento ?? 0)), fmtMXN(x.iva_ret), fmtMXN(x.isr_ret)]),
     });
   }
   return out;
