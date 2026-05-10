@@ -145,6 +145,36 @@ function ConfigPage() {
         </div>
         <ChevronRight className="h-4 w-4 text-muted-foreground" />
       </Link>
+
+      <div className="rounded-xl border border-primary/30 bg-primary/5 p-5 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-lg bg-primary/15 flex items-center justify-center">
+            <Sparkles className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <div className="font-semibold">Datos demo y tour</div>
+            <div className="text-xs text-muted-foreground">
+              Carga 2 clientes de ejemplo con CFDI, bancos, conciliaciones, alertas y mensajes para explorar todas las herramientas.
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => seed.mutate()} disabled={seed.isPending} variant="hero" size="sm">
+            {seed.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            Cargar datos demo
+          </Button>
+          <Button onClick={() => { resetTour(); setTourOpen(true); }} variant="outline" size="sm">
+            <PlayCircle className="h-4 w-4" /> Iniciar tour
+          </Button>
+          <Button onClick={() => clear.mutate()} disabled={clear.isPending} variant="ghost" size="sm">
+            {clear.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            Limpiar demo
+          </Button>
+        </div>
+      </div>
+
+      <Tour open={tourOpen} onClose={() => setTourOpen(false)} />
     </div>
   );
+
 }
