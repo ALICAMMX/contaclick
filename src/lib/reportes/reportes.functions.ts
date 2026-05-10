@@ -156,7 +156,7 @@ export const computeReporte = createServerFn({ method: "POST" })
     const { data: rep, error } = await supabase
       .from("reportes")
       .insert({
-        despacho_id: cli.despacho_id,
+        despacho_id: cli.despacho_id as string,
         cliente_id,
         tipo,
         periodo: `[${desde},${hasta}]`,
