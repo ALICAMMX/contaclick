@@ -13,24 +13,30 @@ export const getMyDespacho = createServerFn({ method: "GET" })
     // Try membership first
     const { data: mem } = await supabase
       .from("user_memberships")
-      .select("despacho_id, despachos:despacho_id ( id, nombre, rfc_despacho, estado, trial_ends_at, plan_id )")
+      .select("despacho_id")
       .eq("user_id", userId)
       .eq("estado", "activo")
       .limit(1)
       .maybeSingle();
 
-    if (mem?.despachos) {
-      const d: any = mem.despachos;
-      return {
-        despacho: {
-          id: d.id as string,
-          nombre: d.nombre as string,
-          rfc_despacho: (d.rfc_despacho ?? null) as string | null,
-          estado: d.estado as string,
-          trial_ends_at: (d.trial_ends_at ?? null) as string | null,
-          plan_id: (d.plan_id ?? null) as string | null,
-        },
-      };
+    if (mem?.despacho_id) {
+      const { data: d } = await supabase
+        .from("despachos")
+        .select("id, nombre, rfc_despacho, estado, trial_ends_at, plan_id")
+        .eq("id", mem.despacho_id)
+        .maybeSingle();
+      if (d) {
+        return {
+          despacho: {
+            id: d.id as string,
+            nombre: d.nombre as string,
+            rfc_despacho: (d.rfc_despacho ?? null) as string | null,
+            estado: d.estado as string,
+            trial_ends_at: (d.trial_ends_at ?? null) as string | null,
+            plan_id: (d.plan_id ?? null) as string | null,
+          },
+        };
+      }
     }
 
     // Fallback: owner row (legacy)
