@@ -33,6 +33,7 @@ export const computeReporte = createServerFn({ method: "POST" })
       .eq("id", cliente_id)
       .single();
     if (!cli) throw new Error("Cliente no encontrado");
+    if (!cli.despacho_id) throw new Error("Cliente sin despacho asignado.");
     const rfcCli = (cli.rfc as string).toUpperCase();
 
     const [{ data: cfdis }, { data: movs }, { data: conc }] = await Promise.all([
