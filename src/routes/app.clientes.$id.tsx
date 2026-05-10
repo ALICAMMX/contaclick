@@ -130,13 +130,78 @@ function ClienteDetailPage() {
         )}
 
         {status === "activo" ? (
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => desconectarMut.mutate()} disabled={desconectarMut.isPending}>
-              <Unlink className="h-4 w-4" /> Desconectar
-            </Button>
-            <span className="text-xs text-muted-foreground">
-              Para reemplazar la e.firma, desconecta primero y vuelve a conectar.
-            </span>
+          <div className="space-y-4">
+            <div className="rounded-lg border border-border/60 bg-background/40 p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <h3 className="text-sm font-semibold">Descargar CFDI desde el SAT</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Selecciona el periodo y tipo. La solicitud se envía al PAC.
+                  </p>
+                </div>
+                <Button onClick={() => sincronizarMut.mutate()} disabled={sincronizarMut.isPending} variant="hero">
+                  <RefreshCw className={`h-4 w-4 ${sincronizarMut.isPending ? "animate-spin" : ""}`} />
+                  {sincronizarMut.isPending ? "Sincronizando..." : "Sincronizar ahora"}
+                </Button>
+              </div>
+              <div className="grid sm:grid-cols-3 gap-3">
+                <label className="block">
+                  <span className="text-xs text-muted-foreground mb-1 block">Desde</span>
+                  <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} max={hasta}
+                    className="h-10 px-3 rounded-lg bg-input/50 border border-border text-sm w-full focus:outline-none focus:ring-1 focus:ring-ring" />
+                </label>
+                <label className="block">
+                  <span className="text-xs text-muted-foreground mb-1 block">Hasta</span>
+                  <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} min={desde} max={defHasta}
+                    className="h-10 px-3 rounded-lg bg-input/50 border border-border text-sm w-full focus:outline-none focus:ring-1 focus:ring-ring" />
+                </label>
+                <label className="block">
+                  <span className="text-xs text-muted-foreground mb-1 block">Tipo</span>
+                  <select value={tipo} onChange={(e) => setTipo(e.target.value as any)}
+                    className="h-10 px-3 rounded-lg bg-input/50 border border-border text-sm w-full focus:outline-none focus:ring-1 focus:ring-ring">
+                    <option value="ambos">Emitidos y recibidos</option>
+                    <option value="emitidos">Solo emitidos</option>
+                    <option value="recibidos">Solo recibidos</option>
+                  </select>
+                </label>
+              </div>
+
+              {sincronizarMut.isPending && (
+                <div className="text-xs text-muted-foreground flex items-center gap-2">
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                  Enviando solicitud al PAC y procesando respuesta…
+                </div>
+              )}
+
+              {lastResult && !sincronizarMut.isPending && (
+                <div className={`rounded-md p-3 text-sm border ${lastResult.ok ? "border-success/30 bg-success/5" : "border-destructive/30 bg-destructive/5"}`}>
+                  <div className="flex items-center gap-2 font-medium">
+                    {lastResult.ok ? <CheckCircle2 className="h-4 w-4 text-success" /> : <ShieldAlert className="h-4 w-4 text-destructive" />}
+                    {lastResult.simulated ? "Sincronización demo" : "Resultado de la sincronización"}
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 mt-2 text-xs">
+                    <Stat label="Descargados" value={lastResult.descargados} />
+                    <Stat label="Ya existían" value={lastResult.ya_existian} />
+                    <Stat label="Errores" value={lastResult.errores.length} tone={lastResult.errores.length ? "destructive" : "default"} />
+                  </div>
+                  {lastResult.detalle && (
+                    <p className="text-xs text-muted-foreground mt-2">{lastResult.detalle}</p>
+                  )}
+                  {lastResult.errores.map((e, i) => (
+                    <p key={i} className="text-xs text-destructive mt-1">• {e}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => desconectarMut.mutate()} disabled={desconectarMut.isPending}>
+                <Unlink className="h-4 w-4" /> Desconectar
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                Para reemplazar la e.firma, desconecta primero y vuelve a conectar.
+              </span>
+            </div>
           </div>
         ) : (
           <form
