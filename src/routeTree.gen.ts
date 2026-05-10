@@ -15,6 +15,7 @@ import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as InvitarTokenRouteImport } from './routes/invitar.$token'
 import { Route as DashboardReportesRouteImport } from './routes/dashboard.reportes'
 import { Route as DashboardConciliadorRouteImport } from './routes/dashboard.conciliador'
 import { Route as DashboardClientesRouteImport } from './routes/dashboard.clientes'
@@ -71,6 +72,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppRoute,
+} as any)
+const InvitarTokenRoute = InvitarTokenRouteImport.update({
+  id: '/invitar/$token',
+  path: '/invitar/$token',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardReportesRoute = DashboardReportesRouteImport.update({
   id: '/reportes',
@@ -223,6 +229,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/clientes': typeof DashboardClientesRoute
   '/dashboard/conciliador': typeof DashboardConciliadorRoute
   '/dashboard/reportes': typeof DashboardReportesRoute
+  '/invitar/$token': typeof InvitarTokenRoute
   '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/app/cfdi/$id': typeof AppCfdiIdRoute
@@ -251,6 +258,7 @@ export interface FileRoutesByTo {
   '/dashboard/clientes': typeof DashboardClientesRoute
   '/dashboard/conciliador': typeof DashboardConciliadorRoute
   '/dashboard/reportes': typeof DashboardReportesRoute
+  '/invitar/$token': typeof InvitarTokenRoute
   '/app': typeof AppIndexRoute
   '/dashboard': typeof DashboardIndexRoute
   '/app/cfdi/$id': typeof AppCfdiIdRoute
@@ -286,6 +294,7 @@ export interface FileRoutesById {
   '/dashboard/clientes': typeof DashboardClientesRoute
   '/dashboard/conciliador': typeof DashboardConciliadorRoute
   '/dashboard/reportes': typeof DashboardReportesRoute
+  '/invitar/$token': typeof InvitarTokenRoute
   '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/app/cfdi/$id': typeof AppCfdiIdRoute
@@ -322,6 +331,7 @@ export interface FileRouteTypes {
     | '/dashboard/clientes'
     | '/dashboard/conciliador'
     | '/dashboard/reportes'
+    | '/invitar/$token'
     | '/app/'
     | '/dashboard/'
     | '/app/cfdi/$id'
@@ -350,6 +360,7 @@ export interface FileRouteTypes {
     | '/dashboard/clientes'
     | '/dashboard/conciliador'
     | '/dashboard/reportes'
+    | '/invitar/$token'
     | '/app'
     | '/dashboard'
     | '/app/cfdi/$id'
@@ -384,6 +395,7 @@ export interface FileRouteTypes {
     | '/dashboard/clientes'
     | '/dashboard/conciliador'
     | '/dashboard/reportes'
+    | '/invitar/$token'
     | '/app/'
     | '/dashboard/'
     | '/app/cfdi/$id'
@@ -406,6 +418,7 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   AuthRoute: typeof AuthRoute
   DashboardRoute: typeof DashboardRouteWithChildren
+  InvitarTokenRoute: typeof InvitarTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -451,6 +464,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/'
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/invitar/$token': {
+      id: '/invitar/$token'
+      path: '/invitar/$token'
+      fullPath: '/invitar/$token'
+      preLoaderRoute: typeof InvitarTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/dashboard/reportes': {
       id: '/dashboard/reportes'
@@ -755,7 +775,18 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   AuthRoute: AuthRoute,
   DashboardRoute: DashboardRouteWithChildren,
+  InvitarTokenRoute: InvitarTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
