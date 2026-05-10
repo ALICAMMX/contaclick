@@ -23,6 +23,7 @@ import { Route as DashboardAuditorRouteImport } from './routes/dashboard.auditor
 import { Route as DashboardAsistenteRouteImport } from './routes/dashboard.asistente'
 import { Route as AppReportesRouteImport } from './routes/app.reportes'
 import { Route as AppMensajesRouteImport } from './routes/app.mensajes'
+import { Route as AppEquipoRouteImport } from './routes/app.equipo'
 import { Route as AppConfiguracionRouteImport } from './routes/app.configuracion'
 import { Route as AppConciliacionRouteImport } from './routes/app.conciliacion'
 import { Route as AppClientesRouteImport } from './routes/app.clientes'
@@ -109,6 +110,11 @@ const AppReportesRoute = AppReportesRouteImport.update({
 const AppMensajesRoute = AppMensajesRouteImport.update({
   id: '/mensajes',
   path: '/mensajes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEquipoRoute = AppEquipoRouteImport.update({
+  id: '/equipo',
+  path: '/equipo',
   getParentRoute: () => AppRoute,
 } as any)
 const AppConfiguracionRoute = AppConfiguracionRouteImport.update({
@@ -208,6 +214,7 @@ export interface FileRoutesByFullPath {
   '/app/clientes': typeof AppClientesRoute
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
   '/app/configuracion': typeof AppConfiguracionRoute
+  '/app/equipo': typeof AppEquipoRoute
   '/app/mensajes': typeof AppMensajesRouteWithChildren
   '/app/reportes': typeof AppReportesRouteWithChildren
   '/dashboard/asistente': typeof DashboardAsistenteRoute
@@ -237,6 +244,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/app/clientes': typeof AppClientesRoute
   '/app/configuracion': typeof AppConfiguracionRoute
+  '/app/equipo': typeof AppEquipoRoute
   '/dashboard/asistente': typeof DashboardAsistenteRoute
   '/dashboard/auditor': typeof DashboardAuditorRoute
   '/dashboard/cfdi': typeof DashboardCfdiRoute
@@ -269,6 +277,7 @@ export interface FileRoutesById {
   '/app/clientes': typeof AppClientesRoute
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
   '/app/configuracion': typeof AppConfiguracionRoute
+  '/app/equipo': typeof AppEquipoRoute
   '/app/mensajes': typeof AppMensajesRouteWithChildren
   '/app/reportes': typeof AppReportesRouteWithChildren
   '/dashboard/asistente': typeof DashboardAsistenteRoute
@@ -304,6 +313,7 @@ export interface FileRouteTypes {
     | '/app/clientes'
     | '/app/conciliacion'
     | '/app/configuracion'
+    | '/app/equipo'
     | '/app/mensajes'
     | '/app/reportes'
     | '/dashboard/asistente'
@@ -333,6 +343,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/app/clientes'
     | '/app/configuracion'
+    | '/app/equipo'
     | '/dashboard/asistente'
     | '/dashboard/auditor'
     | '/dashboard/cfdi'
@@ -364,6 +375,7 @@ export interface FileRouteTypes {
     | '/app/clientes'
     | '/app/conciliacion'
     | '/app/configuracion'
+    | '/app/equipo'
     | '/app/mensajes'
     | '/app/reportes'
     | '/dashboard/asistente'
@@ -494,6 +506,13 @@ declare module '@tanstack/react-router' {
       path: '/mensajes'
       fullPath: '/app/mensajes'
       preLoaderRoute: typeof AppMensajesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/equipo': {
+      id: '/app/equipo'
+      path: '/equipo'
+      fullPath: '/app/equipo'
+      preLoaderRoute: typeof AppEquipoRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/configuracion': {
@@ -672,6 +691,7 @@ interface AppRouteChildren {
   AppClientesRoute: typeof AppClientesRoute
   AppConciliacionRoute: typeof AppConciliacionRouteWithChildren
   AppConfiguracionRoute: typeof AppConfiguracionRoute
+  AppEquipoRoute: typeof AppEquipoRoute
   AppMensajesRoute: typeof AppMensajesRouteWithChildren
   AppReportesRoute: typeof AppReportesRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
@@ -690,6 +710,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppClientesRoute: AppClientesRoute,
   AppConciliacionRoute: AppConciliacionRouteWithChildren,
   AppConfiguracionRoute: AppConfiguracionRoute,
+  AppEquipoRoute: AppEquipoRoute,
   AppMensajesRoute: AppMensajesRouteWithChildren,
   AppReportesRoute: AppReportesRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
