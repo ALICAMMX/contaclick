@@ -1116,6 +1116,45 @@ export type Database = {
           },
         ]
       }
+      sat_credenciales: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          despacho_id: string
+          estatus: string
+          id: string
+          last_error: string | null
+          last_sync_at: string | null
+          pac_token: string | null
+          proveedor: string
+          updated_at: string
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          despacho_id: string
+          estatus?: string
+          id?: string
+          last_error?: string | null
+          last_sync_at?: string | null
+          pac_token?: string | null
+          proveedor?: string
+          updated_at?: string
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          despacho_id?: string
+          estatus?: string
+          id?: string
+          last_error?: string | null
+          last_sync_at?: string | null
+          pac_token?: string | null
+          proveedor?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       semaforo_fiscal: {
         Row: {
           calculado_at: string

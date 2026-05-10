@@ -118,6 +118,9 @@ function ClientesPage() {
                             Activar
                           </button>
                         )}
+                        <Link to="/app/clientes/$id" params={{ id: c.id }} className="text-xs px-2 py-1 rounded-md border border-border hover:bg-accent/40">
+                          Ficha · SAT
+                        </Link>
                         <Link to="/app/tools" className="text-xs px-2 py-1 rounded-md border border-border hover:bg-accent/40">
                           Herramientas
                         </Link>
