@@ -2,11 +2,11 @@ import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, ShieldCheck, ShieldAlert, ShieldOff, Upload, Unlink } from "lucide-react";
+import { ArrowLeft, ShieldCheck, ShieldAlert, ShieldOff, Upload, Unlink, RefreshCw, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { getCliente } from "@/lib/clientes.functions";
-import { getSatStatus, conectarSat, desconectarSat } from "@/lib/sat/sat.functions";
+import { getSatStatus, conectarSat, desconectarSat, sincronizarCfdis } from "@/lib/sat/sat.functions";
 
 export const Route = createFileRoute("/app/clientes/$id")({
   component: ClienteDetailPage,
