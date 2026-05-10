@@ -1,9 +1,10 @@
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
-import { LogOut, Wrench, Users, ChevronDown, UserRound, X, FileText, Banknote, FileBarChart, MessageCircle } from "lucide-react";
+import { LogOut, Wrench, Users, ChevronDown, UserRound, X, FileText, Banknote, FileBarChart, MessageCircle, Settings, Building2 } from "lucide-react";
 import { Logo } from "./Logo";
 import { Button } from "./ui/button";
 import { useAuth } from "@/lib/auth";
 import { useActiveCliente } from "@/lib/active-cliente";
+import { useDespacho } from "@/lib/despacho/use-despacho";
 import { Toaster } from "sonner";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
