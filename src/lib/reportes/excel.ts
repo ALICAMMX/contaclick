@@ -43,6 +43,16 @@ export function downloadReporteExcel(args: { tipo: string; payload: any }) {
   }
   if (tipo === "xml_inconsistentes") addSheet("Inconsistencias", (payload.detalle ?? []).map((x: any) => ({ ...x, motivos: (x.motivos ?? []).join(" · ") })));
   if (tipo === "depositos_no_identificados") addSheet("Depósitos", payload.detalle ?? []);
+  if (tipo === "balanza") {
+    addSheet("Ingresos por cliente", payload.ingresos ?? []);
+    addSheet("Egresos por proveedor", payload.egresos ?? []);
+  }
+  if (tipo === "balance_general") {
+    addSheet("Activo", payload.activo ?? []);
+    addSheet("Pasivo", payload.pasivo ?? []);
+    addSheet("Capital", payload.capital ?? []);
+  }
+  if (tipo === "diot") addSheet("DIOT", payload.detalle ?? []);
 
   const fname = `${tipo}_${cli.rfc ?? "cliente"}_${periodo.desde ?? ""}_${periodo.hasta ?? ""}.xlsx`;
   XLSX.writeFile(wb, fname);
@@ -77,3 +87,34 @@ function triggerDownload(blob: Blob, filename: string) {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+// DIOT — formato batch SAT (campos separados por |). Versión simplificada nacionales.
+export function downloadDIOTtxt(args: { payload: any }) {
+  const { payload } = args;
+  const meta = payload.meta ?? {};
+  const cli = meta.cliente ?? {};
+  const periodo = meta.periodo ?? {};
+  const detalle: any[] = payload.detalle ?? [];
+  const round = (n: number) => Math.round(Number(n ?? 0));
+  const lines = detalle.map((x) => {
+    return [
+      x.tipo_tercero ?? "04",
+      x.tipo_operacion ?? "85",
+      x.rfc ?? "",
+      "", // ID fiscal extranjero
+      "", // Nombre extranjero
+      "", // País
+      "", // Nacionalidad
+      round(x.iva16), // Valor actos pagados a tasa 16%
+      round((x.iva16 ?? 0) * 0.16), // IVA pagado
+      0, 0, 0, // Tasa 16% región fronteriza placeholders
+      round(x.iva0), // Valor actos 0%
+      round(x.exento), // Exento
+      round(x.iva_ret), // IVA retenido por el contribuyente
+    ].join("|");
+  });
+  const content = lines.join("\r\n");
+  const blob = new Blob([content], { type: "text/plain;charset=utf-8;" });
+  triggerDownload(blob, `DIOT_${cli.rfc ?? ""}_${periodo.desde ?? ""}_${periodo.hasta ?? ""}.txt`);
+}
+

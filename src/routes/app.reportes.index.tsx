@@ -5,13 +5,14 @@ import { useMemo, useState } from "react";
 import {
   FileBarChart, Sparkles, Download, FileSpreadsheet, FileText, Loader2,
   TrendingUp, Receipt, Calculator, AlertTriangle, FileX, Banknote, X, MessageCircle,
+  BookOpen, Scale, FileDigit,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { computeReporte, listReportes, summarizeReporteAI, type ReporteTipo } from "@/lib/reportes/reportes.functions";
 import { downloadReportePDF } from "@/lib/reportes/pdf";
-import { downloadReporteExcel, downloadReporteCSV } from "@/lib/reportes/excel";
+import { downloadReporteExcel, downloadReporteCSV, downloadDIOTtxt } from "@/lib/reportes/excel";
 
 export const Route = createFileRoute("/app/reportes/")({
   component: ReportesPage,
@@ -19,8 +20,11 @@ export const Route = createFileRoute("/app/reportes/")({
 
 const TIPOS: Array<{ key: ReporteTipo; titulo: string; desc: string; icon: any; tone: string }> = [
   { key: "estado_resultados", titulo: "Estado de Resultados", desc: "Ingresos, egresos y utilidad del periodo", icon: TrendingUp, tone: "from-emerald-500/20 text-emerald-300" },
+  { key: "balance_general", titulo: "Balance General", desc: "Activo, pasivo y capital al cierre del periodo", icon: Scale, tone: "from-teal-500/20 text-teal-300" },
+  { key: "balanza", titulo: "Balanza de Comprobación", desc: "Movimientos por cliente y proveedor (RFC)", icon: BookOpen, tone: "from-indigo-500/20 text-indigo-300" },
   { key: "iva", titulo: "Reporte IVA", desc: "Trasladado, acreditable y por pagar", icon: Receipt, tone: "from-cyan-500/20 text-cyan-300" },
   { key: "isr", titulo: "Reporte ISR", desc: "Pago provisional con tasa según régimen", icon: Calculator, tone: "from-violet-500/20 text-violet-300" },
+  { key: "diot", titulo: "DIOT", desc: "Operaciones con terceros · exporta .txt SAT", icon: FileDigit, tone: "from-fuchsia-500/20 text-fuchsia-300" },
   { key: "diferencias", titulo: "Diferencias Fiscales", desc: "CFDI vs bancos no conciliados", icon: AlertTriangle, tone: "from-amber-500/20 text-amber-300" },
   { key: "xml_inconsistentes", titulo: "XML Inconsistentes", desc: "CFDI con riesgos y errores", icon: FileX, tone: "from-rose-500/20 text-rose-300" },
   { key: "depositos_no_identificados", titulo: "Depósitos no Identificados", desc: "Abonos sin CFDI relacionado", icon: Banknote, tone: "from-blue-500/20 text-blue-300" },
@@ -169,7 +173,10 @@ function ReportesPage() {
                   r.tipo === "isr" ? `ISR ${fmtMXN(resumen.isr_por_pagar)}` :
                   r.tipo === "diferencias" ? `${resumen.cfdi_sin_pago ?? 0} CFDI · ${resumen.movimientos_sin_cfdi ?? 0} mov` :
                   r.tipo === "xml_inconsistentes" ? `${resumen.inconsistentes ?? 0} con riesgo` :
-                  r.tipo === "depositos_no_identificados" ? `${resumen.total_depositos ?? 0} · ${fmtMXN(resumen.monto_total)}` : "—";
+                  r.tipo === "depositos_no_identificados" ? `${resumen.total_depositos ?? 0} · ${fmtMXN(resumen.monto_total)}` :
+                  r.tipo === "balanza" ? `${resumen.n_clientes ?? 0} cli · ${resumen.n_proveedores ?? 0} prov` :
+                  r.tipo === "balance_general" ? `Capital ${fmtMXN(resumen.capital_contable)}` :
+                  r.tipo === "diot" ? `${resumen.n_proveedores ?? 0} prov · ${fmtMXN(resumen.base_iva16)}` : "—";
                 return (
                   <tr key={r.id} className="hover:bg-accent/20">
                     <td className="px-4 py-3 font-medium">{TIPOS.find((t) => t.key === r.tipo)?.titulo ?? r.tipo}</td>
@@ -181,6 +188,11 @@ function ReportesPage() {
                         <Button size="sm" variant="ghost" onClick={() => downloadReportePDF({ tipo: r.tipo, payload })}><FileText className="h-3.5 w-3.5" /></Button>
                         <Button size="sm" variant="ghost" onClick={() => downloadReporteExcel({ tipo: r.tipo, payload })}><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
                         <Button size="sm" variant="ghost" onClick={() => downloadReporteCSV({ tipo: r.tipo, payload })}><Download className="h-3.5 w-3.5" /></Button>
+                        {r.tipo === "diot" && (
+                          <Button size="sm" variant="ghost" title="Descargar .txt para SAT" onClick={() => downloadDIOTtxt({ payload })}>
+                            <FileDigit className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                         <Button size="sm" variant="ghost" disabled={aiSummary.isPending} onClick={() => aiSummary.mutate({ id: r.id, tipo: r.tipo, payload })}>
                           {aiSummary.isPending && aiSummary.variables?.id === r.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                         </Button>
