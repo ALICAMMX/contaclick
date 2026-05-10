@@ -21,6 +21,7 @@ import { Route as DashboardClientesRouteImport } from './routes/dashboard.client
 import { Route as DashboardCfdiRouteImport } from './routes/dashboard.cfdi'
 import { Route as DashboardAuditorRouteImport } from './routes/dashboard.auditor'
 import { Route as DashboardAsistenteRouteImport } from './routes/dashboard.asistente'
+import { Route as AppReportesRouteImport } from './routes/app.reportes'
 import { Route as AppConciliacionRouteImport } from './routes/app.conciliacion'
 import { Route as AppClientesRouteImport } from './routes/app.clientes'
 import { Route as AppCfdiRouteImport } from './routes/app.cfdi'
@@ -95,6 +96,11 @@ const DashboardAsistenteRoute = DashboardAsistenteRouteImport.update({
   id: '/asistente',
   path: '/asistente',
   getParentRoute: () => DashboardRoute,
+} as any)
+const AppReportesRoute = AppReportesRouteImport.update({
+  id: '/reportes',
+  path: '/reportes',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppConciliacionRoute = AppConciliacionRouteImport.update({
   id: '/conciliacion',
@@ -177,6 +183,7 @@ export interface FileRoutesByFullPath {
   '/app/cfdi': typeof AppCfdiRouteWithChildren
   '/app/clientes': typeof AppClientesRoute
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
+  '/app/reportes': typeof AppReportesRoute
   '/dashboard/asistente': typeof DashboardAsistenteRoute
   '/dashboard/auditor': typeof DashboardAuditorRoute
   '/dashboard/cfdi': typeof DashboardCfdiRoute
@@ -201,6 +208,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/app/clientes': typeof AppClientesRoute
+  '/app/reportes': typeof AppReportesRoute
   '/dashboard/asistente': typeof DashboardAsistenteRoute
   '/dashboard/auditor': typeof DashboardAuditorRoute
   '/dashboard/cfdi': typeof DashboardCfdiRoute
@@ -230,6 +238,7 @@ export interface FileRoutesById {
   '/app/cfdi': typeof AppCfdiRouteWithChildren
   '/app/clientes': typeof AppClientesRoute
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
+  '/app/reportes': typeof AppReportesRoute
   '/dashboard/asistente': typeof DashboardAsistenteRoute
   '/dashboard/auditor': typeof DashboardAuditorRoute
   '/dashboard/cfdi': typeof DashboardCfdiRoute
@@ -260,6 +269,7 @@ export interface FileRouteTypes {
     | '/app/cfdi'
     | '/app/clientes'
     | '/app/conciliacion'
+    | '/app/reportes'
     | '/dashboard/asistente'
     | '/dashboard/auditor'
     | '/dashboard/cfdi'
@@ -284,6 +294,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/app/clientes'
+    | '/app/reportes'
     | '/dashboard/asistente'
     | '/dashboard/auditor'
     | '/dashboard/cfdi'
@@ -312,6 +323,7 @@ export interface FileRouteTypes {
     | '/app/cfdi'
     | '/app/clientes'
     | '/app/conciliacion'
+    | '/app/reportes'
     | '/dashboard/asistente'
     | '/dashboard/auditor'
     | '/dashboard/cfdi'
@@ -425,6 +437,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/asistente'
       preLoaderRoute: typeof DashboardAsistenteRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/app/reportes': {
+      id: '/app/reportes'
+      path: '/reportes'
+      fullPath: '/app/reportes'
+      preLoaderRoute: typeof AppReportesRouteImport
+      parentRoute: typeof AppRoute
     }
     '/app/conciliacion': {
       id: '/app/conciliacion'
@@ -556,6 +575,7 @@ interface AppRouteChildren {
   AppCfdiRoute: typeof AppCfdiRouteWithChildren
   AppClientesRoute: typeof AppClientesRoute
   AppConciliacionRoute: typeof AppConciliacionRouteWithChildren
+  AppReportesRoute: typeof AppReportesRoute
   AppIndexRoute: typeof AppIndexRoute
   AppToolsBankReconcilerRoute: typeof AppToolsBankReconcilerRoute
   AppToolsCfdiValidatorRoute: typeof AppToolsCfdiValidatorRoute
@@ -571,6 +591,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCfdiRoute: AppCfdiRouteWithChildren,
   AppClientesRoute: AppClientesRoute,
   AppConciliacionRoute: AppConciliacionRouteWithChildren,
+  AppReportesRoute: AppReportesRoute,
   AppIndexRoute: AppIndexRoute,
   AppToolsBankReconcilerRoute: AppToolsBankReconcilerRoute,
   AppToolsCfdiValidatorRoute: AppToolsCfdiValidatorRoute,
