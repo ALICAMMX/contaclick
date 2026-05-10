@@ -24,6 +24,8 @@ export function AppLayout() {
             <nav className="hidden md:flex items-center gap-1 text-sm">
               <NavLink to="/app/cfdi" icon={<FileText className="h-4 w-4" />} label="CFDI" active={location.pathname.startsWith("/app/cfdi")} />
               <NavLink to="/app/conciliacion" icon={<Banknote className="h-4 w-4" />} label="Conciliación" active={location.pathname.startsWith("/app/conciliacion")} />
+              <NavLink to="/app/reportes" icon={<FileBarChart className="h-4 w-4" />} label="Reportes" active={location.pathname.startsWith("/app/reportes")} />
+              <NavLink to="/app/mensajes" icon={<MessageCircle className="h-4 w-4" />} label="Mensajes" active={location.pathname.startsWith("/app/mensajes")} />
               <NavLink to="/app/tools" icon={<Wrench className="h-4 w-4" />} label="Herramientas" active={location.pathname.startsWith("/app/tools")} />
               <NavLink to="/app/clientes" icon={<Users className="h-4 w-4" />} label="Expedientes" active={location.pathname.startsWith("/app/clientes")} />
             </nav>
