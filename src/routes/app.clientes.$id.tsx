@@ -62,7 +62,28 @@ function ClienteDetailPage() {
     },
   });
 
-  const status = sat.data?.estatus ?? "sin_conectar";
+  // Rango por defecto: últimos 30 días
+  const today = new Date();
+  const defHasta = today.toISOString().slice(0, 10);
+  const defDesde = new Date(today.getTime() - 30 * 86400_000).toISOString().slice(0, 10);
+  const [desde, setDesde] = useState(defDesde);
+  const [hasta, setHasta] = useState(defHasta);
+  const [tipo, setTipo] = useState<"emitidos" | "recibidos" | "ambos">("ambos");
+  const sincronizar = useServerFn(sincronizarCfdis);
+  const [lastResult, setLastResult] = useState<null | {
+    simulated: boolean; descargados: number; ya_existian: number; errores: string[]; detalle: string; ok: boolean;
+  }>(null);
+
+  const sincronizarMut = useMutation({
+    mutationFn: () => sincronizar({ data: { cliente_id: id, desde, hasta, tipo } }),
+    onSuccess: (r) => {
+      setLastResult(r);
+      if (r.ok) toast.success(r.simulated ? "Sincronización demo completada" : "Solicitud enviada al SAT");
+      else toast.error("La sincronización terminó con errores");
+      qc.invalidateQueries({ queryKey: ["sat", id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const StatusIcon = status === "activo" ? ShieldCheck : status === "error" ? ShieldAlert : ShieldOff;
   const statusTone =
     status === "activo" ? "text-success" : status === "error" ? "text-destructive" : "text-muted-foreground";
