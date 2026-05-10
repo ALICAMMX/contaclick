@@ -64,7 +64,6 @@ export const TOOLS: ToolDef[] = [
     description: "Sube la CSF en PDF y extrae régimen, obligaciones y domicilio fiscal.",
     category: "Documentos",
     icon: FileBadge,
-    status: "soon",
   },
   {
     key: "oficio-generator",
@@ -73,7 +72,6 @@ export const TOOLS: ToolDef[] = [
     description: "Plantillas listas (avisos, respuestas a invitación) personalizadas con el RFC.",
     category: "Documentos",
     icon: FileSignature,
-    status: "soon",
   },
   {
     key: "cfdi-verifier",
@@ -82,7 +80,6 @@ export const TOOLS: ToolDef[] = [
     description: "Verifica el formato del UUID y prepara la consulta al webservice del SAT.",
     category: "CFDI",
     icon: ShieldCheck,
-    status: "soon",
   },
   {
     key: "express-auditor",
