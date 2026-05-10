@@ -84,6 +84,8 @@ function ClienteDetailPage() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const status = sat.data?.estatus ?? "sin_conectar";
   const StatusIcon = status === "activo" ? ShieldCheck : status === "error" ? ShieldAlert : ShieldOff;
   const statusTone =
     status === "activo" ? "text-success" : status === "error" ? "text-destructive" : "text-muted-foreground";
