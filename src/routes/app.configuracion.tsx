@@ -27,7 +27,7 @@ function ConfigPage() {
   const [rfc, setRfc] = useState("");
 
   const seed = useMutation({
-    mutationFn: () => fnSeed({ data: {} }),
+    mutationFn: () => fnSeed(),
     onSuccess: (r: any) => {
       if (r.alreadySeeded) toast.info("Los datos demo ya estaban cargados.");
       else toast.success(`Demo cargado: ${r.clientes} clientes con CFDI, bancos, conciliaciones y más.`);
@@ -36,7 +36,7 @@ function ConfigPage() {
     onError: (e) => toast.error((e as Error).message),
   });
   const clear = useMutation({
-    mutationFn: () => fnClear({ data: {} }),
+    mutationFn: () => fnClear(),
     onSuccess: (r: any) => {
       toast.success(r.removed > 0 ? `Demo eliminado (${r.removed} clientes).` : "No había datos demo.");
       qc.invalidateQueries({ queryKey: ["clientes"] });
