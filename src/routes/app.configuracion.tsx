@@ -106,6 +106,22 @@ function ConfigPage() {
           Guardar cambios
         </Button>
       </div>
+
+      <Link
+        to="/app/equipo"
+        className="rounded-xl border border-border/60 bg-card/50 p-5 flex items-center justify-between hover:border-primary/40 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Users className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <div className="font-semibold">Equipo y miembros</div>
+            <div className="text-xs text-muted-foreground">Invita colaboradores con un link</div>
+          </div>
+        </div>
+        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+      </Link>
     </div>
   );
 }
