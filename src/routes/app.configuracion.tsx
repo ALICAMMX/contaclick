@@ -2,11 +2,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { Building2, Save, Loader2, BadgeCheck, Calendar, Users, ChevronRight } from "lucide-react";
+import { Building2, Save, Loader2, BadgeCheck, Calendar, Users, ChevronRight, Sparkles, Trash2, PlayCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useDespacho } from "@/lib/despacho/use-despacho";
 import { updateDespacho, createDespacho } from "@/lib/despacho/despacho.functions";
+import { seedDemo, clearDemo } from "@/lib/demo/demo.functions";
+import { Tour, resetTour } from "@/components/Tour";
 
 export const Route = createFileRoute("/app/configuracion")({
   component: ConfigPage,
