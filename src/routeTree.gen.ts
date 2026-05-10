@@ -23,6 +23,7 @@ import { Route as DashboardAuditorRouteImport } from './routes/dashboard.auditor
 import { Route as DashboardAsistenteRouteImport } from './routes/dashboard.asistente'
 import { Route as AppReportesRouteImport } from './routes/app.reportes'
 import { Route as AppMensajesRouteImport } from './routes/app.mensajes'
+import { Route as AppConfiguracionRouteImport } from './routes/app.configuracion'
 import { Route as AppConciliacionRouteImport } from './routes/app.conciliacion'
 import { Route as AppClientesRouteImport } from './routes/app.clientes'
 import { Route as AppCfdiRouteImport } from './routes/app.cfdi'
@@ -108,6 +109,11 @@ const AppReportesRoute = AppReportesRouteImport.update({
 const AppMensajesRoute = AppMensajesRouteImport.update({
   id: '/mensajes',
   path: '/mensajes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppConfiguracionRoute = AppConfiguracionRouteImport.update({
+  id: '/configuracion',
+  path: '/configuracion',
   getParentRoute: () => AppRoute,
 } as any)
 const AppConciliacionRoute = AppConciliacionRouteImport.update({
@@ -201,6 +207,7 @@ export interface FileRoutesByFullPath {
   '/app/cfdi': typeof AppCfdiRouteWithChildren
   '/app/clientes': typeof AppClientesRoute
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
+  '/app/configuracion': typeof AppConfiguracionRoute
   '/app/mensajes': typeof AppMensajesRouteWithChildren
   '/app/reportes': typeof AppReportesRouteWithChildren
   '/dashboard/asistente': typeof DashboardAsistenteRoute
@@ -229,6 +236,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/app/clientes': typeof AppClientesRoute
+  '/app/configuracion': typeof AppConfiguracionRoute
   '/dashboard/asistente': typeof DashboardAsistenteRoute
   '/dashboard/auditor': typeof DashboardAuditorRoute
   '/dashboard/cfdi': typeof DashboardCfdiRoute
@@ -260,6 +268,7 @@ export interface FileRoutesById {
   '/app/cfdi': typeof AppCfdiRouteWithChildren
   '/app/clientes': typeof AppClientesRoute
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
+  '/app/configuracion': typeof AppConfiguracionRoute
   '/app/mensajes': typeof AppMensajesRouteWithChildren
   '/app/reportes': typeof AppReportesRouteWithChildren
   '/dashboard/asistente': typeof DashboardAsistenteRoute
@@ -294,6 +303,7 @@ export interface FileRouteTypes {
     | '/app/cfdi'
     | '/app/clientes'
     | '/app/conciliacion'
+    | '/app/configuracion'
     | '/app/mensajes'
     | '/app/reportes'
     | '/dashboard/asistente'
@@ -322,6 +332,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/app/clientes'
+    | '/app/configuracion'
     | '/dashboard/asistente'
     | '/dashboard/auditor'
     | '/dashboard/cfdi'
@@ -352,6 +363,7 @@ export interface FileRouteTypes {
     | '/app/cfdi'
     | '/app/clientes'
     | '/app/conciliacion'
+    | '/app/configuracion'
     | '/app/mensajes'
     | '/app/reportes'
     | '/dashboard/asistente'
@@ -482,6 +494,13 @@ declare module '@tanstack/react-router' {
       path: '/mensajes'
       fullPath: '/app/mensajes'
       preLoaderRoute: typeof AppMensajesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/configuracion': {
+      id: '/app/configuracion'
+      path: '/configuracion'
+      fullPath: '/app/configuracion'
+      preLoaderRoute: typeof AppConfiguracionRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/conciliacion': {
@@ -652,6 +671,7 @@ interface AppRouteChildren {
   AppCfdiRoute: typeof AppCfdiRouteWithChildren
   AppClientesRoute: typeof AppClientesRoute
   AppConciliacionRoute: typeof AppConciliacionRouteWithChildren
+  AppConfiguracionRoute: typeof AppConfiguracionRoute
   AppMensajesRoute: typeof AppMensajesRouteWithChildren
   AppReportesRoute: typeof AppReportesRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
@@ -669,6 +689,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCfdiRoute: AppCfdiRouteWithChildren,
   AppClientesRoute: AppClientesRoute,
   AppConciliacionRoute: AppConciliacionRouteWithChildren,
+  AppConfiguracionRoute: AppConfiguracionRoute,
   AppMensajesRoute: AppMensajesRouteWithChildren,
   AppReportesRoute: AppReportesRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
