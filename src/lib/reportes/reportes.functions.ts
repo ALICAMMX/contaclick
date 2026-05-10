@@ -15,7 +15,10 @@ export type ReporteTipo =
   | "isr"
   | "diferencias"
   | "xml_inconsistentes"
-  | "depositos_no_identificados";
+  | "depositos_no_identificados"
+  | "balanza"
+  | "balance_general"
+  | "diot";
 
 // ---- Compute report data ----
 export const computeReporte = createServerFn({ method: "POST" })
@@ -149,6 +152,114 @@ export const computeReporte = createServerFn({ method: "POST" })
         monto_total: items.reduce((a, b) => a + b.abono, 0),
       };
       payload.detalle = items.slice(0, 300);
+    } else if (tipo === "balanza") {
+      // Balanza simplificada agrupada por contraparte (RFC)
+      const ingresosPorRFC = new Map<string, { rfc: string; nombre: string; subtotal: number; iva: number; total: number; n: number }>();
+      for (const c of emitidos) {
+        const rfc = (c.rfc_receptor as string)?.toUpperCase() ?? "";
+        const cur = ingresosPorRFC.get(rfc) ?? { rfc, nombre: c.nombre_receptor ?? rfc, subtotal: 0, iva: 0, total: 0, n: 0 };
+        cur.subtotal += Number(c.subtotal ?? 0);
+        cur.iva += Number(c.iva_trasladado ?? 0);
+        cur.total += Number(c.total ?? 0);
+        cur.n += 1;
+        ingresosPorRFC.set(rfc, cur);
+      }
+      const egresosPorRFC = new Map<string, { rfc: string; nombre: string; subtotal: number; iva: number; total: number; n: number }>();
+      for (const c of recibidos) {
+        const rfc = (c.rfc_emisor as string)?.toUpperCase() ?? "";
+        const cur = egresosPorRFC.get(rfc) ?? { rfc, nombre: c.nombre_emisor ?? rfc, subtotal: 0, iva: 0, total: 0, n: 0 };
+        cur.subtotal += Number(c.subtotal ?? 0);
+        cur.iva += Number(c.iva_trasladado ?? 0);
+        cur.total += Number(c.total ?? 0);
+        cur.n += 1;
+        egresosPorRFC.set(rfc, cur);
+      }
+      const totalAbonos = (movs ?? []).reduce((a, b) => a + Number(b.abono ?? 0), 0);
+      const totalCargos = (movs ?? []).reduce((a, b) => a + Number(b.cargo ?? 0), 0);
+      const ingTot = sum(emitidos, "subtotal");
+      const egrTot = sum(recibidos, "subtotal");
+      const ivaT = sum(emitidos, "iva_trasladado");
+      const ivaA = sum(recibidos, "iva_trasladado");
+      payload.resumen = {
+        total_ingresos: ingTot,
+        total_egresos: egrTot,
+        iva_trasladado: ivaT,
+        iva_acreditable: ivaA,
+        cargos_banco: totalCargos,
+        abonos_banco: totalAbonos,
+        n_clientes: ingresosPorRFC.size,
+        n_proveedores: egresosPorRFC.size,
+      };
+      payload.ingresos = Array.from(ingresosPorRFC.values()).sort((a, b) => b.subtotal - a.subtotal);
+      payload.egresos = Array.from(egresosPorRFC.values()).sort((a, b) => b.subtotal - a.subtotal);
+    } else if (tipo === "balance_general") {
+      // Balance simplificado: Activo = Banco + CxC; Pasivo = CxP; Capital = diferencia
+      const cfdiNoConc = new Set((conc ?? []).filter((c) => c.estatus !== "rechazado").map((c) => c.cfdi_id).filter(Boolean));
+      const cxc = emitidos.filter((c) => !cfdiNoConc.has(c.id)).reduce((a, b) => a + Number(b.total ?? 0), 0);
+      const cxp = recibidos.filter((c) => !cfdiNoConc.has(c.id)).reduce((a, b) => a + Number(b.total ?? 0), 0);
+      const banco = (movs ?? []).reduce((a, b) => a + Number(b.abono ?? 0) - Number(b.cargo ?? 0), 0);
+      const ivaPorPagar = Math.max(sum(emitidos, "iva_trasladado") - sum(recibidos, "iva_trasladado"), 0);
+      const activo = banco + cxc;
+      const pasivo = cxp + ivaPorPagar;
+      const capital = activo - pasivo;
+      payload.resumen = {
+        activo_total: activo,
+        pasivo_total: pasivo,
+        capital_contable: capital,
+        banco,
+        cuentas_por_cobrar: cxc,
+        cuentas_por_pagar: cxp,
+        iva_por_pagar: ivaPorPagar,
+      };
+      payload.activo = [
+        { cuenta: "Bancos", importe: banco },
+        { cuenta: "Clientes (CxC)", importe: cxc },
+      ];
+      payload.pasivo = [
+        { cuenta: "Proveedores (CxP)", importe: cxp },
+        { cuenta: "IVA por pagar", importe: ivaPorPagar },
+      ];
+      payload.capital = [
+        { cuenta: "Capital contable", importe: capital },
+      ];
+    } else if (tipo === "diot") {
+      // DIOT: agrupa proveedores nacionales por RFC emisor
+      const map = new Map<string, { rfc: string; nombre: string; tipo_tercero: string; tipo_operacion: string; iva16: number; iva0: number; exento: number; iva_ret: number; isr_ret: number; subtotal: number; n: number }>();
+      for (const c of recibidos) {
+        const rfc = (c.rfc_emisor as string)?.toUpperCase() ?? "";
+        const sub = Number(c.subtotal ?? 0);
+        const iva = Number(c.iva_trasladado ?? 0);
+        const cur = map.get(rfc) ?? {
+          rfc,
+          nombre: c.nombre_emisor ?? rfc,
+          tipo_tercero: "04", // Proveedor nacional
+          tipo_operacion: "85", // Otros
+          iva16: 0, iva0: 0, exento: 0, iva_ret: 0, isr_ret: 0, subtotal: 0, n: 0,
+        };
+        // Inferimos tasa
+        if (iva > 0 && sub > 0) {
+          const tasa = iva / sub;
+          if (tasa > 0.14) cur.iva16 += sub;
+          else cur.iva0 += sub;
+        } else {
+          cur.exento += sub;
+        }
+        cur.iva_ret += Number(c.iva_retenido ?? 0);
+        cur.isr_ret += Number(c.isr_retenido ?? 0);
+        cur.subtotal += sub;
+        cur.n += 1;
+        map.set(rfc, cur);
+      }
+      const detalle = Array.from(map.values()).sort((a, b) => b.subtotal - a.subtotal);
+      payload.resumen = {
+        n_proveedores: detalle.length,
+        base_iva16: detalle.reduce((a, b) => a + b.iva16, 0),
+        base_iva0: detalle.reduce((a, b) => a + b.iva0, 0),
+        base_exento: detalle.reduce((a, b) => a + b.exento, 0),
+        iva_retenido: detalle.reduce((a, b) => a + b.iva_ret, 0),
+        isr_retenido: detalle.reduce((a, b) => a + b.isr_ret, 0),
+      };
+      payload.detalle = detalle;
     } else {
       throw new Error(`Tipo de reporte no soportado: ${tipo}`);
     }
