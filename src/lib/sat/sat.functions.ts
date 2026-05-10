@@ -134,3 +134,102 @@ export const desconectarSat = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+const SyncSchema = z.object({
+  cliente_id: z.string().uuid(),
+  desde: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  hasta: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  tipo: z.enum(["emitidos", "recibidos", "ambos"]).default("ambos"),
+});
+
+export const sincronizarCfdis = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) => SyncSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const { data: cred } = await supabase
+      .from("sat_credenciales")
+      .select("pac_token, estatus, despacho_id")
+      .eq("cliente_id", data.cliente_id)
+      .maybeSingle();
+    if (!cred || cred.estatus !== "activo" || !cred.pac_token) {
+      throw new Error("Este expediente no está conectado al SAT");
+    }
+
+    const { data: cli } = await supabase
+      .from("clientes")
+      .select("id, despacho_id, rfc")
+      .eq("id", data.cliente_id)
+      .maybeSingle();
+    if (!cli || !cli.despacho_id) throw new Error("Expediente no encontrado");
+
+    const isMock = cred.pac_token.startsWith("mock_") || !process.env.SW_USER;
+    let descargados = 0;
+    let ya_existian = 0;
+    const errores: string[] = [];
+    let detalle = "";
+
+    if (isMock) {
+      // Modo demo: simulamos respuesta del PAC. Los CFDI reales del expediente
+      // ya pueden cargarse vía el seed demo o la subida manual de XML.
+      descargados = Math.floor(Math.random() * 4) + 2;
+      ya_existian = Math.floor(Math.random() * 3);
+      detalle = "Sincronización en modo demo (PAC no configurado).";
+    } else {
+      try {
+        // SW Sapien: solicitud de descarga masiva
+        // Ver https://developers.sw.com.mx/  →  /cfdi/descargamasiva
+        const res = await fetch("https://services.sw.com.mx/cfdi/descargamasiva/solicitud", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${cred.pac_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            rfc: cli.rfc,
+            fechaInicio: data.desde,
+            fechaFin: data.hasta,
+            tipoSolicitud: data.tipo === "ambos" ? "CFDI" : data.tipo,
+          }),
+        });
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(`PAC ${res.status}: ${txt.slice(0, 200)}`);
+        }
+        const j = (await res.json()) as { data?: { idSolicitud?: string } };
+        detalle = `Solicitud enviada al SAT (id ${j.data?.idSolicitud ?? "?"}). Los XMLs se ingestarán en la siguiente verificación.`;
+        // Nota: el flujo SAT es asíncrono (solicitud → verificación → descarga),
+        // un cron posterior hará el polling. Aquí solo registramos la solicitud.
+      } catch (e: any) {
+        errores.push(String(e?.message ?? e));
+      }
+    }
+
+    await supabase
+      .from("sat_credenciales")
+      .update({
+        last_sync_at: new Date().toISOString(),
+        last_error: errores.length ? errores.join("; ").slice(0, 500) : null,
+        estatus: errores.length ? "error" : "activo",
+      })
+      .eq("cliente_id", data.cliente_id);
+
+    await supabase.from("audit_logs").insert({
+      user_id: userId,
+      despacho_id: cli.despacho_id,
+      accion: "sat.sincronizar",
+      entidad: "cliente",
+      entidad_id: cli.id,
+      payload: { desde: data.desde, hasta: data.hasta, descargados, ya_existian, errores, simulated: isMock },
+    });
+
+    return {
+      ok: errores.length === 0,
+      simulated: isMock,
+      descargados,
+      ya_existian,
+      errores,
+      detalle,
+    };
+  });
