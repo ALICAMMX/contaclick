@@ -5,13 +5,14 @@ import { useMemo, useState } from "react";
 import {
   FileBarChart, Sparkles, Download, FileSpreadsheet, FileText, Loader2,
   TrendingUp, Receipt, Calculator, AlertTriangle, FileX, Banknote, X, MessageCircle,
+  BookOpen, Scale, FileDigit,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { computeReporte, listReportes, summarizeReporteAI, type ReporteTipo } from "@/lib/reportes/reportes.functions";
 import { downloadReportePDF } from "@/lib/reportes/pdf";
-import { downloadReporteExcel, downloadReporteCSV } from "@/lib/reportes/excel";
+import { downloadReporteExcel, downloadReporteCSV, downloadDIOTtxt } from "@/lib/reportes/excel";
 
 export const Route = createFileRoute("/app/reportes/")({
   component: ReportesPage,
@@ -19,8 +20,11 @@ export const Route = createFileRoute("/app/reportes/")({
 
 const TIPOS: Array<{ key: ReporteTipo; titulo: string; desc: string; icon: any; tone: string }> = [
   { key: "estado_resultados", titulo: "Estado de Resultados", desc: "Ingresos, egresos y utilidad del periodo", icon: TrendingUp, tone: "from-emerald-500/20 text-emerald-300" },
+  { key: "balance_general", titulo: "Balance General", desc: "Activo, pasivo y capital al cierre del periodo", icon: Scale, tone: "from-teal-500/20 text-teal-300" },
+  { key: "balanza", titulo: "Balanza de Comprobación", desc: "Movimientos por cliente y proveedor (RFC)", icon: BookOpen, tone: "from-indigo-500/20 text-indigo-300" },
   { key: "iva", titulo: "Reporte IVA", desc: "Trasladado, acreditable y por pagar", icon: Receipt, tone: "from-cyan-500/20 text-cyan-300" },
   { key: "isr", titulo: "Reporte ISR", desc: "Pago provisional con tasa según régimen", icon: Calculator, tone: "from-violet-500/20 text-violet-300" },
+  { key: "diot", titulo: "DIOT", desc: "Operaciones con terceros · exporta .txt SAT", icon: FileDigit, tone: "from-fuchsia-500/20 text-fuchsia-300" },
   { key: "diferencias", titulo: "Diferencias Fiscales", desc: "CFDI vs bancos no conciliados", icon: AlertTriangle, tone: "from-amber-500/20 text-amber-300" },
   { key: "xml_inconsistentes", titulo: "XML Inconsistentes", desc: "CFDI con riesgos y errores", icon: FileX, tone: "from-rose-500/20 text-rose-300" },
   { key: "depositos_no_identificados", titulo: "Depósitos no Identificados", desc: "Abonos sin CFDI relacionado", icon: Banknote, tone: "from-blue-500/20 text-blue-300" },
