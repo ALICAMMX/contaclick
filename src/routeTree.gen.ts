@@ -15,6 +15,7 @@ import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as InvitarTokenRouteImport } from './routes/invitar.$token'
 import { Route as DashboardReportesRouteImport } from './routes/dashboard.reportes'
 import { Route as DashboardConciliadorRouteImport } from './routes/dashboard.conciliador'
 import { Route as DashboardClientesRouteImport } from './routes/dashboard.clientes'
@@ -23,6 +24,7 @@ import { Route as DashboardAuditorRouteImport } from './routes/dashboard.auditor
 import { Route as DashboardAsistenteRouteImport } from './routes/dashboard.asistente'
 import { Route as AppReportesRouteImport } from './routes/app.reportes'
 import { Route as AppMensajesRouteImport } from './routes/app.mensajes'
+import { Route as AppEquipoRouteImport } from './routes/app.equipo'
 import { Route as AppConfiguracionRouteImport } from './routes/app.configuracion'
 import { Route as AppConciliacionRouteImport } from './routes/app.conciliacion'
 import { Route as AppClientesRouteImport } from './routes/app.clientes'
@@ -71,6 +73,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const InvitarTokenRoute = InvitarTokenRouteImport.update({
+  id: '/invitar/$token',
+  path: '/invitar/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardReportesRoute = DashboardReportesRouteImport.update({
   id: '/reportes',
   path: '/reportes',
@@ -109,6 +116,11 @@ const AppReportesRoute = AppReportesRouteImport.update({
 const AppMensajesRoute = AppMensajesRouteImport.update({
   id: '/mensajes',
   path: '/mensajes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEquipoRoute = AppEquipoRouteImport.update({
+  id: '/equipo',
+  path: '/equipo',
   getParentRoute: () => AppRoute,
 } as any)
 const AppConfiguracionRoute = AppConfiguracionRouteImport.update({
@@ -208,6 +220,7 @@ export interface FileRoutesByFullPath {
   '/app/clientes': typeof AppClientesRoute
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
   '/app/configuracion': typeof AppConfiguracionRoute
+  '/app/equipo': typeof AppEquipoRoute
   '/app/mensajes': typeof AppMensajesRouteWithChildren
   '/app/reportes': typeof AppReportesRouteWithChildren
   '/dashboard/asistente': typeof DashboardAsistenteRoute
@@ -216,6 +229,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/clientes': typeof DashboardClientesRoute
   '/dashboard/conciliador': typeof DashboardConciliadorRoute
   '/dashboard/reportes': typeof DashboardReportesRoute
+  '/invitar/$token': typeof InvitarTokenRoute
   '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/app/cfdi/$id': typeof AppCfdiIdRoute
@@ -237,12 +251,14 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/app/clientes': typeof AppClientesRoute
   '/app/configuracion': typeof AppConfiguracionRoute
+  '/app/equipo': typeof AppEquipoRoute
   '/dashboard/asistente': typeof DashboardAsistenteRoute
   '/dashboard/auditor': typeof DashboardAuditorRoute
   '/dashboard/cfdi': typeof DashboardCfdiRoute
   '/dashboard/clientes': typeof DashboardClientesRoute
   '/dashboard/conciliador': typeof DashboardConciliadorRoute
   '/dashboard/reportes': typeof DashboardReportesRoute
+  '/invitar/$token': typeof InvitarTokenRoute
   '/app': typeof AppIndexRoute
   '/dashboard': typeof DashboardIndexRoute
   '/app/cfdi/$id': typeof AppCfdiIdRoute
@@ -269,6 +285,7 @@ export interface FileRoutesById {
   '/app/clientes': typeof AppClientesRoute
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
   '/app/configuracion': typeof AppConfiguracionRoute
+  '/app/equipo': typeof AppEquipoRoute
   '/app/mensajes': typeof AppMensajesRouteWithChildren
   '/app/reportes': typeof AppReportesRouteWithChildren
   '/dashboard/asistente': typeof DashboardAsistenteRoute
@@ -277,6 +294,7 @@ export interface FileRoutesById {
   '/dashboard/clientes': typeof DashboardClientesRoute
   '/dashboard/conciliador': typeof DashboardConciliadorRoute
   '/dashboard/reportes': typeof DashboardReportesRoute
+  '/invitar/$token': typeof InvitarTokenRoute
   '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/app/cfdi/$id': typeof AppCfdiIdRoute
@@ -304,6 +322,7 @@ export interface FileRouteTypes {
     | '/app/clientes'
     | '/app/conciliacion'
     | '/app/configuracion'
+    | '/app/equipo'
     | '/app/mensajes'
     | '/app/reportes'
     | '/dashboard/asistente'
@@ -312,6 +331,7 @@ export interface FileRouteTypes {
     | '/dashboard/clientes'
     | '/dashboard/conciliador'
     | '/dashboard/reportes'
+    | '/invitar/$token'
     | '/app/'
     | '/dashboard/'
     | '/app/cfdi/$id'
@@ -333,12 +353,14 @@ export interface FileRouteTypes {
     | '/auth'
     | '/app/clientes'
     | '/app/configuracion'
+    | '/app/equipo'
     | '/dashboard/asistente'
     | '/dashboard/auditor'
     | '/dashboard/cfdi'
     | '/dashboard/clientes'
     | '/dashboard/conciliador'
     | '/dashboard/reportes'
+    | '/invitar/$token'
     | '/app'
     | '/dashboard'
     | '/app/cfdi/$id'
@@ -364,6 +386,7 @@ export interface FileRouteTypes {
     | '/app/clientes'
     | '/app/conciliacion'
     | '/app/configuracion'
+    | '/app/equipo'
     | '/app/mensajes'
     | '/app/reportes'
     | '/dashboard/asistente'
@@ -372,6 +395,7 @@ export interface FileRouteTypes {
     | '/dashboard/clientes'
     | '/dashboard/conciliador'
     | '/dashboard/reportes'
+    | '/invitar/$token'
     | '/app/'
     | '/dashboard/'
     | '/app/cfdi/$id'
@@ -394,6 +418,7 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   AuthRoute: typeof AuthRoute
   DashboardRoute: typeof DashboardRouteWithChildren
+  InvitarTokenRoute: typeof InvitarTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -439,6 +464,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/'
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/invitar/$token': {
+      id: '/invitar/$token'
+      path: '/invitar/$token'
+      fullPath: '/invitar/$token'
+      preLoaderRoute: typeof InvitarTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/dashboard/reportes': {
       id: '/dashboard/reportes'
@@ -494,6 +526,13 @@ declare module '@tanstack/react-router' {
       path: '/mensajes'
       fullPath: '/app/mensajes'
       preLoaderRoute: typeof AppMensajesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/equipo': {
+      id: '/app/equipo'
+      path: '/equipo'
+      fullPath: '/app/equipo'
+      preLoaderRoute: typeof AppEquipoRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/configuracion': {
@@ -672,6 +711,7 @@ interface AppRouteChildren {
   AppClientesRoute: typeof AppClientesRoute
   AppConciliacionRoute: typeof AppConciliacionRouteWithChildren
   AppConfiguracionRoute: typeof AppConfiguracionRoute
+  AppEquipoRoute: typeof AppEquipoRoute
   AppMensajesRoute: typeof AppMensajesRouteWithChildren
   AppReportesRoute: typeof AppReportesRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
@@ -690,6 +730,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppClientesRoute: AppClientesRoute,
   AppConciliacionRoute: AppConciliacionRouteWithChildren,
   AppConfiguracionRoute: AppConfiguracionRoute,
+  AppEquipoRoute: AppEquipoRoute,
   AppMensajesRoute: AppMensajesRouteWithChildren,
   AppReportesRoute: AppReportesRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
@@ -734,6 +775,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   AuthRoute: AuthRoute,
   DashboardRoute: DashboardRouteWithChildren,
+  InvitarTokenRoute: InvitarTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
