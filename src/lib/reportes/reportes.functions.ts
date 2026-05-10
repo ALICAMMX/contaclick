@@ -183,7 +183,16 @@ export const listReportes = createServerFn({ method: "POST" })
     if (data.cliente_id) q = q.eq("cliente_id", data.cliente_id);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
-    return { reportes: (rows ?? []) as Array<{ id: string; tipo: string; parametros: unknown; resultado: unknown; created_at: string; cliente_id: string | null }> };
+    return {
+      reportes: (rows ?? []).map((r) => ({
+        id: r.id as string,
+        tipo: r.tipo as string,
+        parametros: r.parametros as { desde?: string; hasta?: string } | null,
+        resultado: r.resultado as Record<string, unknown> | null,
+        created_at: r.created_at as string,
+        cliente_id: (r.cliente_id ?? null) as string | null,
+      })),
+    };
   });
 
 // ---- AI executive summary ----
