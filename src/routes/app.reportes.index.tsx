@@ -173,7 +173,10 @@ function ReportesPage() {
                   r.tipo === "isr" ? `ISR ${fmtMXN(resumen.isr_por_pagar)}` :
                   r.tipo === "diferencias" ? `${resumen.cfdi_sin_pago ?? 0} CFDI · ${resumen.movimientos_sin_cfdi ?? 0} mov` :
                   r.tipo === "xml_inconsistentes" ? `${resumen.inconsistentes ?? 0} con riesgo` :
-                  r.tipo === "depositos_no_identificados" ? `${resumen.total_depositos ?? 0} · ${fmtMXN(resumen.monto_total)}` : "—";
+                  r.tipo === "depositos_no_identificados" ? `${resumen.total_depositos ?? 0} · ${fmtMXN(resumen.monto_total)}` :
+                  r.tipo === "balanza" ? `${resumen.n_clientes ?? 0} cli · ${resumen.n_proveedores ?? 0} prov` :
+                  r.tipo === "balance_general" ? `Capital ${fmtMXN(resumen.capital_contable)}` :
+                  r.tipo === "diot" ? `${resumen.n_proveedores ?? 0} prov · ${fmtMXN(resumen.base_iva16)}` : "—";
                 return (
                   <tr key={r.id} className="hover:bg-accent/20">
                     <td className="px-4 py-3 font-medium">{TIPOS.find((t) => t.key === r.tipo)?.titulo ?? r.tipo}</td>
@@ -185,6 +188,11 @@ function ReportesPage() {
                         <Button size="sm" variant="ghost" onClick={() => downloadReportePDF({ tipo: r.tipo, payload })}><FileText className="h-3.5 w-3.5" /></Button>
                         <Button size="sm" variant="ghost" onClick={() => downloadReporteExcel({ tipo: r.tipo, payload })}><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
                         <Button size="sm" variant="ghost" onClick={() => downloadReporteCSV({ tipo: r.tipo, payload })}><Download className="h-3.5 w-3.5" /></Button>
+                        {r.tipo === "diot" && (
+                          <Button size="sm" variant="ghost" title="Descargar .txt para SAT" onClick={() => downloadDIOTtxt({ payload })}>
+                            <FileDigit className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                         <Button size="sm" variant="ghost" disabled={aiSummary.isPending} onClick={() => aiSummary.mutate({ id: r.id, tipo: r.tipo, payload })}>
                           {aiSummary.isPending && aiSummary.variables?.id === r.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                         </Button>
