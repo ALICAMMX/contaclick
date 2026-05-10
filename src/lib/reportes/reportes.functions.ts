@@ -187,8 +187,8 @@ export const listReportes = createServerFn({ method: "POST" })
       reportes: (rows ?? []).map((r) => ({
         id: r.id as string,
         tipo: r.tipo as string,
-        parametros: r.parametros as { desde?: string; hasta?: string } | null,
-        resultado: r.resultado as Record<string, unknown> | null,
+        parametros_json: JSON.stringify(r.parametros ?? {}),
+        resultado_json: JSON.stringify(r.resultado ?? {}),
         created_at: r.created_at as string,
         cliente_id: (r.cliente_id ?? null) as string | null,
       })),
