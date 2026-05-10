@@ -28,6 +28,7 @@ import { Route as AppClientesRouteImport } from './routes/app.clientes'
 import { Route as AppCfdiRouteImport } from './routes/app.cfdi'
 import { Route as AppToolsIndexRouteImport } from './routes/app.tools.index'
 import { Route as AppReportesIndexRouteImport } from './routes/app.reportes.index'
+import { Route as AppMensajesIndexRouteImport } from './routes/app.mensajes.index'
 import { Route as AppConciliacionIndexRouteImport } from './routes/app.conciliacion.index'
 import { Route as AppCfdiIndexRouteImport } from './routes/app.cfdi.index'
 import { Route as AppToolsXmlBulkReaderRouteImport } from './routes/app.tools.xml-bulk-reader'
@@ -134,6 +135,11 @@ const AppReportesIndexRoute = AppReportesIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppReportesRoute,
 } as any)
+const AppMensajesIndexRoute = AppMensajesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppMensajesRoute,
+} as any)
 const AppConciliacionIndexRoute = AppConciliacionIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -195,7 +201,7 @@ export interface FileRoutesByFullPath {
   '/app/cfdi': typeof AppCfdiRouteWithChildren
   '/app/clientes': typeof AppClientesRoute
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
-  '/app/mensajes': typeof AppMensajesRoute
+  '/app/mensajes': typeof AppMensajesRouteWithChildren
   '/app/reportes': typeof AppReportesRouteWithChildren
   '/dashboard/asistente': typeof DashboardAsistenteRoute
   '/dashboard/auditor': typeof DashboardAuditorRoute
@@ -215,6 +221,7 @@ export interface FileRoutesByFullPath {
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
   '/app/cfdi/': typeof AppCfdiIndexRoute
   '/app/conciliacion/': typeof AppConciliacionIndexRoute
+  '/app/mensajes/': typeof AppMensajesIndexRoute
   '/app/reportes/': typeof AppReportesIndexRoute
   '/app/tools/': typeof AppToolsIndexRoute
 }
@@ -222,7 +229,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/app/clientes': typeof AppClientesRoute
-  '/app/mensajes': typeof AppMensajesRoute
   '/dashboard/asistente': typeof DashboardAsistenteRoute
   '/dashboard/auditor': typeof DashboardAuditorRoute
   '/dashboard/cfdi': typeof DashboardCfdiRoute
@@ -241,6 +247,7 @@ export interface FileRoutesByTo {
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
   '/app/cfdi': typeof AppCfdiIndexRoute
   '/app/conciliacion': typeof AppConciliacionIndexRoute
+  '/app/mensajes': typeof AppMensajesIndexRoute
   '/app/reportes': typeof AppReportesIndexRoute
   '/app/tools': typeof AppToolsIndexRoute
 }
@@ -253,7 +260,7 @@ export interface FileRoutesById {
   '/app/cfdi': typeof AppCfdiRouteWithChildren
   '/app/clientes': typeof AppClientesRoute
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
-  '/app/mensajes': typeof AppMensajesRoute
+  '/app/mensajes': typeof AppMensajesRouteWithChildren
   '/app/reportes': typeof AppReportesRouteWithChildren
   '/dashboard/asistente': typeof DashboardAsistenteRoute
   '/dashboard/auditor': typeof DashboardAuditorRoute
@@ -273,6 +280,7 @@ export interface FileRoutesById {
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
   '/app/cfdi/': typeof AppCfdiIndexRoute
   '/app/conciliacion/': typeof AppConciliacionIndexRoute
+  '/app/mensajes/': typeof AppMensajesIndexRoute
   '/app/reportes/': typeof AppReportesIndexRoute
   '/app/tools/': typeof AppToolsIndexRoute
 }
@@ -306,6 +314,7 @@ export interface FileRouteTypes {
     | '/app/tools/xml-bulk-reader'
     | '/app/cfdi/'
     | '/app/conciliacion/'
+    | '/app/mensajes/'
     | '/app/reportes/'
     | '/app/tools/'
   fileRoutesByTo: FileRoutesByTo
@@ -313,7 +322,6 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/app/clientes'
-    | '/app/mensajes'
     | '/dashboard/asistente'
     | '/dashboard/auditor'
     | '/dashboard/cfdi'
@@ -332,6 +340,7 @@ export interface FileRouteTypes {
     | '/app/tools/xml-bulk-reader'
     | '/app/cfdi'
     | '/app/conciliacion'
+    | '/app/mensajes'
     | '/app/reportes'
     | '/app/tools'
   id:
@@ -363,6 +372,7 @@ export interface FileRouteTypes {
     | '/app/tools/xml-bulk-reader'
     | '/app/cfdi/'
     | '/app/conciliacion/'
+    | '/app/mensajes/'
     | '/app/reportes/'
     | '/app/tools/'
   fileRoutesById: FileRoutesById
@@ -509,6 +519,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppReportesIndexRouteImport
       parentRoute: typeof AppReportesRoute
     }
+    '/app/mensajes/': {
+      id: '/app/mensajes/'
+      path: '/'
+      fullPath: '/app/mensajes/'
+      preLoaderRoute: typeof AppMensajesIndexRouteImport
+      parentRoute: typeof AppMensajesRoute
+    }
     '/app/conciliacion/': {
       id: '/app/conciliacion/'
       path: '/'
@@ -607,6 +624,18 @@ const AppConciliacionRouteWithChildren = AppConciliacionRoute._addFileChildren(
   AppConciliacionRouteChildren,
 )
 
+interface AppMensajesRouteChildren {
+  AppMensajesIndexRoute: typeof AppMensajesIndexRoute
+}
+
+const AppMensajesRouteChildren: AppMensajesRouteChildren = {
+  AppMensajesIndexRoute: AppMensajesIndexRoute,
+}
+
+const AppMensajesRouteWithChildren = AppMensajesRoute._addFileChildren(
+  AppMensajesRouteChildren,
+)
+
 interface AppReportesRouteChildren {
   AppReportesIndexRoute: typeof AppReportesIndexRoute
 }
@@ -623,7 +652,7 @@ interface AppRouteChildren {
   AppCfdiRoute: typeof AppCfdiRouteWithChildren
   AppClientesRoute: typeof AppClientesRoute
   AppConciliacionRoute: typeof AppConciliacionRouteWithChildren
-  AppMensajesRoute: typeof AppMensajesRoute
+  AppMensajesRoute: typeof AppMensajesRouteWithChildren
   AppReportesRoute: typeof AppReportesRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
   AppToolsBankReconcilerRoute: typeof AppToolsBankReconcilerRoute
@@ -640,7 +669,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCfdiRoute: AppCfdiRouteWithChildren,
   AppClientesRoute: AppClientesRoute,
   AppConciliacionRoute: AppConciliacionRouteWithChildren,
-  AppMensajesRoute: AppMensajesRoute,
+  AppMensajesRoute: AppMensajesRouteWithChildren,
   AppReportesRoute: AppReportesRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
   AppToolsBankReconcilerRoute: AppToolsBankReconcilerRoute,
