@@ -41,6 +41,7 @@ import { Route as AppToolsFiscalAssistantRouteImport } from './routes/app.tools.
 import { Route as AppToolsExpressAuditorRouteImport } from './routes/app.tools.express-auditor'
 import { Route as AppToolsCfdiValidatorRouteImport } from './routes/app.tools.cfdi-validator'
 import { Route as AppToolsBankReconcilerRouteImport } from './routes/app.tools.bank-reconciler'
+import { Route as AppClientesIdRouteImport } from './routes/app.clientes.$id'
 import { Route as AppCfdiIdRouteImport } from './routes/app.cfdi.$id'
 
 const DashboardRoute = DashboardRouteImport.update({
@@ -205,6 +206,11 @@ const AppToolsBankReconcilerRoute = AppToolsBankReconcilerRouteImport.update({
   path: '/tools/bank-reconciler',
   getParentRoute: () => AppRoute,
 } as any)
+const AppClientesIdRoute = AppClientesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppClientesRoute,
+} as any)
 const AppCfdiIdRoute = AppCfdiIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -217,7 +223,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/app/cfdi': typeof AppCfdiRouteWithChildren
-  '/app/clientes': typeof AppClientesRoute
+  '/app/clientes': typeof AppClientesRouteWithChildren
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
   '/app/configuracion': typeof AppConfiguracionRoute
   '/app/equipo': typeof AppEquipoRoute
@@ -233,6 +239,7 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/app/cfdi/$id': typeof AppCfdiIdRoute
+  '/app/clientes/$id': typeof AppClientesIdRoute
   '/app/tools/bank-reconciler': typeof AppToolsBankReconcilerRoute
   '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
   '/app/tools/express-auditor': typeof AppToolsExpressAuditorRoute
@@ -249,7 +256,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/app/clientes': typeof AppClientesRoute
+  '/app/clientes': typeof AppClientesRouteWithChildren
   '/app/configuracion': typeof AppConfiguracionRoute
   '/app/equipo': typeof AppEquipoRoute
   '/dashboard/asistente': typeof DashboardAsistenteRoute
@@ -262,6 +269,7 @@ export interface FileRoutesByTo {
   '/app': typeof AppIndexRoute
   '/dashboard': typeof DashboardIndexRoute
   '/app/cfdi/$id': typeof AppCfdiIdRoute
+  '/app/clientes/$id': typeof AppClientesIdRoute
   '/app/tools/bank-reconciler': typeof AppToolsBankReconcilerRoute
   '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
   '/app/tools/express-auditor': typeof AppToolsExpressAuditorRoute
@@ -282,7 +290,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/app/cfdi': typeof AppCfdiRouteWithChildren
-  '/app/clientes': typeof AppClientesRoute
+  '/app/clientes': typeof AppClientesRouteWithChildren
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
   '/app/configuracion': typeof AppConfiguracionRoute
   '/app/equipo': typeof AppEquipoRoute
@@ -298,6 +306,7 @@ export interface FileRoutesById {
   '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/app/cfdi/$id': typeof AppCfdiIdRoute
+  '/app/clientes/$id': typeof AppClientesIdRoute
   '/app/tools/bank-reconciler': typeof AppToolsBankReconcilerRoute
   '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
   '/app/tools/express-auditor': typeof AppToolsExpressAuditorRoute
@@ -335,6 +344,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/dashboard/'
     | '/app/cfdi/$id'
+    | '/app/clientes/$id'
     | '/app/tools/bank-reconciler'
     | '/app/tools/cfdi-validator'
     | '/app/tools/express-auditor'
@@ -364,6 +374,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/dashboard'
     | '/app/cfdi/$id'
+    | '/app/clientes/$id'
     | '/app/tools/bank-reconciler'
     | '/app/tools/cfdi-validator'
     | '/app/tools/express-auditor'
@@ -399,6 +410,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/dashboard/'
     | '/app/cfdi/$id'
+    | '/app/clientes/$id'
     | '/app/tools/bank-reconciler'
     | '/app/tools/cfdi-validator'
     | '/app/tools/express-auditor'
@@ -647,6 +659,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppToolsBankReconcilerRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/clientes/$id': {
+      id: '/app/clientes/$id'
+      path: '/$id'
+      fullPath: '/app/clientes/$id'
+      preLoaderRoute: typeof AppClientesIdRouteImport
+      parentRoute: typeof AppClientesRoute
+    }
     '/app/cfdi/$id': {
       id: '/app/cfdi/$id'
       path: '/$id'
@@ -669,6 +688,18 @@ const AppCfdiRouteChildren: AppCfdiRouteChildren = {
 
 const AppCfdiRouteWithChildren =
   AppCfdiRoute._addFileChildren(AppCfdiRouteChildren)
+
+interface AppClientesRouteChildren {
+  AppClientesIdRoute: typeof AppClientesIdRoute
+}
+
+const AppClientesRouteChildren: AppClientesRouteChildren = {
+  AppClientesIdRoute: AppClientesIdRoute,
+}
+
+const AppClientesRouteWithChildren = AppClientesRoute._addFileChildren(
+  AppClientesRouteChildren,
+)
 
 interface AppConciliacionRouteChildren {
   AppConciliacionIndexRoute: typeof AppConciliacionIndexRoute
@@ -708,7 +739,7 @@ const AppReportesRouteWithChildren = AppReportesRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppCfdiRoute: typeof AppCfdiRouteWithChildren
-  AppClientesRoute: typeof AppClientesRoute
+  AppClientesRoute: typeof AppClientesRouteWithChildren
   AppConciliacionRoute: typeof AppConciliacionRouteWithChildren
   AppConfiguracionRoute: typeof AppConfiguracionRoute
   AppEquipoRoute: typeof AppEquipoRoute
@@ -727,7 +758,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppCfdiRoute: AppCfdiRouteWithChildren,
-  AppClientesRoute: AppClientesRoute,
+  AppClientesRoute: AppClientesRouteWithChildren,
   AppConciliacionRoute: AppConciliacionRouteWithChildren,
   AppConfiguracionRoute: AppConfiguracionRoute,
   AppEquipoRoute: AppEquipoRoute,
