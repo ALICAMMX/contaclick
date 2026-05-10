@@ -177,13 +177,13 @@ export const listReportes = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     let q = context.supabase
       .from("reportes")
-      .select("id, tipo, periodo, parametros, resultado, created_at, cliente_id")
+      .select("id, tipo, parametros, resultado, created_at, cliente_id")
       .order("created_at", { ascending: false })
       .limit(50);
     if (data.cliente_id) q = q.eq("cliente_id", data.cliente_id);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
-    return { reportes: rows ?? [] };
+    return { reportes: (rows ?? []) as Array<{ id: string; tipo: string; parametros: unknown; resultado: unknown; created_at: string; cliente_id: string | null }> };
   });
 
 // ---- AI executive summary ----
