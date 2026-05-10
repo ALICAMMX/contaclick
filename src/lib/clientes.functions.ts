@@ -42,10 +42,28 @@ export const createCliente = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => CreateSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+
+    // Resolve user's active despacho (membership first, fallback to owner)
+    let despachoId: string | null = null;
+    const { data: mem } = await supabase
+      .from("user_memberships")
+      .select("despacho_id")
+      .eq("user_id", userId)
+      .eq("estado", "activo")
+      .limit(1)
+      .maybeSingle();
+    if (mem?.despacho_id) despachoId = mem.despacho_id as string;
+    if (!despachoId) {
+      const { data: own } = await supabase
+        .from("despachos").select("id").eq("owner_user_id", userId).limit(1).maybeSingle();
+      if (own?.id) despachoId = own.id as string;
+    }
+
     const { data: row, error } = await supabase
       .from("clientes")
       .insert({
         user_id: userId,
+        despacho_id: despachoId,
         rfc: data.rfc,
         razon_social: data.razon_social,
         regimen_fiscal: data.regimen_fiscal || null,
