@@ -25,14 +25,18 @@ type CsfData = {
   rawTextSample?: string;
 };
 
-// Lightweight PDF text extraction using pdfjs-dist if available, else fallback
+const PDFJS_VERSION = "4.0.379";
+
+// Lightweight PDF text extraction loaded from the browser only, else fallback
 async function extractPdfText(file: File): Promise<string> {
   try {
-    const pdfjs: any = await import("pdfjs-dist");
+    const pdfjs: any = await import(
+      /* @vite-ignore */ `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.min.mjs`
+    );
     pdfjs.GlobalWorkerOptions.workerSrc =
-      "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs";
+      `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.min.mjs`;
     const buf = await file.arrayBuffer();
-    const doc = await pdfjs.getDocument({ data: buf }).promise;
+    const doc = await pdfjs.getDocument({ data: new Uint8Array(buf) }).promise;
     let text = "";
     for (let i = 1; i <= doc.numPages; i++) {
       const page = await doc.getPage(i);
