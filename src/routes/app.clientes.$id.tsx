@@ -238,6 +238,15 @@ function ClienteDetailPage() {
   );
 }
 
+function Stat({ label, value, tone = "default" }: { label: string; value: number; tone?: "default" | "destructive" }) {
+  return (
+    <div className={`rounded-md border px-3 py-2 ${tone === "destructive" ? "border-destructive/30 bg-destructive/5" : "border-border/60 bg-card/50"}`}>
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className={`text-lg font-semibold tabular-nums ${tone === "destructive" ? "text-destructive" : ""}`}>{value}</div>
+    </div>
+  );
+}
+
 function FileField({
   label, accept, file, onFile,
 }: { label: string; accept: string; file: File | null; onFile: (f: File | null) => void }) {
