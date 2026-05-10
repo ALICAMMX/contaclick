@@ -21,10 +21,14 @@ import { Route as DashboardClientesRouteImport } from './routes/dashboard.client
 import { Route as DashboardCfdiRouteImport } from './routes/dashboard.cfdi'
 import { Route as DashboardAuditorRouteImport } from './routes/dashboard.auditor'
 import { Route as DashboardAsistenteRouteImport } from './routes/dashboard.asistente'
+import { Route as AppReportesRouteImport } from './routes/app.reportes'
+import { Route as AppMensajesRouteImport } from './routes/app.mensajes'
 import { Route as AppConciliacionRouteImport } from './routes/app.conciliacion'
 import { Route as AppClientesRouteImport } from './routes/app.clientes'
 import { Route as AppCfdiRouteImport } from './routes/app.cfdi'
 import { Route as AppToolsIndexRouteImport } from './routes/app.tools.index'
+import { Route as AppReportesIndexRouteImport } from './routes/app.reportes.index'
+import { Route as AppMensajesIndexRouteImport } from './routes/app.mensajes.index'
 import { Route as AppConciliacionIndexRouteImport } from './routes/app.conciliacion.index'
 import { Route as AppCfdiIndexRouteImport } from './routes/app.cfdi.index'
 import { Route as AppToolsXmlBulkReaderRouteImport } from './routes/app.tools.xml-bulk-reader'
@@ -96,6 +100,16 @@ const DashboardAsistenteRoute = DashboardAsistenteRouteImport.update({
   path: '/asistente',
   getParentRoute: () => DashboardRoute,
 } as any)
+const AppReportesRoute = AppReportesRouteImport.update({
+  id: '/reportes',
+  path: '/reportes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMensajesRoute = AppMensajesRouteImport.update({
+  id: '/mensajes',
+  path: '/mensajes',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppConciliacionRoute = AppConciliacionRouteImport.update({
   id: '/conciliacion',
   path: '/conciliacion',
@@ -115,6 +129,16 @@ const AppToolsIndexRoute = AppToolsIndexRouteImport.update({
   id: '/tools/',
   path: '/tools/',
   getParentRoute: () => AppRoute,
+} as any)
+const AppReportesIndexRoute = AppReportesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppReportesRoute,
+} as any)
+const AppMensajesIndexRoute = AppMensajesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppMensajesRoute,
 } as any)
 const AppConciliacionIndexRoute = AppConciliacionIndexRouteImport.update({
   id: '/',
@@ -177,6 +201,8 @@ export interface FileRoutesByFullPath {
   '/app/cfdi': typeof AppCfdiRouteWithChildren
   '/app/clientes': typeof AppClientesRoute
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
+  '/app/mensajes': typeof AppMensajesRouteWithChildren
+  '/app/reportes': typeof AppReportesRouteWithChildren
   '/dashboard/asistente': typeof DashboardAsistenteRoute
   '/dashboard/auditor': typeof DashboardAuditorRoute
   '/dashboard/cfdi': typeof DashboardCfdiRoute
@@ -195,6 +221,8 @@ export interface FileRoutesByFullPath {
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
   '/app/cfdi/': typeof AppCfdiIndexRoute
   '/app/conciliacion/': typeof AppConciliacionIndexRoute
+  '/app/mensajes/': typeof AppMensajesIndexRoute
+  '/app/reportes/': typeof AppReportesIndexRoute
   '/app/tools/': typeof AppToolsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -219,6 +247,8 @@ export interface FileRoutesByTo {
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
   '/app/cfdi': typeof AppCfdiIndexRoute
   '/app/conciliacion': typeof AppConciliacionIndexRoute
+  '/app/mensajes': typeof AppMensajesIndexRoute
+  '/app/reportes': typeof AppReportesIndexRoute
   '/app/tools': typeof AppToolsIndexRoute
 }
 export interface FileRoutesById {
@@ -230,6 +260,8 @@ export interface FileRoutesById {
   '/app/cfdi': typeof AppCfdiRouteWithChildren
   '/app/clientes': typeof AppClientesRoute
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
+  '/app/mensajes': typeof AppMensajesRouteWithChildren
+  '/app/reportes': typeof AppReportesRouteWithChildren
   '/dashboard/asistente': typeof DashboardAsistenteRoute
   '/dashboard/auditor': typeof DashboardAuditorRoute
   '/dashboard/cfdi': typeof DashboardCfdiRoute
@@ -248,6 +280,8 @@ export interface FileRoutesById {
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
   '/app/cfdi/': typeof AppCfdiIndexRoute
   '/app/conciliacion/': typeof AppConciliacionIndexRoute
+  '/app/mensajes/': typeof AppMensajesIndexRoute
+  '/app/reportes/': typeof AppReportesIndexRoute
   '/app/tools/': typeof AppToolsIndexRoute
 }
 export interface FileRouteTypes {
@@ -260,6 +294,8 @@ export interface FileRouteTypes {
     | '/app/cfdi'
     | '/app/clientes'
     | '/app/conciliacion'
+    | '/app/mensajes'
+    | '/app/reportes'
     | '/dashboard/asistente'
     | '/dashboard/auditor'
     | '/dashboard/cfdi'
@@ -278,6 +314,8 @@ export interface FileRouteTypes {
     | '/app/tools/xml-bulk-reader'
     | '/app/cfdi/'
     | '/app/conciliacion/'
+    | '/app/mensajes/'
+    | '/app/reportes/'
     | '/app/tools/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -302,6 +340,8 @@ export interface FileRouteTypes {
     | '/app/tools/xml-bulk-reader'
     | '/app/cfdi'
     | '/app/conciliacion'
+    | '/app/mensajes'
+    | '/app/reportes'
     | '/app/tools'
   id:
     | '__root__'
@@ -312,6 +352,8 @@ export interface FileRouteTypes {
     | '/app/cfdi'
     | '/app/clientes'
     | '/app/conciliacion'
+    | '/app/mensajes'
+    | '/app/reportes'
     | '/dashboard/asistente'
     | '/dashboard/auditor'
     | '/dashboard/cfdi'
@@ -330,6 +372,8 @@ export interface FileRouteTypes {
     | '/app/tools/xml-bulk-reader'
     | '/app/cfdi/'
     | '/app/conciliacion/'
+    | '/app/mensajes/'
+    | '/app/reportes/'
     | '/app/tools/'
   fileRoutesById: FileRoutesById
 }
@@ -426,6 +470,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAsistenteRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/app/reportes': {
+      id: '/app/reportes'
+      path: '/reportes'
+      fullPath: '/app/reportes'
+      preLoaderRoute: typeof AppReportesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/mensajes': {
+      id: '/app/mensajes'
+      path: '/mensajes'
+      fullPath: '/app/mensajes'
+      preLoaderRoute: typeof AppMensajesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/conciliacion': {
       id: '/app/conciliacion'
       path: '/conciliacion'
@@ -453,6 +511,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/tools/'
       preLoaderRoute: typeof AppToolsIndexRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/app/reportes/': {
+      id: '/app/reportes/'
+      path: '/'
+      fullPath: '/app/reportes/'
+      preLoaderRoute: typeof AppReportesIndexRouteImport
+      parentRoute: typeof AppReportesRoute
+    }
+    '/app/mensajes/': {
+      id: '/app/mensajes/'
+      path: '/'
+      fullPath: '/app/mensajes/'
+      preLoaderRoute: typeof AppMensajesIndexRouteImport
+      parentRoute: typeof AppMensajesRoute
     }
     '/app/conciliacion/': {
       id: '/app/conciliacion/'
@@ -552,10 +624,36 @@ const AppConciliacionRouteWithChildren = AppConciliacionRoute._addFileChildren(
   AppConciliacionRouteChildren,
 )
 
+interface AppMensajesRouteChildren {
+  AppMensajesIndexRoute: typeof AppMensajesIndexRoute
+}
+
+const AppMensajesRouteChildren: AppMensajesRouteChildren = {
+  AppMensajesIndexRoute: AppMensajesIndexRoute,
+}
+
+const AppMensajesRouteWithChildren = AppMensajesRoute._addFileChildren(
+  AppMensajesRouteChildren,
+)
+
+interface AppReportesRouteChildren {
+  AppReportesIndexRoute: typeof AppReportesIndexRoute
+}
+
+const AppReportesRouteChildren: AppReportesRouteChildren = {
+  AppReportesIndexRoute: AppReportesIndexRoute,
+}
+
+const AppReportesRouteWithChildren = AppReportesRoute._addFileChildren(
+  AppReportesRouteChildren,
+)
+
 interface AppRouteChildren {
   AppCfdiRoute: typeof AppCfdiRouteWithChildren
   AppClientesRoute: typeof AppClientesRoute
   AppConciliacionRoute: typeof AppConciliacionRouteWithChildren
+  AppMensajesRoute: typeof AppMensajesRouteWithChildren
+  AppReportesRoute: typeof AppReportesRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
   AppToolsBankReconcilerRoute: typeof AppToolsBankReconcilerRoute
   AppToolsCfdiValidatorRoute: typeof AppToolsCfdiValidatorRoute
@@ -571,6 +669,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppCfdiRoute: AppCfdiRouteWithChildren,
   AppClientesRoute: AppClientesRoute,
   AppConciliacionRoute: AppConciliacionRouteWithChildren,
+  AppMensajesRoute: AppMensajesRouteWithChildren,
+  AppReportesRoute: AppReportesRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
   AppToolsBankReconcilerRoute: AppToolsBankReconcilerRoute,
   AppToolsCfdiValidatorRoute: AppToolsCfdiValidatorRoute,
@@ -617,13 +717,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
