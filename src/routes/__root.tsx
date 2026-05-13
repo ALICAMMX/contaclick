@@ -75,10 +75,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "ContaClick IA — Plataforma de IA para contadores en México" },
       { name: "description", content: "Analiza CFDI, concilia bancos y detecta riesgos fiscales con IA. SaaS moderno para despachos contables en México." },
-      { property: "og:title", content: "ContaClick IA" },
-      { property: "og:description", content: "La plataforma de IA fiscal y contable para despachos en México." },
+      { property: "og:title", content: "ContaClick IA — Plataforma de IA para contadores en México" },
+      { property: "og:description", content: "Analiza CFDI, concilia bancos y detecta riesgos fiscales con IA. SaaS moderno para despachos contables en México." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "ContaClick IA — Plataforma de IA para contadores en México" },
+      { name: "twitter:description", content: "Analiza CFDI, concilia bancos y detecta riesgos fiscales con IA. SaaS moderno para despachos contables en México." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/cde74e86-f9a5-41e9-8cc2-1789aae01801/id-preview-04f6f0e8--0afe7814-273e-44c3-835b-c1945ea1340d.lovable.app-1778398070474.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/cde74e86-f9a5-41e9-8cc2-1789aae01801/id-preview-04f6f0e8--0afe7814-273e-44c3-835b-c1945ea1340d.lovable.app-1778398070474.png" },
     ],
     links: [
       {
