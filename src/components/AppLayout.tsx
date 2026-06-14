@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
-import { LogOut, ChevronDown, UserRound, X, Settings, Building2, Command, Calculator, Briefcase, Scale } from "lucide-react";
+import { LogOut, ChevronDown, UserRound, X, Settings, Building2, Command, Calculator, Briefcase, Scale, Sparkles } from "lucide-react";
 import { Logo } from "./Logo";
 import { Button } from "./ui/button";
 import { useAuth } from "@/lib/auth";
@@ -13,45 +13,85 @@ import { listClientes } from "@/lib/clientes.functions";
 
 type ModuleKey = "contable" | "admin" | "legal";
 
-const MODULES: { key: ModuleKey; label: string; href: string; icon: React.ComponentType<{ className?: string }>; accent: string }[] = [
-  { key: "contable", label: "Contable & Fiscal", href: "/app/contable", icon: Calculator, accent: "text-primary" },
-  { key: "admin", label: "Administrativo", href: "/app/admin", icon: Briefcase, accent: "text-[oklch(0.85_0.13_85)]" },
-  { key: "legal", label: "Inteligencia Legal", href: "/app/legal", icon: Scale, accent: "text-[oklch(0.78_0.15_155)]" },
+const MODULES: { key: ModuleKey; label: string; short: string; href: string; icon: React.ComponentType<{ className?: string }>; accent: string }[] = [
+  { key: "contable", label: "Contable & Fiscal", short: "Contable", href: "/app/contable", icon: Calculator, accent: "text-primary" },
+  { key: "admin", label: "Administrativo", short: "Admin", href: "/app/admin", icon: Briefcase, accent: "text-[oklch(0.85_0.13_85)]" },
+  { key: "legal", label: "Inteligencia Legal", short: "Legal", href: "/app/legal", icon: Scale, accent: "text-[oklch(0.78_0.15_155)]" },
 ];
 
-const CONTEXT_NAV: Record<ModuleKey, { label: string; href: string }[]> = {
-  contable: [
-    { label: "Command Center", href: "/app" },
-    { label: "Riesgo SAT", href: "/app/riesgo" },
-    { label: "Herramientas", href: "/app/contable/herramientas" },
-    { label: "Agentes IA", href: "/app/contable/agentes" },
-    { label: "CFDI", href: "/app/cfdi" },
-    { label: "Conciliación", href: "/app/conciliacion" },
-    { label: "Reportes", href: "/app/reportes" },
-  ],
-  admin: [
-    { label: "Resumen", href: "/app/admin" },
-    { label: "Nómina IA", href: "/app/admin/nomina" },
-    { label: "Cumplimiento", href: "/app/admin/cumplimiento" },
-    { label: "Activos Fijos", href: "/app/admin/activos" },
-    { label: "Inventarios", href: "/app/admin/inventarios" },
-    { label: "Tesorería", href: "/app/admin/tesoreria" },
-    { label: "Trámites", href: "/app/admin/tramites" },
-    { label: "Buzón Tributario", href: "/app/admin/buzon" },
-    { label: "Correspondencia", href: "/app/admin/correspondencia" },
-  ],
-  legal: [
-    { label: "Resumen", href: "/app/legal" },
-    { label: "Lagunas Legales", href: "/app/legal/lagunas" },
-    { label: "Redactor de Escritos", href: "/app/legal/redactor" },
-    { label: "Marketplace", href: "/app/legal/marketplace" },
-  ],
+type CtxItem = { label: string; href: string };
+type CtxGroup = { label: string; items: CtxItem[] };
+type CtxNav = { primary: CtxItem[]; groups: CtxGroup[] };
+
+const CONTEXT_NAV: Record<ModuleKey, CtxNav> = {
+  contable: {
+    primary: [
+      { label: "Inicio", href: "/app" },
+      { label: "Riesgo SAT", href: "/app/riesgo" },
+      { label: "Herramientas", href: "/app/contable/herramientas" },
+      { label: "Agentes IA", href: "/app/contable/agentes" },
+    ],
+    groups: [
+      {
+        label: "Operación",
+        items: [
+          { label: "CFDI", href: "/app/cfdi" },
+          { label: "Conciliación bancaria", href: "/app/conciliacion" },
+          { label: "Reportes", href: "/app/reportes" },
+        ],
+      },
+    ],
+  },
+  admin: {
+    primary: [
+      { label: "Resumen", href: "/app/admin" },
+      { label: "Tesorería", href: "/app/admin/tesoreria" },
+      { label: "Trámites", href: "/app/admin/tramites" },
+    ],
+    groups: [
+      {
+        label: "Personal",
+        items: [
+          { label: "Nómina IA", href: "/app/admin/nomina" },
+          { label: "Cumplimiento laboral", href: "/app/admin/cumplimiento" },
+        ],
+      },
+      {
+        label: "Patrimonio",
+        items: [
+          { label: "Activos fijos", href: "/app/admin/activos" },
+          { label: "Inventarios", href: "/app/admin/inventarios" },
+        ],
+      },
+      {
+        label: "Comunicaciones",
+        items: [
+          { label: "Buzón Tributario", href: "/app/admin/buzon" },
+          { label: "Correspondencia", href: "/app/admin/correspondencia" },
+        ],
+      },
+    ],
+  },
+  legal: {
+    primary: [
+      { label: "Resumen", href: "/app/legal" },
+      { label: "Lagunas legales", href: "/app/legal/lagunas" },
+      { label: "Redactor de escritos", href: "/app/legal/redactor" },
+      { label: "Marketplace", href: "/app/legal/marketplace" },
+    ],
+    groups: [],
+  },
 };
 
 function detectModule(pathname: string): ModuleKey {
   if (pathname.startsWith("/app/admin")) return "admin";
   if (pathname.startsWith("/app/legal")) return "legal";
   return "contable";
+}
+
+function isHrefActive(pathname: string, href: string) {
+  if (href === "/app") return pathname === "/app";
+  return pathname === href || pathname.startsWith(href + "/");
 }
 
 export function AppLayout() {
@@ -64,19 +104,13 @@ export function AppLayout() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Top bar */}
       <header className="border-b border-border/60 glass sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-6 min-w-0">
+        {/* Row 1 — brand, modules, account */}
+        <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-5 min-w-0">
             <Link to="/app" className="flex items-center shrink-0"><Logo /></Link>
-            {despacho && (
-              <Link to="/app/configuracion" className="hidden lg:flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-border/60 rounded-md px-2 py-1 bg-card/40 transition-colors">
-                <Building2 className="h-3 w-3 text-primary" />
-                <span className="truncate max-w-[180px]">{despacho.nombre}</span>
-              </Link>
-            )}
-            {/* Module tabs */}
-            <nav className="hidden md:flex items-center gap-1">
+            <div className="hidden lg:flex h-6 w-px bg-border/60" />
+            <nav className="hidden md:flex items-center gap-0.5">
               {MODULES.map((m) => {
                 const Icon = m.icon;
                 const active = activeModule === m.key;
@@ -84,46 +118,47 @@ export function AppLayout() {
                   <Link
                     key={m.key}
                     to={m.href}
-                    className={`group relative flex items-center gap-2 px-4 h-10 rounded-lg text-sm font-medium transition-all ${
+                    className={`group relative flex items-center gap-2 px-3 h-9 rounded-md text-sm transition-all ${
                       active
-                        ? "bg-card/80 border border-border text-foreground shadow-sm"
-                        : "text-muted-foreground hover:text-foreground hover:bg-card/40"
+                        ? "text-foreground font-medium"
+                        : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    <Icon className={`h-4 w-4 ${active ? m.accent : ""}`} />
+                    <Icon className={`h-4 w-4 ${active ? m.accent : "opacity-70"}`} />
                     <span>{m.label}</span>
-                    {active && <span className={`absolute -bottom-px left-3 right-3 h-px bg-gradient-to-r from-transparent via-current to-transparent ${m.accent}`} />}
+                    {active && (
+                      <span className={`absolute -bottom-[13px] left-2 right-2 h-[2px] rounded-full bg-current ${m.accent}`} />
+                    )}
                   </Link>
                 );
               })}
             </nav>
           </div>
           <div className="flex items-center gap-2">
-            <button title="Comando IA (cmd+K)" className="hidden md:flex items-center gap-2 h-9 px-3 rounded-md border border-border/60 bg-card/40 hover:bg-card text-xs text-muted-foreground hover:text-foreground transition-colors">
-              <Command className="h-3.5 w-3.5" />
+            <button title="Comando IA (⌘K)" className="hidden md:inline-flex items-center gap-2 h-9 px-3 rounded-md border border-border/60 bg-card/40 hover:bg-card text-xs text-muted-foreground hover:text-foreground transition-colors">
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
               <span>Comando IA</span>
-              <kbd className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-background/60 border border-border/60 font-mono">⌘K</kbd>
+              <kbd className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-background/60 border border-border/60 font-mono">⌘K</kbd>
             </button>
             <ClientePicker />
-            <Link to="/app/configuracion" title="Configuración" className="h-9 w-9 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/30">
-              <Settings className="h-4 w-4" />
-            </Link>
-            <Button variant="ghost" size="icon" onClick={signOut} title="Cerrar sesión"><LogOut className="h-4 w-4" /></Button>
-            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-[oklch(0.78_0.13_85)] flex items-center justify-center text-xs font-semibold text-primary-foreground">
-              {initials}
-            </div>
+            <UserMenu initials={initials} signOut={signOut} despacho={despacho?.nombre} />
           </div>
         </div>
-        {/* Context nav */}
-        <div className="border-t border-border/40 bg-background/40">
-          <div className="max-w-7xl mx-auto px-6 h-11 flex items-center gap-1 overflow-x-auto">
-            {ctx.map((item) => {
-              const active = location.pathname === item.href || (item.href !== "/app" && location.pathname.startsWith(item.href));
+
+        {/* Row 2 — context nav */}
+        <div className="border-t border-border/40 bg-background/30">
+          <div className="max-w-7xl mx-auto px-6 h-11 flex items-center gap-1 overflow-x-auto scrollbar-none">
+            <span className="hidden sm:inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground mr-2 shrink-0">
+              {MODULES.find((m) => m.key === activeModule)?.short}
+              <span className="text-border">/</span>
+            </span>
+            {ctx.primary.map((item) => {
+              const active = isHrefActive(location.pathname, item.href);
               return (
                 <Link
                   key={item.href}
                   to={item.href}
-                  className={`whitespace-nowrap px-3 h-7 rounded-md text-xs flex items-center transition-colors ${
+                  className={`whitespace-nowrap px-3 h-8 rounded-md text-sm flex items-center transition-colors ${
                     active
                       ? "text-foreground bg-primary/15 border border-primary/30"
                       : "text-muted-foreground hover:text-foreground hover:bg-accent/30"
@@ -133,6 +168,9 @@ export function AppLayout() {
                 </Link>
               );
             })}
+            {ctx.groups.map((g) => (
+              <CtxDropdown key={g.label} group={g} pathname={location.pathname} />
+            ))}
           </div>
         </div>
       </header>
@@ -142,6 +180,101 @@ export function AppLayout() {
         </div>
       </main>
       <Toaster theme="dark" position="top-right" />
+    </div>
+  );
+}
+
+function CtxDropdown({ group, pathname }: { group: CtxGroup; pathname: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const groupActive = group.items.some((i) => isHrefActive(pathname, i.href));
+
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className={`whitespace-nowrap px-3 h-8 rounded-md text-sm flex items-center gap-1.5 transition-colors ${
+          groupActive
+            ? "text-foreground bg-primary/15 border border-primary/30"
+            : "text-muted-foreground hover:text-foreground hover:bg-accent/30"
+        }`}
+      >
+        {group.label}
+        <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+      </button>
+      {open && (
+        <div className="absolute left-0 mt-2 w-60 rounded-lg border border-border bg-popover shadow-xl z-40 overflow-hidden py-1">
+          {group.items.map((i) => {
+            const active = isHrefActive(pathname, i.href);
+            return (
+              <Link
+                key={i.href}
+                to={i.href}
+                onClick={() => setOpen(false)}
+                className={`block px-3 py-2 text-sm transition-colors ${
+                  active ? "bg-primary/10 text-foreground" : "text-muted-foreground hover:bg-accent/40 hover:text-foreground"
+                }`}
+              >
+                {i.label}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UserMenu({ initials, signOut, despacho }: { initials: string; signOut: () => void; despacho?: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="h-9 w-9 rounded-full bg-gradient-to-br from-primary to-[oklch(0.78_0.13_85)] flex items-center justify-center text-xs font-semibold text-primary-foreground ring-1 ring-border/60 hover:ring-primary/50 transition"
+      >
+        {initials}
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-2 w-64 rounded-lg border border-border bg-popover shadow-xl z-40 overflow-hidden">
+          {despacho && (
+            <div className="px-3 py-2.5 border-b border-border/60 flex items-center gap-2">
+              <Building2 className="h-3.5 w-3.5 text-primary" />
+              <div className="min-w-0">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Despacho</div>
+                <div className="text-sm font-medium truncate">{despacho}</div>
+              </div>
+            </div>
+          )}
+          <div className="py-1">
+            <Link to="/app/configuracion" onClick={() => setOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/40">
+              <Settings className="h-4 w-4" /> Configuración
+            </Link>
+            <Link to="/app/equipo" onClick={() => setOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/40">
+              <UserRound className="h-4 w-4" /> Equipo
+            </Link>
+            <button onClick={signOut} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/40">
+              <LogOut className="h-4 w-4" /> Cerrar sesión
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -169,16 +302,15 @@ function ClientePicker() {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 h-9 pl-3 pr-2 rounded-md border border-border bg-card/50 hover:bg-card text-sm transition-colors max-w-[260px]"
+        className="flex items-center gap-2 h-9 pl-3 pr-2 rounded-md border border-border bg-card/50 hover:bg-card text-sm transition-colors max-w-[240px]"
       >
         <UserRound className="h-3.5 w-3.5 text-primary shrink-0" />
         {cliente ? (
           <span className="truncate">
             <span className="font-medium">{cliente.rfc}</span>
-            <span className="text-muted-foreground ml-2 hidden sm:inline">· {cliente.razon_social}</span>
           </span>
         ) : (
-          <span className="text-muted-foreground">Selecciona expediente</span>
+          <span className="text-muted-foreground text-xs">Expediente</span>
         )}
         <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
       </button>
