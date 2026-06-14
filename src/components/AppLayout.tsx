@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
-import { LogOut, Wrench, Users, ChevronDown, UserRound, X, FileText, Banknote, FileBarChart, MessageCircle, Settings, Building2 } from "lucide-react";
+import { LogOut, Wrench, Users, ChevronDown, UserRound, X, FileText, Banknote, FileBarChart, MessageCircle, Settings, Building2, ShieldAlert } from "lucide-react";
 import { Logo } from "./Logo";
 import { Button } from "./ui/button";
 import { useAuth } from "@/lib/auth";
@@ -30,6 +30,7 @@ export function AppLayout() {
               </Link>
             )}
             <nav className="hidden md:flex items-center gap-1 text-sm">
+              <NavLink to="/app/riesgo" icon={<ShieldAlert className="h-4 w-4" />} label="Riesgo SAT" active={location.pathname.startsWith("/app/riesgo")} />
               <NavLink to="/app/cfdi" icon={<FileText className="h-4 w-4" />} label="CFDI" active={location.pathname.startsWith("/app/cfdi")} />
               <NavLink to="/app/conciliacion" icon={<Banknote className="h-4 w-4" />} label="Conciliación" active={location.pathname.startsWith("/app/conciliacion")} />
               <NavLink to="/app/reportes" icon={<FileBarChart className="h-4 w-4" />} label="Reportes" active={location.pathname.startsWith("/app/reportes")} />
