@@ -25,16 +25,22 @@ import { Route as DashboardAsistenteRouteImport } from './routes/dashboard.asist
 import { Route as AppRiesgoRouteImport } from './routes/app.riesgo'
 import { Route as AppReportesRouteImport } from './routes/app.reportes'
 import { Route as AppMensajesRouteImport } from './routes/app.mensajes'
+import { Route as AppLegalRouteImport } from './routes/app.legal'
 import { Route as AppEquipoRouteImport } from './routes/app.equipo'
+import { Route as AppContableRouteImport } from './routes/app.contable'
 import { Route as AppConfiguracionRouteImport } from './routes/app.configuracion'
 import { Route as AppConciliacionRouteImport } from './routes/app.conciliacion'
 import { Route as AppClientesRouteImport } from './routes/app.clientes'
 import { Route as AppCfdiRouteImport } from './routes/app.cfdi'
+import { Route as AppAdminRouteImport } from './routes/app.admin'
 import { Route as AppToolsIndexRouteImport } from './routes/app.tools.index'
 import { Route as AppReportesIndexRouteImport } from './routes/app.reportes.index'
 import { Route as AppMensajesIndexRouteImport } from './routes/app.mensajes.index'
+import { Route as AppLegalIndexRouteImport } from './routes/app.legal.index'
+import { Route as AppContableIndexRouteImport } from './routes/app.contable.index'
 import { Route as AppConciliacionIndexRouteImport } from './routes/app.conciliacion.index'
 import { Route as AppCfdiIndexRouteImport } from './routes/app.cfdi.index'
+import { Route as AppAdminIndexRouteImport } from './routes/app.admin.index'
 import { Route as AppToolsXmlBulkReaderRouteImport } from './routes/app.tools.xml-bulk-reader'
 import { Route as AppToolsResicoCalculatorRouteImport } from './routes/app.tools.resico-calculator'
 import { Route as AppToolsOficioGeneratorRouteImport } from './routes/app.tools.oficio-generator'
@@ -45,8 +51,21 @@ import { Route as AppToolsCsfParserRouteImport } from './routes/app.tools.csf-pa
 import { Route as AppToolsCfdiVerifierRouteImport } from './routes/app.tools.cfdi-verifier'
 import { Route as AppToolsCfdiValidatorRouteImport } from './routes/app.tools.cfdi-validator'
 import { Route as AppToolsBankReconcilerRouteImport } from './routes/app.tools.bank-reconciler'
+import { Route as AppLegalRedactorRouteImport } from './routes/app.legal.redactor'
+import { Route as AppLegalMarketplaceRouteImport } from './routes/app.legal.marketplace'
+import { Route as AppLegalLagunasRouteImport } from './routes/app.legal.lagunas'
+import { Route as AppContableHerramientasRouteImport } from './routes/app.contable.herramientas'
+import { Route as AppContableAgentesRouteImport } from './routes/app.contable.agentes'
 import { Route as AppClientesIdRouteImport } from './routes/app.clientes.$id'
 import { Route as AppCfdiIdRouteImport } from './routes/app.cfdi.$id'
+import { Route as AppAdminTramitesRouteImport } from './routes/app.admin.tramites'
+import { Route as AppAdminTesoreriaRouteImport } from './routes/app.admin.tesoreria'
+import { Route as AppAdminNominaRouteImport } from './routes/app.admin.nomina'
+import { Route as AppAdminInventariosRouteImport } from './routes/app.admin.inventarios'
+import { Route as AppAdminCumplimientoRouteImport } from './routes/app.admin.cumplimiento'
+import { Route as AppAdminCorrespondenciaRouteImport } from './routes/app.admin.correspondencia'
+import { Route as AppAdminBuzonRouteImport } from './routes/app.admin.buzon'
+import { Route as AppAdminActivosRouteImport } from './routes/app.admin.activos'
 
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
@@ -128,9 +147,19 @@ const AppMensajesRoute = AppMensajesRouteImport.update({
   path: '/mensajes',
   getParentRoute: () => AppRoute,
 } as any)
+const AppLegalRoute = AppLegalRouteImport.update({
+  id: '/legal',
+  path: '/legal',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppEquipoRoute = AppEquipoRouteImport.update({
   id: '/equipo',
   path: '/equipo',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppContableRoute = AppContableRouteImport.update({
+  id: '/contable',
+  path: '/contable',
   getParentRoute: () => AppRoute,
 } as any)
 const AppConfiguracionRoute = AppConfiguracionRouteImport.update({
@@ -153,6 +182,11 @@ const AppCfdiRoute = AppCfdiRouteImport.update({
   path: '/cfdi',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminRoute = AppAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppToolsIndexRoute = AppToolsIndexRouteImport.update({
   id: '/tools/',
   path: '/tools/',
@@ -168,6 +202,16 @@ const AppMensajesIndexRoute = AppMensajesIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppMensajesRoute,
 } as any)
+const AppLegalIndexRoute = AppLegalIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppLegalRoute,
+} as any)
+const AppContableIndexRoute = AppContableIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppContableRoute,
+} as any)
 const AppConciliacionIndexRoute = AppConciliacionIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -177,6 +221,11 @@ const AppCfdiIndexRoute = AppCfdiIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppCfdiRoute,
+} as any)
+const AppAdminIndexRoute = AppAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppAdminRoute,
 } as any)
 const AppToolsXmlBulkReaderRoute = AppToolsXmlBulkReaderRouteImport.update({
   id: '/tools/xml-bulk-reader',
@@ -230,6 +279,31 @@ const AppToolsBankReconcilerRoute = AppToolsBankReconcilerRouteImport.update({
   path: '/tools/bank-reconciler',
   getParentRoute: () => AppRoute,
 } as any)
+const AppLegalRedactorRoute = AppLegalRedactorRouteImport.update({
+  id: '/redactor',
+  path: '/redactor',
+  getParentRoute: () => AppLegalRoute,
+} as any)
+const AppLegalMarketplaceRoute = AppLegalMarketplaceRouteImport.update({
+  id: '/marketplace',
+  path: '/marketplace',
+  getParentRoute: () => AppLegalRoute,
+} as any)
+const AppLegalLagunasRoute = AppLegalLagunasRouteImport.update({
+  id: '/lagunas',
+  path: '/lagunas',
+  getParentRoute: () => AppLegalRoute,
+} as any)
+const AppContableHerramientasRoute = AppContableHerramientasRouteImport.update({
+  id: '/herramientas',
+  path: '/herramientas',
+  getParentRoute: () => AppContableRoute,
+} as any)
+const AppContableAgentesRoute = AppContableAgentesRouteImport.update({
+  id: '/agentes',
+  path: '/agentes',
+  getParentRoute: () => AppContableRoute,
+} as any)
 const AppClientesIdRoute = AppClientesIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -240,17 +314,60 @@ const AppCfdiIdRoute = AppCfdiIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AppCfdiRoute,
 } as any)
+const AppAdminTramitesRoute = AppAdminTramitesRouteImport.update({
+  id: '/tramites',
+  path: '/tramites',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminTesoreriaRoute = AppAdminTesoreriaRouteImport.update({
+  id: '/tesoreria',
+  path: '/tesoreria',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminNominaRoute = AppAdminNominaRouteImport.update({
+  id: '/nomina',
+  path: '/nomina',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminInventariosRoute = AppAdminInventariosRouteImport.update({
+  id: '/inventarios',
+  path: '/inventarios',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminCumplimientoRoute = AppAdminCumplimientoRouteImport.update({
+  id: '/cumplimiento',
+  path: '/cumplimiento',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminCorrespondenciaRoute = AppAdminCorrespondenciaRouteImport.update({
+  id: '/correspondencia',
+  path: '/correspondencia',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminBuzonRoute = AppAdminBuzonRouteImport.update({
+  id: '/buzon',
+  path: '/buzon',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminActivosRoute = AppAdminActivosRouteImport.update({
+  id: '/activos',
+  path: '/activos',
+  getParentRoute: () => AppAdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRouteWithChildren
+  '/app/admin': typeof AppAdminRouteWithChildren
   '/app/cfdi': typeof AppCfdiRouteWithChildren
   '/app/clientes': typeof AppClientesRouteWithChildren
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
   '/app/configuracion': typeof AppConfiguracionRoute
+  '/app/contable': typeof AppContableRouteWithChildren
   '/app/equipo': typeof AppEquipoRoute
+  '/app/legal': typeof AppLegalRouteWithChildren
   '/app/mensajes': typeof AppMensajesRouteWithChildren
   '/app/reportes': typeof AppReportesRouteWithChildren
   '/app/riesgo': typeof AppRiesgoRoute
@@ -263,8 +380,21 @@ export interface FileRoutesByFullPath {
   '/invitar/$token': typeof InvitarTokenRoute
   '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/app/admin/activos': typeof AppAdminActivosRoute
+  '/app/admin/buzon': typeof AppAdminBuzonRoute
+  '/app/admin/correspondencia': typeof AppAdminCorrespondenciaRoute
+  '/app/admin/cumplimiento': typeof AppAdminCumplimientoRoute
+  '/app/admin/inventarios': typeof AppAdminInventariosRoute
+  '/app/admin/nomina': typeof AppAdminNominaRoute
+  '/app/admin/tesoreria': typeof AppAdminTesoreriaRoute
+  '/app/admin/tramites': typeof AppAdminTramitesRoute
   '/app/cfdi/$id': typeof AppCfdiIdRoute
   '/app/clientes/$id': typeof AppClientesIdRoute
+  '/app/contable/agentes': typeof AppContableAgentesRoute
+  '/app/contable/herramientas': typeof AppContableHerramientasRoute
+  '/app/legal/lagunas': typeof AppLegalLagunasRoute
+  '/app/legal/marketplace': typeof AppLegalMarketplaceRoute
+  '/app/legal/redactor': typeof AppLegalRedactorRoute
   '/app/tools/bank-reconciler': typeof AppToolsBankReconcilerRoute
   '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
   '/app/tools/cfdi-verifier': typeof AppToolsCfdiVerifierRoute
@@ -275,8 +405,11 @@ export interface FileRoutesByFullPath {
   '/app/tools/oficio-generator': typeof AppToolsOficioGeneratorRoute
   '/app/tools/resico-calculator': typeof AppToolsResicoCalculatorRoute
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
+  '/app/admin/': typeof AppAdminIndexRoute
   '/app/cfdi/': typeof AppCfdiIndexRoute
   '/app/conciliacion/': typeof AppConciliacionIndexRoute
+  '/app/contable/': typeof AppContableIndexRoute
+  '/app/legal/': typeof AppLegalIndexRoute
   '/app/mensajes/': typeof AppMensajesIndexRoute
   '/app/reportes/': typeof AppReportesIndexRoute
   '/app/tools/': typeof AppToolsIndexRoute
@@ -297,8 +430,21 @@ export interface FileRoutesByTo {
   '/invitar/$token': typeof InvitarTokenRoute
   '/app': typeof AppIndexRoute
   '/dashboard': typeof DashboardIndexRoute
+  '/app/admin/activos': typeof AppAdminActivosRoute
+  '/app/admin/buzon': typeof AppAdminBuzonRoute
+  '/app/admin/correspondencia': typeof AppAdminCorrespondenciaRoute
+  '/app/admin/cumplimiento': typeof AppAdminCumplimientoRoute
+  '/app/admin/inventarios': typeof AppAdminInventariosRoute
+  '/app/admin/nomina': typeof AppAdminNominaRoute
+  '/app/admin/tesoreria': typeof AppAdminTesoreriaRoute
+  '/app/admin/tramites': typeof AppAdminTramitesRoute
   '/app/cfdi/$id': typeof AppCfdiIdRoute
   '/app/clientes/$id': typeof AppClientesIdRoute
+  '/app/contable/agentes': typeof AppContableAgentesRoute
+  '/app/contable/herramientas': typeof AppContableHerramientasRoute
+  '/app/legal/lagunas': typeof AppLegalLagunasRoute
+  '/app/legal/marketplace': typeof AppLegalMarketplaceRoute
+  '/app/legal/redactor': typeof AppLegalRedactorRoute
   '/app/tools/bank-reconciler': typeof AppToolsBankReconcilerRoute
   '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
   '/app/tools/cfdi-verifier': typeof AppToolsCfdiVerifierRoute
@@ -309,8 +455,11 @@ export interface FileRoutesByTo {
   '/app/tools/oficio-generator': typeof AppToolsOficioGeneratorRoute
   '/app/tools/resico-calculator': typeof AppToolsResicoCalculatorRoute
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
+  '/app/admin': typeof AppAdminIndexRoute
   '/app/cfdi': typeof AppCfdiIndexRoute
   '/app/conciliacion': typeof AppConciliacionIndexRoute
+  '/app/contable': typeof AppContableIndexRoute
+  '/app/legal': typeof AppLegalIndexRoute
   '/app/mensajes': typeof AppMensajesIndexRoute
   '/app/reportes': typeof AppReportesIndexRoute
   '/app/tools': typeof AppToolsIndexRoute
@@ -321,11 +470,14 @@ export interface FileRoutesById {
   '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRouteWithChildren
+  '/app/admin': typeof AppAdminRouteWithChildren
   '/app/cfdi': typeof AppCfdiRouteWithChildren
   '/app/clientes': typeof AppClientesRouteWithChildren
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
   '/app/configuracion': typeof AppConfiguracionRoute
+  '/app/contable': typeof AppContableRouteWithChildren
   '/app/equipo': typeof AppEquipoRoute
+  '/app/legal': typeof AppLegalRouteWithChildren
   '/app/mensajes': typeof AppMensajesRouteWithChildren
   '/app/reportes': typeof AppReportesRouteWithChildren
   '/app/riesgo': typeof AppRiesgoRoute
@@ -338,8 +490,21 @@ export interface FileRoutesById {
   '/invitar/$token': typeof InvitarTokenRoute
   '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/app/admin/activos': typeof AppAdminActivosRoute
+  '/app/admin/buzon': typeof AppAdminBuzonRoute
+  '/app/admin/correspondencia': typeof AppAdminCorrespondenciaRoute
+  '/app/admin/cumplimiento': typeof AppAdminCumplimientoRoute
+  '/app/admin/inventarios': typeof AppAdminInventariosRoute
+  '/app/admin/nomina': typeof AppAdminNominaRoute
+  '/app/admin/tesoreria': typeof AppAdminTesoreriaRoute
+  '/app/admin/tramites': typeof AppAdminTramitesRoute
   '/app/cfdi/$id': typeof AppCfdiIdRoute
   '/app/clientes/$id': typeof AppClientesIdRoute
+  '/app/contable/agentes': typeof AppContableAgentesRoute
+  '/app/contable/herramientas': typeof AppContableHerramientasRoute
+  '/app/legal/lagunas': typeof AppLegalLagunasRoute
+  '/app/legal/marketplace': typeof AppLegalMarketplaceRoute
+  '/app/legal/redactor': typeof AppLegalRedactorRoute
   '/app/tools/bank-reconciler': typeof AppToolsBankReconcilerRoute
   '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
   '/app/tools/cfdi-verifier': typeof AppToolsCfdiVerifierRoute
@@ -350,8 +515,11 @@ export interface FileRoutesById {
   '/app/tools/oficio-generator': typeof AppToolsOficioGeneratorRoute
   '/app/tools/resico-calculator': typeof AppToolsResicoCalculatorRoute
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
+  '/app/admin/': typeof AppAdminIndexRoute
   '/app/cfdi/': typeof AppCfdiIndexRoute
   '/app/conciliacion/': typeof AppConciliacionIndexRoute
+  '/app/contable/': typeof AppContableIndexRoute
+  '/app/legal/': typeof AppLegalIndexRoute
   '/app/mensajes/': typeof AppMensajesIndexRoute
   '/app/reportes/': typeof AppReportesIndexRoute
   '/app/tools/': typeof AppToolsIndexRoute
@@ -363,11 +531,14 @@ export interface FileRouteTypes {
     | '/app'
     | '/auth'
     | '/dashboard'
+    | '/app/admin'
     | '/app/cfdi'
     | '/app/clientes'
     | '/app/conciliacion'
     | '/app/configuracion'
+    | '/app/contable'
     | '/app/equipo'
+    | '/app/legal'
     | '/app/mensajes'
     | '/app/reportes'
     | '/app/riesgo'
@@ -380,8 +551,21 @@ export interface FileRouteTypes {
     | '/invitar/$token'
     | '/app/'
     | '/dashboard/'
+    | '/app/admin/activos'
+    | '/app/admin/buzon'
+    | '/app/admin/correspondencia'
+    | '/app/admin/cumplimiento'
+    | '/app/admin/inventarios'
+    | '/app/admin/nomina'
+    | '/app/admin/tesoreria'
+    | '/app/admin/tramites'
     | '/app/cfdi/$id'
     | '/app/clientes/$id'
+    | '/app/contable/agentes'
+    | '/app/contable/herramientas'
+    | '/app/legal/lagunas'
+    | '/app/legal/marketplace'
+    | '/app/legal/redactor'
     | '/app/tools/bank-reconciler'
     | '/app/tools/cfdi-validator'
     | '/app/tools/cfdi-verifier'
@@ -392,8 +576,11 @@ export interface FileRouteTypes {
     | '/app/tools/oficio-generator'
     | '/app/tools/resico-calculator'
     | '/app/tools/xml-bulk-reader'
+    | '/app/admin/'
     | '/app/cfdi/'
     | '/app/conciliacion/'
+    | '/app/contable/'
+    | '/app/legal/'
     | '/app/mensajes/'
     | '/app/reportes/'
     | '/app/tools/'
@@ -414,8 +601,21 @@ export interface FileRouteTypes {
     | '/invitar/$token'
     | '/app'
     | '/dashboard'
+    | '/app/admin/activos'
+    | '/app/admin/buzon'
+    | '/app/admin/correspondencia'
+    | '/app/admin/cumplimiento'
+    | '/app/admin/inventarios'
+    | '/app/admin/nomina'
+    | '/app/admin/tesoreria'
+    | '/app/admin/tramites'
     | '/app/cfdi/$id'
     | '/app/clientes/$id'
+    | '/app/contable/agentes'
+    | '/app/contable/herramientas'
+    | '/app/legal/lagunas'
+    | '/app/legal/marketplace'
+    | '/app/legal/redactor'
     | '/app/tools/bank-reconciler'
     | '/app/tools/cfdi-validator'
     | '/app/tools/cfdi-verifier'
@@ -426,8 +626,11 @@ export interface FileRouteTypes {
     | '/app/tools/oficio-generator'
     | '/app/tools/resico-calculator'
     | '/app/tools/xml-bulk-reader'
+    | '/app/admin'
     | '/app/cfdi'
     | '/app/conciliacion'
+    | '/app/contable'
+    | '/app/legal'
     | '/app/mensajes'
     | '/app/reportes'
     | '/app/tools'
@@ -437,11 +640,14 @@ export interface FileRouteTypes {
     | '/app'
     | '/auth'
     | '/dashboard'
+    | '/app/admin'
     | '/app/cfdi'
     | '/app/clientes'
     | '/app/conciliacion'
     | '/app/configuracion'
+    | '/app/contable'
     | '/app/equipo'
+    | '/app/legal'
     | '/app/mensajes'
     | '/app/reportes'
     | '/app/riesgo'
@@ -454,8 +660,21 @@ export interface FileRouteTypes {
     | '/invitar/$token'
     | '/app/'
     | '/dashboard/'
+    | '/app/admin/activos'
+    | '/app/admin/buzon'
+    | '/app/admin/correspondencia'
+    | '/app/admin/cumplimiento'
+    | '/app/admin/inventarios'
+    | '/app/admin/nomina'
+    | '/app/admin/tesoreria'
+    | '/app/admin/tramites'
     | '/app/cfdi/$id'
     | '/app/clientes/$id'
+    | '/app/contable/agentes'
+    | '/app/contable/herramientas'
+    | '/app/legal/lagunas'
+    | '/app/legal/marketplace'
+    | '/app/legal/redactor'
     | '/app/tools/bank-reconciler'
     | '/app/tools/cfdi-validator'
     | '/app/tools/cfdi-verifier'
@@ -466,8 +685,11 @@ export interface FileRouteTypes {
     | '/app/tools/oficio-generator'
     | '/app/tools/resico-calculator'
     | '/app/tools/xml-bulk-reader'
+    | '/app/admin/'
     | '/app/cfdi/'
     | '/app/conciliacion/'
+    | '/app/contable/'
+    | '/app/legal/'
     | '/app/mensajes/'
     | '/app/reportes/'
     | '/app/tools/'
@@ -595,11 +817,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMensajesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/legal': {
+      id: '/app/legal'
+      path: '/legal'
+      fullPath: '/app/legal'
+      preLoaderRoute: typeof AppLegalRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/equipo': {
       id: '/app/equipo'
       path: '/equipo'
       fullPath: '/app/equipo'
       preLoaderRoute: typeof AppEquipoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/contable': {
+      id: '/app/contable'
+      path: '/contable'
+      fullPath: '/app/contable'
+      preLoaderRoute: typeof AppContableRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/configuracion': {
@@ -630,6 +866,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCfdiRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/admin': {
+      id: '/app/admin'
+      path: '/admin'
+      fullPath: '/app/admin'
+      preLoaderRoute: typeof AppAdminRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/tools/': {
       id: '/app/tools/'
       path: '/tools'
@@ -651,6 +894,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMensajesIndexRouteImport
       parentRoute: typeof AppMensajesRoute
     }
+    '/app/legal/': {
+      id: '/app/legal/'
+      path: '/'
+      fullPath: '/app/legal/'
+      preLoaderRoute: typeof AppLegalIndexRouteImport
+      parentRoute: typeof AppLegalRoute
+    }
+    '/app/contable/': {
+      id: '/app/contable/'
+      path: '/'
+      fullPath: '/app/contable/'
+      preLoaderRoute: typeof AppContableIndexRouteImport
+      parentRoute: typeof AppContableRoute
+    }
     '/app/conciliacion/': {
       id: '/app/conciliacion/'
       path: '/'
@@ -664,6 +921,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/cfdi/'
       preLoaderRoute: typeof AppCfdiIndexRouteImport
       parentRoute: typeof AppCfdiRoute
+    }
+    '/app/admin/': {
+      id: '/app/admin/'
+      path: '/'
+      fullPath: '/app/admin/'
+      preLoaderRoute: typeof AppAdminIndexRouteImport
+      parentRoute: typeof AppAdminRoute
     }
     '/app/tools/xml-bulk-reader': {
       id: '/app/tools/xml-bulk-reader'
@@ -735,6 +999,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppToolsBankReconcilerRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/legal/redactor': {
+      id: '/app/legal/redactor'
+      path: '/redactor'
+      fullPath: '/app/legal/redactor'
+      preLoaderRoute: typeof AppLegalRedactorRouteImport
+      parentRoute: typeof AppLegalRoute
+    }
+    '/app/legal/marketplace': {
+      id: '/app/legal/marketplace'
+      path: '/marketplace'
+      fullPath: '/app/legal/marketplace'
+      preLoaderRoute: typeof AppLegalMarketplaceRouteImport
+      parentRoute: typeof AppLegalRoute
+    }
+    '/app/legal/lagunas': {
+      id: '/app/legal/lagunas'
+      path: '/lagunas'
+      fullPath: '/app/legal/lagunas'
+      preLoaderRoute: typeof AppLegalLagunasRouteImport
+      parentRoute: typeof AppLegalRoute
+    }
+    '/app/contable/herramientas': {
+      id: '/app/contable/herramientas'
+      path: '/herramientas'
+      fullPath: '/app/contable/herramientas'
+      preLoaderRoute: typeof AppContableHerramientasRouteImport
+      parentRoute: typeof AppContableRoute
+    }
+    '/app/contable/agentes': {
+      id: '/app/contable/agentes'
+      path: '/agentes'
+      fullPath: '/app/contable/agentes'
+      preLoaderRoute: typeof AppContableAgentesRouteImport
+      parentRoute: typeof AppContableRoute
+    }
     '/app/clientes/$id': {
       id: '/app/clientes/$id'
       path: '/$id'
@@ -749,8 +1048,92 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCfdiIdRouteImport
       parentRoute: typeof AppCfdiRoute
     }
+    '/app/admin/tramites': {
+      id: '/app/admin/tramites'
+      path: '/tramites'
+      fullPath: '/app/admin/tramites'
+      preLoaderRoute: typeof AppAdminTramitesRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/app/admin/tesoreria': {
+      id: '/app/admin/tesoreria'
+      path: '/tesoreria'
+      fullPath: '/app/admin/tesoreria'
+      preLoaderRoute: typeof AppAdminTesoreriaRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/app/admin/nomina': {
+      id: '/app/admin/nomina'
+      path: '/nomina'
+      fullPath: '/app/admin/nomina'
+      preLoaderRoute: typeof AppAdminNominaRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/app/admin/inventarios': {
+      id: '/app/admin/inventarios'
+      path: '/inventarios'
+      fullPath: '/app/admin/inventarios'
+      preLoaderRoute: typeof AppAdminInventariosRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/app/admin/cumplimiento': {
+      id: '/app/admin/cumplimiento'
+      path: '/cumplimiento'
+      fullPath: '/app/admin/cumplimiento'
+      preLoaderRoute: typeof AppAdminCumplimientoRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/app/admin/correspondencia': {
+      id: '/app/admin/correspondencia'
+      path: '/correspondencia'
+      fullPath: '/app/admin/correspondencia'
+      preLoaderRoute: typeof AppAdminCorrespondenciaRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/app/admin/buzon': {
+      id: '/app/admin/buzon'
+      path: '/buzon'
+      fullPath: '/app/admin/buzon'
+      preLoaderRoute: typeof AppAdminBuzonRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/app/admin/activos': {
+      id: '/app/admin/activos'
+      path: '/activos'
+      fullPath: '/app/admin/activos'
+      preLoaderRoute: typeof AppAdminActivosRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
   }
 }
+
+interface AppAdminRouteChildren {
+  AppAdminActivosRoute: typeof AppAdminActivosRoute
+  AppAdminBuzonRoute: typeof AppAdminBuzonRoute
+  AppAdminCorrespondenciaRoute: typeof AppAdminCorrespondenciaRoute
+  AppAdminCumplimientoRoute: typeof AppAdminCumplimientoRoute
+  AppAdminInventariosRoute: typeof AppAdminInventariosRoute
+  AppAdminNominaRoute: typeof AppAdminNominaRoute
+  AppAdminTesoreriaRoute: typeof AppAdminTesoreriaRoute
+  AppAdminTramitesRoute: typeof AppAdminTramitesRoute
+  AppAdminIndexRoute: typeof AppAdminIndexRoute
+}
+
+const AppAdminRouteChildren: AppAdminRouteChildren = {
+  AppAdminActivosRoute: AppAdminActivosRoute,
+  AppAdminBuzonRoute: AppAdminBuzonRoute,
+  AppAdminCorrespondenciaRoute: AppAdminCorrespondenciaRoute,
+  AppAdminCumplimientoRoute: AppAdminCumplimientoRoute,
+  AppAdminInventariosRoute: AppAdminInventariosRoute,
+  AppAdminNominaRoute: AppAdminNominaRoute,
+  AppAdminTesoreriaRoute: AppAdminTesoreriaRoute,
+  AppAdminTramitesRoute: AppAdminTramitesRoute,
+  AppAdminIndexRoute: AppAdminIndexRoute,
+}
+
+const AppAdminRouteWithChildren = AppAdminRoute._addFileChildren(
+  AppAdminRouteChildren,
+)
 
 interface AppCfdiRouteChildren {
   AppCfdiIdRoute: typeof AppCfdiIdRoute
@@ -789,6 +1172,40 @@ const AppConciliacionRouteWithChildren = AppConciliacionRoute._addFileChildren(
   AppConciliacionRouteChildren,
 )
 
+interface AppContableRouteChildren {
+  AppContableAgentesRoute: typeof AppContableAgentesRoute
+  AppContableHerramientasRoute: typeof AppContableHerramientasRoute
+  AppContableIndexRoute: typeof AppContableIndexRoute
+}
+
+const AppContableRouteChildren: AppContableRouteChildren = {
+  AppContableAgentesRoute: AppContableAgentesRoute,
+  AppContableHerramientasRoute: AppContableHerramientasRoute,
+  AppContableIndexRoute: AppContableIndexRoute,
+}
+
+const AppContableRouteWithChildren = AppContableRoute._addFileChildren(
+  AppContableRouteChildren,
+)
+
+interface AppLegalRouteChildren {
+  AppLegalLagunasRoute: typeof AppLegalLagunasRoute
+  AppLegalMarketplaceRoute: typeof AppLegalMarketplaceRoute
+  AppLegalRedactorRoute: typeof AppLegalRedactorRoute
+  AppLegalIndexRoute: typeof AppLegalIndexRoute
+}
+
+const AppLegalRouteChildren: AppLegalRouteChildren = {
+  AppLegalLagunasRoute: AppLegalLagunasRoute,
+  AppLegalMarketplaceRoute: AppLegalMarketplaceRoute,
+  AppLegalRedactorRoute: AppLegalRedactorRoute,
+  AppLegalIndexRoute: AppLegalIndexRoute,
+}
+
+const AppLegalRouteWithChildren = AppLegalRoute._addFileChildren(
+  AppLegalRouteChildren,
+)
+
 interface AppMensajesRouteChildren {
   AppMensajesIndexRoute: typeof AppMensajesIndexRoute
 }
@@ -814,11 +1231,14 @@ const AppReportesRouteWithChildren = AppReportesRoute._addFileChildren(
 )
 
 interface AppRouteChildren {
+  AppAdminRoute: typeof AppAdminRouteWithChildren
   AppCfdiRoute: typeof AppCfdiRouteWithChildren
   AppClientesRoute: typeof AppClientesRouteWithChildren
   AppConciliacionRoute: typeof AppConciliacionRouteWithChildren
   AppConfiguracionRoute: typeof AppConfiguracionRoute
+  AppContableRoute: typeof AppContableRouteWithChildren
   AppEquipoRoute: typeof AppEquipoRoute
+  AppLegalRoute: typeof AppLegalRouteWithChildren
   AppMensajesRoute: typeof AppMensajesRouteWithChildren
   AppReportesRoute: typeof AppReportesRouteWithChildren
   AppRiesgoRoute: typeof AppRiesgoRoute
@@ -837,11 +1257,14 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAdminRoute: AppAdminRouteWithChildren,
   AppCfdiRoute: AppCfdiRouteWithChildren,
   AppClientesRoute: AppClientesRouteWithChildren,
   AppConciliacionRoute: AppConciliacionRouteWithChildren,
   AppConfiguracionRoute: AppConfiguracionRoute,
+  AppContableRoute: AppContableRouteWithChildren,
   AppEquipoRoute: AppEquipoRoute,
+  AppLegalRoute: AppLegalRouteWithChildren,
   AppMensajesRoute: AppMensajesRouteWithChildren,
   AppReportesRoute: AppReportesRouteWithChildren,
   AppRiesgoRoute: AppRiesgoRoute,
@@ -895,13 +1318,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
