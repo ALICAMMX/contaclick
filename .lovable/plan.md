@@ -1,116 +1,105 @@
 
-# Rediseño: ContaClick IA como Suite de Herramientas
+# Análisis del documento ContaClick Maestro v2.0
 
-Vamos a abandonar el patrón "dashboard con KPIs" y reemplazarlo por una **suite de herramientas independientes**, cada una funcionando como una mini-app especializada que opera sobre un **expediente/cliente (RFC)**.
+## Veredicto: 100% viable sobre lo que ya tenemos. NO hay que empezar de cero.
 
-## Concepto general
+La plataforma actual ya cubre ~35–40% del documento maestro (núcleo del Módulo 1 + base de Módulo 2). El documento es una **expansión natural** de lo que ya construimos, no un proyecto distinto.
 
-```text
-[ Mis Clientes / Expedientes ]   ──►   [ Hub de Herramientas ]   ──►   [ Herramienta X ejecutándose sobre RFC Y ]
-        (lista por RFC)                  (catálogo tipo grid)              (UI dedicada, autónoma)
-```
+### Lo que el documento pide vs. lo que ya tenemos
 
-- El usuario NO ve gráficas ni un panel central.
-- Crea o selecciona un **expediente** (RFC + datos del cliente).
-- Entra al **catálogo de herramientas** (estilo AbogaClick / Notion templates).
-- Cada herramienta es **autónoma**: entra, hace una tarea concreta, devuelve resultado, se sale.
+| Componente del doc | Estado actual |
+|---|---|
+| Ingesta SAT (CIEC/e.firma) | ✅ `sat.functions.ts` |
+| Validador CFDI 4.0 / UUID / 69-B | ✅ `cfdi-validator`, `cfdi-verifier`, `risk.ts` |
+| Conciliador bancario (PDF+OCR) | ✅ `bank-reconciler` + `conciliacion/` |
+| Calculadora ISR/IVA/RESICO | ✅ 3 calculadoras |
+| Auditor / inconsistencias | ✅ `express-auditor` + reporte `xml_inconsistentes` |
+| Reportes (ER, IVA, ISR, diferencias, balanza, balance, DIOT) | ✅ 8 tipos con PDF/Excel/CSV + resumen IA |
+| Multi-cliente / multi-RFC / equipo / mensajes | ✅ |
+| Lector CSF, Generador de oficios | ✅ |
+| Asistente fiscal IA | ✅ `fiscal-assistant` |
+| Validador EFOS (lista 69-B) | ⚠️ parcial (en `risk.ts`); falta sync diaria |
+| 12 herramientas de defensa SAT 2026 | ⚠️ 5 de 12 hechas |
+| Los 8 agentes contables orquestados | ⚠️ tenemos herramientas, falta orquestador |
+| Módulo RH/Nómina/IMSS | ❌ |
+| Inventarios / Activos fijos | ❌ |
+| Tesorería / Flujo de caja | ❌ |
+| Gestor de Trámites con semáforo | ❌ |
+| Lector Buzón Tributario | ❌ |
+| Transfer Pricing | ❌ |
+| Agente de Lagunas Legales (5 capas) | ❌ (el gran diferenciador) |
+| Marketplace de validación legal | ❌ |
+| Dashboard de Riesgo SAT 0–100 | ❌ (datos sí existen, falta vista) |
 
-## 1. Modelo de datos (mínimo)
-
-Tabla `clientes` (ya existe) la usamos como **expediente**:
-- `rfc`, `razon_social`, `regimen_fiscal`, datos de contacto.
-
-Nueva tabla `tool_runs` (historial de ejecuciones por herramienta y por cliente):
-- `cliente_id`, `tool_key` (ej: `cfdi_validator`, `iva_calculator`), `input` (jsonb), `output` (jsonb), `status`, `created_at`.
-
-Esto permite que cada herramienta:
-- Guarde su entrada/salida ligada al RFC.
-- Permita ver historial por cliente sin acoplarse a otras herramientas.
-
-## 2. Nueva navegación
-
-Reemplazamos el sidebar actual por dos secciones simples:
-
-- **Expedientes** (`/app/clientes`) — alta de cliente con RFC, lista, búsqueda.
-- **Herramientas** (`/app/tools`) — catálogo en grid de todas las herramientas.
-
-Y un selector global de "Cliente activo" en el header (como un workspace switcher). Toda herramienta se ejecuta en el contexto del cliente activo. Si no hay cliente activo, la herramienta pide elegir uno antes de abrirse.
-
-```text
-/app/clientes                       Lista expedientes
-/app/clientes/nuevo                 Alta (RFC + razón social + régimen)
-/app/clientes/$rfc                  Ficha del expediente + historial de tool_runs
-/app/tools                          Catálogo de herramientas
-/app/tools/$toolKey                 Herramienta autónoma (recibe cliente activo)
-```
-
-## 3. Catálogo de herramientas (MVP)
-
-Cada una es una **página independiente, autocontenida**, sin depender de las otras. Estilo "una pantalla, una tarea":
-
-1. **Validador CFDI** — sube XML, valida estructura 4.0, RFC emisor/receptor, totales, UUID. Output limpio.
-2. **Lector masivo de XML** — sube ZIP del SAT, extrae tabla (UUID, fecha, RFC, subtotal, IVA, total).
-3. **Calculadora ISR / IVA mensual** — inputs manuales o desde XML del cliente, devuelve cálculo.
-4. **Calculadora RESICO** — específica para personas físicas RESICO.
-5. **Conciliador bancario** — sube estado de cuenta + CFDI, cruza.
-6. **Constancia de Situación Fiscal (parser)** — sube PDF de la constancia, extrae régimen, obligaciones, domicilio.
-7. **Generador de carta/oficio fiscal** — plantillas (aviso al SAT, respuesta a invitación) con datos del RFC.
-8. **Verificador de CFDI ante SAT** — valida UUID contra el formato y estatus reportado.
-9. **Auditor express** — sube CFDI emitidos del mes, detecta huecos, duplicados, NC sin relación.
-10. **Asistente fiscal IA** (caja de chat aislada, no agente coordinador) — pregunta puntual sobre la legislación. Recibe el RFC y régimen como contexto.
-
-Cada herramienta vive en `src/routes/app/tools/<tool>.tsx` y NO se comunica con otras herramientas. Pueden compartir helpers (parser XML, etc.) en `src/lib/tools/`.
-
-## 4. UX por herramienta (patrón uniforme)
-
-Todas las herramientas siguen la misma plantilla visual:
-
-```text
-┌─────────────────────────────────────────────────────┐
-│  ← Volver a herramientas      Cliente activo: RFC   │
-├─────────────────────────────────────────────────────┤
-│  Título de la herramienta                           │
-│  Descripción de 1 línea                             │
-│                                                     │
-│  [ Zona de input: subir, llenar, pegar ]            │
-│                                                     │
-│  [ Botón: Ejecutar ]                                │
-├─────────────────────────────────────────────────────┤
-│  Resultado (tabla / JSON / PDF / texto)             │
-│  [ Descargar ]   [ Guardar en expediente ]          │
-└─────────────────────────────────────────────────────┘
-```
-
-Esto da consistencia visual sin sentirse "dashboard".
-
-## 5. Pasos de implementación
-
-1. **Reestructurar rutas**: eliminar `dashboard.index.tsx` (KPIs/gráficas), crear `/app` como shell mínimo con header (logo + selector de cliente activo + logout).
-2. **Expedientes funcionales**: conectar `clientes` real a Supabase (alta, lista, búsqueda por RFC). Cliente activo se guarda en `localStorage` + contexto React.
-3. **Crear `/app/tools` (catálogo)**: grid de cards con icono, nombre, descripción, etiqueta de categoría (CFDI, Cálculo, Documentos, IA).
-4. **Migración de las pantallas actuales**:
-   - `dashboard.cfdi` → `app/tools/cfdi-validator` y `app/tools/xml-bulk-reader` (separar en 2).
-   - `dashboard.conciliador` → `app/tools/bank-reconciler`.
-   - `dashboard.auditor` → `app/tools/express-auditor`.
-   - `dashboard.asistente` → `app/tools/fiscal-assistant` (sigue usando Lovable AI, pero como herramienta única, no como "asistente global").
-   - `dashboard.reportes` → eliminar o mover a "exportar historial del expediente".
-5. **Crear tabla `tool_runs`** con RLS por user_id; cada herramienta guarda su corrida.
-6. **Nuevas herramientas (esqueletos primero)**: Calculadora ISR/IVA, RESICO, Constancia, Generador de oficios, Verificador CFDI. UI lista, lógica iterativa después.
-7. **Borrar el dashboard de KPIs** y los componentes de gráficas (Recharts puede quedarse para reportes futuros, no lo desinstalamos).
-
-## 6. Detalles técnicos (para revisión)
-
-- Cliente activo: `ActiveClienteProvider` en `src/lib/active-cliente.tsx`, persistencia en `localStorage`, expone `{ cliente, setCliente }`.
-- Server functions por herramienta: `src/lib/tools/<tool>.functions.ts` con `createServerFn` + `requireSupabaseAuth`. Cada una recibe `{ clienteId, input }` y devuelve `output`.
-- Parser XML CFDI: `src/lib/tools/cfdi-parser.ts` (puro JS, sin dependencias nativas, compatible con Worker).
-- Catálogo: declarado en `src/lib/tools/registry.ts` (`{ key, name, description, icon, category, route }`) — fuente única para el grid y para futuros buscadores.
-
-## 7. Lo que queda fuera (por ahora)
-
-- "Agentes" que coordinan herramientas → descartado por petición explícita.
-- Dashboard analítico con gráficas → descartado.
-- Multi-despacho / equipos → fuera del MVP, solo usuario único por ahora.
+**Conclusión técnica:** el stack que tenemos (TanStack Start + Lovable Cloud + AI Gateway + tabla `tool_runs`/`reportes`/`clientes`) es el correcto para todo lo que pide el doc. El documento propone Python/FastAPI/AWS, pero eso es solo una recomendación — nuestro stack actual ya está corriendo en producción y cubre el mismo caso de uso.
 
 ---
 
-**¿Procedo con esta dirección?** Si confirmas, empiezo por: (a) crear el shell `/app` + selector de cliente activo, (b) catálogo `/app/tools`, (c) migrar CFDI y conciliador como primeras herramientas independientes, (d) tabla `tool_runs`. El resto de herramientas las construyo en iteraciones siguientes.
+## Hoja de ruta sugerida (alineada al roadmap del doc)
+
+### Bloque A — Cerrar MVP del doc (lo que ya casi tenemos) — **Esfuerzo bajo**
+1. Dashboard de Riesgo SAT 0–100 (agrega los datos que ya calculamos)
+2. Sync diaria lista 69-B EFOS + alertas en clientes
+3. Completar las 12 herramientas de defensa SAT (faltan ~7)
+4. Orquestador básico de los 8 agentes contables (router por intent sobre las tools que ya existen)
+
+### Bloque B — Módulo Administrativo (parte de v1.0) — **Esfuerzo medio**
+5. Gestor de Trámites con semáforo de avance + vencimientos
+6. Lector de Buzón Tributario (PDF/captura → extracción + plazos)
+7. Generador de Minutas con transcripción (Lovable AI multimodal)
+8. Mesa de Ayuda interna (tickets)
+9. Proyector de Flujo de Caja + Analizador de Gastos
+
+### Bloque C — RH y Nómina (v2.0) — **Esfuerzo alto**
+10. Calculadora de Nómina (SDI, IMSS, ISR, recibos)
+11. Gestor de Cumplimiento Laboral (IMSS/INFONAVIT/SAT)
+12. Detector de Nómina Oculta (cruce RFC vs IMSS)
+13. Calculadora IMSS/SUA
+14. Gestor de Vacaciones y Permisos
+
+### Bloque D — Inventarios y Tesorería (v2.0–v3.0) — **Esfuerzo medio**
+15. Activos fijos con depreciación + QR
+16. Inventario administrativo (ingesta desde CFDI de compra)
+17. Tesorería: cobranza, pagos programados, escenarios
+
+### Bloque E — Diferenciador estratégico — **Esfuerzo muy alto**
+18. Agente de Lagunas Legales (5 capas): identificación → mapeo → estrategia → redacción → monitoreo
+19. Buscador TFJA/SCJN/DOF en tiempo real
+20. Redactor de Escritos (recursos de revocación, juicio de nulidad)
+21. Marketplace de validación legal (multi-tenant + revenue share)
+
+### Bloque F — Pulido para venta (cualquier momento) — **Esfuerzo bajo**
+22. Plan de precios (Inicia/Despacho/Pro/Pyme) + Stripe + límites
+23. Onboarding piloto (academia ALICAM → cuenta gratis 3 meses)
+24. Roles/permisos finos para Despacho Pro
+25. API/MCP público para integración
+
+---
+
+## Estimación de créditos
+
+**Importante y honesto:** el modo build de Lovable es **usage-based**, el costo real depende de complejidad, iteraciones, debugging y validación visual. No puedo darte un número exacto, pero sí rangos de magnitud por bloque basados en su alcance (asumiendo trabajo limpio, sin reescrituras grandes):
+
+| Bloque | Alcance | Rango orientativo |
+|---|---|---|
+| A — Cerrar MVP doc | Dashboard riesgo + 7 herramientas SAT + orquestador + sync 69-B | ~60–120 créditos |
+| B — Administrativo | 5 módulos nuevos con UI + serverFns + tablas | ~120–220 créditos |
+| C — RH y Nómina | 5 módulos, lógica IMSS/SDI/ISR delicada + recibos timbrados | ~200–350 créditos |
+| D — Inventarios y Tesorería | 3 módulos con ingesta y escenarios | ~120–200 créditos |
+| E — Lagunas Legales + Marketplace | Diferenciador, mucha IA, jurisprudencia, multi-tenant marketplace | ~250–450 créditos |
+| F — Pulido / monetización | Stripe, planes, MCP, onboarding | ~60–120 créditos |
+| **Total para dejar 100% funcional** | Todo el doc | **~810–1,460 créditos** |
+
+Variables que mueven el número arriba o abajo:
+- **Suben costo:** APIs externas que cambian, debugging fiscal complejo (nómina, transfer pricing), iteraciones de diseño, datos de prueba reales, integraciones con timbrado PAC.
+- **Bajan costo:** entregas por bloque (medimos y ajustamos), reutilizar componentes ya hechos (PDF/Excel, tablas, reportes), no rehacer UI ya validada.
+
+### Recomendación de orden de ejecución
+1. **Bloque A primero** (cerrar lo que casi está) → ya podemos vender plan Inicia/Despacho.
+2. **Bloque F mínimo** (Stripe + plan Despacho) → ingresos desde mes 1.
+3. **Bloque B** → habilita plan Despacho Pro.
+4. **Bloque C** → habilita Pyme Integral (precio más alto del doc).
+5. **Bloque D** → completa la suite.
+6. **Bloque E** → el diferenciador para escalar.
+
+¿Quieres que arranque por **Bloque A** (dashboard de riesgo SAT + completar las 12 herramientas) y dejemos la plataforma alineada al MVP del documento?
