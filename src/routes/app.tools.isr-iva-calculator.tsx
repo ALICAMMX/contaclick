@@ -1,12 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
-import { Calculator, Download, Loader2, FileBarChart } from "lucide-react";
+import { useState, useMemo, useRef } from "react";
+import { Calculator, Download, Loader2, FileBarChart, Upload } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import JSZip from "jszip";
 import { ToolShell } from "@/components/ToolShell";
 import { Button } from "@/components/ui/button";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { getResumenFiscalMes } from "@/lib/fiscal/resumen.functions";
+import { parseCfdi } from "@/lib/tools/cfdi-parser";
 
 export const Route = createFileRoute("/app/tools/isr-iva-calculator")({
   component: IsrIvaCalculator,
@@ -51,6 +53,8 @@ function IsrIvaCalculator() {
   const [ivaAcreditable, setIvaAcreditable] = useState("");
   const [importing, setImporting] = useState(false);
   const [importedFrom, setImportedFrom] = useState<string | null>(null);
+  const [parsing, setParsing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const calc = useMemo(() => {
     const ing = Number(ingresos) || 0;
@@ -91,6 +95,70 @@ function IsrIvaCalculator() {
     }
   }
 
+  async function procesarXmlLocal(files: FileList | File[]) {
+    setParsing(true);
+    try {
+      const xmls: { name: string; xml: string }[] = [];
+      for (const f of Array.from(files)) {
+        const lower = f.name.toLowerCase();
+        if (lower.endsWith(".zip")) {
+          const zip = await JSZip.loadAsync(await f.arrayBuffer());
+          const entries = Object.values(zip.files).filter((e) => !e.dir && e.name.toLowerCase().endsWith(".xml"));
+          for (const e of entries) xmls.push({ name: e.name, xml: await e.async("string") });
+        } else if (lower.endsWith(".xml")) {
+          xmls.push({ name: f.name, xml: await f.text() });
+        }
+      }
+      if (!xmls.length) { toast.error("No se encontraron XML válidos."); return; }
+
+      const parsed = xmls.map((x) => ({ ...x, p: parseCfdi(x.xml) }));
+
+      // Detectar RFC del contribuyente: el del expediente activo, o el más frecuente en los XML
+      let rfcContrib = cliente?.rfc?.toUpperCase();
+      if (!rfcContrib) {
+        const counts = new Map<string, number>();
+        for (const { p } of parsed) {
+          [p.emisor.rfc, p.receptor.rfc].forEach((r) => {
+            if (r) counts.set(r.toUpperCase(), (counts.get(r.toUpperCase()) ?? 0) + 1);
+          });
+        }
+        rfcContrib = Array.from(counts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0];
+      }
+      if (!rfcContrib) { toast.error("No se pudo identificar el RFC del contribuyente."); return; }
+
+      // Filtrar por periodo seleccionado (YYYY-MM)
+      const enPeriodo = parsed.filter((x) => (x.p.fecha ?? "").slice(0, 7) === periodo);
+      if (!enPeriodo.length) {
+        const meses = Array.from(new Set(parsed.map((x) => (x.p.fecha ?? "").slice(0, 7)).filter(Boolean)));
+        toast.error(`Ningún XML es del periodo ${periodo}. Detectados: ${meses.join(", ") || "fechas inválidas"}`);
+        return;
+      }
+
+      let ing = 0, eg = 0, ivaT = 0, ivaA = 0, nc = 0;
+      for (const { p } of enPeriodo) {
+        const emisor = p.emisor.rfc?.toUpperCase();
+        const total = p.total ?? 0;
+        const iva = p.impuestos.totalTrasladados ?? 0;
+        const esEmitido = emisor === rfcContrib;
+        if (p.tipoComprobante === "I" && esEmitido) { ing += total; ivaT += iva; }
+        else if (p.tipoComprobante === "I" && !esEmitido) { eg += total; ivaA += iva; }
+        else if (p.tipoComprobante === "E" && esEmitido) { nc += total; }
+      }
+      const ingNeto = Math.max(ing - nc, 0);
+      setIngresos(ingNeto.toFixed(2));
+      setDeducciones(eg.toFixed(2));
+      setIvaTrasladado(ivaT.toFixed(2));
+      setIvaAcreditable(ivaA.toFixed(2));
+      setImportedFrom(`${enPeriodo.length} XML · ${periodo} · contribuyente ${rfcContrib}`);
+      toast.success(`Procesados ${enPeriodo.length} XML del periodo ${periodo}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error al leer los XML");
+    } finally {
+      setParsing(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
   return (
     <ToolShell
       title="Calculadora ISR / IVA mensual"
@@ -123,6 +191,24 @@ function IsrIvaCalculator() {
           {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
           Importar del expediente
         </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={parsing}
+          className="gap-2"
+        >
+          {parsing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+          Subir XML / ZIP
+        </Button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xml,.zip,text/xml,application/xml,application/zip"
+          multiple
+          className="hidden"
+          onChange={(e) => e.target.files && procesarXmlLocal(e.target.files)}
+        />
         <Button asChild variant="ghost" className="gap-2 ml-auto">
           <Link to="/app/reportes/resumen-fiscal">
             <FileBarChart className="h-4 w-4" />
