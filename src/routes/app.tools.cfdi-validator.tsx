@@ -112,7 +112,47 @@ function CfdiValidator() {
               <Row k="Régimen" v={parsed.receptor.regimenFiscalReceptor} req />
             </Card>
           </div>
-...
+
+          {parsed.conceptos.length > 0 && (
+            <div className="rounded-xl border border-border/60 bg-card/50 overflow-hidden">
+              <div className="px-4 py-3 border-b border-border/50 text-sm font-medium">Conceptos ({parsed.conceptos.length})</div>
+              <table className="w-full text-sm">
+                <thead className="text-xs text-muted-foreground bg-muted/30">
+                  <tr>
+                    <th className="text-left font-medium px-4 py-2">Descripción</th>
+                    <th className="text-right font-medium px-4 py-2">Cantidad</th>
+                    <th className="text-right font-medium px-4 py-2">V. Unit.</th>
+                    <th className="text-right font-medium px-4 py-2">Importe</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {parsed.conceptos.map((c, i) => (
+                    <tr key={i} className="border-t border-border/30">
+                      <td className="px-4 py-2 truncate max-w-[400px]">{c.descripcion ?? "—"}</td>
+                      <td className="px-4 py-2 text-right tabular-nums">{c.cantidad ?? "—"}</td>
+                      <td className="px-4 py-2 text-right tabular-nums">{c.valorUnitario != null ? `$${c.valorUnitario.toLocaleString("es-MX", { minimumFractionDigits: 2 })}` : "—"}</td>
+                      <td className="px-4 py-2 text-right tabular-nums">{c.importe != null ? `$${c.importe.toLocaleString("es-MX", { minimumFractionDigits: 2 })}` : "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </ToolShell>
+  );
+}
+
+function Card({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-border/60 bg-card/50 p-4">
+      <div className="text-xs uppercase tracking-wider text-muted-foreground mb-3">{title}</div>
+      <div className="space-y-1.5">{children}</div>
+    </div>
+  );
+}
+
 function fmtMoney(n?: number) {
   return n != null ? `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })}` : undefined;
 }
