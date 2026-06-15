@@ -233,9 +233,10 @@ function CfdiDashboard() {
                 <tr key={r.id} className="border-b border-border/40 hover:bg-accent/20 cursor-pointer transition-colors"
                     onClick={() => setSelected(r)}>
                   <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{fmtDate(r.fecha)}</td>
-                  <td className="px-4 py-3"><TipoBadge tipo={r.tipo_cfdi} /></td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground truncate max-w-[140px]">{r.uuid}</td>
                   <td className="px-4 py-3">
+                    <UuidCell uuid={r.uuid} />
+                  </td>
+
                     <div className="font-medium truncate max-w-[280px]">{r.tipo_cfdi === "I" ? r.nombre_emisor : r.nombre_receptor}</div>
                     <div className="text-xs text-muted-foreground font-mono">
                       {r.tipo_cfdi === "I" ? r.rfc_emisor : r.rfc_receptor}
