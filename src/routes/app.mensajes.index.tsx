@@ -96,8 +96,8 @@ function MensajesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Centro de Mensajes</h1>
-        <p className="text-muted-foreground text-sm mt-1">Plantillas, redacción IA y envío por WhatsApp.</p>
+        <h1 className="text-3xl font-semibold tracking-tight">Mensajería IA</h1>
+        <p className="text-muted-foreground text-sm mt-1">Redacta recordatorios, avisos y comunicados para tus clientes con IA. Envía por WhatsApp o correo.</p>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-5">

@@ -26,12 +26,14 @@ import { Route as AppRiesgoRouteImport } from './routes/app.riesgo'
 import { Route as AppReportesRouteImport } from './routes/app.reportes'
 import { Route as AppMensajesRouteImport } from './routes/app.mensajes'
 import { Route as AppLegalRouteImport } from './routes/app.legal'
+import { Route as AppExpedientesRouteImport } from './routes/app.expedientes'
 import { Route as AppEquipoRouteImport } from './routes/app.equipo'
 import { Route as AppContableRouteImport } from './routes/app.contable'
 import { Route as AppConfiguracionRouteImport } from './routes/app.configuracion'
 import { Route as AppConciliacionRouteImport } from './routes/app.conciliacion'
 import { Route as AppClientesRouteImport } from './routes/app.clientes'
 import { Route as AppCfdiRouteImport } from './routes/app.cfdi'
+import { Route as AppAdministrativoRouteImport } from './routes/app.administrativo'
 import { Route as AppAdminRouteImport } from './routes/app.admin'
 import { Route as AppToolsIndexRouteImport } from './routes/app.tools.index'
 import { Route as AppReportesIndexRouteImport } from './routes/app.reportes.index'
@@ -152,6 +154,11 @@ const AppLegalRoute = AppLegalRouteImport.update({
   path: '/legal',
   getParentRoute: () => AppRoute,
 } as any)
+const AppExpedientesRoute = AppExpedientesRouteImport.update({
+  id: '/expedientes',
+  path: '/expedientes',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppEquipoRoute = AppEquipoRouteImport.update({
   id: '/equipo',
   path: '/equipo',
@@ -180,6 +187,11 @@ const AppClientesRoute = AppClientesRouteImport.update({
 const AppCfdiRoute = AppCfdiRouteImport.update({
   id: '/cfdi',
   path: '/cfdi',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdministrativoRoute = AppAdministrativoRouteImport.update({
+  id: '/administrativo',
+  path: '/administrativo',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAdminRoute = AppAdminRouteImport.update({
@@ -361,12 +373,14 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/app/admin': typeof AppAdminRouteWithChildren
+  '/app/administrativo': typeof AppAdministrativoRoute
   '/app/cfdi': typeof AppCfdiRouteWithChildren
   '/app/clientes': typeof AppClientesRouteWithChildren
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
   '/app/configuracion': typeof AppConfiguracionRoute
   '/app/contable': typeof AppContableRouteWithChildren
   '/app/equipo': typeof AppEquipoRoute
+  '/app/expedientes': typeof AppExpedientesRoute
   '/app/legal': typeof AppLegalRouteWithChildren
   '/app/mensajes': typeof AppMensajesRouteWithChildren
   '/app/reportes': typeof AppReportesRouteWithChildren
@@ -417,9 +431,11 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/app/administrativo': typeof AppAdministrativoRoute
   '/app/clientes': typeof AppClientesRouteWithChildren
   '/app/configuracion': typeof AppConfiguracionRoute
   '/app/equipo': typeof AppEquipoRoute
+  '/app/expedientes': typeof AppExpedientesRoute
   '/app/riesgo': typeof AppRiesgoRoute
   '/dashboard/asistente': typeof DashboardAsistenteRoute
   '/dashboard/auditor': typeof DashboardAuditorRoute
@@ -471,12 +487,14 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/app/admin': typeof AppAdminRouteWithChildren
+  '/app/administrativo': typeof AppAdministrativoRoute
   '/app/cfdi': typeof AppCfdiRouteWithChildren
   '/app/clientes': typeof AppClientesRouteWithChildren
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
   '/app/configuracion': typeof AppConfiguracionRoute
   '/app/contable': typeof AppContableRouteWithChildren
   '/app/equipo': typeof AppEquipoRoute
+  '/app/expedientes': typeof AppExpedientesRoute
   '/app/legal': typeof AppLegalRouteWithChildren
   '/app/mensajes': typeof AppMensajesRouteWithChildren
   '/app/reportes': typeof AppReportesRouteWithChildren
@@ -532,12 +550,14 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/app/admin'
+    | '/app/administrativo'
     | '/app/cfdi'
     | '/app/clientes'
     | '/app/conciliacion'
     | '/app/configuracion'
     | '/app/contable'
     | '/app/equipo'
+    | '/app/expedientes'
     | '/app/legal'
     | '/app/mensajes'
     | '/app/reportes'
@@ -588,9 +608,11 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/app/administrativo'
     | '/app/clientes'
     | '/app/configuracion'
     | '/app/equipo'
+    | '/app/expedientes'
     | '/app/riesgo'
     | '/dashboard/asistente'
     | '/dashboard/auditor'
@@ -641,12 +663,14 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/app/admin'
+    | '/app/administrativo'
     | '/app/cfdi'
     | '/app/clientes'
     | '/app/conciliacion'
     | '/app/configuracion'
     | '/app/contable'
     | '/app/equipo'
+    | '/app/expedientes'
     | '/app/legal'
     | '/app/mensajes'
     | '/app/reportes'
@@ -824,6 +848,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppLegalRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/expedientes': {
+      id: '/app/expedientes'
+      path: '/expedientes'
+      fullPath: '/app/expedientes'
+      preLoaderRoute: typeof AppExpedientesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/equipo': {
       id: '/app/equipo'
       path: '/equipo'
@@ -864,6 +895,13 @@ declare module '@tanstack/react-router' {
       path: '/cfdi'
       fullPath: '/app/cfdi'
       preLoaderRoute: typeof AppCfdiRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/administrativo': {
+      id: '/app/administrativo'
+      path: '/administrativo'
+      fullPath: '/app/administrativo'
+      preLoaderRoute: typeof AppAdministrativoRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/admin': {
@@ -1232,12 +1270,14 @@ const AppReportesRouteWithChildren = AppReportesRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppAdminRoute: typeof AppAdminRouteWithChildren
+  AppAdministrativoRoute: typeof AppAdministrativoRoute
   AppCfdiRoute: typeof AppCfdiRouteWithChildren
   AppClientesRoute: typeof AppClientesRouteWithChildren
   AppConciliacionRoute: typeof AppConciliacionRouteWithChildren
   AppConfiguracionRoute: typeof AppConfiguracionRoute
   AppContableRoute: typeof AppContableRouteWithChildren
   AppEquipoRoute: typeof AppEquipoRoute
+  AppExpedientesRoute: typeof AppExpedientesRoute
   AppLegalRoute: typeof AppLegalRouteWithChildren
   AppMensajesRoute: typeof AppMensajesRouteWithChildren
   AppReportesRoute: typeof AppReportesRouteWithChildren
@@ -1258,12 +1298,14 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAdminRoute: AppAdminRouteWithChildren,
+  AppAdministrativoRoute: AppAdministrativoRoute,
   AppCfdiRoute: AppCfdiRouteWithChildren,
   AppClientesRoute: AppClientesRouteWithChildren,
   AppConciliacionRoute: AppConciliacionRouteWithChildren,
   AppConfiguracionRoute: AppConfiguracionRoute,
   AppContableRoute: AppContableRouteWithChildren,
   AppEquipoRoute: AppEquipoRoute,
+  AppExpedientesRoute: AppExpedientesRoute,
   AppLegalRoute: AppLegalRouteWithChildren,
   AppMensajesRoute: AppMensajesRouteWithChildren,
   AppReportesRoute: AppReportesRouteWithChildren,
