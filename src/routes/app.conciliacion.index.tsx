@@ -227,7 +227,7 @@ function ConciliacionPage() {
         {parsed.length > 0 && (
           <div className="mt-4 flex items-center justify-between gap-3 rounded-lg bg-primary/5 border border-primary/20 p-3">
             <div className="text-sm">
-              <span className="font-medium">{parsed.length}</span> movimientos listos · rango {parsed[parsed.length - 1].fecha} → {parsed[0].fecha}
+              <span className="font-medium">{parsed.length}</span> movimientos listos · rango {fmtFechaMx(parsed[parsed.length - 1].fecha)} → {fmtFechaMx(parsed[0].fecha)}
             </div>
             <div className="flex gap-2">
               <Button variant="ghost" size="sm" onClick={() => setParsed([])}><X className="h-4 w-4" /> Descartar</Button>
