@@ -49,6 +49,7 @@ import { Route as AppToolsOficioGeneratorRouteImport } from './routes/app.tools.
 import { Route as AppToolsIsrIvaCalculatorRouteImport } from './routes/app.tools.isr-iva-calculator'
 import { Route as AppToolsFiscalAssistantRouteImport } from './routes/app.tools.fiscal-assistant'
 import { Route as AppToolsExpressAuditorRouteImport } from './routes/app.tools.express-auditor'
+import { Route as AppToolsEfosValidatorRouteImport } from './routes/app.tools.efos-validator'
 import { Route as AppToolsCsfParserRouteImport } from './routes/app.tools.csf-parser'
 import { Route as AppToolsCfdiVerifierRouteImport } from './routes/app.tools.cfdi-verifier'
 import { Route as AppToolsCfdiValidatorRouteImport } from './routes/app.tools.cfdi-validator'
@@ -271,6 +272,11 @@ const AppToolsExpressAuditorRoute = AppToolsExpressAuditorRouteImport.update({
   path: '/tools/express-auditor',
   getParentRoute: () => AppRoute,
 } as any)
+const AppToolsEfosValidatorRoute = AppToolsEfosValidatorRouteImport.update({
+  id: '/tools/efos-validator',
+  path: '/tools/efos-validator',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppToolsCsfParserRoute = AppToolsCsfParserRouteImport.update({
   id: '/tools/csf-parser',
   path: '/tools/csf-parser',
@@ -413,6 +419,7 @@ export interface FileRoutesByFullPath {
   '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
   '/app/tools/cfdi-verifier': typeof AppToolsCfdiVerifierRoute
   '/app/tools/csf-parser': typeof AppToolsCsfParserRoute
+  '/app/tools/efos-validator': typeof AppToolsEfosValidatorRoute
   '/app/tools/express-auditor': typeof AppToolsExpressAuditorRoute
   '/app/tools/fiscal-assistant': typeof AppToolsFiscalAssistantRoute
   '/app/tools/isr-iva-calculator': typeof AppToolsIsrIvaCalculatorRoute
@@ -465,6 +472,7 @@ export interface FileRoutesByTo {
   '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
   '/app/tools/cfdi-verifier': typeof AppToolsCfdiVerifierRoute
   '/app/tools/csf-parser': typeof AppToolsCsfParserRoute
+  '/app/tools/efos-validator': typeof AppToolsEfosValidatorRoute
   '/app/tools/express-auditor': typeof AppToolsExpressAuditorRoute
   '/app/tools/fiscal-assistant': typeof AppToolsFiscalAssistantRoute
   '/app/tools/isr-iva-calculator': typeof AppToolsIsrIvaCalculatorRoute
@@ -527,6 +535,7 @@ export interface FileRoutesById {
   '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
   '/app/tools/cfdi-verifier': typeof AppToolsCfdiVerifierRoute
   '/app/tools/csf-parser': typeof AppToolsCsfParserRoute
+  '/app/tools/efos-validator': typeof AppToolsEfosValidatorRoute
   '/app/tools/express-auditor': typeof AppToolsExpressAuditorRoute
   '/app/tools/fiscal-assistant': typeof AppToolsFiscalAssistantRoute
   '/app/tools/isr-iva-calculator': typeof AppToolsIsrIvaCalculatorRoute
@@ -590,6 +599,7 @@ export interface FileRouteTypes {
     | '/app/tools/cfdi-validator'
     | '/app/tools/cfdi-verifier'
     | '/app/tools/csf-parser'
+    | '/app/tools/efos-validator'
     | '/app/tools/express-auditor'
     | '/app/tools/fiscal-assistant'
     | '/app/tools/isr-iva-calculator'
@@ -642,6 +652,7 @@ export interface FileRouteTypes {
     | '/app/tools/cfdi-validator'
     | '/app/tools/cfdi-verifier'
     | '/app/tools/csf-parser'
+    | '/app/tools/efos-validator'
     | '/app/tools/express-auditor'
     | '/app/tools/fiscal-assistant'
     | '/app/tools/isr-iva-calculator'
@@ -703,6 +714,7 @@ export interface FileRouteTypes {
     | '/app/tools/cfdi-validator'
     | '/app/tools/cfdi-verifier'
     | '/app/tools/csf-parser'
+    | '/app/tools/efos-validator'
     | '/app/tools/express-auditor'
     | '/app/tools/fiscal-assistant'
     | '/app/tools/isr-iva-calculator'
@@ -1009,6 +1021,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppToolsExpressAuditorRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/tools/efos-validator': {
+      id: '/app/tools/efos-validator'
+      path: '/tools/efos-validator'
+      fullPath: '/app/tools/efos-validator'
+      preLoaderRoute: typeof AppToolsEfosValidatorRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/tools/csf-parser': {
       id: '/app/tools/csf-parser'
       path: '/tools/csf-parser'
@@ -1287,6 +1306,7 @@ interface AppRouteChildren {
   AppToolsCfdiValidatorRoute: typeof AppToolsCfdiValidatorRoute
   AppToolsCfdiVerifierRoute: typeof AppToolsCfdiVerifierRoute
   AppToolsCsfParserRoute: typeof AppToolsCsfParserRoute
+  AppToolsEfosValidatorRoute: typeof AppToolsEfosValidatorRoute
   AppToolsExpressAuditorRoute: typeof AppToolsExpressAuditorRoute
   AppToolsFiscalAssistantRoute: typeof AppToolsFiscalAssistantRoute
   AppToolsIsrIvaCalculatorRoute: typeof AppToolsIsrIvaCalculatorRoute
@@ -1315,6 +1335,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppToolsCfdiValidatorRoute: AppToolsCfdiValidatorRoute,
   AppToolsCfdiVerifierRoute: AppToolsCfdiVerifierRoute,
   AppToolsCsfParserRoute: AppToolsCsfParserRoute,
+  AppToolsEfosValidatorRoute: AppToolsEfosValidatorRoute,
   AppToolsExpressAuditorRoute: AppToolsExpressAuditorRoute,
   AppToolsFiscalAssistantRoute: AppToolsFiscalAssistantRoute,
   AppToolsIsrIvaCalculatorRoute: AppToolsIsrIvaCalculatorRoute,

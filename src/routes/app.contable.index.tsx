@@ -32,7 +32,7 @@ const TOOLS: Tool[] = [
   // 5. Defensa SAT
   { name: "Riesgo SAT 2026", desc: "Score sobre los 12 criterios del Plan Maestro.", icon: ShieldAlert, href: "/app/riesgo", status: "live", group: "5 · Defensa SAT", doneThisMonth: true },
   { name: "Validador de Deducibilidad", desc: "Detecta deducciones improcedentes con IA.", icon: ShieldCheck, status: "soon", group: "5 · Defensa SAT" },
-  { name: "Validador 69-B / EFOS", desc: "Sincronización diaria de la lista negra.", icon: AlertTriangle, status: "soon", group: "5 · Defensa SAT" },
+  { name: "Validador 69-B / EFOS", desc: "Cruza tus proveedores con la lista negra del SAT.", icon: AlertTriangle, href: "/app/tools/efos-validator", status: "live", group: "5 · Defensa SAT", doneThisMonth: true },
   { name: "Validador de Precios de Importación", desc: "Comparables de mercado y memo justificativo.", icon: Globe, status: "soon", group: "5 · Defensa SAT" },
   { name: "Detector de Nómina Oculta", desc: "Identifica pagos recurrentes a PF.", icon: Users, status: "soon", group: "5 · Defensa SAT" },
 
