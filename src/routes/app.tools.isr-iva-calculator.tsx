@@ -95,6 +95,70 @@ function IsrIvaCalculator() {
     }
   }
 
+  async function procesarXmlLocal(files: FileList | File[]) {
+    setParsing(true);
+    try {
+      const xmls: { name: string; xml: string }[] = [];
+      for (const f of Array.from(files)) {
+        const lower = f.name.toLowerCase();
+        if (lower.endsWith(".zip")) {
+          const zip = await JSZip.loadAsync(await f.arrayBuffer());
+          const entries = Object.values(zip.files).filter((e) => !e.dir && e.name.toLowerCase().endsWith(".xml"));
+          for (const e of entries) xmls.push({ name: e.name, xml: await e.async("string") });
+        } else if (lower.endsWith(".xml")) {
+          xmls.push({ name: f.name, xml: await f.text() });
+        }
+      }
+      if (!xmls.length) { toast.error("No se encontraron XML válidos."); return; }
+
+      const parsed = xmls.map((x) => ({ ...x, p: parseCfdi(x.xml) }));
+
+      // Detectar RFC del contribuyente: el del expediente activo, o el más frecuente en los XML
+      let rfcContrib = cliente?.rfc?.toUpperCase();
+      if (!rfcContrib) {
+        const counts = new Map<string, number>();
+        for (const { p } of parsed) {
+          [p.emisor.rfc, p.receptor.rfc].forEach((r) => {
+            if (r) counts.set(r.toUpperCase(), (counts.get(r.toUpperCase()) ?? 0) + 1);
+          });
+        }
+        rfcContrib = Array.from(counts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0];
+      }
+      if (!rfcContrib) { toast.error("No se pudo identificar el RFC del contribuyente."); return; }
+
+      // Filtrar por periodo seleccionado (YYYY-MM)
+      const enPeriodo = parsed.filter((x) => (x.p.fecha ?? "").slice(0, 7) === periodo);
+      if (!enPeriodo.length) {
+        const meses = Array.from(new Set(parsed.map((x) => (x.p.fecha ?? "").slice(0, 7)).filter(Boolean)));
+        toast.error(`Ningún XML es del periodo ${periodo}. Detectados: ${meses.join(", ") || "fechas inválidas"}`);
+        return;
+      }
+
+      let ing = 0, eg = 0, ivaT = 0, ivaA = 0, nc = 0;
+      for (const { p } of enPeriodo) {
+        const emisor = p.emisor.rfc?.toUpperCase();
+        const total = p.total ?? 0;
+        const iva = p.impuestos.totalTrasladados ?? 0;
+        const esEmitido = emisor === rfcContrib;
+        if (p.tipoComprobante === "I" && esEmitido) { ing += total; ivaT += iva; }
+        else if (p.tipoComprobante === "I" && !esEmitido) { eg += total; ivaA += iva; }
+        else if (p.tipoComprobante === "E" && esEmitido) { nc += total; }
+      }
+      const ingNeto = Math.max(ing - nc, 0);
+      setIngresos(ingNeto.toFixed(2));
+      setDeducciones(eg.toFixed(2));
+      setIvaTrasladado(ivaT.toFixed(2));
+      setIvaAcreditable(ivaA.toFixed(2));
+      setImportedFrom(`${enPeriodo.length} XML · ${periodo} · contribuyente ${rfcContrib}`);
+      toast.success(`Procesados ${enPeriodo.length} XML del periodo ${periodo}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error al leer los XML");
+    } finally {
+      setParsing(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
   return (
     <ToolShell
       title="Calculadora ISR / IVA mensual"
