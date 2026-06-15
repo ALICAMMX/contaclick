@@ -1,12 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
-import { Calculator, Download, Loader2, FileBarChart } from "lucide-react";
+import { useState, useMemo, useRef } from "react";
+import { Calculator, Download, Loader2, FileBarChart, Upload } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import JSZip from "jszip";
 import { ToolShell } from "@/components/ToolShell";
 import { Button } from "@/components/ui/button";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { getResumenFiscalMes } from "@/lib/fiscal/resumen.functions";
+import { parseCfdi } from "@/lib/tools/cfdi-parser";
 
 export const Route = createFileRoute("/app/tools/isr-iva-calculator")({
   component: IsrIvaCalculator,
