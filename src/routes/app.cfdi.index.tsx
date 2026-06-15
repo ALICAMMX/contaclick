@@ -413,3 +413,33 @@ function ExportButton({ rows }: { rows: CfdiRow[] }) {
     </Button>
   );
 }
+
+function UuidCell({ uuid }: { uuid: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(uuid).then(() => {
+      setCopied(true);
+      toast.success("UUID copiado");
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={copy}
+            className="group inline-flex items-center gap-1.5 font-mono text-xs text-muted-foreground hover:text-foreground max-w-[160px]"
+          >
+            <span className="truncate">{uuid}</span>
+            {copied ? <Check className="h-3 w-3 text-emerald-400 shrink-0" /> : <Copy className="h-3 w-3 opacity-60 group-hover:opacity-100 shrink-0" />}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent className="font-mono text-xs">{uuid}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
