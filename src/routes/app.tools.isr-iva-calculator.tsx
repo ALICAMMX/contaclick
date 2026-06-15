@@ -53,6 +53,8 @@ function IsrIvaCalculator() {
   const [ivaAcreditable, setIvaAcreditable] = useState("");
   const [importing, setImporting] = useState(false);
   const [importedFrom, setImportedFrom] = useState<string | null>(null);
+  const [parsing, setParsing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const calc = useMemo(() => {
     const ing = Number(ingresos) || 0;
