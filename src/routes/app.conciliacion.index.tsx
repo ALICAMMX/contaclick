@@ -8,6 +8,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
+import { fmtFechaMx } from "@/lib/utils";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { parseBankFile, type ParsedMovimiento } from "@/lib/conciliacion/parsers";
 import {
