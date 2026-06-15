@@ -174,9 +174,9 @@ export const removeMember = createServerFn({ method: "POST" })
 export const getInvitationByToken = createServerFn({ method: "GET" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ token: z.string().min(8) }).parse(d))
-  .handler(async ({ data, context }) => {
-    const { supabase } = context;
-    const { data: inv } = await supabase
+  .handler(async ({ data }) => {
+    // Use admin client to look up by exact token only; broad SELECT policy is removed.
+    const { data: inv } = await supabaseAdmin
       .from("invitaciones")
       .select("id, despacho_id, role, expires_at, used_at, revoked_at")
       .eq("token", data.token)
