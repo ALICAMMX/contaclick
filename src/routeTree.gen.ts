@@ -54,6 +54,7 @@ import { Route as AppToolsCsfParserRouteImport } from './routes/app.tools.csf-pa
 import { Route as AppToolsCfdiVerifierRouteImport } from './routes/app.tools.cfdi-verifier'
 import { Route as AppToolsCfdiValidatorRouteImport } from './routes/app.tools.cfdi-validator'
 import { Route as AppToolsBankReconcilerRouteImport } from './routes/app.tools.bank-reconciler'
+import { Route as AppReportesResumenFiscalRouteImport } from './routes/app.reportes.resumen-fiscal'
 import { Route as AppLegalRedactorRouteImport } from './routes/app.legal.redactor'
 import { Route as AppLegalMarketplaceRouteImport } from './routes/app.legal.marketplace'
 import { Route as AppLegalLagunasRouteImport } from './routes/app.legal.lagunas'
@@ -298,6 +299,12 @@ const AppToolsBankReconcilerRoute = AppToolsBankReconcilerRouteImport.update({
   path: '/tools/bank-reconciler',
   getParentRoute: () => AppRoute,
 } as any)
+const AppReportesResumenFiscalRoute =
+  AppReportesResumenFiscalRouteImport.update({
+    id: '/resumen-fiscal',
+    path: '/resumen-fiscal',
+    getParentRoute: () => AppReportesRoute,
+  } as any)
 const AppLegalRedactorRoute = AppLegalRedactorRouteImport.update({
   id: '/redactor',
   path: '/redactor',
@@ -423,6 +430,7 @@ export interface FileRoutesByFullPath {
   '/app/legal/lagunas': typeof AppLegalLagunasRoute
   '/app/legal/marketplace': typeof AppLegalMarketplaceRoute
   '/app/legal/redactor': typeof AppLegalRedactorRoute
+  '/app/reportes/resumen-fiscal': typeof AppReportesResumenFiscalRoute
   '/app/tools/bank-reconciler': typeof AppToolsBankReconcilerRoute
   '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
   '/app/tools/cfdi-verifier': typeof AppToolsCfdiVerifierRoute
@@ -477,6 +485,7 @@ export interface FileRoutesByTo {
   '/app/legal/lagunas': typeof AppLegalLagunasRoute
   '/app/legal/marketplace': typeof AppLegalMarketplaceRoute
   '/app/legal/redactor': typeof AppLegalRedactorRoute
+  '/app/reportes/resumen-fiscal': typeof AppReportesResumenFiscalRoute
   '/app/tools/bank-reconciler': typeof AppToolsBankReconcilerRoute
   '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
   '/app/tools/cfdi-verifier': typeof AppToolsCfdiVerifierRoute
@@ -541,6 +550,7 @@ export interface FileRoutesById {
   '/app/legal/lagunas': typeof AppLegalLagunasRoute
   '/app/legal/marketplace': typeof AppLegalMarketplaceRoute
   '/app/legal/redactor': typeof AppLegalRedactorRoute
+  '/app/reportes/resumen-fiscal': typeof AppReportesResumenFiscalRoute
   '/app/tools/bank-reconciler': typeof AppToolsBankReconcilerRoute
   '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
   '/app/tools/cfdi-verifier': typeof AppToolsCfdiVerifierRoute
@@ -606,6 +616,7 @@ export interface FileRouteTypes {
     | '/app/legal/lagunas'
     | '/app/legal/marketplace'
     | '/app/legal/redactor'
+    | '/app/reportes/resumen-fiscal'
     | '/app/tools/bank-reconciler'
     | '/app/tools/cfdi-validator'
     | '/app/tools/cfdi-verifier'
@@ -660,6 +671,7 @@ export interface FileRouteTypes {
     | '/app/legal/lagunas'
     | '/app/legal/marketplace'
     | '/app/legal/redactor'
+    | '/app/reportes/resumen-fiscal'
     | '/app/tools/bank-reconciler'
     | '/app/tools/cfdi-validator'
     | '/app/tools/cfdi-verifier'
@@ -723,6 +735,7 @@ export interface FileRouteTypes {
     | '/app/legal/lagunas'
     | '/app/legal/marketplace'
     | '/app/legal/redactor'
+    | '/app/reportes/resumen-fiscal'
     | '/app/tools/bank-reconciler'
     | '/app/tools/cfdi-validator'
     | '/app/tools/cfdi-verifier'
@@ -1069,6 +1082,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppToolsBankReconcilerRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/reportes/resumen-fiscal': {
+      id: '/app/reportes/resumen-fiscal'
+      path: '/resumen-fiscal'
+      fullPath: '/app/reportes/resumen-fiscal'
+      preLoaderRoute: typeof AppReportesResumenFiscalRouteImport
+      parentRoute: typeof AppReportesRoute
+    }
     '/app/legal/redactor': {
       id: '/app/legal/redactor'
       path: '/redactor'
@@ -1298,10 +1318,12 @@ const AppMensajesRouteWithChildren = AppMensajesRoute._addFileChildren(
 )
 
 interface AppReportesRouteChildren {
+  AppReportesResumenFiscalRoute: typeof AppReportesResumenFiscalRoute
   AppReportesIndexRoute: typeof AppReportesIndexRoute
 }
 
 const AppReportesRouteChildren: AppReportesRouteChildren = {
+  AppReportesResumenFiscalRoute: AppReportesResumenFiscalRoute,
   AppReportesIndexRoute: AppReportesIndexRoute,
 }
 
