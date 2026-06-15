@@ -48,7 +48,9 @@ function CfdiDashboard() {
   });
   const [selected, setSelected] = useState<CfdiRow | null>(null);
 
-  const enabled = !!cliente?.id;
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const isDemo = !!cliente?.id && !UUID_RE.test(cliente.id);
+  const enabled = !!cliente?.id && !isDemo;
 
   const statsQ = useQuery({
     queryKey: ["cfdi-stats", cliente?.id],
