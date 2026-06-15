@@ -74,6 +74,15 @@ export function AppLayout() {
             <Link to="/app" className="flex items-center shrink-0" title="Volver al inicio">
               <Logo />
             </Link>
+            {!atHub && (
+              <Link
+                to="/app"
+                className="hidden sm:inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-border bg-card hover:bg-accent text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                title="Volver al inicio"
+              >
+                <Home className="h-3.5 w-3.5" /> Inicio
+              </Link>
+            )}
             {!atHub && crumbs.length > 1 && (
               <nav className="hidden md:flex items-center gap-1 text-sm min-w-0">
                 <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
@@ -96,7 +105,6 @@ export function AppLayout() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <ClientePicker />
             <ThemeToggle />
             <UserMenu initials={initials} signOut={signOut} despacho={despacho?.nombre} />
           </div>
