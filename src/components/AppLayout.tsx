@@ -1,15 +1,11 @@
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
-import { LogOut, ChevronDown, UserRound, X, Settings, Building2, Sun, Moon, ChevronRight } from "lucide-react";
+import { LogOut, UserRound, Settings, Building2, Sun, Moon, ChevronRight, Home } from "lucide-react";
 import { Logo } from "./Logo";
 import { useAuth } from "@/lib/auth";
-import { useActiveCliente } from "@/lib/active-cliente";
 import { useDespacho } from "@/lib/despacho/use-despacho";
 import { useTheme } from "@/lib/theme";
 import { Toaster } from "sonner";
 import { useEffect, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
-import { listClientes } from "@/lib/clientes.functions";
 
 const LABELS: Record<string, string> = {
   app: "Inicio",
