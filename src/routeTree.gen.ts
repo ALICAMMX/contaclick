@@ -26,6 +26,7 @@ import { Route as AppRiesgoRouteImport } from './routes/app.riesgo'
 import { Route as AppReportesRouteImport } from './routes/app.reportes'
 import { Route as AppMensajesRouteImport } from './routes/app.mensajes'
 import { Route as AppLegalRouteImport } from './routes/app.legal'
+import { Route as AppExpedientesRouteImport } from './routes/app.expedientes'
 import { Route as AppEquipoRouteImport } from './routes/app.equipo'
 import { Route as AppContableRouteImport } from './routes/app.contable'
 import { Route as AppConfiguracionRouteImport } from './routes/app.configuracion'
@@ -151,6 +152,11 @@ const AppMensajesRoute = AppMensajesRouteImport.update({
 const AppLegalRoute = AppLegalRouteImport.update({
   id: '/legal',
   path: '/legal',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppExpedientesRoute = AppExpedientesRouteImport.update({
+  id: '/expedientes',
+  path: '/expedientes',
   getParentRoute: () => AppRoute,
 } as any)
 const AppEquipoRoute = AppEquipoRouteImport.update({
@@ -374,6 +380,7 @@ export interface FileRoutesByFullPath {
   '/app/configuracion': typeof AppConfiguracionRoute
   '/app/contable': typeof AppContableRouteWithChildren
   '/app/equipo': typeof AppEquipoRoute
+  '/app/expedientes': typeof AppExpedientesRoute
   '/app/legal': typeof AppLegalRouteWithChildren
   '/app/mensajes': typeof AppMensajesRouteWithChildren
   '/app/reportes': typeof AppReportesRouteWithChildren
@@ -428,6 +435,7 @@ export interface FileRoutesByTo {
   '/app/clientes': typeof AppClientesRouteWithChildren
   '/app/configuracion': typeof AppConfiguracionRoute
   '/app/equipo': typeof AppEquipoRoute
+  '/app/expedientes': typeof AppExpedientesRoute
   '/app/riesgo': typeof AppRiesgoRoute
   '/dashboard/asistente': typeof DashboardAsistenteRoute
   '/dashboard/auditor': typeof DashboardAuditorRoute
@@ -486,6 +494,7 @@ export interface FileRoutesById {
   '/app/configuracion': typeof AppConfiguracionRoute
   '/app/contable': typeof AppContableRouteWithChildren
   '/app/equipo': typeof AppEquipoRoute
+  '/app/expedientes': typeof AppExpedientesRoute
   '/app/legal': typeof AppLegalRouteWithChildren
   '/app/mensajes': typeof AppMensajesRouteWithChildren
   '/app/reportes': typeof AppReportesRouteWithChildren
@@ -548,6 +557,7 @@ export interface FileRouteTypes {
     | '/app/configuracion'
     | '/app/contable'
     | '/app/equipo'
+    | '/app/expedientes'
     | '/app/legal'
     | '/app/mensajes'
     | '/app/reportes'
@@ -602,6 +612,7 @@ export interface FileRouteTypes {
     | '/app/clientes'
     | '/app/configuracion'
     | '/app/equipo'
+    | '/app/expedientes'
     | '/app/riesgo'
     | '/dashboard/asistente'
     | '/dashboard/auditor'
@@ -659,6 +670,7 @@ export interface FileRouteTypes {
     | '/app/configuracion'
     | '/app/contable'
     | '/app/equipo'
+    | '/app/expedientes'
     | '/app/legal'
     | '/app/mensajes'
     | '/app/reportes'
@@ -834,6 +846,13 @@ declare module '@tanstack/react-router' {
       path: '/legal'
       fullPath: '/app/legal'
       preLoaderRoute: typeof AppLegalRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/expedientes': {
+      id: '/app/expedientes'
+      path: '/expedientes'
+      fullPath: '/app/expedientes'
+      preLoaderRoute: typeof AppExpedientesRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/equipo': {
@@ -1258,6 +1277,7 @@ interface AppRouteChildren {
   AppConfiguracionRoute: typeof AppConfiguracionRoute
   AppContableRoute: typeof AppContableRouteWithChildren
   AppEquipoRoute: typeof AppEquipoRoute
+  AppExpedientesRoute: typeof AppExpedientesRoute
   AppLegalRoute: typeof AppLegalRouteWithChildren
   AppMensajesRoute: typeof AppMensajesRouteWithChildren
   AppReportesRoute: typeof AppReportesRouteWithChildren
@@ -1285,6 +1305,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppConfiguracionRoute: AppConfiguracionRoute,
   AppContableRoute: AppContableRouteWithChildren,
   AppEquipoRoute: AppEquipoRoute,
+  AppExpedientesRoute: AppExpedientesRoute,
   AppLegalRoute: AppLegalRouteWithChildren,
   AppMensajesRoute: AppMensajesRouteWithChildren,
   AppReportesRoute: AppReportesRouteWithChildren,
