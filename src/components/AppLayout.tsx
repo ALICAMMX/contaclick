@@ -18,7 +18,7 @@ const LABELS: Record<string, string> = {
   conciliacion: "Conciliación bancaria",
   reportes: "Reportes",
   riesgo: "Riesgo SAT",
-  mensajes: "Buzón Tributario",
+  mensajes: "Mensajería IA",
   clientes: "Expedientes",
   configuracion: "Configuración",
   equipo: "Equipo",
