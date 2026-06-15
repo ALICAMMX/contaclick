@@ -113,15 +113,19 @@ function CfdiDashboard() {
     for (const c of chunks) await uploadM.mutateAsync(c);
   }, [cliente, uploadM]);
 
-  if (!cliente) {
+  if (!cliente || isDemo) {
     return (
       <div className="max-w-2xl mx-auto py-20 text-center space-y-4">
         <div className="mx-auto h-14 w-14 rounded-2xl bg-gradient-to-br from-primary/30 to-accent/20 flex items-center justify-center">
           <FileText className="h-6 w-6 text-primary" />
         </div>
-        <h1 className="text-2xl font-semibold">Selecciona un expediente</h1>
-        <p className="text-muted-foreground">Para empezar a procesar CFDI, elige el RFC del cliente con el selector del header o crea uno nuevo.</p>
-        <Link to="/app/clientes" className="inline-block"><Button>Ir a expedientes</Button></Link>
+        <h1 className="text-2xl font-semibold">{isDemo ? "Expediente demo activo" : "Selecciona un expediente"}</h1>
+        <p className="text-muted-foreground">
+          {isDemo
+            ? "El expediente demo no permite cargar CFDIs reales. Crea un expediente nuevo desde Expedientes para usar este módulo."
+            : "Para empezar a procesar CFDI, elige el RFC del cliente con el selector del header o crea uno nuevo."}
+        </p>
+        <Link to="/app/expedientes" className="inline-block"><Button>Ir a expedientes</Button></Link>
       </div>
     );
   }
