@@ -97,7 +97,7 @@ function Hub() {
             { icon: Banknote, label: "Conciliación", href: "/app/conciliacion" },
             { icon: Mail, label: "Buzón", href: "/app/mensajes" },
             { icon: TrendingUp, label: "Tesorería", href: "/app/admin/tesoreria" },
-            { icon: Users, label: "Expedientes", href: "/app/clientes" },
+            { icon: Users, label: "Expedientes", href: "/app/expedientes" },
           ].map((q) => {
             const I = q.icon;
             return (
