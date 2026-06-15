@@ -85,78 +85,45 @@ function CfdiValidator() {
 
           <div className="grid sm:grid-cols-2 gap-4">
             <Card title="Comprobante">
-              <Row k="Versión" v={parsed.version} />
-              <Row k="UUID" v={parsed.uuid} mono />
-              <Row k="Fecha" v={parsed.fecha} />
-              <Row k="Tipo" v={parsed.tipoComprobante} />
-              <Row k="Forma de pago" v={parsed.formaPago} />
-              <Row k="Método de pago" v={parsed.metodoPago} />
-              <Row k="Moneda" v={parsed.moneda} />
+              <Row k="Versión" v={parsed.version} req />
+              <Row k="UUID" v={parsed.uuid} mono req />
+              <Row k="Fecha" v={parsed.fecha} req />
+              <Row k="Tipo" v={parsed.tipoComprobante} req />
+              <Row k="Forma de pago" v={parsed.formaPago} req />
+              <Row k="Método de pago" v={parsed.metodoPago} req />
+              <Row k="Moneda" v={parsed.moneda} req />
             </Card>
             <Card title="Totales">
-              <Row k="Subtotal" v={parsed.subTotal != null ? `$${parsed.subTotal.toLocaleString("es-MX", { minimumFractionDigits: 2 })}` : undefined} />
-              <Row k="Descuento" v={parsed.descuento != null ? `$${parsed.descuento.toLocaleString("es-MX", { minimumFractionDigits: 2 })}` : "—"} />
-              <Row k="Imp. trasladados" v={parsed.impuestos.totalTrasladados != null ? `$${parsed.impuestos.totalTrasladados.toLocaleString("es-MX", { minimumFractionDigits: 2 })}` : "—"} />
-              <Row k="Imp. retenidos" v={parsed.impuestos.totalRetenidos != null ? `$${parsed.impuestos.totalRetenidos.toLocaleString("es-MX", { minimumFractionDigits: 2 })}` : "—"} />
-              <Row k="Total" v={parsed.total != null ? `$${parsed.total.toLocaleString("es-MX", { minimumFractionDigits: 2 })}` : undefined} bold />
+              <Row k="Subtotal" v={fmtMoney(parsed.subTotal)} req={parsed.subTotal == null} />
+              <Row k="Descuento" v={fmtMoney(parsed.descuento)} />
+              <Row k="Imp. trasladados" v={fmtMoney(parsed.impuestos.totalTrasladados)} />
+              <Row k="Imp. retenidos" v={fmtMoney(parsed.impuestos.totalRetenidos)} />
+              <Row k="Total" v={fmtMoney(parsed.total)} bold req={parsed.total == null} />
             </Card>
             <Card title="Emisor">
-              <Row k="RFC" v={parsed.emisor.rfc} mono />
-              <Row k="Nombre" v={parsed.emisor.nombre} />
-              <Row k="Régimen" v={parsed.emisor.regimenFiscal} />
+              <Row k="RFC" v={parsed.emisor.rfc} mono req />
+              <Row k="Nombre" v={parsed.emisor.nombre} req />
+              <Row k="Régimen" v={parsed.emisor.regimenFiscal} req />
             </Card>
             <Card title="Receptor">
-              <Row k="RFC" v={parsed.receptor.rfc} mono />
-              <Row k="Nombre" v={parsed.receptor.nombre} />
-              <Row k="Uso CFDI" v={parsed.receptor.usoCFDI} />
-              <Row k="Régimen" v={parsed.receptor.regimenFiscalReceptor} />
+              <Row k="RFC" v={parsed.receptor.rfc} mono req />
+              <Row k="Nombre" v={parsed.receptor.nombre} req />
+              <Row k="Uso CFDI" v={parsed.receptor.usoCFDI} req />
+              <Row k="Régimen" v={parsed.receptor.regimenFiscalReceptor} req />
             </Card>
           </div>
-
-          {parsed.conceptos.length > 0 && (
-            <div className="rounded-xl border border-border/60 bg-card/50 overflow-hidden">
-              <div className="px-4 py-3 border-b border-border/50 text-sm font-medium">Conceptos ({parsed.conceptos.length})</div>
-              <table className="w-full text-sm">
-                <thead className="text-xs text-muted-foreground bg-muted/30">
-                  <tr>
-                    <th className="text-left font-medium px-4 py-2">Descripción</th>
-                    <th className="text-right font-medium px-4 py-2">Cantidad</th>
-                    <th className="text-right font-medium px-4 py-2">V. Unit.</th>
-                    <th className="text-right font-medium px-4 py-2">Importe</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {parsed.conceptos.map((c, i) => (
-                    <tr key={i} className="border-t border-border/30">
-                      <td className="px-4 py-2 truncate max-w-[400px]">{c.descripcion ?? "—"}</td>
-                      <td className="px-4 py-2 text-right tabular-nums">{c.cantidad ?? "—"}</td>
-                      <td className="px-4 py-2 text-right tabular-nums">{c.valorUnitario != null ? `$${c.valorUnitario.toLocaleString("es-MX", { minimumFractionDigits: 2 })}` : "—"}</td>
-                      <td className="px-4 py-2 text-right tabular-nums">{c.importe != null ? `$${c.importe.toLocaleString("es-MX", { minimumFractionDigits: 2 })}` : "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-    </ToolShell>
-  );
+...
+function fmtMoney(n?: number) {
+  return n != null ? `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })}` : undefined;
 }
-
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-border/60 bg-card/50 p-4">
-      <div className="text-xs uppercase tracking-wider text-muted-foreground mb-3">{title}</div>
-      <div className="space-y-1.5">{children}</div>
-    </div>
-  );
-}
-function Row({ k, v, mono, bold }: { k: string; v?: string; mono?: boolean; bold?: boolean }) {
+function Row({ k, v, mono, bold, req }: { k: string; v?: string; mono?: boolean; bold?: boolean; req?: boolean }) {
+  const missing = req && (v == null || v === "");
   return (
     <div className="flex justify-between gap-4 text-sm">
-      <span className="text-muted-foreground">{k}</span>
-      <span className={`${mono ? "font-mono text-xs" : ""} ${bold ? "font-semibold" : ""} text-right truncate`}>{v ?? "—"}</span>
+      <span className="text-muted-foreground">{k}{req ? <span className="text-destructive/70 ml-0.5">*</span> : null}</span>
+      <span className={`${mono ? "font-mono text-xs" : ""} ${bold ? "font-semibold" : ""} ${missing ? "text-destructive font-medium" : ""} text-right truncate`}>
+        {missing ? "FALTANTE" : (v ?? "—")}
+      </span>
     </div>
   );
 }
