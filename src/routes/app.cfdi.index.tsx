@@ -31,7 +31,9 @@ type CfdiRow = {
   metodo_pago: string | null; forma_pago: string | null;
   uso_cfdi: string | null; estatus_sat: string | null;
   moneda: string | null;
+  tiene_crp?: boolean;
 };
+
 
 const TIPO_LABEL: Record<string, string> = { I: "Ingreso", E: "Egreso", N: "Nómina", P: "Pago", T: "Traslado" };
 
