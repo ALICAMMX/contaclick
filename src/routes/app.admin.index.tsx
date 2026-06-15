@@ -7,21 +7,24 @@ export const Route = createFileRoute("/app/admin/")({ component: AdminCatalog })
 type Tool = { name: string; desc: string; icon: ComponentType<{ className?: string }>; href: string; status: "live" | "soon"; group: string };
 
 const TOOLS: Tool[] = [
-  { name: "Nómina IA", desc: "Cálculo SDI, IMSS, ISR. Prenómina automática.", icon: Users, href: "/app/admin/nomina", status: "soon", group: "Personal & RH" },
-  { name: "Cumplimiento Laboral", desc: "Checklist IMSS / INFONAVIT / SAT con semáforos.", icon: ShieldCheck, href: "/app/admin/cumplimiento", status: "soon", group: "Personal & RH" },
+  // Operación diaria
+  { name: "Tesorería", desc: "Flujo de caja 90 días, cuentas por cobrar/pagar.", icon: TrendingUp, href: "/app/admin/tesoreria", status: "soon", group: "1 · Operación diaria" },
+  { name: "Gestor de Trámites", desc: "Kanban con semáforo por vencimiento.", icon: FileText, href: "/app/admin/tramites", status: "soon", group: "1 · Operación diaria" },
 
-  { name: "Activos Fijos", desc: "MOI, depreciación fiscal y contable automática.", icon: Building, href: "/app/admin/activos", status: "soon", group: "Patrimonio" },
-  { name: "Inventarios", desc: "Kardex derivado de CFDI emitidos y recibidos.", icon: Boxes, href: "/app/admin/inventarios", status: "soon", group: "Patrimonio" },
+  // Comunicaciones
+  { name: "Buzón Tributario", desc: "Lector inteligente de notificaciones SAT.", icon: Mail, href: "/app/admin/buzon", status: "soon", group: "2 · Comunicaciones" },
+  { name: "Correspondencia", desc: "Generador de minutas, oficios y respuestas.", icon: MessageSquare, href: "/app/admin/correspondencia", status: "soon", group: "2 · Comunicaciones" },
 
-  { name: "Tesorería", desc: "Flujo de caja 90 días, cuentas por cobrar/pagar.", icon: TrendingUp, href: "/app/admin/tesoreria", status: "soon", group: "Finanzas" },
+  // Personal & RH (quincenal / mensual)
+  { name: "Nómina IA", desc: "Cálculo SDI, IMSS, ISR. Prenómina automática.", icon: Users, href: "/app/admin/nomina", status: "soon", group: "3 · Personal & RH" },
+  { name: "Cumplimiento Laboral", desc: "Checklist IMSS / INFONAVIT / SAT con semáforos.", icon: ShieldCheck, href: "/app/admin/cumplimiento", status: "soon", group: "3 · Personal & RH" },
 
-  { name: "Gestor de Trámites", desc: "Kanban con semáforo por vencimiento.", icon: FileText, href: "/app/admin/tramites", status: "soon", group: "Operación" },
-
-  { name: "Buzón Tributario", desc: "Lector inteligente de notificaciones SAT.", icon: Mail, href: "/app/admin/buzon", status: "soon", group: "Comunicaciones" },
-  { name: "Correspondencia", desc: "Generador de minutas, oficios y respuestas.", icon: MessageSquare, href: "/app/admin/correspondencia", status: "soon", group: "Comunicaciones" },
+  // Patrimonio
+  { name: "Activos Fijos", desc: "MOI, depreciación fiscal y contable automática.", icon: Building, href: "/app/admin/activos", status: "soon", group: "4 · Patrimonio" },
+  { name: "Inventarios", desc: "Kardex derivado de CFDI emitidos y recibidos.", icon: Boxes, href: "/app/admin/inventarios", status: "soon", group: "4 · Patrimonio" },
 ];
 
-const GROUPS = ["Personal & RH", "Patrimonio", "Finanzas", "Operación", "Comunicaciones"];
+const GROUPS = ["1 · Operación diaria", "2 · Comunicaciones", "3 · Personal & RH", "4 · Patrimonio"];
 
 function AdminCatalog() {
   return (

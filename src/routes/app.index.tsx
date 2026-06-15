@@ -1,6 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Calculator, Briefcase, Scale, ArrowRight, FileText, ShieldAlert, Users, TrendingUp, Mail, Banknote, ScanSearch, Building, FileSignature } from "lucide-react";
+import { Calculator, Briefcase, Scale, ArrowRight, FileText, ShieldAlert, Users, TrendingUp, Mail, Banknote, UserRound, Plus, X } from "lucide-react";
 import { useActiveCliente } from "@/lib/active-cliente";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { listClientes } from "@/lib/clientes.functions";
+import { useEffect, useRef, useState } from "react";
 
 export const Route = createFileRoute("/app/")({ component: Hub });
 
@@ -30,7 +34,6 @@ const MODULES = [
 ] as const;
 
 function Hub() {
-  const { cliente } = useActiveCliente();
   return (
     <div className="space-y-10">
       {/* Welcome */}
@@ -42,11 +45,12 @@ function Hub() {
           ¿Qué quieres hacer hoy?
         </h1>
         <p className="mt-3 text-sm text-muted-foreground max-w-xl mx-auto">
-          {cliente
-            ? <>Trabajando sobre <span className="font-medium text-foreground">{cliente.razon_social}</span> · {cliente.rfc}. Elige un módulo para empezar.</>
-            : "Selecciona tu módulo de trabajo. Cada módulo es independiente — entra, usa la herramienta, regresa cuando quieras."}
+          Selecciona tu módulo de trabajo. Cada módulo es independiente — entra, usa la herramienta, regresa cuando quieras.
         </p>
       </section>
+
+      {/* Expediente activo */}
+      <ExpedienteBar />
 
       {/* Two big modules */}
       <section className="grid md:grid-cols-2 gap-5">
@@ -106,6 +110,97 @@ function Hub() {
         </div>
       </section>
     </div>
+  );
+}
+
+function ExpedienteBar() {
+  const { cliente, setCliente } = useActiveCliente();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const fetchClientes = useServerFn(listClientes);
+  const { data } = useQuery({
+    queryKey: ["clientes"],
+    queryFn: () => fetchClientes(),
+    enabled: open,
+  });
+
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
+
+  return (
+    <section className="max-w-3xl mx-auto">
+      <div className="rounded-2xl border border-border bg-card p-4 flex items-center gap-4">
+        <div className="h-11 w-11 rounded-xl bg-primary/10 text-primary grid place-items-center shrink-0">
+          <UserRound className="h-5 w-5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Expediente activo</div>
+          {cliente ? (
+            <div className="flex items-baseline gap-2 min-w-0">
+              <div className="font-semibold truncate">{cliente.razon_social}</div>
+              <div className="text-xs font-mono text-muted-foreground shrink-0">{cliente.rfc}</div>
+            </div>
+          ) : (
+            <div className="text-sm text-muted-foreground">Aún no has seleccionado un expediente.</div>
+          )}
+        </div>
+        <div className="flex items-center gap-2 shrink-0" ref={ref}>
+          {cliente && (
+            <button
+              onClick={() => setCliente(null)}
+              className="hidden sm:inline-flex items-center gap-1 h-9 px-2.5 rounded-md border border-border text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              title="Quitar expediente"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+          <div className="relative">
+            <button
+              onClick={() => setOpen((v) => !v)}
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-border bg-background hover:bg-accent text-sm transition-colors"
+            >
+              {cliente ? "Cambiar" : "Elegir"}
+            </button>
+            {open && (
+              <div className="absolute right-0 mt-2 w-80 rounded-lg border border-border bg-popover shadow-xl z-40 overflow-hidden">
+                <div className="max-h-72 overflow-y-auto py-1">
+                  {(data?.clientes ?? []).length === 0 ? (
+                    <div className="px-3 py-6 text-center text-xs text-muted-foreground">
+                      No tienes expedientes aún.
+                    </div>
+                  ) : (
+                    (data?.clientes ?? []).map((c) => (
+                      <button
+                        key={c.id}
+                        onClick={() => {
+                          setCliente({ id: c.id, rfc: c.rfc, razon_social: c.razon_social, regimen_fiscal: c.regimen_fiscal });
+                          setOpen(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 hover:bg-accent text-sm ${cliente?.id === c.id ? "bg-primary/10" : ""}`}
+                      >
+                        <div className="font-medium truncate">{c.razon_social}</div>
+                        <div className="text-xs text-muted-foreground font-mono">{c.rfc}</div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+          <Link
+            to="/app/clientes"
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md bg-primary text-primary-foreground hover:opacity-90 text-sm font-medium transition-opacity"
+          >
+            <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Cargar nuevo expediente</span><span className="sm:hidden">Nuevo</span>
+          </Link>
+        </div>
+      </div>
+    </section>
   );
 }
 

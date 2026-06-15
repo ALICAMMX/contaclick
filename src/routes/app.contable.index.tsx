@@ -8,39 +8,51 @@ type Status = "live" | "beta" | "soon";
 type Tool = { name: string; desc: string; icon: ComponentType<{ className?: string }>; href?: string; status: Status; group: string };
 
 const TOOLS: Tool[] = [
-  // CFDI & Comprobantes
-  { name: "Validador CFDI 4.0", desc: "Estructura, RFC, totales, UUID al instante.", icon: FileText, href: "/app/tools/cfdi-validator", status: "live", group: "CFDI & Comprobantes" },
-  { name: "Lector masivo de XML", desc: "Procesa ZIPs del SAT y exporta tabla.", icon: FileStack, href: "/app/tools/xml-bulk-reader", status: "live", group: "CFDI & Comprobantes" },
-  { name: "Verificador de UUID", desc: "Consulta webservice del SAT.", icon: ShieldCheck, href: "/app/tools/cfdi-verifier", status: "live", group: "CFDI & Comprobantes" },
-  { name: "Auditor express", desc: "Folios, duplicados, notas de crédito huérfanas.", icon: ScanSearch, href: "/app/tools/express-auditor", status: "live", group: "CFDI & Comprobantes" },
-  { name: "CFDI del expediente", desc: "Bandeja unificada del cliente activo.", icon: FileText, href: "/app/cfdi", status: "live", group: "CFDI & Comprobantes" },
+  // 1. Alta del expediente
+  { name: "Lector de Constancia Fiscal", desc: "Sube la CSF y autocompleta régimen, obligaciones y domicilio.", icon: FileBadge, href: "/app/tools/csf-parser", status: "live", group: "1 · Alta del expediente" },
 
-  // Cálculo fiscal
-  { name: "Calculadora ISR / IVA", desc: "Pago provisional mensual.", icon: Calculator, href: "/app/tools/isr-iva-calculator", status: "live", group: "Cálculo Fiscal" },
-  { name: "Calculadora RESICO PF", desc: "ISR mensual personas físicas RESICO.", icon: Coins, href: "/app/tools/resico-calculator", status: "live", group: "Cálculo Fiscal" },
-  { name: "Transfer Pricing", desc: "Análisis de partes relacionadas.", icon: Network, status: "soon", group: "Cálculo Fiscal" },
+  // 2. Ingesta de CFDI
+  { name: "Lector masivo de XML", desc: "Procesa ZIPs del SAT y exporta tabla.", icon: FileStack, href: "/app/tools/xml-bulk-reader", status: "live", group: "2 · Ingesta de CFDI" },
+  { name: "Validador CFDI 4.0", desc: "Estructura, RFC, totales, UUID al instante.", icon: FileText, href: "/app/tools/cfdi-validator", status: "live", group: "2 · Ingesta de CFDI" },
+  { name: "Verificador de UUID", desc: "Consulta webservice del SAT.", icon: ShieldCheck, href: "/app/tools/cfdi-verifier", status: "live", group: "2 · Ingesta de CFDI" },
+  { name: "CFDI del expediente", desc: "Bandeja unificada del cliente activo.", icon: FileText, href: "/app/cfdi", status: "live", group: "2 · Ingesta de CFDI" },
 
-  // Defensa SAT
-  { name: "Riesgo SAT 2026", desc: "Score sobre los 12 criterios del Plan Maestro.", icon: ShieldAlert, href: "/app/riesgo", status: "live", group: "Defensa SAT" },
-  { name: "Conciliador bancario", desc: "Cruza estado de cuenta vs CFDI.", icon: Banknote, href: "/app/tools/bank-reconciler", status: "live", group: "Defensa SAT" },
-  { name: "Conciliación del expediente", desc: "Histórico mensual conciliado.", icon: Banknote, href: "/app/conciliacion", status: "live", group: "Defensa SAT" },
-  { name: "Validador de Deducibilidad", desc: "Detecta deducciones improcedentes con IA.", icon: ShieldCheck, status: "soon", group: "Defensa SAT" },
-  { name: "Validador 69-B / EFOS", desc: "Sincronización diaria de la lista negra.", icon: AlertTriangle, status: "soon", group: "Defensa SAT" },
-  { name: "Validador de Precios de Importación", desc: "Comparables de mercado y memo justificativo.", icon: Globe, status: "soon", group: "Defensa SAT" },
-  { name: "Detector de Nómina Oculta", desc: "Identifica pagos recurrentes a PF.", icon: Users, status: "soon", group: "Defensa SAT" },
+  // 3. Auditoría y conciliación
+  { name: "Auditor express", desc: "Folios, duplicados, notas de crédito huérfanas.", icon: ScanSearch, href: "/app/tools/express-auditor", status: "live", group: "3 · Auditoría & Conciliación" },
+  { name: "Conciliador bancario", desc: "Cruza estado de cuenta vs CFDI.", icon: Banknote, href: "/app/tools/bank-reconciler", status: "live", group: "3 · Auditoría & Conciliación" },
+  { name: "Conciliación del expediente", desc: "Histórico mensual conciliado.", icon: Banknote, href: "/app/conciliacion", status: "live", group: "3 · Auditoría & Conciliación" },
 
-  // Documentos
-  { name: "Lector de Constancia Fiscal", desc: "Régimen, obligaciones y domicilio.", icon: FileBadge, href: "/app/tools/csf-parser", status: "live", group: "Documentos" },
-  { name: "Generador de oficios SAT", desc: "Plantillas listas personalizadas.", icon: FileSignature, href: "/app/tools/oficio-generator", status: "live", group: "Documentos" },
-  { name: "Reportes del expediente", desc: "Exporta papeles de trabajo PDF/Excel.", icon: FileText, href: "/app/reportes", status: "live", group: "Documentos" },
+  // 4. Cálculo de impuestos
+  { name: "Calculadora ISR / IVA", desc: "Pago provisional mensual.", icon: Calculator, href: "/app/tools/isr-iva-calculator", status: "live", group: "4 · Cálculo de impuestos" },
+  { name: "Calculadora RESICO PF", desc: "ISR mensual personas físicas RESICO.", icon: Coins, href: "/app/tools/resico-calculator", status: "live", group: "4 · Cálculo de impuestos" },
+  { name: "Transfer Pricing", desc: "Análisis de partes relacionadas.", icon: Network, status: "soon", group: "4 · Cálculo de impuestos" },
 
-  // IA
-  { name: "Asistente fiscal IA", desc: "Consulta legislación con contexto del cliente.", icon: Bot, href: "/app/tools/fiscal-assistant", status: "live", group: "IA & Agentes" },
-  { name: "Mis Agentes IA", desc: "8 agentes que vigilan tu expediente 24/7.", icon: Bot, href: "/app/contable/agentes", status: "live", group: "IA & Agentes" },
-  { name: "Buzón Tributario", desc: "Lector inteligente de notificaciones SAT.", icon: Mail, href: "/app/mensajes", status: "live", group: "IA & Agentes" },
+  // 5. Defensa SAT
+  { name: "Riesgo SAT 2026", desc: "Score sobre los 12 criterios del Plan Maestro.", icon: ShieldAlert, href: "/app/riesgo", status: "live", group: "5 · Defensa SAT" },
+  { name: "Validador de Deducibilidad", desc: "Detecta deducciones improcedentes con IA.", icon: ShieldCheck, status: "soon", group: "5 · Defensa SAT" },
+  { name: "Validador 69-B / EFOS", desc: "Sincronización diaria de la lista negra.", icon: AlertTriangle, status: "soon", group: "5 · Defensa SAT" },
+  { name: "Validador de Precios de Importación", desc: "Comparables de mercado y memo justificativo.", icon: Globe, status: "soon", group: "5 · Defensa SAT" },
+  { name: "Detector de Nómina Oculta", desc: "Identifica pagos recurrentes a PF.", icon: Users, status: "soon", group: "5 · Defensa SAT" },
+
+  // 6. Cierre y entregables
+  { name: "Reportes del expediente", desc: "Exporta papeles de trabajo PDF/Excel.", icon: FileText, href: "/app/reportes", status: "live", group: "6 · Cierre & Entregables" },
+  { name: "Generador de oficios SAT", desc: "Plantillas listas personalizadas.", icon: FileSignature, href: "/app/tools/oficio-generator", status: "live", group: "6 · Cierre & Entregables" },
+
+  // 7. IA siempre activa
+  { name: "Asistente fiscal IA", desc: "Consulta legislación con contexto del cliente.", icon: Bot, href: "/app/tools/fiscal-assistant", status: "live", group: "7 · IA siempre activa" },
+  { name: "Mis Agentes IA", desc: "8 agentes que vigilan tu expediente 24/7.", icon: Bot, href: "/app/contable/agentes", status: "live", group: "7 · IA siempre activa" },
+  { name: "Buzón Tributario", desc: "Lector inteligente de notificaciones SAT.", icon: Mail, href: "/app/mensajes", status: "live", group: "7 · IA siempre activa" },
 ];
 
-const GROUPS = ["CFDI & Comprobantes", "Cálculo Fiscal", "Defensa SAT", "Documentos", "IA & Agentes"];
+const GROUPS = [
+  "1 · Alta del expediente",
+  "2 · Ingesta de CFDI",
+  "3 · Auditoría & Conciliación",
+  "4 · Cálculo de impuestos",
+  "5 · Defensa SAT",
+  "6 · Cierre & Entregables",
+  "7 · IA siempre activa",
+];
 
 function ContableCatalog() {
   const live = TOOLS.filter((t) => t.status === "live").length;
