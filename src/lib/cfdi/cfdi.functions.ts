@@ -253,8 +253,24 @@ export const listCfdi = createServerFn({ method: "POST" })
     }
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
-    return { cfdis: rows ?? [] };
+
+    // Build set of UUIDs that have a related payment complement (tipo P)
+    const paidUuids = new Set<string>();
+    const { data: pagos } = await supabase
+      .from("cfdi_xml")
+      .select("id, cfdi_relaciones(uuid_relacionado)")
+      .eq("cliente_id", data.cliente_id)
+      .eq("tipo_cfdi", "P");
+    (pagos ?? []).forEach((p: { cfdi_relaciones?: Array<{ uuid_relacionado: string }> | null }) => {
+      (p.cfdi_relaciones ?? []).forEach((r) => paidUuids.add(r.uuid_relacionado.toUpperCase()));
+    });
+    const enriched = (rows ?? []).map((r) => ({
+      ...r,
+      tiene_crp: paidUuids.has(String(r.uuid).toUpperCase()),
+    }));
+    return { cfdis: enriched };
   });
+
 
 export const getCfdiStats = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])

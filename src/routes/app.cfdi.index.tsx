@@ -4,10 +4,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import JSZip from "jszip";
 import {
-  Upload, FileText, Loader2, Search, Filter, Download, X, ArrowDownToLine,
-  TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, FileWarning, Sparkles,
+  Upload, FileText, Loader2, Search, Download, X, ArrowDownToLine,
+  TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, FileWarning, Sparkles, Copy, Check,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +31,9 @@ type CfdiRow = {
   metodo_pago: string | null; forma_pago: string | null;
   uso_cfdi: string | null; estatus_sat: string | null;
   moneda: string | null;
+  tiene_crp?: boolean;
 };
+
 
 const TIPO_LABEL: Record<string, string> = { I: "Ingreso", E: "Egreso", N: "Nómina", P: "Pago", T: "Traslado" };
 
@@ -230,7 +234,7 @@ function CfdiDashboard() {
                     onClick={() => setSelected(r)}>
                   <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{fmtDate(r.fecha)}</td>
                   <td className="px-4 py-3"><TipoBadge tipo={r.tipo_cfdi} /></td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground truncate max-w-[140px]">{r.uuid}</td>
+                  <td className="px-4 py-3"><UuidCell uuid={r.uuid} /></td>
                   <td className="px-4 py-3">
                     <div className="font-medium truncate max-w-[280px]">{r.tipo_cfdi === "I" ? r.nombre_emisor : r.nombre_receptor}</div>
                     <div className="text-xs text-muted-foreground font-mono">
@@ -240,7 +244,25 @@ function CfdiDashboard() {
                   <td className="px-4 py-3 text-xs">
                     <span className="px-1.5 py-0.5 rounded bg-muted/40">{r.metodo_pago ?? "—"}</span>
                     <span className="ml-1 text-muted-foreground">{r.forma_pago}</span>
+                    {r.metodo_pago === "PPD" && r.tipo_cfdi === "I" && !r.tiene_crp && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="ml-1.5 inline-flex items-center text-amber-400">
+                              <AlertTriangle className="h-3.5 w-3.5" />
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>PPD sin Complemento de Pago (CRP)</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                    {r.metodo_pago === "PPD" && r.tipo_cfdi === "I" && r.tiene_crp && (
+                      <span className="ml-1.5 inline-flex items-center text-emerald-400" title="Tiene CRP">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                      </span>
+                    )}
                   </td>
+
                   <td className="px-4 py-3 text-right font-medium tabular-nums">{fmt(Number(r.total))}</td>
                   <td className="px-4 py-3 text-right">
                     <Link to="/app/cfdi/$id" params={{ id: r.id }}
@@ -391,3 +413,33 @@ function ExportButton({ rows }: { rows: CfdiRow[] }) {
     </Button>
   );
 }
+
+function UuidCell({ uuid }: { uuid: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(uuid).then(() => {
+      setCopied(true);
+      toast.success("UUID copiado");
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={copy}
+            className="group inline-flex items-center gap-1.5 font-mono text-xs text-muted-foreground hover:text-foreground max-w-[160px]"
+          >
+            <span className="truncate">{uuid}</span>
+            {copied ? <Check className="h-3 w-3 text-emerald-400 shrink-0" /> : <Copy className="h-3 w-3 opacity-60 group-hover:opacity-100 shrink-0" />}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent className="font-mono text-xs">{uuid}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
