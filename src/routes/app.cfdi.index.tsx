@@ -4,10 +4,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import JSZip from "jszip";
 import {
-  Upload, FileText, Loader2, Search, Filter, Download, X, ArrowDownToLine,
-  TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, FileWarning, Sparkles,
+  Upload, FileText, Loader2, Search, Download, X, ArrowDownToLine,
+  TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, FileWarning, Sparkles, Copy, Check,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
