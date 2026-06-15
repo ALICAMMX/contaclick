@@ -14,6 +14,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useActiveCliente } from "@/lib/active-cliente";
+import { fmtFechaMx } from "@/lib/utils";
 import {
   uploadCfdiBatch, listCfdi, getCfdiStats,
 } from "@/lib/cfdi/cfdi.functions";
