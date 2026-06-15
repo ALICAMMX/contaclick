@@ -1,7 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
-import { Calculator } from "lucide-react";
+import { Calculator, Download, Loader2, FileBarChart } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import { ToolShell } from "@/components/ToolShell";
+import { Button } from "@/components/ui/button";
+import { useActiveCliente } from "@/lib/active-cliente";
+import { getResumenFiscalMes } from "@/lib/fiscal/resumen.functions";
 
 export const Route = createFileRoute("/app/tools/isr-iva-calculator")({
   component: IsrIvaCalculator,
@@ -30,11 +35,22 @@ function calcIsrPF(base: number) {
   return { isr, tramo };
 }
 
+function currentPeriodo(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
 function IsrIvaCalculator() {
+  const { cliente } = useActiveCliente();
+  const fnResumen = useServerFn(getResumenFiscalMes);
+
+  const [periodo, setPeriodo] = useState(currentPeriodo());
   const [ingresos, setIngresos] = useState("");
   const [deducciones, setDeducciones] = useState("");
   const [ivaTrasladado, setIvaTrasladado] = useState("");
   const [ivaAcreditable, setIvaAcreditable] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importedFrom, setImportedFrom] = useState<string | null>(null);
 
   const calc = useMemo(() => {
     const ing = Number(ingresos) || 0;
@@ -50,12 +66,76 @@ function IsrIvaCalculator() {
 
   const f = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+  async function importarDelExpediente() {
+    if (!cliente) {
+      toast.error("Selecciona un expediente primero");
+      return;
+    }
+    setImporting(true);
+    try {
+      const r = await fnResumen({ data: { cliente_id: cliente.id, periodo } });
+      setIngresos(r.ingresos.toFixed(2));
+      setDeducciones(r.egresos.toFixed(2));
+      setIvaTrasladado(r.ivaTrasladado.toFixed(2));
+      setIvaAcreditable(r.ivaAcreditable.toFixed(2));
+      setImportedFrom(`${r.cfdiCount} CFDI · ${periodo}`);
+      if (r.cfdiCount === 0) {
+        toast.warning("No se encontraron CFDI en ese periodo");
+      } else {
+        toast.success(`Importado: ${r.cfdiCount} CFDI`);
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error al importar");
+    } finally {
+      setImporting(false);
+    }
+  }
+
   return (
     <ToolShell
       title="Calculadora ISR / IVA mensual"
       description="Pago provisional estimado para PF con actividad empresarial. Verifica siempre las tarifas vigentes."
       icon={<Calculator className="h-5 w-5 text-primary-foreground" />}
     >
+      <div className="rounded-xl border border-border/60 bg-card/30 p-4 mb-5 flex flex-wrap items-end gap-3">
+        <div>
+          <label className="text-xs text-muted-foreground mb-1 block">Expediente activo</label>
+          <div className="text-sm font-medium">
+            {cliente ? `${cliente.razon_social} · ${cliente.rfc}` : <span className="text-muted-foreground">— Sin expediente seleccionado</span>}
+          </div>
+        </div>
+        <div>
+          <label className="text-xs text-muted-foreground mb-1 block">Periodo</label>
+          <input
+            type="month"
+            value={periodo}
+            onChange={(e) => setPeriodo(e.target.value)}
+            className="h-9 px-3 rounded-md bg-input/50 border border-border text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+        </div>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={importarDelExpediente}
+          disabled={!cliente || importing}
+          className="gap-2"
+        >
+          {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+          Importar del expediente
+        </Button>
+        <Button asChild variant="ghost" className="gap-2 ml-auto">
+          <Link to="/app/reportes/resumen-fiscal">
+            <FileBarChart className="h-4 w-4" />
+            Resumen fiscal del mes
+          </Link>
+        </Button>
+      </div>
+      {importedFrom && (
+        <p className="text-xs text-muted-foreground -mt-2 mb-4">
+          Datos importados de {importedFrom}. Puedes editarlos antes de calcular.
+        </p>
+      )}
+
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="rounded-xl border border-border/60 bg-card/50 p-5 space-y-4">
           <h3 className="font-semibold">Datos del periodo</h3>
