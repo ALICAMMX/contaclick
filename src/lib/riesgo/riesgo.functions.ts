@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
+import { lookupEfos } from "@/lib/efos/lista-demo";
 
 const Input = z.object({
   cliente_id: z.string().uuid(),
@@ -89,22 +90,43 @@ export const computeRiesgoSAT = createServerFn({ method: "POST" })
 
     const criterios: CriterioRiesgo[] = [];
 
-    // 1. EFOS — proveedores marcados internamente (heurística: estatus_sat=Cancelado, sin uuid, o RFC repetidos con montos altos)
+    // 1. EFOS / 69-B — cruce real contra la lista negra
     {
-      const sospechosos = recibidos.filter((c) => c.estatus_sat === "Cancelado" || !c.uuid);
-      const monto = sospechosos.reduce((a, b) => a + Number(b.total ?? 0), 0);
-      const pct = recibidos.length ? (sospechosos.length / recibidos.length) * 100 : 0;
-      const p = Math.min(100, pct * 4 + (monto > 100000 ? 30 : 0));
+      const provs = new Map<string, number>();
+      for (const c of recibidos) {
+        const rfc = ((c.rfc_emisor as string) ?? "").toUpperCase();
+        if (!rfc) continue;
+        provs.set(rfc, (provs.get(rfc) ?? 0) + Number(c.total ?? 0));
+      }
+      const matches: { rfc: string; monto: number; situacion: string }[] = [];
+      for (const [rfc, monto] of provs) {
+        const hit = lookupEfos(rfc);
+        if (hit && hit.situacion !== "desvirtuado" && hit.situacion !== "cancelado") {
+          matches.push({ rfc, monto, situacion: hit.situacion });
+        }
+      }
+      const definitivos = matches.filter((m) => m.situacion === "definitivo");
+      const monto = matches.reduce((a, b) => a + b.monto, 0);
+      const p = definitivos.length > 0
+        ? Math.min(100, 70 + definitivos.length * 5)
+        : matches.length > 0
+          ? 45
+          : 5;
       criterios.push({
         id: 1,
-        nombre: "Proveedores EFOS / cancelados",
-        descripcion: "CFDI recibidos cancelados o sin timbre vigente — pérdida de deducción.",
+        nombre: "Proveedores EFOS / 69-B",
+        descripcion: "Cruce de tus proveedores contra la lista negra del SAT (art. 69-B CFF).",
         nivel: level(p),
         puntos: Math.round(p),
-        hallazgos: sospechosos.length
-          ? [`${sospechosos.length} CFDI de riesgo por $${monto.toFixed(0)}`]
-          : ["Sin CFDI recibidos cancelados en el periodo."],
-        accion: "Sincroniza lista 69-B y elimina deducciones de proveedores en lista negra.",
+        hallazgos: matches.length
+          ? [
+              `${matches.length} proveedor(es) en lista 69-B por $${monto.toFixed(0)}`,
+              ...(definitivos.length ? [`${definitivos.length} en situación DEFINITIVA (deducción improcedente)`] : []),
+            ]
+          : ["Ningún proveedor del periodo aparece en la lista 69-B."],
+        accion: matches.length
+          ? "Elimina deducciones de estos RFC y prepara reverso de IVA acreditable."
+          : "Mantén el monitoreo activo: la lista se actualiza cada semana.",
       });
     }
 
