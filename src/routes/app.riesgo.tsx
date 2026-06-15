@@ -16,13 +16,16 @@ const colorBySemaforo = (s: "verde" | "amarillo" | "rojo") =>
       ? "text-amber-400 border-amber-500/40 bg-amber-500/10"
       : "text-emerald-400 border-emerald-500/40 bg-emerald-500/10";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function RiesgoPage() {
   const { cliente } = useActiveCliente();
+  const isDemo = !!cliente?.id && !UUID_RE.test(cliente.id);
   const run = useServerFn(computeRiesgoSAT);
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["riesgo-sat", cliente?.id],
     queryFn: () => run({ data: { cliente_id: cliente!.id } }),
-    enabled: !!cliente?.id,
+    enabled: !!cliente?.id && !isDemo,
   });
 
   if (!cliente) {
@@ -36,6 +39,24 @@ function RiesgoPage() {
           </p>
           <Link to="/app/clientes" className="inline-block mt-4 text-sm text-primary hover:underline">
             Ver expedientes →
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (isDemo) {
+    return (
+      <div className="space-y-6">
+        <Header />
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-10 text-center">
+          <ShieldQuestion className="h-10 w-10 mx-auto text-amber-400 mb-3" />
+          <p className="text-sm text-amber-200">
+            <span className="font-mono">{cliente.rfc}</span> es un expediente demo sin datos reales.
+            Crea o selecciona un expediente real para calcular el riesgo SAT.
+          </p>
+          <Link to="/app/clientes" className="inline-block mt-4 text-sm text-primary hover:underline">
+            Ver expedientes reales →
           </Link>
         </div>
       </div>
