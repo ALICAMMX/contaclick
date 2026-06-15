@@ -1,113 +1,267 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { ScanSearch, Upload, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { ScanSearch, AlertTriangle, CheckCircle2, FileDown, Loader2, Play } from "lucide-react";
+import jsPDF from "jspdf";
 import { ToolShell } from "@/components/ToolShell";
-import { parseCfdi } from "@/lib/tools/cfdi-parser";
+import { Button } from "@/components/ui/button";
+import { useActiveCliente } from "@/lib/active-cliente";
+import { runExpressAudit, type AuditFinding } from "@/lib/auditor/auditor.functions";
 
 export const Route = createFileRoute("/app/tools/express-auditor")({
   component: ExpressAuditor,
 });
 
-type Issue = { type: "duplicate" | "missing-uuid" | "wrong-rfc" | "version" | "totals"; level: "high" | "med" | "low"; message: string; archivo?: string };
+const TIPO_LABEL: Record<AuditFinding["tipo"], string> = {
+  duplicado: "Folios duplicados",
+  nc_huerfana: "Notas de crédito huérfanas",
+  cancelado_declarado: "CFDI cancelados",
+  ppd_sin_pago: "PPD sin complemento de pago",
+  fuera_periodo: "Fuera del periodo declarado",
+};
 
 function ExpressAuditor() {
-  const [issues, setIssues] = useState<Issue[]>([]);
-  const [stats, setStats] = useState({ total: 0, ok: 0 });
+  const { cliente } = useActiveCliente();
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [filter, setFilter] = useState<AuditFinding["tipo"] | "all">("all");
+  const fn = useServerFn(runExpressAudit);
 
-  const audit = async (files: FileList) => {
-    const found: Issue[] = [];
-    const seenUuids = new Map<string, string>();
-    let ok = 0;
-    let total = 0;
+  const q = useQuery({
+    enabled: !!cliente?.id,
+    queryKey: ["audit", cliente?.id, year],
+    queryFn: () => fn({ data: { cliente_id: cliente!.id, year } }),
+  });
 
-    for (const f of Array.from(files)) {
-      if (!/\.xml$/i.test(f.name)) continue;
-      total++;
-      const text = await f.text();
-      const p = parseCfdi(text);
+  const rerun = useMutation({ mutationFn: () => fn({ data: { cliente_id: cliente!.id, year } }), onSuccess: () => q.refetch() });
 
-      if (!p.uuid) found.push({ type: "missing-uuid", level: "high", message: "No tiene UUID — no está timbrado", archivo: f.name });
-      else if (seenUuids.has(p.uuid)) found.push({ type: "duplicate", level: "high", message: `UUID duplicado (también en ${seenUuids.get(p.uuid)})`, archivo: f.name });
-      else seenUuids.set(p.uuid, f.name);
+  if (!cliente) {
+    return (
+      <ToolShell
+        title="Auditor express"
+        description="Selecciona un expediente para auditar sus CFDIs."
+        icon={<ScanSearch className="h-5 w-5 text-primary-foreground" />}
+      >
+        <div className="rounded-xl border border-warning/40 bg-warning/5 p-6 flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 text-warning mt-0.5" />
+          <div className="text-sm">Elige un cliente desde la barra superior para correr la auditoría.</div>
+        </div>
+      </ToolShell>
+    );
+  }
 
-      if (p.version && p.version !== "4.0") found.push({ type: "version", level: "med", message: `Versión ${p.version}, debería ser 4.0`, archivo: f.name });
+  const findings = q.data?.findings ?? [];
+  const stats = q.data?.stats;
+  const filtered = filter === "all" ? findings : findings.filter((f) => f.tipo === filter);
 
-      if (p.subTotal != null && p.total != null) {
-        const trasladados = p.impuestos.totalTrasladados ?? 0;
-        const retenidos = p.impuestos.totalRetenidos ?? 0;
-        const descuento = p.descuento ?? 0;
-        const esperado = p.subTotal - descuento + trasladados - retenidos;
-        const diff = Math.abs(esperado - p.total);
-        if (diff > 0.5) {
-          found.push({ type: "totals", level: "med", message: `Totales no cuadran (diferencia $${diff.toFixed(2)})`, archivo: f.name });
-        }
+  function exportPdf() {
+    if (!stats) return;
+    const doc = new jsPDF({ unit: "pt", format: "letter" });
+    const W = doc.internal.pageSize.getWidth();
+    let y = 50;
+
+    // Header
+    doc.setFillColor(20, 30, 80);
+    doc.rect(0, 0, W, 70, "F");
+    doc.setTextColor(255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(20);
+    doc.text("ContaClick", 40, 35);
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
+    doc.text("Reporte de auditoría express", 40, 55);
+
+    y = 100;
+    doc.setTextColor(20);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text(cliente!.razon_social, 40, y);
+    y += 16;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`RFC: ${cliente!.rfc}`, 40, y);
+    doc.text(`Año fiscal: ${year}`, 250, y);
+    doc.text(`Generado: ${new Date().toLocaleString("es-MX")}`, 380, y);
+    y += 24;
+
+    // Resumen
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text("Resumen ejecutivo", 40, y);
+    y += 6;
+    doc.setDrawColor(200);
+    doc.line(40, y, W - 40, y);
+    y += 16;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    const rows: Array<[string, number]> = [
+      [TIPO_LABEL.duplicado, stats.duplicados],
+      [TIPO_LABEL.nc_huerfana, stats.nc_huerfanas],
+      [TIPO_LABEL.cancelado_declarado, stats.cancelados_declarados],
+      [TIPO_LABEL.ppd_sin_pago, stats.ppd_sin_pago],
+      [TIPO_LABEL.fuera_periodo, stats.fuera_periodo],
+    ];
+    for (const [k, v] of rows) {
+      doc.text(k, 50, y);
+      doc.text(String(v), W - 60, y, { align: "right" });
+      y += 16;
+    }
+    y += 8;
+    doc.setFont("helvetica", "bold");
+    doc.text(`Total CFDIs analizados: ${stats.total}`, 40, y);
+    doc.text(`Hallazgos: ${findings.length}`, W - 40, y, { align: "right" });
+    y += 24;
+
+    // Detalle
+    doc.setFontSize(12);
+    doc.text("Detalle de hallazgos", 40, y);
+    y += 6;
+    doc.line(40, y, W - 40, y);
+    y += 14;
+    doc.setFontSize(9);
+
+    for (const f of findings) {
+      if (y > 720) {
+        doc.addPage();
+        y = 50;
       }
-
-      if (found.length === 0 || !found.some((i) => i.archivo === f.name)) ok++;
+      doc.setFont("helvetica", "bold");
+      doc.text(TIPO_LABEL[f.tipo], 40, y);
+      doc.text(`$${f.monto.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`, W - 40, y, { align: "right" });
+      y += 12;
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(80);
+      doc.text(`UUID: ${f.uuid}`, 40, y);
+      y += 12;
+      const desc = doc.splitTextToSize(f.descripcion + (f.fecha ? `  ·  ${f.fecha.slice(0, 10)}` : ""), W - 80);
+      doc.text(desc, 40, y);
+      y += desc.length * 11 + 8;
+      doc.setTextColor(20);
+      doc.setDrawColor(230);
+      doc.line(40, y - 4, W - 40, y - 4);
     }
 
-    setIssues(found);
-    setStats({ total, ok: total - new Set(found.map((i) => i.archivo)).size });
-  };
+    if (!findings.length) {
+      doc.setFont("helvetica", "italic");
+      doc.setTextColor(80);
+      doc.text("Sin hallazgos en este periodo.", 40, y);
+    }
+
+    doc.save(`auditoria-${cliente!.rfc}-${year}.pdf`);
+  }
 
   return (
     <ToolShell
       title="Auditor express"
-      description="Sube los CFDI emitidos del cliente y detecta duplicados, sin timbrar, totales que no cuadran y versión obsoleta."
+      description="5 validaciones automáticas sobre los CFDIs del expediente: duplicados, NC huérfanas, cancelados, PPD sin pago y fuera de periodo."
       icon={<ScanSearch className="h-5 w-5 text-primary-foreground" />}
     >
-      <label className="block rounded-xl border-2 border-dashed border-border bg-card/30 p-10 text-center hover:border-primary/50 transition-colors cursor-pointer">
-        <input type="file" multiple accept=".xml,text/xml,application/xml" className="hidden"
-          onChange={(e) => e.target.files && audit(e.target.files)} />
-        <div className="h-12 w-12 rounded-xl mx-auto flex items-center justify-center mb-3" style={{ background: "var(--gradient-primary)" }}>
-          <Upload className="h-5 w-5 text-primary-foreground" />
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex items-end gap-3">
+          <div>
+            <label className="text-xs text-muted-foreground">Año fiscal</label>
+            <input
+              type="number"
+              value={year}
+              onChange={(e) => setYear(Number(e.target.value) || year)}
+              className="mt-1 w-28 h-10 rounded-md bg-background border border-border px-3 text-sm"
+            />
+          </div>
+          <Button variant="hero" onClick={() => rerun.mutate()} disabled={rerun.isPending || q.isLoading}>
+            {rerun.isPending || q.isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Ejecutar auditoría
+          </Button>
         </div>
-        <div className="font-medium">Selecciona los XML del periodo a auditar</div>
-        <div className="text-xs text-muted-foreground mt-1">Procesamiento local en tu navegador.</div>
-      </label>
+        <Button variant="glass" onClick={exportPdf} disabled={!stats}>
+          <FileDown className="h-4 w-4" /> Exportar PDF
+        </Button>
+      </div>
 
-      {stats.total > 0 && (
-        <div className="grid grid-cols-3 gap-3 mt-2">
-          <Stat label="Comprobantes" value={String(stats.total)} />
-          <Stat label="Sin observaciones" value={String(stats.ok)} tone="ok" />
-          <Stat label="Hallazgos" value={String(issues.length)} tone={issues.length > 0 ? "warn" : "ok"} />
-        </div>
-      )}
-
-      {issues.length > 0 && (
-        <div className="rounded-xl border border-border/60 bg-card/50 divide-y divide-border/40">
-          {issues.map((i, idx) => (
-            <div key={idx} className="p-4 flex items-start gap-3">
-              <AlertTriangle className={`h-4 w-4 shrink-0 mt-0.5 ${i.level === "high" ? "text-destructive" : "text-warning"}`} />
-              <div className="flex-1 text-sm">
-                <div>{i.message}</div>
-                {i.archivo && <div className="text-xs text-muted-foreground mt-0.5">{i.archivo}</div>}
-              </div>
-              <span className={`text-[10px] uppercase px-2 py-1 rounded-md tracking-wider ${
-                i.level === "high" ? "bg-destructive/15 text-destructive" : "bg-warning/15 text-warning"
-              }`}>{i.level}</span>
-            </div>
-          ))}
+      {/* Resumen ejecutivo */}
+      {stats && (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-2">
+          <StatCard label="Duplicados" value={stats.duplicados} tipo="duplicado" filter={filter} setFilter={setFilter} tone="high" />
+          <StatCard label="NC huérfanas" value={stats.nc_huerfanas} tipo="nc_huerfana" filter={filter} setFilter={setFilter} tone="high" />
+          <StatCard label="Cancelados" value={stats.cancelados_declarados} tipo="cancelado_declarado" filter={filter} setFilter={setFilter} tone="med" />
+          <StatCard label="PPD sin pago" value={stats.ppd_sin_pago} tipo="ppd_sin_pago" filter={filter} setFilter={setFilter} tone="high" />
+          <StatCard label="Fuera de periodo" value={stats.fuera_periodo} tipo="fuera_periodo" filter={filter} setFilter={setFilter} tone="low" />
         </div>
       )}
 
-      {stats.total > 0 && issues.length === 0 && (
-        <div className="rounded-xl border border-success/30 bg-success/5 p-5 flex items-center gap-3">
+      {stats && (
+        <div className="text-xs text-muted-foreground flex items-center gap-3 mt-2">
+          <span>{stats.total} CFDIs analizados · {findings.length} hallazgos</span>
+          {filter !== "all" && (
+            <button onClick={() => setFilter("all")} className="text-primary underline">Mostrar todos</button>
+          )}
+        </div>
+      )}
+
+      {/* Tabla */}
+      {filtered.length > 0 ? (
+        <div className="rounded-xl border border-border/60 bg-card/50 overflow-hidden mt-4">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/30 text-xs text-muted-foreground">
+              <tr>
+                <th className="text-left px-4 py-2">Tipo</th>
+                <th className="text-left px-4 py-2">UUID</th>
+                <th className="text-left px-4 py-2">Fecha</th>
+                <th className="text-right px-4 py-2">Monto</th>
+                <th className="text-left px-4 py-2">Descripción</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/40">
+              {filtered.map((f, i) => (
+                <tr key={i}>
+                  <td className="px-4 py-2.5">
+                    <span className={`text-xs px-2 py-1 rounded-md ${
+                      f.severidad === "alta" ? "bg-destructive/15 text-destructive"
+                      : f.severidad === "media" ? "bg-warning/15 text-warning"
+                      : "bg-muted text-muted-foreground"
+                    }`}>{TIPO_LABEL[f.tipo]}</span>
+                  </td>
+                  <td className="px-4 py-2.5 text-xs font-mono text-muted-foreground">{f.uuid.slice(0, 18)}…</td>
+                  <td className="px-4 py-2.5 text-xs text-muted-foreground">{f.fecha?.slice(0, 10) ?? "—"}</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums">${f.monto.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</td>
+                  <td className="px-4 py-2.5 text-xs">{f.descripcion}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : stats && stats.total > 0 ? (
+        <div className="rounded-xl border border-success/30 bg-success/5 p-5 flex items-center gap-3 mt-4">
           <CheckCircle2 className="h-5 w-5 text-success" />
-          <div className="text-sm">Sin hallazgos automáticos en los {stats.total} comprobantes.</div>
+          <div className="text-sm">Sin hallazgos en {stats.total} comprobantes del año {year}.</div>
         </div>
-      )}
+      ) : stats && stats.total === 0 ? (
+        <div className="rounded-xl border border-warning/40 bg-warning/5 p-5 flex items-center gap-3 mt-4">
+          <AlertTriangle className="h-5 w-5 text-warning" />
+          <div className="text-sm">No hay CFDIs cargados en el expediente. Usa el Lector masivo de XML primero.</div>
+        </div>
+      ) : null}
     </ToolShell>
   );
 }
 
-function Stat({ label, value, tone }: { label: string; value: string; tone?: "ok" | "warn" }) {
-  const color = tone === "ok" ? "text-success" : tone === "warn" ? "text-warning" : "";
+function StatCard({
+  label, value, tipo, filter, setFilter, tone,
+}: {
+  label: string;
+  value: number;
+  tipo: AuditFinding["tipo"];
+  filter: AuditFinding["tipo"] | "all";
+  setFilter: (t: AuditFinding["tipo"] | "all") => void;
+  tone: "high" | "med" | "low";
+}) {
+  const active = filter === tipo;
+  const color = value === 0 ? "text-muted-foreground" : tone === "high" ? "text-destructive" : tone === "med" ? "text-warning" : "text-foreground";
   return (
-    <div className="rounded-xl p-4 border border-border/60 bg-card/50">
-      <div className={`text-2xl font-semibold ${color}`}>{value}</div>
-      <div className="text-xs text-muted-foreground">{label}</div>
-    </div>
+    <button
+      onClick={() => setFilter(active ? "all" : tipo)}
+      className={`text-left rounded-xl p-4 border transition-all ${active ? "border-primary bg-primary/5" : "border-border/60 bg-card/50 hover:border-border"}`}
+    >
+      <div className={`text-2xl font-semibold tabular-nums ${color}`}>{value}</div>
+      <div className="text-xs text-muted-foreground mt-1">{label}</div>
+    </button>
   );
 }
-
