@@ -8,6 +8,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
+import { fmtFechaMx } from "@/lib/utils";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { parseBankFile, type ParsedMovimiento } from "@/lib/conciliacion/parsers";
 import {
@@ -224,7 +227,7 @@ function ConciliacionPage() {
         {parsed.length > 0 && (
           <div className="mt-4 flex items-center justify-between gap-3 rounded-lg bg-primary/5 border border-primary/20 p-3">
             <div className="text-sm">
-              <span className="font-medium">{parsed.length}</span> movimientos listos · rango {parsed[parsed.length - 1].fecha} → {parsed[0].fecha}
+              <span className="font-medium">{parsed.length}</span> movimientos listos · rango {fmtFechaMx(parsed[parsed.length - 1].fecha)} → {fmtFechaMx(parsed[0].fecha)}
             </div>
             <div className="flex gap-2">
               <Button variant="ghost" size="sm" onClick={() => setParsed([])}><X className="h-4 w-4" /> Descartar</Button>
@@ -250,7 +253,20 @@ function ConciliacionPage() {
                 <th className="text-left px-4 py-2">Ref.</th>
                 <th className="text-right px-4 py-2">Monto</th>
                 <th className="text-left px-4 py-2">Estado</th>
-                <th className="text-left px-4 py-2">Motivo</th>
+                <th className="text-left px-4 py-2">
+                  <TooltipProvider delayDuration={150}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex items-center gap-1 cursor-help">
+                          Motivo <Info className="h-3 w-3" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        Razón por la que el conciliador emparejó (o no) este movimiento con un CFDI: coincidencia de monto, fecha, RFC o referencia. Si es "—", aún no se ha intentado conciliar o no hubo candidato.
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </th>
                 <th className="px-4 py-2"></th>
               </tr>
             </thead>
@@ -260,7 +276,7 @@ function ConciliacionPage() {
                 const monto = Number(m.abono ?? 0) > 0 ? Number(m.abono) : -Number(m.cargo ?? 0);
                 return (
                   <tr key={m.id} className="hover:bg-accent/5">
-                    <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{m.fecha}</td>
+                    <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{fmtFechaMx(m.fecha)}</td>
                     <td className="px-4 py-2.5 max-w-[280px] truncate">{m.descripcion}</td>
                     <td className="px-4 py-2.5 text-xs text-muted-foreground font-mono">{m.referencia ?? "—"}</td>
                     <td className={`px-4 py-2.5 text-right tabular-nums font-medium ${monto >= 0 ? "text-success" : "text-foreground"}`}>

@@ -14,6 +14,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useActiveCliente } from "@/lib/active-cliente";
+import { fmtFechaMx } from "@/lib/utils";
 import {
   uploadCfdiBatch, listCfdi, getCfdiStats,
 } from "@/lib/cfdi/cfdi.functions";
@@ -38,7 +39,7 @@ type CfdiRow = {
 const TIPO_LABEL: Record<string, string> = { I: "Ingreso", E: "Egreso", N: "Nómina", P: "Pago", T: "Traslado" };
 
 const fmt = (n: number) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n || 0);
-const fmtDate = (s: string) => new Date(s).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
+const fmtDate = (s: string) => fmtFechaMx(s);
 
 function CfdiDashboard() {
   const { cliente } = useActiveCliente();
