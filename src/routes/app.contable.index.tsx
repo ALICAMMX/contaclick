@@ -20,9 +20,9 @@ const TOOLS: Tool[] = [
   { name: "CFDI del expediente", desc: "Bandeja unificada del cliente activo.", icon: FileText, href: "/app/cfdi", status: "live", group: "2 · Ingesta de CFDI" },
 
   // 3. Auditoría y conciliación
-  { name: "Auditor express", desc: "Folios, duplicados, notas de crédito huérfanas.", icon: ScanSearch, href: "/app/tools/express-auditor", status: "live", group: "3 · Auditoría & Conciliación" },
-  { name: "Conciliador bancario", desc: "Cruza estado de cuenta vs CFDI.", icon: Banknote, href: "/app/tools/bank-reconciler", status: "live", group: "3 · Auditoría & Conciliación" },
-  { name: "Conciliación del expediente", desc: "Histórico mensual conciliado.", icon: Banknote, href: "/app/conciliacion", status: "live", group: "3 · Auditoría & Conciliación", doneThisMonth: true },
+  { name: "Auditor express", desc: "5 validaciones: duplicados, NC huérfanas, cancelados, PPD sin pago, fuera de periodo.", icon: ScanSearch, href: "/app/tools/express-auditor", status: "live", group: "3 · Auditoría & Conciliación" },
+  { name: "Conciliador bancario", desc: "Cruza estado de cuenta vs CFDI.", icon: Banknote, href: "/app/conciliacion", status: "live", group: "3 · Auditoría & Conciliación" },
+  { name: "Conciliación del expediente", desc: "Histórico mensual con semáforo verde/amarillo/rojo.", icon: Banknote, href: "/app/conciliacion/historial", status: "live", group: "3 · Auditoría & Conciliación", doneThisMonth: true },
 
   // 4. Cálculo de impuestos
   { name: "Calculadora ISR / IVA", desc: "Pago provisional mensual.", icon: Calculator, href: "/app/tools/isr-iva-calculator", status: "live", group: "4 · Cálculo de impuestos" },

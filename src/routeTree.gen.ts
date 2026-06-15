@@ -59,6 +59,7 @@ import { Route as AppLegalMarketplaceRouteImport } from './routes/app.legal.mark
 import { Route as AppLegalLagunasRouteImport } from './routes/app.legal.lagunas'
 import { Route as AppContableHerramientasRouteImport } from './routes/app.contable.herramientas'
 import { Route as AppContableAgentesRouteImport } from './routes/app.contable.agentes'
+import { Route as AppConciliacionHistorialRouteImport } from './routes/app.conciliacion.historial'
 import { Route as AppClientesIdRouteImport } from './routes/app.clientes.$id'
 import { Route as AppCfdiIdRouteImport } from './routes/app.cfdi.$id'
 import { Route as AppAdminTramitesRouteImport } from './routes/app.admin.tramites'
@@ -322,6 +323,12 @@ const AppContableAgentesRoute = AppContableAgentesRouteImport.update({
   path: '/agentes',
   getParentRoute: () => AppContableRoute,
 } as any)
+const AppConciliacionHistorialRoute =
+  AppConciliacionHistorialRouteImport.update({
+    id: '/historial',
+    path: '/historial',
+    getParentRoute: () => AppConciliacionRoute,
+  } as any)
 const AppClientesIdRoute = AppClientesIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -410,6 +417,7 @@ export interface FileRoutesByFullPath {
   '/app/admin/tramites': typeof AppAdminTramitesRoute
   '/app/cfdi/$id': typeof AppCfdiIdRoute
   '/app/clientes/$id': typeof AppClientesIdRoute
+  '/app/conciliacion/historial': typeof AppConciliacionHistorialRoute
   '/app/contable/agentes': typeof AppContableAgentesRoute
   '/app/contable/herramientas': typeof AppContableHerramientasRoute
   '/app/legal/lagunas': typeof AppLegalLagunasRoute
@@ -463,6 +471,7 @@ export interface FileRoutesByTo {
   '/app/admin/tramites': typeof AppAdminTramitesRoute
   '/app/cfdi/$id': typeof AppCfdiIdRoute
   '/app/clientes/$id': typeof AppClientesIdRoute
+  '/app/conciliacion/historial': typeof AppConciliacionHistorialRoute
   '/app/contable/agentes': typeof AppContableAgentesRoute
   '/app/contable/herramientas': typeof AppContableHerramientasRoute
   '/app/legal/lagunas': typeof AppLegalLagunasRoute
@@ -526,6 +535,7 @@ export interface FileRoutesById {
   '/app/admin/tramites': typeof AppAdminTramitesRoute
   '/app/cfdi/$id': typeof AppCfdiIdRoute
   '/app/clientes/$id': typeof AppClientesIdRoute
+  '/app/conciliacion/historial': typeof AppConciliacionHistorialRoute
   '/app/contable/agentes': typeof AppContableAgentesRoute
   '/app/contable/herramientas': typeof AppContableHerramientasRoute
   '/app/legal/lagunas': typeof AppLegalLagunasRoute
@@ -590,6 +600,7 @@ export interface FileRouteTypes {
     | '/app/admin/tramites'
     | '/app/cfdi/$id'
     | '/app/clientes/$id'
+    | '/app/conciliacion/historial'
     | '/app/contable/agentes'
     | '/app/contable/herramientas'
     | '/app/legal/lagunas'
@@ -643,6 +654,7 @@ export interface FileRouteTypes {
     | '/app/admin/tramites'
     | '/app/cfdi/$id'
     | '/app/clientes/$id'
+    | '/app/conciliacion/historial'
     | '/app/contable/agentes'
     | '/app/contable/herramientas'
     | '/app/legal/lagunas'
@@ -705,6 +717,7 @@ export interface FileRouteTypes {
     | '/app/admin/tramites'
     | '/app/cfdi/$id'
     | '/app/clientes/$id'
+    | '/app/conciliacion/historial'
     | '/app/contable/agentes'
     | '/app/contable/herramientas'
     | '/app/legal/lagunas'
@@ -1091,6 +1104,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppContableAgentesRouteImport
       parentRoute: typeof AppContableRoute
     }
+    '/app/conciliacion/historial': {
+      id: '/app/conciliacion/historial'
+      path: '/historial'
+      fullPath: '/app/conciliacion/historial'
+      preLoaderRoute: typeof AppConciliacionHistorialRouteImport
+      parentRoute: typeof AppConciliacionRoute
+    }
     '/app/clientes/$id': {
       id: '/app/clientes/$id'
       path: '/$id'
@@ -1218,10 +1238,12 @@ const AppClientesRouteWithChildren = AppClientesRoute._addFileChildren(
 )
 
 interface AppConciliacionRouteChildren {
+  AppConciliacionHistorialRoute: typeof AppConciliacionHistorialRoute
   AppConciliacionIndexRoute: typeof AppConciliacionIndexRoute
 }
 
 const AppConciliacionRouteChildren: AppConciliacionRouteChildren = {
+  AppConciliacionHistorialRoute: AppConciliacionHistorialRoute,
   AppConciliacionIndexRoute: AppConciliacionIndexRoute,
 }
 
