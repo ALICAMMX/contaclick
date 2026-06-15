@@ -191,6 +191,24 @@ function IsrIvaCalculator() {
           {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
           Importar del expediente
         </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={parsing}
+          className="gap-2"
+        >
+          {parsing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+          Subir XML / ZIP
+        </Button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xml,.zip,text/xml,application/xml,application/zip"
+          multiple
+          className="hidden"
+          onChange={(e) => e.target.files && procesarXmlLocal(e.target.files)}
+        />
         <Button asChild variant="ghost" className="gap-2 ml-auto">
           <Link to="/app/reportes/resumen-fiscal">
             <FileBarChart className="h-4 w-4" />
