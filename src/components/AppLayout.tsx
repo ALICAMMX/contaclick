@@ -65,6 +65,7 @@ export function AppLayout() {
   const { user, signOut } = useAuth();
   const location = useLocation();
   const { despacho } = useDespacho();
+  const { theme } = useTheme();
   const initials = (user?.user_metadata?.full_name ?? user?.email ?? "U").slice(0, 2).toUpperCase();
   const crumbs = buildCrumbs(location.pathname);
   const atHub = location.pathname === "/app";
@@ -110,7 +111,7 @@ export function AppLayout() {
           <Outlet />
         </div>
       </main>
-      <Toaster theme="dark" position="top-right" />
+      <Toaster theme={theme} position="top-right" />
     </div>
   );
 }
