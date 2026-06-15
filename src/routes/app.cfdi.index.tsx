@@ -233,10 +233,9 @@ function CfdiDashboard() {
                 <tr key={r.id} className="border-b border-border/40 hover:bg-accent/20 cursor-pointer transition-colors"
                     onClick={() => setSelected(r)}>
                   <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{fmtDate(r.fecha)}</td>
+                  <td className="px-4 py-3"><TipoBadge tipo={r.tipo_cfdi} /></td>
+                  <td className="px-4 py-3"><UuidCell uuid={r.uuid} /></td>
                   <td className="px-4 py-3">
-                    <UuidCell uuid={r.uuid} />
-                  </td>
-
                     <div className="font-medium truncate max-w-[280px]">{r.tipo_cfdi === "I" ? r.nombre_emisor : r.nombre_receptor}</div>
                     <div className="text-xs text-muted-foreground font-mono">
                       {r.tipo_cfdi === "I" ? r.rfc_emisor : r.rfc_receptor}
@@ -245,7 +244,25 @@ function CfdiDashboard() {
                   <td className="px-4 py-3 text-xs">
                     <span className="px-1.5 py-0.5 rounded bg-muted/40">{r.metodo_pago ?? "—"}</span>
                     <span className="ml-1 text-muted-foreground">{r.forma_pago}</span>
+                    {r.metodo_pago === "PPD" && r.tipo_cfdi === "I" && !r.tiene_crp && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="ml-1.5 inline-flex items-center text-amber-400">
+                              <AlertTriangle className="h-3.5 w-3.5" />
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>PPD sin Complemento de Pago (CRP)</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                    {r.metodo_pago === "PPD" && r.tipo_cfdi === "I" && r.tiene_crp && (
+                      <span className="ml-1.5 inline-flex items-center text-emerald-400" title="Tiene CRP">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                      </span>
+                    )}
                   </td>
+
                   <td className="px-4 py-3 text-right font-medium tabular-nums">{fmt(Number(r.total))}</td>
                   <td className="px-4 py-3 text-right">
                     <Link to="/app/cfdi/$id" params={{ id: r.id }}
