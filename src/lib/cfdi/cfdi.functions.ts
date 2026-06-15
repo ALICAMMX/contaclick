@@ -84,8 +84,10 @@ const UploadBatchSchema = z.object({
   })).min(1).max(200),
 });
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const ListSchema = z.object({
-  cliente_id: z.string().uuid(),
+  cliente_id: z.string().min(1),
   q: z.string().max(120).optional(),
   tipo: z.string().max(2).optional(),
   estatus: z.enum(["vigente","cancelado","desconocido"]).optional(),
@@ -230,6 +232,7 @@ export const listCfdi = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => ListSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
+    if (!UUID_RE.test(data.cliente_id)) return { cfdis: [] };
     let q = supabase
       .from("cfdi_xml")
       .select("id, uuid, tipo_cfdi, fecha, rfc_emisor, nombre_emisor, rfc_receptor, nombre_receptor, total, subtotal, iva_trasladado, iva_retenido, metodo_pago, forma_pago, uso_cfdi, estatus_sat, moneda")
@@ -255,9 +258,12 @@ export const listCfdi = createServerFn({ method: "POST" })
 
 export const getCfdiStats = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ cliente_id: z.string().uuid() }).parse(d))
+  .inputValidator((d: unknown) => z.object({ cliente_id: z.string().min(1) }).parse(d))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
+    if (!UUID_RE.test(data.cliente_id)) {
+      return { total: 0, ingresos: 0, egresos: 0, ivaTrasladado: 0, ivaAcreditable: 0, cancelados: 0, topProveedores: [] };
+    }
     const { data: rows, error } = await supabase
       .from("cfdi_xml")
       .select("tipo_cfdi, total, iva_trasladado, iva_retenido, estatus_sat, fecha, rfc_emisor, rfc_receptor")
