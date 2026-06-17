@@ -441,23 +441,25 @@ function ExportButton({ rows, selectedIds }: { rows: CfdiRow[]; selectedIds: Set
     if (!exportRows.length) return "";
     const headers = ["UUID","Tipo","Fecha","RFC Emisor","Nombre Emisor","RFC Receptor","Nombre Receptor","Subtotal","IVA Trasladado","IVA Retenido","Total","Método","Forma","Uso CFDI","Estatus","Moneda"];
     const escape = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const lines = rows.map((r) => [
+    const lines = exportRows.map((r) => [
       r.uuid, r.tipo_cfdi, r.fecha, r.rfc_emisor, r.nombre_emisor, r.rfc_receptor, r.nombre_receptor,
       r.subtotal, r.iva_trasladado, r.iva_retenido, r.total, r.metodo_pago, r.forma_pago, r.uso_cfdi, r.estatus_sat, r.moneda,
     ].map(escape).join(","));
     return [headers.join(","), ...lines].join("\n");
-  }, [rows]);
+  }, [exportRows]);
 
   const download = () => {
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = `cfdi-${new Date().toISOString().slice(0,10)}.csv`;
+    const tag = selectedIds.size > 0 ? `-sel${selectedIds.size}` : "";
+    a.href = url; a.download = `cfdi${tag}-${new Date().toISOString().slice(0,10)}.csv`;
     a.click(); URL.revokeObjectURL(url);
   };
+  const label = selectedIds.size > 0 ? `Exportar ${selectedIds.size}` : "Exportar CSV";
   return (
-    <Button variant="outline" disabled={!rows.length} onClick={download}>
-      <ArrowDownToLine className="h-4 w-4 mr-1" /> Exportar CSV
+    <Button variant="outline" disabled={!exportRows.length} onClick={download}>
+      <ArrowDownToLine className="h-4 w-4 mr-1" /> {label}
     </Button>
   );
 }
