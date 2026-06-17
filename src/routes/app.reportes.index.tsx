@@ -63,9 +63,26 @@ function ReportesPage() {
     queryFn: () => fnList({ data: { cliente_id: cliente!.id } }),
   });
 
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const friendlyError = (e: unknown): string => {
+    const raw = e instanceof Error ? e.message : typeof e === "string" ? e : "";
+    try {
+      const parsed = JSON.parse(raw);
+      const arr = Array.isArray(parsed) ? parsed : parsed?.issues ?? [parsed];
+      const first = Array.isArray(arr) ? arr[0] : arr;
+      if (first?.path?.includes?.("cliente_id")) return "Selecciona un expediente activo para generar reportes.";
+      if (first?.path?.includes?.("desde") || first?.path?.includes?.("hasta")) return "Revisa el rango de fechas (formato AAAA-MM-DD).";
+      if (first?.message && typeof first.message === "string" && !first.message.startsWith("{")) return first.message;
+    } catch { /* not JSON */ }
+    if (/invalid.*uuid/i.test(raw) || /cliente_id/i.test(raw)) return "Selecciona un expediente activo para generar reportes.";
+    if (/unauthorized|jwt/i.test(raw)) return "Tu sesión expiró. Vuelve a iniciar sesión.";
+    return raw || "No se pudo completar la operación. Intenta de nuevo.";
+  };
+
   const compute = useMutation({
     mutationFn: async (tipo: ReporteTipo) => {
-      if (!cliente) throw new Error("Selecciona un expediente");
+      if (!cliente) throw new Error("Selecciona un expediente activo para generar reportes.");
+      if (!UUID_RE.test(cliente.id)) throw new Error("Este expediente es demo. Crea o selecciona un expediente real para generar reportes.");
       setRunning(tipo);
       return fnCompute({ data: { cliente_id: cliente.id, desde, hasta, tipo } });
     },
@@ -74,7 +91,7 @@ function ReportesPage() {
       downloadReportePDF({ tipo, payload: res.payload });
       qc.invalidateQueries({ queryKey: ["reportes", cliente?.id] });
     },
-    onError: (e) => toast.error((e as Error).message),
+    onError: (e) => toast.error(friendlyError(e)),
     onSettled: () => setRunning(null),
   });
 
@@ -85,7 +102,7 @@ function ReportesPage() {
       setAiOpen({ id, tipo, payload, content: r.content });
       return r;
     },
-    onError: (e) => toast.error((e as Error).message),
+    onError: (e) => toast.error(friendlyError(e)),
   });
 
   const recent = list.data?.reportes ?? [];
