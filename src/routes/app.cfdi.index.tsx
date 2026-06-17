@@ -157,8 +157,22 @@ function CfdiDashboard() {
             Expediente activo: <span className="font-mono text-foreground">{cliente.rfc}</span> · {cliente.razon_social}
           </p>
         </div>
-        <ExportButton rows={rows} />
+        <ExportButton rows={rows} selectedIds={selectedIds} />
       </div>
+
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-primary/30 bg-primary/5">
+          <span className="text-sm font-medium">{selectedIds.size} seleccionado{selectedIds.size === 1 ? "" : "s"}</span>
+          <span className="text-xs text-muted-foreground">
+            Total: {fmt(rows.filter((r) => selectedIds.has(r.id)).reduce((s, r) => s + Number(r.total || 0), 0))}
+          </span>
+          <div className="ml-auto flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={clearSelection}>
+              <X className="h-3.5 w-3.5 mr-1" /> Limpiar
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
