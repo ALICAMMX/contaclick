@@ -3,8 +3,13 @@ import { Calculator, FileText, FileStack, Coins, Banknote, FileBadge, FileSignat
 import type { ComponentType } from "react";
 import { useState } from "react";
 import { useActiveCliente } from "@/lib/active-cliente";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
+import { computeRiesgoSAT } from "@/lib/riesgo/riesgo.functions";
 
 export const Route = createFileRoute("/app/contable/")({ component: ContableCatalog });
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type Status = "live" | "beta" | "soon";
 type Tool = { name: string; desc: string; icon: ComponentType<{ className?: string }>; href?: string; status: Status; group: string; doneThisMonth?: boolean };
