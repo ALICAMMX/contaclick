@@ -16,6 +16,7 @@ type NavItem = { label: string; route: string; hint?: string };
 
 const MODULES: NavItem[] = [
   { label: "Inicio", route: "/app", hint: "Hub principal" },
+  { label: "Dashboard del despacho", route: "/app/despacho", hint: "Resumen consolidado" },
   { label: "Expedientes", route: "/app/clientes", hint: "Clientes / RFCs" },
   { label: "CFDI", route: "/app/cfdi", hint: "Comprobantes" },
   { label: "Conciliación bancaria", route: "/app/conciliacion" },

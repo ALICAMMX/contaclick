@@ -28,6 +28,7 @@ import { Route as AppMensajesRouteImport } from './routes/app.mensajes'
 import { Route as AppLegalRouteImport } from './routes/app.legal'
 import { Route as AppExpedientesRouteImport } from './routes/app.expedientes'
 import { Route as AppEquipoRouteImport } from './routes/app.equipo'
+import { Route as AppDespachoRouteImport } from './routes/app.despacho'
 import { Route as AppContableRouteImport } from './routes/app.contable'
 import { Route as AppConfiguracionRouteImport } from './routes/app.configuracion'
 import { Route as AppConciliacionRouteImport } from './routes/app.conciliacion'
@@ -46,6 +47,7 @@ import { Route as AppAdminIndexRouteImport } from './routes/app.admin.index'
 import { Route as AppToolsXmlBulkReaderRouteImport } from './routes/app.tools.xml-bulk-reader'
 import { Route as AppToolsResicoCalculatorRouteImport } from './routes/app.tools.resico-calculator'
 import { Route as AppToolsOficioGeneratorRouteImport } from './routes/app.tools.oficio-generator'
+import { Route as AppToolsIsrIvaPmRouteImport } from './routes/app.tools.isr-iva-pm'
 import { Route as AppToolsIsrIvaCalculatorRouteImport } from './routes/app.tools.isr-iva-calculator'
 import { Route as AppToolsFiscalAssistantRouteImport } from './routes/app.tools.fiscal-assistant'
 import { Route as AppToolsExpressAuditorRouteImport } from './routes/app.tools.express-auditor'
@@ -167,6 +169,11 @@ const AppEquipoRoute = AppEquipoRouteImport.update({
   path: '/equipo',
   getParentRoute: () => AppRoute,
 } as any)
+const AppDespachoRoute = AppDespachoRouteImport.update({
+  id: '/despacho',
+  path: '/despacho',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppContableRoute = AppContableRouteImport.update({
   id: '/contable',
   path: '/contable',
@@ -256,6 +263,11 @@ const AppToolsResicoCalculatorRoute =
 const AppToolsOficioGeneratorRoute = AppToolsOficioGeneratorRouteImport.update({
   id: '/tools/oficio-generator',
   path: '/tools/oficio-generator',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppToolsIsrIvaPmRoute = AppToolsIsrIvaPmRouteImport.update({
+  id: '/tools/isr-iva-pm',
+  path: '/tools/isr-iva-pm',
   getParentRoute: () => AppRoute,
 } as any)
 const AppToolsIsrIvaCalculatorRoute =
@@ -399,6 +411,7 @@ export interface FileRoutesByFullPath {
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
   '/app/configuracion': typeof AppConfiguracionRoute
   '/app/contable': typeof AppContableRouteWithChildren
+  '/app/despacho': typeof AppDespachoRoute
   '/app/equipo': typeof AppEquipoRoute
   '/app/expedientes': typeof AppExpedientesRoute
   '/app/legal': typeof AppLegalRouteWithChildren
@@ -439,6 +452,7 @@ export interface FileRoutesByFullPath {
   '/app/tools/express-auditor': typeof AppToolsExpressAuditorRoute
   '/app/tools/fiscal-assistant': typeof AppToolsFiscalAssistantRoute
   '/app/tools/isr-iva-calculator': typeof AppToolsIsrIvaCalculatorRoute
+  '/app/tools/isr-iva-pm': typeof AppToolsIsrIvaPmRoute
   '/app/tools/oficio-generator': typeof AppToolsOficioGeneratorRoute
   '/app/tools/resico-calculator': typeof AppToolsResicoCalculatorRoute
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
@@ -457,6 +471,7 @@ export interface FileRoutesByTo {
   '/app/administrativo': typeof AppAdministrativoRoute
   '/app/clientes': typeof AppClientesRouteWithChildren
   '/app/configuracion': typeof AppConfiguracionRoute
+  '/app/despacho': typeof AppDespachoRoute
   '/app/equipo': typeof AppEquipoRoute
   '/app/expedientes': typeof AppExpedientesRoute
   '/app/riesgo': typeof AppRiesgoRoute
@@ -494,6 +509,7 @@ export interface FileRoutesByTo {
   '/app/tools/express-auditor': typeof AppToolsExpressAuditorRoute
   '/app/tools/fiscal-assistant': typeof AppToolsFiscalAssistantRoute
   '/app/tools/isr-iva-calculator': typeof AppToolsIsrIvaCalculatorRoute
+  '/app/tools/isr-iva-pm': typeof AppToolsIsrIvaPmRoute
   '/app/tools/oficio-generator': typeof AppToolsOficioGeneratorRoute
   '/app/tools/resico-calculator': typeof AppToolsResicoCalculatorRoute
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
@@ -519,6 +535,7 @@ export interface FileRoutesById {
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
   '/app/configuracion': typeof AppConfiguracionRoute
   '/app/contable': typeof AppContableRouteWithChildren
+  '/app/despacho': typeof AppDespachoRoute
   '/app/equipo': typeof AppEquipoRoute
   '/app/expedientes': typeof AppExpedientesRoute
   '/app/legal': typeof AppLegalRouteWithChildren
@@ -559,6 +576,7 @@ export interface FileRoutesById {
   '/app/tools/express-auditor': typeof AppToolsExpressAuditorRoute
   '/app/tools/fiscal-assistant': typeof AppToolsFiscalAssistantRoute
   '/app/tools/isr-iva-calculator': typeof AppToolsIsrIvaCalculatorRoute
+  '/app/tools/isr-iva-pm': typeof AppToolsIsrIvaPmRoute
   '/app/tools/oficio-generator': typeof AppToolsOficioGeneratorRoute
   '/app/tools/resico-calculator': typeof AppToolsResicoCalculatorRoute
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
@@ -585,6 +603,7 @@ export interface FileRouteTypes {
     | '/app/conciliacion'
     | '/app/configuracion'
     | '/app/contable'
+    | '/app/despacho'
     | '/app/equipo'
     | '/app/expedientes'
     | '/app/legal'
@@ -625,6 +644,7 @@ export interface FileRouteTypes {
     | '/app/tools/express-auditor'
     | '/app/tools/fiscal-assistant'
     | '/app/tools/isr-iva-calculator'
+    | '/app/tools/isr-iva-pm'
     | '/app/tools/oficio-generator'
     | '/app/tools/resico-calculator'
     | '/app/tools/xml-bulk-reader'
@@ -643,6 +663,7 @@ export interface FileRouteTypes {
     | '/app/administrativo'
     | '/app/clientes'
     | '/app/configuracion'
+    | '/app/despacho'
     | '/app/equipo'
     | '/app/expedientes'
     | '/app/riesgo'
@@ -680,6 +701,7 @@ export interface FileRouteTypes {
     | '/app/tools/express-auditor'
     | '/app/tools/fiscal-assistant'
     | '/app/tools/isr-iva-calculator'
+    | '/app/tools/isr-iva-pm'
     | '/app/tools/oficio-generator'
     | '/app/tools/resico-calculator'
     | '/app/tools/xml-bulk-reader'
@@ -704,6 +726,7 @@ export interface FileRouteTypes {
     | '/app/conciliacion'
     | '/app/configuracion'
     | '/app/contable'
+    | '/app/despacho'
     | '/app/equipo'
     | '/app/expedientes'
     | '/app/legal'
@@ -744,6 +767,7 @@ export interface FileRouteTypes {
     | '/app/tools/express-auditor'
     | '/app/tools/fiscal-assistant'
     | '/app/tools/isr-iva-calculator'
+    | '/app/tools/isr-iva-pm'
     | '/app/tools/oficio-generator'
     | '/app/tools/resico-calculator'
     | '/app/tools/xml-bulk-reader'
@@ -900,6 +924,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEquipoRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/despacho': {
+      id: '/app/despacho'
+      path: '/despacho'
+      fullPath: '/app/despacho'
+      preLoaderRoute: typeof AppDespachoRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/contable': {
       id: '/app/contable'
       path: '/contable'
@@ -1024,6 +1055,13 @@ declare module '@tanstack/react-router' {
       path: '/tools/oficio-generator'
       fullPath: '/app/tools/oficio-generator'
       preLoaderRoute: typeof AppToolsOficioGeneratorRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/tools/isr-iva-pm': {
+      id: '/app/tools/isr-iva-pm'
+      path: '/tools/isr-iva-pm'
+      fullPath: '/app/tools/isr-iva-pm'
+      preLoaderRoute: typeof AppToolsIsrIvaPmRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/tools/isr-iva-calculator': {
@@ -1339,6 +1377,7 @@ interface AppRouteChildren {
   AppConciliacionRoute: typeof AppConciliacionRouteWithChildren
   AppConfiguracionRoute: typeof AppConfiguracionRoute
   AppContableRoute: typeof AppContableRouteWithChildren
+  AppDespachoRoute: typeof AppDespachoRoute
   AppEquipoRoute: typeof AppEquipoRoute
   AppExpedientesRoute: typeof AppExpedientesRoute
   AppLegalRoute: typeof AppLegalRouteWithChildren
@@ -1354,6 +1393,7 @@ interface AppRouteChildren {
   AppToolsExpressAuditorRoute: typeof AppToolsExpressAuditorRoute
   AppToolsFiscalAssistantRoute: typeof AppToolsFiscalAssistantRoute
   AppToolsIsrIvaCalculatorRoute: typeof AppToolsIsrIvaCalculatorRoute
+  AppToolsIsrIvaPmRoute: typeof AppToolsIsrIvaPmRoute
   AppToolsOficioGeneratorRoute: typeof AppToolsOficioGeneratorRoute
   AppToolsResicoCalculatorRoute: typeof AppToolsResicoCalculatorRoute
   AppToolsXmlBulkReaderRoute: typeof AppToolsXmlBulkReaderRoute
@@ -1368,6 +1408,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppConciliacionRoute: AppConciliacionRouteWithChildren,
   AppConfiguracionRoute: AppConfiguracionRoute,
   AppContableRoute: AppContableRouteWithChildren,
+  AppDespachoRoute: AppDespachoRoute,
   AppEquipoRoute: AppEquipoRoute,
   AppExpedientesRoute: AppExpedientesRoute,
   AppLegalRoute: AppLegalRouteWithChildren,
@@ -1383,6 +1424,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppToolsExpressAuditorRoute: AppToolsExpressAuditorRoute,
   AppToolsFiscalAssistantRoute: AppToolsFiscalAssistantRoute,
   AppToolsIsrIvaCalculatorRoute: AppToolsIsrIvaCalculatorRoute,
+  AppToolsIsrIvaPmRoute: AppToolsIsrIvaPmRoute,
   AppToolsOficioGeneratorRoute: AppToolsOficioGeneratorRoute,
   AppToolsResicoCalculatorRoute: AppToolsResicoCalculatorRoute,
   AppToolsXmlBulkReaderRoute: AppToolsXmlBulkReaderRoute,

@@ -13,6 +13,7 @@ import { Tour, shouldAutoOpenTour } from "./Tour";
 
 const LABELS: Record<string, string> = {
   app: "Inicio",
+  despacho: "Dashboard del despacho",
   contable: "Contable y Fiscal",
   admin: "Administrativo & RH",
   legal: "Inteligencia Legal",
@@ -27,6 +28,7 @@ const LABELS: Record<string, string> = {
   configuracion: "Configuración",
   equipo: "Equipo",
   tools: "Herramienta",
+  "isr-iva-pm": "Calculadora ISR / IVA PM",
   "cfdi-validator": "Validador CFDI",
   "cfdi-verifier": "Verificador UUID",
   "xml-bulk-reader": "Lector XML masivo",

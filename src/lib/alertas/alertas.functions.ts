@@ -31,7 +31,7 @@ export const listAlertas = createServerFn({ method: "GET" })
 
     const { data, error } = await supabase
       .from("alertas")
-      .select("id, nivel, tipo, titulo, descripcion, cliente_id, created_at, clientes(nombre)")
+      .select("id, nivel, tipo, titulo, descripcion, cliente_id, created_at, clientes(razon_social)")
       .eq("despacho_id", mem.despacho_id)
       .eq("estatus", "abierta")
       .order("created_at", { ascending: false })
@@ -46,7 +46,7 @@ export const listAlertas = createServerFn({ method: "GET" })
       titulo: r.titulo,
       descripcion: r.descripcion ?? null,
       cliente_id: r.cliente_id ?? null,
-      cliente_nombre: r.clientes?.nombre ?? null,
+      cliente_nombre: r.clientes?.razon_social ?? null,
       created_at: r.created_at,
     }));
 
