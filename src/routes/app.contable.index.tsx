@@ -83,7 +83,7 @@ function ContableCatalog() {
       </header>
 
       {/* Mini-dashboard del expediente activo */}
-      {cliente && <MiniDashboard nombre={cliente.razon_social} rfc={cliente.rfc} />}
+      {cliente && <MiniDashboard nombre={cliente.razon_social} rfc={cliente.rfc} clienteId={cliente.id} />}
 
       {GROUPS.map((g) => {
         const items = TOOLS.filter((t) => t.group === g);
