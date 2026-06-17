@@ -7,7 +7,7 @@ export const Route = createFileRoute("/app/legal/marketplace")({ component: Mark
 const DESPACHOS = [
   { n: "Rivera & Asociados Fiscalistas", esp: "Devoluciones IVA · Amparo fiscal", ciudad: "CDMX", rating: 4.9, casos: 184, honorario: "$8K – $25K" },
   { n: "Bufete Olmeda Tax Defense", esp: "Materialidad · 69-B", ciudad: "Monterrey", rating: 4.8, casos: 142, honorario: "$12K – $40K" },
-  { n: "Méndez Corporativo", esp: "Transfer Pricing · Reestructuras", ciudad: "Guadalajara", rating: 4.7, casos: 98, honorario: "$25K – $80K" },
+  { n: "Méndez Corporativo", esp: "Precios de transferencia · Reestructuras", ciudad: "Guadalajara", rating: 4.7, casos: 98, honorario: "$25K – $80K" },
   { n: "Aguilar Abogados Tributarios", esp: "Juicio Contencioso TFJA", ciudad: "Puebla", rating: 4.9, casos: 220, honorario: "$15K – $50K" },
   { n: "Salinas & Vega Penal Fiscal", esp: "Defraudación fiscal · Amparo penal", ciudad: "CDMX", rating: 5.0, casos: 64, honorario: "$40K+" },
   { n: "Torres Aduanal Group", esp: "Importación · Precios estimados", ciudad: "Manzanillo", rating: 4.6, casos: 120, honorario: "$10K – $30K" },
