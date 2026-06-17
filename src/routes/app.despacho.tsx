@@ -1,7 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Building2, AlertCircle, CalendarClock, FileText, ChevronRight, BellRing } from "lucide-react";
+import { Building2, AlertCircle, CalendarClock, FileText, ChevronRight, BellRing, X, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { getDespachoDashboard } from "@/lib/despacho/dashboard.functions";
 
 export const Route = createFileRoute("/app/despacho")({ component: DespachoPage });
@@ -13,11 +16,34 @@ const SEMAFORO_CLR: Record<string, string> = {
   verde: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
 };
 
+type SemaforoFiltro = "" | "rojo" | "amarillo" | "verde";
+
 function DespachoPage() {
   const fn = useServerFn(getDespachoDashboard);
   const { data, isLoading } = useQuery({ queryKey: ["despacho-dashboard"], queryFn: () => fn() });
   const t = data?.totales;
   const today = new Date().toISOString().slice(0, 10);
+
+  const [semaforo, setSemaforo] = useState<SemaforoFiltro>("");
+  const [conAlertas, setConAlertas] = useState(false);
+  const [conVencidas, setConVencidas] = useState(false);
+  const [q, setQ] = useState("");
+
+  const clientesAll = data?.clientes ?? [];
+  const clientes = useMemo(() => {
+    return clientesAll.filter((c) => {
+      if (semaforo && c.semaforo !== semaforo) return false;
+      if (conAlertas && c.alertas_abiertas <= 0) return false;
+      if (conVencidas && !(c.proxima_obligacion && c.proxima_obligacion.vencimiento < today)) return false;
+      if (q) {
+        const needle = q.toLowerCase();
+        if (!c.razon_social.toLowerCase().includes(needle) && !c.rfc.toLowerCase().includes(needle)) return false;
+      }
+      return true;
+    });
+  }, [clientesAll, semaforo, conAlertas, conVencidas, q, today]);
+
+  const tieneFiltros = !!semaforo || conAlertas || conVencidas || !!q;
 
   return (
     <div className="space-y-6">
@@ -43,9 +69,53 @@ function DespachoPage() {
       </div>
 
       <div className="rounded-xl border border-border/60 bg-card/50 overflow-hidden">
-        <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
-          <div className="font-semibold">Clientes</div>
+        <div className="px-4 py-3 border-b border-border/50 flex flex-wrap items-center justify-between gap-3">
+          <div className="font-semibold">
+            Clientes{" "}
+            <span className="text-xs font-normal text-muted-foreground">
+              ({clientes.length}{tieneFiltros && clientesAll.length !== clientes.length ? ` de ${clientesAll.length}` : ""})
+            </span>
+          </div>
           <Link to="/app/clientes" className="text-xs text-primary hover:underline">Ver expedientes</Link>
+        </div>
+        <div className="px-4 py-3 border-b border-border/50 flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[200px] max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Buscar razón social o RFC..."
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              className="pl-9 h-9 text-sm"
+            />
+          </div>
+          <select
+            value={semaforo}
+            onChange={(e) => setSemaforo(e.target.value as SemaforoFiltro)}
+            className="h-9 rounded-md border border-border bg-card px-3 text-sm"
+          >
+            <option value="">Todos los semáforos</option>
+            <option value="rojo">🔴 Riesgo alto</option>
+            <option value="amarillo">🟡 Atender</option>
+            <option value="verde">🟢 En orden</option>
+          </select>
+          <label className="inline-flex items-center gap-1.5 text-xs px-2.5 h-9 rounded-md border border-border bg-card cursor-pointer hover:bg-accent/30">
+            <input type="checkbox" checked={conAlertas} onChange={(e) => setConAlertas(e.target.checked)} className="accent-primary" />
+            Con alertas
+          </label>
+          <label className="inline-flex items-center gap-1.5 text-xs px-2.5 h-9 rounded-md border border-border bg-card cursor-pointer hover:bg-accent/30">
+            <input type="checkbox" checked={conVencidas} onChange={(e) => setConVencidas(e.target.checked)} className="accent-primary" />
+            Obligación vencida
+          </label>
+          {tieneFiltros && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setSemaforo(""); setConAlertas(false); setConVencidas(false); setQ(""); }}
+              className="h-9"
+            >
+              <X className="h-3.5 w-3.5 mr-1" /> Limpiar
+            </Button>
+          )}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -64,12 +134,17 @@ function DespachoPage() {
               {isLoading && (
                 <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground text-sm">Cargando…</td></tr>
               )}
-              {!isLoading && (data?.clientes ?? []).length === 0 && (
+              {!isLoading && clientesAll.length === 0 && (
                 <tr><td colSpan={7} className="px-4 py-12 text-center text-muted-foreground text-sm">
                   Aún no hay expedientes. <Link to="/app/clientes" className="text-primary hover:underline">Crear el primero</Link>.
                 </td></tr>
               )}
-              {(data?.clientes ?? []).map((c) => {
+              {!isLoading && clientesAll.length > 0 && clientes.length === 0 && (
+                <tr><td colSpan={7} className="px-4 py-12 text-center text-muted-foreground text-sm">
+                  No hay clientes que coincidan con los filtros.
+                </td></tr>
+              )}
+              {clientes.map((c) => {
                 const vencida = c.proxima_obligacion && c.proxima_obligacion.vencimiento < today;
                 return (
                   <tr key={c.id} className="hover:bg-accent/5">

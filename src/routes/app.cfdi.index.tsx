@@ -52,6 +52,14 @@ function CfdiDashboard() {
     q: "", tipo: "", metodo_pago: "", desde: "", hasta: "",
   });
   const [selected, setSelected] = useState<CfdiRow | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleId = (id: string) => setSelectedIds((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const clearSelection = () => setSelectedIds(new Set());
 
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const isDemo = !!cliente?.id && !UUID_RE.test(cliente.id);
@@ -149,8 +157,22 @@ function CfdiDashboard() {
             Expediente activo: <span className="font-mono text-foreground">{cliente.rfc}</span> · {cliente.razon_social}
           </p>
         </div>
-        <ExportButton rows={rows} />
+        <ExportButton rows={rows} selectedIds={selectedIds} />
       </div>
+
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-primary/30 bg-primary/5">
+          <span className="text-sm font-medium">{selectedIds.size} seleccionado{selectedIds.size === 1 ? "" : "s"}</span>
+          <span className="text-xs text-muted-foreground">
+            Total: {fmt(rows.filter((r) => selectedIds.has(r.id)).reduce((s, r) => s + Number(r.total || 0), 0))}
+          </span>
+          <div className="ml-auto flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={clearSelection}>
+              <X className="h-3.5 w-3.5 mr-1" /> Limpiar
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -210,6 +232,18 @@ function CfdiDashboard() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border/60 bg-muted/30 text-xs uppercase tracking-wider text-muted-foreground">
+                <th className="px-3 py-3 w-8">
+                  <input
+                    type="checkbox"
+                    aria-label="Seleccionar todo"
+                    className="accent-primary"
+                    checked={filteredByRiesgo.length > 0 && filteredByRiesgo.every((r) => selectedIds.has(r.id))}
+                    onChange={(e) => {
+                      if (e.target.checked) setSelectedIds(new Set(filteredByRiesgo.map((r) => r.id)));
+                      else clearSelection();
+                    }}
+                  />
+                </th>
                 <th className="text-left font-medium px-4 py-3">Fecha</th>
                 <th className="text-left font-medium px-4 py-3">Tipo</th>
                 <th className="text-left font-medium px-4 py-3">UUID</th>
@@ -221,18 +255,27 @@ function CfdiDashboard() {
             </thead>
             <tbody>
               {listQ.isLoading && (
-                <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">
+                <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">
                   <Loader2 className="h-5 w-5 animate-spin inline mr-2" /> Cargando…
                 </td></tr>
               )}
               {!listQ.isLoading && filteredByRiesgo.length === 0 && (
-                <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">
+                <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">
                   Sin comprobantes. Arrastra un ZIP del SAT o XMLs para empezar.
                 </td></tr>
               )}
               {filteredByRiesgo.map((r) => (
-                <tr key={r.id} className="border-b border-border/40 hover:bg-accent/20 cursor-pointer transition-colors"
+                <tr key={r.id} className={`border-b border-border/40 hover:bg-accent/20 cursor-pointer transition-colors ${selectedIds.has(r.id) ? "bg-primary/5" : ""}`}
                     onClick={() => setSelected(r)}>
+                  <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      aria-label={`Seleccionar ${r.uuid}`}
+                      className="accent-primary"
+                      checked={selectedIds.has(r.id)}
+                      onChange={() => toggleId(r.id)}
+                    />
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{fmtDate(r.fecha)}</td>
                   <td className="px-4 py-3"><TipoBadge tipo={r.tipo_cfdi} /></td>
                   <td className="px-4 py-3"><UuidCell uuid={r.uuid} /></td>
@@ -389,28 +432,34 @@ function Field({ label, value, full }: { label: string; value: string; full?: bo
   );
 }
 
-function ExportButton({ rows }: { rows: CfdiRow[] }) {
+function ExportButton({ rows, selectedIds }: { rows: CfdiRow[]; selectedIds: Set<string> }) {
+  const exportRows = useMemo(
+    () => (selectedIds.size > 0 ? rows.filter((r) => selectedIds.has(r.id)) : rows),
+    [rows, selectedIds]
+  );
   const csv = useMemo(() => {
-    if (!rows.length) return "";
+    if (!exportRows.length) return "";
     const headers = ["UUID","Tipo","Fecha","RFC Emisor","Nombre Emisor","RFC Receptor","Nombre Receptor","Subtotal","IVA Trasladado","IVA Retenido","Total","Método","Forma","Uso CFDI","Estatus","Moneda"];
     const escape = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const lines = rows.map((r) => [
+    const lines = exportRows.map((r) => [
       r.uuid, r.tipo_cfdi, r.fecha, r.rfc_emisor, r.nombre_emisor, r.rfc_receptor, r.nombre_receptor,
       r.subtotal, r.iva_trasladado, r.iva_retenido, r.total, r.metodo_pago, r.forma_pago, r.uso_cfdi, r.estatus_sat, r.moneda,
     ].map(escape).join(","));
     return [headers.join(","), ...lines].join("\n");
-  }, [rows]);
+  }, [exportRows]);
 
   const download = () => {
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = `cfdi-${new Date().toISOString().slice(0,10)}.csv`;
+    const tag = selectedIds.size > 0 ? `-sel${selectedIds.size}` : "";
+    a.href = url; a.download = `cfdi${tag}-${new Date().toISOString().slice(0,10)}.csv`;
     a.click(); URL.revokeObjectURL(url);
   };
+  const label = selectedIds.size > 0 ? `Exportar ${selectedIds.size}` : "Exportar CSV";
   return (
-    <Button variant="outline" disabled={!rows.length} onClick={download}>
-      <ArrowDownToLine className="h-4 w-4 mr-1" /> Exportar CSV
+    <Button variant="outline" disabled={!exportRows.length} onClick={download}>
+      <ArrowDownToLine className="h-4 w-4 mr-1" /> {label}
     </Button>
   );
 }
