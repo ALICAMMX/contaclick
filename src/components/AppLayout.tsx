@@ -6,6 +6,10 @@ import { useDespacho } from "@/lib/despacho/use-despacho";
 import { useTheme } from "@/lib/theme";
 import { Toaster } from "sonner";
 import { useEffect, useRef, useState } from "react";
+import { NotificationsBell } from "./NotificationsBell";
+import { CommandPaletteTrigger } from "./CommandPalette";
+import { TrialBanner } from "./TrialBanner";
+import { Tour, shouldAutoOpenTour } from "./Tour";
 
 const LABELS: Record<string, string> = {
   app: "Inicio",
