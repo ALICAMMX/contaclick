@@ -109,10 +109,28 @@ function ContableCatalog() {
   );
 }
 
-function MiniDashboard({ nombre, rfc }: { nombre: string; rfc: string }) {
-  // Demo values - en producción vienen del expediente activo
+function MiniDashboard({ nombre, rfc, clienteId }: { nombre: string; rfc: string; clienteId: string }) {
+  const isReal = UUID_RE.test(clienteId);
+  const run = useServerFn(computeRiesgoSAT);
+  const { data: riesgo, isLoading: riesgoLoading } = useQuery({
+    queryKey: ["riesgo-sat", clienteId],
+    queryFn: () => run({ data: { cliente_id: clienteId } }),
+    enabled: isReal,
+    staleTime: 60_000,
+  });
+
+  const riesgoMetric = (() => {
+    if (!isReal) return { value: "— / 100", sub: "Expediente demo", accent: "text-muted-foreground", dot: "bg-muted-foreground" };
+    if (riesgoLoading || !riesgo) return { value: "…", sub: "Calculando", accent: "text-muted-foreground", dot: "bg-muted-foreground" };
+    const sem = riesgo.semaforo;
+    const accent = sem === "rojo" ? "text-red-600 dark:text-red-300" : sem === "amarillo" ? "text-amber-600 dark:text-amber-300" : "text-emerald-600 dark:text-emerald-300";
+    const dot = sem === "rojo" ? "bg-red-500" : sem === "amarillo" ? "bg-amber-500" : "bg-emerald-500";
+    const label = sem === "rojo" ? "Alto" : sem === "amarillo" ? "Medio" : "Bajo";
+    return { value: `${riesgo.score} / 100`, sub: label, accent, dot };
+  })();
+
   const metrics = [
-    { label: "Riesgo SAT", value: "42 / 100", sub: "Medio", icon: ShieldAlert, accent: "text-amber-600 dark:text-amber-300", dot: "bg-amber-500" },
+    { label: "Riesgo SAT", value: riesgoMetric.value, sub: riesgoMetric.sub, icon: ShieldAlert, accent: riesgoMetric.accent, dot: riesgoMetric.dot },
     { label: "Próximo vencimiento", value: "17 días", sub: "Pago provisional", icon: Calendar, accent: "text-primary", dot: "bg-primary" },
     { label: "CFDI este mes", value: "128", sub: "98 emitidos · 30 recibidos", icon: FileText, accent: "text-foreground", dot: "bg-emerald-500" },
     { label: "Última actividad", value: "Hoy", sub: "Conciliación bancaria", icon: Clock, accent: "text-muted-foreground", dot: "bg-muted-foreground" },
