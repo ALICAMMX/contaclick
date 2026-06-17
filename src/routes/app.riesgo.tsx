@@ -3,8 +3,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { computeRiesgoSAT, type CriterioRiesgo } from "@/lib/riesgo/riesgo.functions";
-import { ShieldAlert, ShieldCheck, ShieldQuestion, Sparkles, AlertCircle } from "lucide-react";
+import { ShieldAlert, ShieldCheck, ShieldQuestion, Sparkles, AlertCircle, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { exportXlsx, buildFilename } from "@/lib/export/xlsx";
 
 export const Route = createFileRoute("/app/riesgo")({
   component: RiesgoPage,
