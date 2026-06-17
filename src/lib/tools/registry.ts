@@ -36,8 +36,16 @@ export const TOOLS: ToolDef[] = [
   {
     key: "isr-iva-calculator",
     route: "/app/tools/isr-iva-calculator",
-    name: "Calculadora ISR / IVA",
-    description: "Calcula el pago provisional mensual con base en ingresos y gastos.",
+    name: "Calculadora ISR / IVA — PF",
+    description: "Pago provisional mensual para personas físicas con actividad empresarial.",
+    category: "Cálculo",
+    icon: Calculator,
+  },
+  {
+    key: "isr-iva-pm",
+    route: "/app/tools/isr-iva-pm",
+    name: "Calculadora ISR / IVA — PM",
+    description: "Pago provisional para personas morales (régimen 601) con coeficiente de utilidad.",
     category: "Cálculo",
     icon: Calculator,
   },

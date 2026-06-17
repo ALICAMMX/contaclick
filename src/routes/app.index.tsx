@@ -92,11 +92,11 @@ function Hub() {
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
           {[
+            { icon: Briefcase, label: "Dashboard despacho", href: "/app/despacho" },
             { icon: ShieldAlert, label: "Riesgo SAT", href: "/app/riesgo" },
             { icon: FileText, label: "CFDI", href: "/app/cfdi" },
             { icon: Banknote, label: "Conciliación", href: "/app/conciliacion" },
             { icon: Mail, label: "Buzón", href: "/app/mensajes" },
-            { icon: TrendingUp, label: "Tesorería", href: "/app/admin/tesoreria" },
             { icon: Users, label: "Expedientes", href: "/app/expedientes" },
           ].map((q) => {
             const I = q.icon;
