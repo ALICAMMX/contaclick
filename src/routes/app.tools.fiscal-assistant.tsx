@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Send, Sparkles, Loader2, Bot } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { ToolShell } from "@/components/ToolShell";
 import { sendChat } from "@/lib/chat.functions";
@@ -68,7 +70,13 @@ function FiscalAssistant() {
                     <Sparkles className="h-3 w-3" /> ContaClick IA
                   </div>
                 )}
-                <div className="leading-relaxed whitespace-pre-wrap">{m.content}</div>
+                {m.role === "assistant" ? (
+                  <div className="leading-relaxed prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-headings:mt-3 prose-headings:mb-2 prose-pre:my-2 prose-code:text-xs">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+                  </div>
+                ) : (
+                  <div className="leading-relaxed whitespace-pre-wrap">{m.content}</div>
+                )}
               </div>
             </div>
           ))}
