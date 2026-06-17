@@ -134,6 +134,36 @@ function ConciliacionPage() {
     URL.revokeObjectURL(url);
   }
 
+  function exportExcel() {
+    if (!list.data || !cliente) return;
+    const movs = list.data.movimientos.map((m) => {
+      const c = concById.get(m.id);
+      return {
+        Fecha: m.fecha,
+        Concepto: m.descripcion ?? "",
+        Referencia: m.referencia ?? "",
+        Cargo: Number(m.cargo ?? 0),
+        Abono: Number(m.abono ?? 0),
+        Match: c ? c.tipo_match : "sin_cfdi",
+        Probabilidad: c?.probabilidad ?? "",
+        Estatus: c?.estatus ?? "",
+        Motivo: c?.motivo ?? "",
+      };
+    });
+    const resumen = s ? [{
+      Cliente: cliente.razon_social, RFC: cliente.rfc,
+      Movimientos: s.total_movimientos, CFDI: s.total_cfdi,
+      Conciliados: s.matched, "Tasa %": s.tasa,
+      "Sin CFDI": s.sinCfdi, "CFDI sin pago": s.cfdiSinPago,
+      "Ingresos": s.ingresos, "Egresos": s.egresos,
+      Exactos: s.exactos, Probables: s.probables,
+    }] : [];
+    exportXlsx(buildFilename("conciliacion", cliente.rfc), [
+      { name: "Resumen", rows: resumen },
+      { name: "Movimientos", rows: movs },
+    ]);
+  }
+
   if (!cliente) {
     return (
       <div className="rounded-xl border border-warning/40 bg-warning/5 p-8 flex items-start gap-4">
