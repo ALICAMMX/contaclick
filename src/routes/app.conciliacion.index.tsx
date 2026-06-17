@@ -35,11 +35,23 @@ function ConciliacionPage() {
   const fnUpdate = useServerFn(updateConciliacion);
 
   const [banco, setBanco] = useState("BBVA");
+  const [aliasNew, setAliasNew] = useState("Principal");
+  const [maskNew, setMaskNew] = useState("");
+  const [cuentaSel, setCuentaSel] = useState<string>("__nueva__"); // id de cuenta existente o "__nueva__"
+  const [filterCuenta, setFilterCuenta] = useState<string>("__all__");
   const [parsed, setParsed] = useState<ParsedMovimiento[]>([]);
   const [parsingErr, setParsingErr] = useState<string | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiContent, setAiContent] = useState<string>("");
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const fnCuentas = useServerFn(listCuentas);
+  const fnCreateCuenta = useServerFn(createCuenta);
+  const cuentas = useQuery({
+    enabled: !!cliente,
+    queryKey: ["cuentas", cliente?.id],
+    queryFn: () => fnCuentas({ data: { cliente_id: cliente!.id } }),
+  });
 
   const stats = useQuery({
     enabled: !!cliente,
@@ -48,8 +60,12 @@ function ConciliacionPage() {
   });
   const list = useQuery({
     enabled: !!cliente,
-    queryKey: ["recon-list", cliente?.id],
-    queryFn: () => fnList({ data: { cliente_id: cliente!.id, limit: 500 } }),
+    queryKey: ["recon-list", cliente?.id, filterCuenta],
+    queryFn: () => fnList({ data: {
+      cliente_id: cliente!.id,
+      limit: 500,
+      ...(filterCuenta !== "__all__" ? { cuenta_id: filterCuenta } : {}),
+    } }),
   });
 
   const upload = useMutation({
