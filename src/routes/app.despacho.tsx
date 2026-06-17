@@ -69,9 +69,53 @@ function DespachoPage() {
       </div>
 
       <div className="rounded-xl border border-border/60 bg-card/50 overflow-hidden">
-        <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
-          <div className="font-semibold">Clientes</div>
+        <div className="px-4 py-3 border-b border-border/50 flex flex-wrap items-center justify-between gap-3">
+          <div className="font-semibold">
+            Clientes{" "}
+            <span className="text-xs font-normal text-muted-foreground">
+              ({clientes.length}{tieneFiltros && clientesAll.length !== clientes.length ? ` de ${clientesAll.length}` : ""})
+            </span>
+          </div>
           <Link to="/app/clientes" className="text-xs text-primary hover:underline">Ver expedientes</Link>
+        </div>
+        <div className="px-4 py-3 border-b border-border/50 flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[200px] max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Buscar razón social o RFC..."
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              className="pl-9 h-9 text-sm"
+            />
+          </div>
+          <select
+            value={semaforo}
+            onChange={(e) => setSemaforo(e.target.value as SemaforoFiltro)}
+            className="h-9 rounded-md border border-border bg-card px-3 text-sm"
+          >
+            <option value="">Todos los semáforos</option>
+            <option value="rojo">🔴 Riesgo alto</option>
+            <option value="amarillo">🟡 Atender</option>
+            <option value="verde">🟢 En orden</option>
+          </select>
+          <label className="inline-flex items-center gap-1.5 text-xs px-2.5 h-9 rounded-md border border-border bg-card cursor-pointer hover:bg-accent/30">
+            <input type="checkbox" checked={conAlertas} onChange={(e) => setConAlertas(e.target.checked)} className="accent-primary" />
+            Con alertas
+          </label>
+          <label className="inline-flex items-center gap-1.5 text-xs px-2.5 h-9 rounded-md border border-border bg-card cursor-pointer hover:bg-accent/30">
+            <input type="checkbox" checked={conVencidas} onChange={(e) => setConVencidas(e.target.checked)} className="accent-primary" />
+            Obligación vencida
+          </label>
+          {tieneFiltros && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setSemaforo(""); setConAlertas(false); setConVencidas(false); setQ(""); }}
+              className="h-9"
+            >
+              <X className="h-3.5 w-3.5 mr-1" /> Limpiar
+            </Button>
+          )}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
