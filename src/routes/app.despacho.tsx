@@ -1,7 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Building2, AlertCircle, CalendarClock, FileText, ChevronRight, BellRing } from "lucide-react";
+import { Building2, AlertCircle, CalendarClock, FileText, ChevronRight, BellRing, X, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { getDespachoDashboard } from "@/lib/despacho/dashboard.functions";
 
 export const Route = createFileRoute("/app/despacho")({ component: DespachoPage });
@@ -13,11 +16,34 @@ const SEMAFORO_CLR: Record<string, string> = {
   verde: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
 };
 
+type SemaforoFiltro = "" | "rojo" | "amarillo" | "verde";
+
 function DespachoPage() {
   const fn = useServerFn(getDespachoDashboard);
   const { data, isLoading } = useQuery({ queryKey: ["despacho-dashboard"], queryFn: () => fn() });
   const t = data?.totales;
   const today = new Date().toISOString().slice(0, 10);
+
+  const [semaforo, setSemaforo] = useState<SemaforoFiltro>("");
+  const [conAlertas, setConAlertas] = useState(false);
+  const [conVencidas, setConVencidas] = useState(false);
+  const [q, setQ] = useState("");
+
+  const clientesAll = data?.clientes ?? [];
+  const clientes = useMemo(() => {
+    return clientesAll.filter((c) => {
+      if (semaforo && c.semaforo !== semaforo) return false;
+      if (conAlertas && c.alertas_abiertas <= 0) return false;
+      if (conVencidas && !(c.proxima_obligacion && c.proxima_obligacion.vencimiento < today)) return false;
+      if (q) {
+        const needle = q.toLowerCase();
+        if (!c.razon_social.toLowerCase().includes(needle) && !c.rfc.toLowerCase().includes(needle)) return false;
+      }
+      return true;
+    });
+  }, [clientesAll, semaforo, conAlertas, conVencidas, q, today]);
+
+  const tieneFiltros = !!semaforo || conAlertas || conVencidas || !!q;
 
   return (
     <div className="space-y-6">
