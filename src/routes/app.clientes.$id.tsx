@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { getCliente } from "@/lib/clientes.functions";
 import { getSatStatus, conectarSat, desconectarSat, sincronizarCfdis } from "@/lib/sat/sat.functions";
 import { getClienteHistorial } from "@/lib/clientes/historial.functions";
+import { listCuentas, createCuenta, deleteCuenta, BANCOS } from "@/lib/cuentas/cuentas.functions";
+import { Banknote, Plus, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/app/clientes/$id")({
   component: ClienteDetailPage,
