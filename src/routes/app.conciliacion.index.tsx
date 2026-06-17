@@ -136,6 +136,13 @@ function ConciliacionPage() {
     return map;
   }, [list.data]);
 
+  const cuentaById = useMemo(() => {
+    const map = new Map<string, { banco: string; alias: string | null }>();
+    (cuentas.data?.cuentas ?? []).forEach((c) => map.set(c.id, { banco: c.banco, alias: c.alias }));
+    (list.data?.cuentas ?? []).forEach((c) => { if (!map.has(c.id)) map.set(c.id, { banco: c.banco, alias: c.alias }); });
+    return map;
+  }, [cuentas.data, list.data]);
+
   async function onPickFiles(files: FileList | null) {
     if (!files?.length) return;
     setParsingErr(null);
