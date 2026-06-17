@@ -18,7 +18,7 @@ const MODULES = [
     icon: Calculator,
     accent: "var(--module-contable)",
     bullets: ["Validador CFDI 4.0", "Riesgo SAT 2026", "Conciliación bancaria", "ISR / IVA / RESICO"],
-    counts: { tools: 22, live: 11 },
+    counts: { tools: 22, live: 17 },
   },
   {
     key: "admin",
