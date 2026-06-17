@@ -25,14 +25,14 @@ const TOOLS: Tool[] = [
   { name: "CFDI del expediente", desc: "Bandeja unificada del cliente activo.", icon: FileText, href: "/app/cfdi", status: "live", group: "2 · Ingesta de CFDI" },
 
   // 3. Auditoría y conciliación
-  { name: "Auditor express", desc: "5 validaciones: duplicados, NC huérfanas, cancelados, PPD sin pago, fuera de periodo.", icon: ScanSearch, href: "/app/tools/express-auditor", status: "live", group: "3 · Auditoría & Conciliación" },
-  { name: "Conciliador bancario", desc: "Cruza estado de cuenta vs CFDI.", icon: Banknote, href: "/app/conciliacion", status: "live", group: "3 · Auditoría & Conciliación" },
-  { name: "Conciliación del expediente", desc: "Histórico mensual con semáforo verde/amarillo/rojo.", icon: Banknote, href: "/app/conciliacion/historial", status: "live", group: "3 · Auditoría & Conciliación", doneThisMonth: true },
+  { name: "Auditor express", desc: "5 validaciones: duplicados, NC huérfanas, cancelados, PPD sin pago, fuera de periodo.", icon: ScanSearch, href: "/app/tools/express-auditor", status: "live", group: "3 · Auditoría y Conciliación" },
+  { name: "Conciliador bancario", desc: "Cruza estado de cuenta vs CFDI.", icon: Banknote, href: "/app/conciliacion", status: "live", group: "3 · Auditoría y Conciliación" },
+  { name: "Conciliación del expediente", desc: "Histórico mensual con semáforo verde/amarillo/rojo.", icon: Banknote, href: "/app/conciliacion/historial", status: "live", group: "3 · Auditoría y Conciliación", doneThisMonth: true },
 
   // 4. Cálculo de impuestos
   { name: "Calculadora ISR / IVA", desc: "Pago provisional mensual.", icon: Calculator, href: "/app/tools/isr-iva-calculator", status: "live", group: "4 · Cálculo de impuestos" },
   { name: "Calculadora RESICO PF", desc: "ISR mensual personas físicas RESICO.", icon: Coins, href: "/app/tools/resico-calculator", status: "live", group: "4 · Cálculo de impuestos" },
-  { name: "Transfer Pricing", desc: "Análisis de partes relacionadas.", icon: Network, status: "soon", group: "4 · Cálculo de impuestos" },
+  { name: "Precios de transferencia", desc: "Análisis de partes relacionadas.", icon: Network, status: "soon", group: "4 · Cálculo de impuestos" },
 
   // 5. Defensa SAT
   { name: "Riesgo SAT 2026", desc: "Score sobre los 12 criterios del Plan Maestro.", icon: ShieldAlert, href: "/app/riesgo", status: "live", group: "5 · Defensa SAT", doneThisMonth: true },
@@ -54,7 +54,7 @@ const TOOLS: Tool[] = [
 const GROUPS = [
   "1 · Alta del expediente",
   "2 · Ingesta de CFDI",
-  "3 · Auditoría & Conciliación",
+  "3 · Auditoría y Conciliación",
   "4 · Cálculo de impuestos",
   "5 · Defensa SAT",
   "6 · Cierre & Entregables",
@@ -71,7 +71,7 @@ function ContableCatalog() {
           <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-primary mb-2">
             <span className="h-1 w-6 bg-primary" /> Módulo 1
           </div>
-          <h1 className="serif text-3xl text-foreground">Contable & Fiscal</h1>
+          <h1 className="serif text-3xl text-foreground">Contable y Fiscal</h1>
           <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
             Catálogo de herramientas independientes. Entra, úsala, regresa. Sin formularios complicados ni configuración previa.
           </p>

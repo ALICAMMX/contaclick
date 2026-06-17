@@ -14,7 +14,7 @@ const TOOLS: Tool[] = [
   { name: "Auditor express", desc: "Folios, duplicados, notas de crédito huérfanas.", icon: ScanSearch, href: "/app/tools/express-auditor", status: "live", group: "CFDI & Comprobantes" },
   { name: "Calculadora ISR / IVA", desc: "Pago provisional mensual.", icon: Calculator, href: "/app/tools/isr-iva-calculator", status: "live", group: "Cálculo Fiscal" },
   { name: "Calculadora RESICO PF", desc: "ISR mensual personas físicas RESICO.", icon: Coins, href: "/app/tools/resico-calculator", status: "live", group: "Cálculo Fiscal" },
-  { name: "Calculadora Transfer Pricing", desc: "Análisis de partes relacionadas.", icon: Network, status: "soon", group: "Cálculo Fiscal" },
+  { name: "Calculadora de Precios de Transferencia", desc: "Análisis de partes relacionadas.", icon: Network, status: "soon", group: "Cálculo Fiscal" },
   { name: "Conciliador bancario", desc: "Cruza estado de cuenta vs CFDI.", icon: Banknote, href: "/app/tools/bank-reconciler", status: "live", group: "Defensa SAT" },
   { name: "Lector de Constancia Fiscal", desc: "Régimen, obligaciones y domicilio.", icon: FileBadge, href: "/app/tools/csf-parser", status: "live", group: "Documentos" },
   { name: "Generador de oficios SAT", desc: "Plantillas listas personalizadas.", icon: FileSignature, href: "/app/tools/oficio-generator", status: "live", group: "Documentos" },

@@ -9,7 +9,7 @@ const AGENTS = [
   { name: "Fiscal SAT", icon: ShieldAlert, role: "Defensa proactiva contra los 12 criterios 2026", trigger: "Cierre mensual o cambio de score", tools: ["Analizador de Riesgo SAT", "Validador 69-B"], log: ["Hace 2h · Recalculó score: 72/100 (amarillo)", "Ayer · Detectó proveedor EFOS publicado el 03-jun"] },
   { name: "Conciliación", icon: Banknote, role: "Cruza bancos vs CFDI", trigger: "Sube estado de cuenta", tools: ["Conciliador bancario"], log: ["Hace 30m · 142/145 movimientos conciliados", "Hace 30m · 3 depósitos sin CFDI flagged"] },
   { name: "Auditor", icon: ScanSearch, role: "Hallazgos preventivos de cierre", trigger: "Día 25 de cada mes", tools: ["Auditor express", "Validador de Deducibilidad"], log: ["Ayer · 7 hallazgos en gastos de representación"] },
-  { name: "Corporativo-Fiscal", icon: Building, role: "Operaciones con partes relacionadas", trigger: "Detecta CFDI con partes relacionadas", tools: ["Transfer Pricing"], log: ["Standby"] },
+  { name: "Corporativo-Fiscal", icon: Building, role: "Operaciones con partes relacionadas", trigger: "Detecta CFDI con partes relacionadas", tools: ["Precios de transferencia"], log: ["Standby"] },
   { name: "Defensa", icon: Scale, role: "Activa lagunas legales", trigger: "Llega oficio del SAT", tools: ["Mapa de lagunas", "Redactor de escritos"], log: ["Hace 1d · 3 oportunidades de devolución detectadas"] },
   { name: "Materialidad", icon: FileBadge, role: "Construye soporte de operaciones", trigger: "Operación > $100K MXN sin soporte", tools: ["Validador de Deducibilidad"], log: ["Standby"] },
   { name: "Cierre", icon: Calculator, role: "Pre-cierre mensual automático", trigger: "Día 28", tools: ["ISR/IVA", "RESICO"], log: ["Activación en 4 días"] },

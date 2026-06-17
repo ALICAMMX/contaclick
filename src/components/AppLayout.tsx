@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from "react";
 
 const LABELS: Record<string, string> = {
   app: "Inicio",
-  contable: "Contable & Fiscal",
+  contable: "Contable y Fiscal",
   admin: "Administrativo & RH",
   legal: "Inteligencia Legal",
   herramientas: "Herramientas",
@@ -29,7 +29,7 @@ const LABELS: Record<string, string> = {
   "bank-reconciler": "Conciliador bancario",
   "express-auditor": "Auditor express",
   "fiscal-assistant": "Asistente fiscal IA",
-  "isr-iva-calculator": "Calculadora ISR/IVA",
+  "isr-iva-calculator": "Calculadora ISR / IVA",
   "resico-calculator": "Calculadora RESICO",
   "oficio-generator": "Generador de oficios",
   "csf-parser": "Lector de Constancia",
