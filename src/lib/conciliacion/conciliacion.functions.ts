@@ -61,7 +61,8 @@ const MovimientoSchema = z.object({
 
 const UploadSchema = z.object({
   cliente_id: z.string().uuid(),
-  banco: z.string().min(1).max(60),
+  cuenta_id: z.string().uuid().optional(),
+  banco: z.string().min(1).max(60).optional(),
   alias: z.string().max(80).optional(),
   mask: z.string().max(40).optional(),
   movimientos: z.array(MovimientoSchema).min(1).max(5000),
@@ -74,13 +75,19 @@ export const uploadMovimientos = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const despachoId = await ensureDespacho(supabase, userId);
-    const cuentaId = await ensureCuenta(supabase, {
-      despachoId,
-      clienteId: data.cliente_id,
-      banco: data.banco,
-      alias: data.alias,
-      mask: data.mask,
-    });
+    let cuentaId: string;
+    if (data.cuenta_id) {
+      cuentaId = data.cuenta_id;
+    } else {
+      if (!data.banco) throw new Error("Indica una cuenta existente o un banco para crearla.");
+      cuentaId = await ensureCuenta(supabase, {
+        despachoId,
+        clienteId: data.cliente_id,
+        banco: data.banco,
+        alias: data.alias,
+        mask: data.mask,
+      });
+    }
 
     let inserted = 0, duplicates = 0;
     const rows = [];
