@@ -55,15 +55,19 @@ function RiesgoPage() {
     return (
       <div className="space-y-6">
         <Header />
-        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-10 text-center">
-          <ShieldQuestion className="h-10 w-10 mx-auto text-amber-400 mb-3" />
-          <p className="text-sm text-amber-200">
-            <span className="font-mono">{cliente.rfc}</span> es un expediente demo sin datos reales.
-            Crea o selecciona un expediente real para calcular el riesgo SAT.
-          </p>
-          <Link to="/app/clientes" className="inline-block mt-4 text-sm text-primary hover:underline">
-            Ver expedientes reales →
-          </Link>
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-6 flex items-start gap-4">
+          <ShieldQuestion className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <div className="font-medium">Expediente demo sin datos reales</div>
+            <p className="text-sm text-muted-foreground mt-1">
+              <span className="font-mono">{cliente.rfc}</span> es un expediente de demostración. Crea o selecciona un expediente real para calcular el riesgo SAT.
+            </p>
+            <div className="mt-3">
+              <Button variant="hero" size="sm" asChild>
+                <Link to="/app/clientes">Ver expedientes reales</Link>
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     );
