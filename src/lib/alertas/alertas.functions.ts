@@ -31,13 +31,23 @@ export const listAlertas = createServerFn({ method: "GET" })
 
     const { data, error } = await supabase
       .from("alertas")
-      .select("id, nivel, tipo, titulo, descripcion, cliente_id, created_at, clientes(razon_social)")
+      .select("id, nivel, tipo, titulo, descripcion, cliente_id, created_at")
       .eq("despacho_id", mem.despacho_id)
       .eq("estatus", "abierta")
       .order("created_at", { ascending: false })
       .limit(20);
 
     if (error) throw new Error(error.message);
+
+    const clienteIds = Array.from(new Set((data ?? []).map((r: any) => r.cliente_id).filter(Boolean)));
+    const nombres = new Map<string, string>();
+    if (clienteIds.length > 0) {
+      const { data: cs } = await supabase
+        .from("clientes")
+        .select("id, razon_social")
+        .in("id", clienteIds);
+      (cs ?? []).forEach((c: any) => nombres.set(c.id, c.razon_social));
+    }
 
     const alertas: AlertaItem[] = (data ?? []).map((r: any) => ({
       id: r.id,
@@ -46,7 +56,7 @@ export const listAlertas = createServerFn({ method: "GET" })
       titulo: r.titulo,
       descripcion: r.descripcion ?? null,
       cliente_id: r.cliente_id ?? null,
-      cliente_nombre: r.clientes?.razon_social ?? null,
+      cliente_nombre: r.cliente_id ? nombres.get(r.cliente_id) ?? null : null,
       created_at: r.created_at,
     }));
 
