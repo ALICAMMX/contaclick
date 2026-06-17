@@ -2,12 +2,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { ScanSearch, AlertTriangle, CheckCircle2, FileDown, Loader2, Play } from "lucide-react";
+import { ScanSearch, AlertTriangle, CheckCircle2, FileDown, Loader2, Play, Download } from "lucide-react";
 import jsPDF from "jspdf";
 import { ToolShell } from "@/components/ToolShell";
 import { Button } from "@/components/ui/button";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { runExpressAudit, type AuditFinding } from "@/lib/auditor/auditor.functions";
+import { exportXlsx, buildFilename } from "@/lib/export/xlsx";
 
 export const Route = createFileRoute("/app/tools/express-auditor")({
   component: ExpressAuditor,
