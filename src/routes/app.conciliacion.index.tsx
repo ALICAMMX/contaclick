@@ -401,6 +401,9 @@ function ConciliacionPage() {
                 return (
                   <tr key={m.id} className="hover:bg-accent/5">
                     <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{fmtFechaMx(m.fecha)}</td>
+                    <td className="px-4 py-2.5 text-xs whitespace-nowrap">
+                      {(() => { const ct = cuentaById.get(m.cuenta_id as string); return ct ? `${ct.banco} · ${ct.alias ?? "—"}` : "—"; })()}
+                    </td>
                     <td className="px-4 py-2.5 max-w-[280px] truncate">{m.descripcion}</td>
                     <td className="px-4 py-2.5 text-xs text-muted-foreground font-mono">{m.referencia ?? "—"}</td>
                     <td className={`px-4 py-2.5 text-right tabular-nums font-medium ${monto >= 0 ? "text-success" : "text-foreground"}`}>
@@ -422,7 +425,7 @@ function ConciliacionPage() {
                 );
               })}
               {!list.data?.movimientos.length && (
-                <tr><td colSpan={7} className="px-4 py-12 text-center text-sm text-muted-foreground">Aún no hay movimientos. Sube tu primer estado de cuenta.</td></tr>
+                <tr><td colSpan={8} className="px-4 py-12 text-center text-sm text-muted-foreground">Aún no hay movimientos. Sube tu primer estado de cuenta.</td></tr>
               )}
             </tbody>
           </table>
