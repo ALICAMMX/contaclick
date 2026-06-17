@@ -271,17 +271,43 @@ function ConciliacionPage() {
           <span className="text-xs text-muted-foreground ml-auto">CSV · XLSX</span>
         </div>
         <div className="grid md:grid-cols-3 gap-4">
-          <div className="md:col-span-1">
-            <label className="text-xs text-muted-foreground">Banco</label>
-            <select
-              value={banco}
-              onChange={(e) => setBanco(e.target.value)}
-              className="mt-1 w-full h-10 rounded-md bg-background border border-border px-3 text-sm"
-            >
-              {["BBVA", "Banorte", "Santander", "Banamex", "HSBC", "Scotiabank", "Inbursa", "Azteca", "Mifel", "Otro"].map((b) => (
-                <option key={b}>{b}</option>
-              ))}
-            </select>
+          <div className="md:col-span-1 space-y-3">
+            <div>
+              <label className="text-xs text-muted-foreground">Cuenta destino</label>
+              <select
+                value={cuentaSel}
+                onChange={(e) => setCuentaSel(e.target.value)}
+                className="mt-1 w-full h-10 rounded-md bg-background border border-border px-3 text-sm"
+              >
+                {(cuentas.data?.cuentas ?? []).map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.banco} · {c.alias}{c.numero_cuenta_mask ? ` · ${c.numero_cuenta_mask}` : ""} ({c.movimientos} mov.)
+                  </option>
+                ))}
+                <option value="__nueva__">+ Nueva cuenta…</option>
+              </select>
+            </div>
+            {cuentaSel === "__nueva__" && (
+              <div className="space-y-2 p-3 rounded-md border border-dashed border-border/60 bg-background/50">
+                <select value={banco} onChange={(e) => setBanco(e.target.value)}
+                  className="w-full h-9 rounded-md bg-background border border-border px-3 text-xs">
+                  {BANCOS.map((b) => <option key={b}>{b}</option>)}
+                </select>
+                <input value={aliasNew} onChange={(e) => setAliasNew(e.target.value)}
+                  placeholder="Alias (ej. Operativa, Nómina)"
+                  className="w-full h-9 rounded-md bg-background border border-border px-3 text-xs" />
+                <input value={maskNew} onChange={(e) => setMaskNew(e.target.value)}
+                  placeholder="Últimos 4 dígitos (opcional)"
+                  className="w-full h-9 rounded-md bg-background border border-border px-3 text-xs" />
+                <Button type="button" size="sm" variant="glass" className="w-full"
+                  onClick={() => newCuenta.mutate({ banco, alias: aliasNew, mask: maskNew })}
+                  disabled={newCuenta.isPending}>
+                  {newCuenta.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                  Guardar cuenta
+                </Button>
+                <p className="text-[10px] text-muted-foreground">También puedes subir directamente; la cuenta se creará con estos datos.</p>
+              </div>
+            )}
           </div>
           <div
             className="md:col-span-2 rounded-lg border-2 border-dashed border-border hover:border-primary/50 transition-colors p-6 text-center cursor-pointer"
