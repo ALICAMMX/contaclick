@@ -134,12 +134,17 @@ function DespachoPage() {
               {isLoading && (
                 <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground text-sm">Cargando…</td></tr>
               )}
-              {!isLoading && (data?.clientes ?? []).length === 0 && (
+              {!isLoading && clientesAll.length === 0 && (
                 <tr><td colSpan={7} className="px-4 py-12 text-center text-muted-foreground text-sm">
                   Aún no hay expedientes. <Link to="/app/clientes" className="text-primary hover:underline">Crear el primero</Link>.
                 </td></tr>
               )}
-              {(data?.clientes ?? []).map((c) => {
+              {!isLoading && clientesAll.length > 0 && clientes.length === 0 && (
+                <tr><td colSpan={7} className="px-4 py-12 text-center text-muted-foreground text-sm">
+                  No hay clientes que coincidan con los filtros.
+                </td></tr>
+              )}
+              {clientes.map((c) => {
                 const vencida = c.proxima_obligacion && c.proxima_obligacion.vencimiento < today;
                 return (
                   <tr key={c.id} className="hover:bg-accent/5">
