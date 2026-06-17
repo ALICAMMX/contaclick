@@ -136,6 +136,10 @@ function RiesgoPage() {
                   <Download className="h-3 w-3" /> Excel
                 </button>
               </div>
+            </div>
+          </div>
+
+
 
           <div className="grid md:grid-cols-2 gap-4">
             {data.criterios.map((c) => <CriterioCard key={c.id} c={c} />)}
