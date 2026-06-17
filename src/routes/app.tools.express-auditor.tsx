@@ -172,9 +172,30 @@ function ExpressAuditor() {
             {rerun.isPending || q.isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Ejecutar auditoría
           </Button>
         </div>
-        <Button variant="glass" onClick={exportPdf} disabled={!stats}>
-          <FileDown className="h-4 w-4" /> Exportar PDF
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="glass" onClick={exportPdf} disabled={!stats}>
+            <FileDown className="h-4 w-4" /> PDF
+          </Button>
+          <Button
+            variant="glass"
+            disabled={!stats}
+            onClick={() => {
+              if (!stats) return;
+              exportXlsx(buildFilename(`auditoria-${year}`, cliente!.rfc), [
+                {
+                  name: "Resumen",
+                  rows: [{ Cliente: cliente!.razon_social, RFC: cliente!.rfc, Año: year, "Total CFDI": stats.total, Duplicados: stats.duplicados, "NC huérfanas": stats.nc_huerfanas, Cancelados: stats.cancelados_declarados, "PPD sin pago": stats.ppd_sin_pago, "Fuera de periodo": stats.fuera_periodo }],
+                },
+                {
+                  name: "Hallazgos",
+                  rows: findings.map((f) => ({ Tipo: TIPO_LABEL[f.tipo], Severidad: f.severidad, UUID: f.uuid, Fecha: f.fecha?.slice(0, 10) ?? "", Monto: f.monto, Descripcion: f.descripcion })),
+                },
+              ]);
+            }}
+          >
+            <Download className="h-4 w-4" /> Excel
+          </Button>
+        </div>
       </div>
 
       {/* Resumen ejecutivo */}
