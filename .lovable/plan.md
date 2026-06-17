@@ -1,126 +1,139 @@
-## Objetivo
 
-Transformar la app en una **maqueta navegable de impacto** que muestre cómo lucirá ContaClick "terminado" según el documento maestro v2, sin romper lo que ya funciona. Al entrar, el usuario debe sentir que está frente a una suite enterprise mexicana — no un MVP.
+# Plan de integración — Mejoras UX/UI sin romper diseño
 
-Estilo: **Navy Trust** (`#0f1b3d` base, `#1e3a5f` superficies, `#3b6fa0` acentos, `#e8edf3` foreground), tipografía editorial seria (Instrument Serif + Inter), con detalles de oro/ámbar como acento de "autoridad fiscal".
+Aprovecharé todo lo que ya existe: `AppLayout` (header sticky), `Tour.tsx`, tablas `alertas`, `tool_runs`, `audit_logs`, `semaforo_fiscal`, `obligaciones_fiscales`, `despachos.trial_ends_at`, `cuentas_bancarias`, `conciliaciones`. Cero cambios al sistema de diseño (tokens, tipografía, paleta) y cero cambios al esquema fiscal existente.
 
----
-
-## 1) Nuevo shell con top tabs por módulo
-
-Reemplazar el header actual de `AppLayout.tsx` por un shell de **dos niveles**:
-
-- **Nivel 1 — Módulos** (tabs grandes, siempre visibles):
-  - Contable-Fiscal
-  - Administrativo
-  - Inteligencia Legal
-  - Cada tab cambia el color de acento sutilmente (azul / dorado / verde esmeralda) para reforzar identidad.
-- **Nivel 2 — Nav contextual** (cambia según el módulo activo):
-  - Cada módulo expone sus secciones (Dashboard, Herramientas, Agentes, Reportes, etc.) en una barra horizontal compacta debajo.
-- **Side-rail derecho fijo**: selector de expediente activo + score de Riesgo SAT en mini-widget + atajo "Comando IA" (cmd+K visual, no funcional aún).
-
-Estructura visual:
-
-```text
-┌─────────────────────────────────────────────────────────────┐
-│ Logo  [ Contable-Fiscal | Administrativo | Legal ]   👤 ⚙ │
-│ ── Dashboard · Herramientas · Agentes · Reportes ──────────│
-└─────────────────────────────────────────────────────────────┘
-```
+El **#6 (descarga CFDI vía e.firma)** se excluye: requiere manejar la FIEL (archivos .cer/.key + contraseña), firmar mensajes XML, llamar SOAP del SAT, jobs programados, almacenamiento cifrado y disclaimers legales. Es un proyecto dedicado; lo planeamos aparte cuando quieras.
 
 ---
 
-## 2) Nuevo `/app` — Command Center hero
+## Fase 1 — Quick wins de UI (1, 2, 3, 9)
 
-Reemplazar `app.index.tsx` por un dashboard tipo "torre de control":
+Todo frontend; sin migraciones. Sólo lecturas a tablas existentes.
 
-- **Hero band**: Score Riesgo SAT 2026 grande (reutiliza datos reales del cálculo existente), semáforo, "12 criterios analizados", y CTA "Ver defensa →".
-- **Grid de 8 agentes contables + 7 administrativos** como cards con avatar, estado (idle/working), última acción y métrica clave. La mayoría aparecen como "Standby" con datos demo.
-- **3 columnas inferiores**:
-  - Próximos vencimientos (DIOT, ISR, IMSS) — demo.
-  - Buzón Tributario — feed simulado.
-  - Flujo de caja 30 días — sparkline demo.
+### 1. Onboarding overlay al primer login
+- Reutilizar `Tour.tsx` (ya define 6 pasos).
+- En `AppLayout.tsx`, al montar comprobar `localStorage["cc.tour.seen.v1"]` y `user.created_at` del último día. Si es nuevo y no lo ha visto, abrir `<Tour open />` automáticamente.
+- Mantener el botón manual en Configuración.
+- Cambio mínimo: 1 `useEffect` + flag.
 
----
+### 2. Centro de notificaciones (campana en header)
+- Componente nuevo `src/components/NotificationsBell.tsx` colocado en el header de `AppLayout` antes de `ThemeToggle`.
+- Server fn nueva `src/lib/alertas/alertas.functions.ts` con `requireSupabaseAuth`:
+  - `listAlertas({ limit: 20 })` → `select * from alertas where despacho_id = ... and estatus = 'abierta' order by created_at desc`.
+  - `marcarLeida(id)` → `update alertas set estatus='leida', resuelta_por=auth.uid(), resuelta_at=now()`.
+- UI: ícono `Bell` con badge numérico (cuenta abiertas), popover (`@/components/ui/popover` ya existe en shadcn) con lista compacta: nivel (color), título, fecha relativa, link al cliente.
+- Polling cada 60s con `useQuery({ refetchInterval })`.
+- Diseño: hereda colores del header, badge con `bg-destructive` para `nivel='alto'`.
 
-## 3) Módulo Contable-Fiscal — `/app/contable`
+### 3. Búsqueda global (⌘K / Ctrl+K)
+- Componente nuevo `src/components/CommandPalette.tsx` usando `@/components/ui/command` (cmdk, ya viene con shadcn).
+- Catálogo estático: lista de las 22 herramientas + módulos + expedientes (estos últimos cargados con un query ligero a `clientes`).
+- Atajo global: `useEffect` con listener `keydown` para `⌘K`/`Ctrl+K`.
+- Trigger visual en el header: input fantasma `Buscar herramientas… ⌘K` (estilo Linear), oculto en móvil.
+- Al seleccionar, `navigate({ to })`.
 
-Tab activa por defecto. Sub-nav: **Dashboard · 12 Herramientas SAT · 8 Agentes · CFDI · Conciliación · Reportes · Riesgo**.
+### 9. Banner de estado del trial
+- Componente nuevo `src/components/TrialBanner.tsx` montado en `AppLayout` justo bajo el header.
+- Lee `despacho.estado` y `despacho.trial_ends_at` desde `useDespacho()` (ya existe).
+- Mostrar sólo si `estado === 'trial'` y faltan ≤ 7 días o ya expiró:
+  - Banner suave (`bg-warning/5 border-warning/30`) con copy + CTA "Ver planes" → `/app/configuracion`.
+  - Dismiss persistido por sesión (`sessionStorage`) para no molestar en cada navegación.
+- Si `trial_ends_at < now()` → variante `bg-destructive/5` y no se puede ocultar.
 
-- **Catálogo de las 12 herramientas SAT** (cards grid): mapea las que ya existen (CFDI Validator, Verifier, Bulk Reader, ISR/IVA, RESICO, Auditor Express, Conciliador, CSF Parser, Oficio Generator, Asistente Fiscal → 10 reales) y agrega como cards "Pronto" con preview:
-  - Validador de Precios de Importación
-  - Detector de Nómina Oculta
-  - Validador de Deducibilidad
-  - Calculadora Transfer Pricing
-  - Lector de Buzón Tributario
-- **Vista de Agentes** (`/app/contable/agentes`): los 8 agentes del doc (CFDI, Fiscal-SAT, Conciliación, Auditor, Corporativo, Defensa, Materialidad, Cierre) como tarjetas con timeline simulado de acciones.
-
----
-
-## 4) Módulo Administrativo — `/app/admin`
-
-Sub-nav: **Dashboard · Nómina · RH · Tesorería · Activos · Inventarios · Trámites · Correspondencia**.
-
-Crear **pantallas maqueta** (UI completa con datos demo, sin lógica real) para:
-
-- **Nómina IA** (`/app/admin/nomina`): tabla de empleados demo, cálculo SDI/IMSS/ISR placeholder, botón "Generar prenómina con IA".
-- **Cumplimiento Laboral** (`/app/admin/cumplimiento`): checklist IMSS/INFONAVIT/SAT con semáforos.
-- **Activos Fijos** (`/app/admin/activos`): tabla con depreciación, MOI, fecha adquisición.
-- **Inventarios** (`/app/admin/inventarios`): kardex demo derivado de CFDI.
-- **Tesorería / Flujo de Caja** (`/app/admin/tesoreria`): gráfica 90 días, cuentas por cobrar/pagar.
-- **Gestor de Trámites** (`/app/admin/tramites`): kanban con semáforo (verde/amarillo/rojo) por vencimiento.
-- **Buzón Tributario** (`/app/admin/buzon`): feed estilo email con notificaciones SAT demo.
-- **Correspondencia / Minutas** (`/app/admin/correspondencia`): generador de minutas y respuestas.
-
-Todas comparten un componente `<ModuleScaffold>` con header consistente, badge "Demo · Próximamente funcional" y CTA "Notificarme cuando esté listo".
+**Archivos Fase 1:**
+- `src/components/AppLayout.tsx` (slot para campana, búsqueda y banner; useEffect del tour)
+- `src/components/NotificationsBell.tsx` (nuevo)
+- `src/components/CommandPalette.tsx` (nuevo)
+- `src/components/TrialBanner.tsx` (nuevo)
+- `src/lib/alertas/alertas.functions.ts` (nuevo)
 
 ---
 
-## 5) Módulo Inteligencia Legal — `/app/legal`
+## Fase 2 — Dashboard del despacho e historial (4, 5)
 
-Sub-nav: **Lagunas Legales · TFJA/SCJN · DOF · Redactor de Escritos · Marketplace**.
+### 4. Dashboard unificado del despacho
+- Ruta nueva `src/routes/app.despacho.tsx` (entrada en sidebar/home como "Panel del despacho").
+- Server fn `getPanelDespacho()` (con `requireSupabaseAuth`) que devuelve por cliente activo:
+  - Datos base de `clientes`.
+  - Último color de `semaforo_fiscal` (LEFT JOIN del periodo más reciente).
+  - Próximas obligaciones de `obligaciones_fiscales` (`proximo_vencimiento` en los próximos 30 días, `estatus='pendiente'`).
+  - Conteo de CFDI emitidos/recibidos del mes desde `cfdi_xml`.
+  - Conteo de alertas abiertas por cliente.
+- UI: tabla densa con columnas: Cliente · RFC · Semáforo (chip color) · Vencimiento próximo · CFDI mes · Alertas. Filtros por color de semáforo. Click en fila → expediente. Mismo patrón visual que `app.clientes.tsx`.
+- Link agregado en `app.index.tsx` (tarjeta destacada arriba) y en breadcrumb LABELS.
 
-- **Mapa de Lagunas Legales** (`/app/legal/lagunas`): grid de las lagunas del doc (Materialidad, Devoluciones IVA, etc.) con potencial de recuperación, % éxito TFJA, estrategia sugerida.
-- **Redactor de Escritos** (`/app/legal/redactor`): wizard de 3 pasos maqueta.
-- **Marketplace Legal** (`/app/legal/marketplace`): grid de despachos especializados (placeholder).
+### 5. Historial de acciones por expediente
+- En `src/routes/app.clientes.$id.tsx`, agregar pestaña/sección "Historial":
+  - Server fn `getHistorialCliente({ cliente_id, limit })` que une `tool_runs` (filtrado por `cliente_id`) y `audit_logs` (eventos relevantes del expediente), ordenado por fecha.
+  - Render como timeline: icono según `tool_key`, hora relativa, usuario, resumen del `input/output` (solo campos legibles).
+  - Filtro por tipo de herramienta y rango de fechas.
+- Sin nuevas tablas (todo ya existe).
 
----
-
-## 6) Sistema de diseño Navy Trust
-
-En `src/styles.css`:
-
-- Tokens nuevos: `--background: oklch(0.18 0.04 260)`, `--surface: oklch(0.24 0.05 260)`, `--primary: oklch(0.55 0.12 250)`, `--gold: oklch(0.78 0.13 85)`, gradientes y `--shadow-elegant`.
-- Variantes nuevas de Button: `authority` (azul profundo + sombra interna), `gold` (acento dorado para acciones premium).
-- Componentes nuevos:
-  - `<ModuleTabs>` — top tabs grandes con indicador animado.
-  - `<ContextNav>` — segunda fila de navegación.
-  - `<AgentCard>` — card de agente con estado y métrica.
-  - `<ToolCard>` — variante extendida con badge de estado (live / beta / soon).
-  - `<ModuleScaffold>` — wrapper para vistas demo con header consistente.
-- Tipografía: importar **Instrument Serif** (headings) + **Inter** (UI). Aplicar serif solo a H1/H2 de módulos.
-
----
-
-## 7) Detalles técnicos
-
-- Rutas nuevas (file-based, dots = slashes):
-  - `app.contable.tsx` (layout con Outlet) + `app.contable.index.tsx` + sub-rutas.
-  - `app.admin.tsx` + 8 sub-rutas demo.
-  - `app.legal.tsx` + 3 sub-rutas.
-- Reorganizar `app.tools.*` existentes para que sigan funcionando, pero también aparezcan listadas dentro del catálogo de Contable-Fiscal vía el registry existente (`src/lib/tools/registry.ts` extendido con `module: "contable" | "admin" | "legal"` y `status: "live" | "beta" | "soon"`).
-- `AppLayout.tsx`: refactor para usar `<ModuleTabs>` + `<ContextNav>` derivado de la ruta activa.
-- Mantener Riesgo SAT, CFDI, Conciliación, Reportes, Mensajes, Expedientes funcionando — solo cambian de ubicación dentro de los nuevos módulos.
-- Sin cambios de backend, sin migraciones, sin nuevas server functions. Todo es UI + datos demo.
+**Archivos Fase 2:**
+- `src/routes/app.despacho.tsx` (nuevo)
+- `src/lib/despacho/panel.functions.ts` (nuevo)
+- `src/lib/clientes/historial.functions.ts` (nuevo)
+- `src/routes/app.clientes.$id.tsx` (sección Historial)
+- `src/routes/app.index.tsx` (CTA al panel)
+- `src/components/AppLayout.tsx` (LABELS: `despacho: "Panel del despacho"`)
 
 ---
 
-## 8) Resultado al final
+## Fase 3 — Mejoras a herramientas fiscales (7, 8, 10)
 
-Un usuario que entra ve:
-1. Shell Navy Trust con 3 módulos arriba.
-2. Command Center con score SAT real + 15 agentes demo + vencimientos.
-3. Puede navegar a cualquier módulo y ver el catálogo completo de las ~25 herramientas del documento — unas funcionan (las actuales), otras son maquetas creíbles con datos demo.
-4. Sensación clara de "esta plataforma ya existe completa, solo falta encender algunos módulos".
+### 7. Calculadora ISR/IVA para Personas Morales (Régimen 601)
+- Ruta nueva `src/routes/app.tools.isr-iva-pm.tsx` espejando el patrón de `isr-iva-calculator.tsx` (mismo `ToolShell`, mismos inputs).
+- Lógica PM: ISR a tasa fija 30 % sobre utilidad fiscal (ingresos acumulables − deducciones autorizadas − PTU − pérdidas), pago provisional con coeficiente de utilidad. IVA igual que PF (trasladado vs acreditable).
+- Inputs adicionales: coeficiente de utilidad, PTU pagada, pérdidas amortizables.
+- Importar resumen del mes con la misma `getResumenFiscalMes`.
+- Aviso visible: "Cálculo orientativo. El contador debe validar coeficiente y pérdidas vigentes."
+- Registrar entrada en `tool_runs` (`tool_key='isr-iva-pm'`).
+- Sumar a tarjetas en `app.tools.index.tsx`, `app.contable.herramientas.tsx`, contadores del home (actualizar el "X en vivo").
 
-Estimado: **maqueta visual completa, 0 cambios de backend**. Lo que ya es funcional sigue siendo funcional dentro de la nueva navegación.
+### 8. Exportación a Excel en herramientas clave
+- Helper compartido `src/lib/export/xlsx.ts` usando `xlsx` (SheetJS, ya disponible o `bun add xlsx`).
+- API mínima: `exportToXlsx(filename, sheets: { name, rows: object[] }[])`.
+- Botones "Exportar a Excel" agregados con el mismo estilo `Button variant="outline"` ya usado en reportes en:
+  - `app.riesgo.tsx` (resultado del cálculo de riesgo).
+  - `app.tools.express-auditor.tsx` (los 12 criterios).
+  - `app.conciliacion.index.tsx` (movimientos + matches).
+- Sin tocar la lógica de cálculo; sólo serialización de los datos ya renderizados.
+
+### 10. Multi-cuenta bancaria por expediente
+- El esquema ya soporta varias cuentas (`cuentas_bancarias` con FK a `cliente`); el bloqueo está sólo en la UI.
+- En `app.conciliacion.index.tsx`:
+  - Cargar todas las cuentas del cliente activo.
+  - Selector de cuenta (`Tabs` o `Select`) arriba de la tabla; "Todas" como opción.
+  - Filtrar `movimientos_bancarios` por `cuenta_id` seleccionada.
+  - Al importar estado de cuenta, asociar al `cuenta_id` elegido (o crear cuenta nueva con modal: banco, alias, últimos 4 dígitos).
+- Pantalla simple de gestión de cuentas en `src/routes/app.clientes.$id.tsx` (sección "Cuentas bancarias"): CRUD básico vía server fns nuevas (`listCuentas`, `crearCuenta`, `eliminarCuenta`).
+- En `app.conciliacion.historial.tsx`, mostrar `cuenta.alias` en cada fila.
+
+**Archivos Fase 3:**
+- `src/routes/app.tools.isr-iva-pm.tsx` (nuevo)
+- `src/lib/export/xlsx.ts` (nuevo) + `bun add xlsx` si falta
+- `src/routes/app.riesgo.tsx`, `app.tools.express-auditor.tsx`, `app.conciliacion.index.tsx` (botón export + selector cuenta)
+- `src/routes/app.clientes.$id.tsx` (sección cuentas)
+- `src/lib/cuentas/cuentas.functions.ts` (nuevo)
+- `src/routes/app.tools.index.tsx`, `app.contable.herramientas.tsx`, `app.contable.index.tsx`, `app.index.tsx` (contadores y tarjeta de la nueva calculadora)
+
+---
+
+## Orden de entrega sugerido
+
+1. **Fase 1** primero (impacto alto, riesgo bajo, no toca lógica fiscal).
+2. **Fase 3** después (valor para el contador, cambios localizados por herramienta).
+3. **Fase 2** al final (es la más nueva en superficie y conviene tener ya el centro de notificaciones y la búsqueda para enlazar desde la tabla).
+
+## Riesgos y mitigaciones
+
+- **Header saturado**: la búsqueda en desktop es un input compacto (≈220px); en móvil queda sólo el ícono lupa. Campana + tema + avatar caben sin reflow.
+- **Polling de alertas**: 60s con `staleTime: 30s` para no presionar la BD.
+- **Tour automático**: sólo si `created_at` del user es del día actual, evitamos abrirlo a usuarios viejos por error.
+- **Export Excel**: `xlsx` pesa ~400KB; lo importamos dinámicamente (`await import('xlsx')`) sólo al hacer click, no afecta bundle inicial.
+- **Multi-cuenta**: requiere migrar UI sin perder conciliaciones existentes; el `cuenta_id` ya está en `movimientos_bancarios`, así que es retrocompatible.
+
+## Nota sobre #6 (CFDI masivo del SAT)
+
+Si quieres avanzarlo, lo trato como proyecto aparte: necesito antes que decidas (a) si los usuarios subirán FIEL o si usaremos un proveedor tercero tipo Facturama/SW Sapien, (b) dónde almacenamos los .cer/.key cifrados, y (c) frecuencia de descarga. Dímelo y armo un plan dedicado.
