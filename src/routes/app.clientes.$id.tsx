@@ -2,11 +2,12 @@ import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, ShieldCheck, ShieldAlert, ShieldOff, Upload, Unlink, RefreshCw, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, ShieldCheck, ShieldAlert, ShieldOff, Upload, Unlink, RefreshCw, CheckCircle2, History, Wrench, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { getCliente } from "@/lib/clientes.functions";
 import { getSatStatus, conectarSat, desconectarSat, sincronizarCfdis } from "@/lib/sat/sat.functions";
+import { getClienteHistorial } from "@/lib/clientes/historial.functions";
 
 export const Route = createFileRoute("/app/clientes/$id")({
   component: ClienteDetailPage,
@@ -35,6 +36,8 @@ function ClienteDetailPage() {
 
   const cli = useQuery({ queryKey: ["cliente", id], queryFn: () => fetchCli({ data: { id } }) });
   const sat = useQuery({ queryKey: ["sat", id], queryFn: () => fetchStatus({ data: { cliente_id: id } }) });
+  const fetchHist = useServerFn(getClienteHistorial);
+  const hist = useQuery({ queryKey: ["cli-hist", id], queryFn: () => fetchHist({ data: { cliente_id: id } }) });
 
   const [cer, setCer] = useState<File | null>(null);
   const [key, setKey] = useState<File | null>(null);
@@ -232,6 +235,39 @@ function ClienteDetailPage() {
               </Button>
             </div>
           </form>
+        )}
+      </section>
+
+      <section className="rounded-xl border border-border/60 bg-card/50 p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <History className="h-4 w-4 text-primary" />
+          <h2 className="text-lg font-semibold">Historial del expediente</h2>
+          <span className="text-xs text-muted-foreground ml-2">{hist.data?.items.length ?? 0} eventos</span>
+        </div>
+        {hist.isLoading ? (
+          <div className="text-sm text-muted-foreground">Cargando…</div>
+        ) : !hist.data?.items.length ? (
+          <div className="text-sm text-muted-foreground">Sin actividad registrada todavía. Las corridas de herramientas y cambios importantes aparecerán aquí.</div>
+        ) : (
+          <ol className="relative border-l border-border/60 ml-2 space-y-3">
+            {hist.data.items.map((it) => {
+              const Icon = it.tipo === "tool_run" ? Wrench : FileText;
+              const tone = it.status === "error" ? "text-destructive" : it.status === "ok" ? "text-success" : "text-muted-foreground";
+              return (
+                <li key={it.id} className="ml-4">
+                  <span className="absolute -left-[7px] mt-1.5 h-3 w-3 rounded-full bg-card border border-border/60 flex items-center justify-center">
+                    <Icon className="h-2 w-2 text-muted-foreground" />
+                  </span>
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <span className="text-sm font-medium">{it.titulo}</span>
+                    {it.status && <span className={`text-[10px] uppercase tracking-wider ${tone}`}>{it.status}</span>}
+                    <span className="text-xs text-muted-foreground ml-auto">{new Date(it.fecha).toLocaleString("es-MX")}</span>
+                  </div>
+                  {it.detalle && <p className="text-xs text-muted-foreground mt-0.5">{it.detalle}</p>}
+                </li>
+              );
+            })}
+          </ol>
         )}
       </section>
     </div>

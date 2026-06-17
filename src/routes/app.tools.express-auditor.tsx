@@ -2,12 +2,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { ScanSearch, AlertTriangle, CheckCircle2, FileDown, Loader2, Play } from "lucide-react";
+import { ScanSearch, AlertTriangle, CheckCircle2, FileDown, Loader2, Play, Download } from "lucide-react";
 import jsPDF from "jspdf";
 import { ToolShell } from "@/components/ToolShell";
 import { Button } from "@/components/ui/button";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { runExpressAudit, type AuditFinding } from "@/lib/auditor/auditor.functions";
+import { exportXlsx, buildFilename } from "@/lib/export/xlsx";
 
 export const Route = createFileRoute("/app/tools/express-auditor")({
   component: ExpressAuditor,
@@ -171,9 +172,30 @@ function ExpressAuditor() {
             {rerun.isPending || q.isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Ejecutar auditoría
           </Button>
         </div>
-        <Button variant="glass" onClick={exportPdf} disabled={!stats}>
-          <FileDown className="h-4 w-4" /> Exportar PDF
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="glass" onClick={exportPdf} disabled={!stats}>
+            <FileDown className="h-4 w-4" /> PDF
+          </Button>
+          <Button
+            variant="glass"
+            disabled={!stats}
+            onClick={() => {
+              if (!stats) return;
+              exportXlsx(buildFilename(`auditoria-${year}`, cliente!.rfc), [
+                {
+                  name: "Resumen",
+                  rows: [{ Cliente: cliente!.razon_social, RFC: cliente!.rfc, Año: year, "Total CFDI": stats.total, Duplicados: stats.duplicados, "NC huérfanas": stats.nc_huerfanas, Cancelados: stats.cancelados_declarados, "PPD sin pago": stats.ppd_sin_pago, "Fuera de periodo": stats.fuera_periodo }],
+                },
+                {
+                  name: "Hallazgos",
+                  rows: findings.map((f) => ({ Tipo: TIPO_LABEL[f.tipo], Severidad: f.severidad, UUID: f.uuid, Fecha: f.fecha?.slice(0, 10) ?? "", Monto: f.monto, Descripcion: f.descripcion })),
+                },
+              ]);
+            }}
+          >
+            <Download className="h-4 w-4" /> Excel
+          </Button>
+        </div>
       </div>
 
       {/* Resumen ejecutivo */}

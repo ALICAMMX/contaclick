@@ -3,8 +3,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { computeRiesgoSAT, type CriterioRiesgo } from "@/lib/riesgo/riesgo.functions";
-import { ShieldAlert, ShieldCheck, ShieldQuestion, Sparkles, AlertCircle } from "lucide-react";
+import { ShieldAlert, ShieldCheck, ShieldQuestion, Sparkles, AlertCircle, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { exportXlsx, buildFilename } from "@/lib/export/xlsx";
 
 export const Route = createFileRoute("/app/riesgo")({
   component: RiesgoPage,
@@ -105,15 +106,40 @@ function RiesgoPage() {
                 {data.meta.periodo.desde} → {data.meta.periodo.hasta}
               </div>
               <div className="mt-1">{data.meta.n_cfdi} CFDI · {data.meta.n_mov} movs</div>
-              <button
-                onClick={() => refetch()}
-                disabled={isFetching}
-                className="mt-2 text-xs underline hover:opacity-80 disabled:opacity-50"
-              >
-                {isFetching ? "Actualizando…" : "Recalcular"}
-              </button>
+              <div className="flex flex-col items-end gap-1">
+                <button
+                  onClick={() => refetch()}
+                  disabled={isFetching}
+                  className="text-xs underline hover:opacity-80 disabled:opacity-50"
+                >
+                  {isFetching ? "Actualizando…" : "Recalcular"}
+                </button>
+                <button
+                  onClick={() => {
+                    exportXlsx(buildFilename("riesgo-sat", data.meta.cliente.rfc), [
+                      {
+                        name: "Resumen",
+                        rows: [
+                          { Cliente: data.meta.cliente.razon_social, RFC: data.meta.cliente.rfc, Score: data.score, Semaforo: data.semaforo, "CFDI analizados": data.meta.n_cfdi, "Movimientos": data.meta.n_mov, Desde: data.meta.periodo.desde, Hasta: data.meta.periodo.hasta },
+                        ],
+                      },
+                      {
+                        name: "Criterios",
+                        rows: data.criterios.map((c) => ({
+                          "#": c.id, Criterio: c.nombre, Nivel: c.nivel, Puntos: c.puntos, Descripcion: c.descripcion, Hallazgos: c.hallazgos.join(" | "), Accion: c.accion,
+                        })),
+                      },
+                    ]);
+                  }}
+                  className="text-xs inline-flex items-center gap-1 underline hover:opacity-80"
+                >
+                  <Download className="h-3 w-3" /> Excel
+                </button>
+              </div>
             </div>
           </div>
+
+
 
           <div className="grid md:grid-cols-2 gap-4">
             {data.criterios.map((c) => <CriterioCard key={c.id} c={c} />)}
