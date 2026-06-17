@@ -432,9 +432,13 @@ function Field({ label, value, full }: { label: string; value: string; full?: bo
   );
 }
 
-function ExportButton({ rows }: { rows: CfdiRow[] }) {
+function ExportButton({ rows, selectedIds }: { rows: CfdiRow[]; selectedIds: Set<string> }) {
+  const exportRows = useMemo(
+    () => (selectedIds.size > 0 ? rows.filter((r) => selectedIds.has(r.id)) : rows),
+    [rows, selectedIds]
+  );
   const csv = useMemo(() => {
-    if (!rows.length) return "";
+    if (!exportRows.length) return "";
     const headers = ["UUID","Tipo","Fecha","RFC Emisor","Nombre Emisor","RFC Receptor","Nombre Receptor","Subtotal","IVA Trasladado","IVA Retenido","Total","Método","Forma","Uso CFDI","Estatus","Moneda"];
     const escape = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const lines = rows.map((r) => [
