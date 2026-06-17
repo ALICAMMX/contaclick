@@ -232,6 +232,18 @@ function CfdiDashboard() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border/60 bg-muted/30 text-xs uppercase tracking-wider text-muted-foreground">
+                <th className="px-3 py-3 w-8">
+                  <input
+                    type="checkbox"
+                    aria-label="Seleccionar todo"
+                    className="accent-primary"
+                    checked={filteredByRiesgo.length > 0 && filteredByRiesgo.every((r) => selectedIds.has(r.id))}
+                    onChange={(e) => {
+                      if (e.target.checked) setSelectedIds(new Set(filteredByRiesgo.map((r) => r.id)));
+                      else clearSelection();
+                    }}
+                  />
+                </th>
                 <th className="text-left font-medium px-4 py-3">Fecha</th>
                 <th className="text-left font-medium px-4 py-3">Tipo</th>
                 <th className="text-left font-medium px-4 py-3">UUID</th>
@@ -243,18 +255,27 @@ function CfdiDashboard() {
             </thead>
             <tbody>
               {listQ.isLoading && (
-                <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">
+                <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">
                   <Loader2 className="h-5 w-5 animate-spin inline mr-2" /> Cargando…
                 </td></tr>
               )}
               {!listQ.isLoading && filteredByRiesgo.length === 0 && (
-                <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">
+                <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">
                   Sin comprobantes. Arrastra un ZIP del SAT o XMLs para empezar.
                 </td></tr>
               )}
               {filteredByRiesgo.map((r) => (
-                <tr key={r.id} className="border-b border-border/40 hover:bg-accent/20 cursor-pointer transition-colors"
+                <tr key={r.id} className={`border-b border-border/40 hover:bg-accent/20 cursor-pointer transition-colors ${selectedIds.has(r.id) ? "bg-primary/5" : ""}`}
                     onClick={() => setSelected(r)}>
+                  <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      aria-label={`Seleccionar ${r.uuid}`}
+                      className="accent-primary"
+                      checked={selectedIds.has(r.id)}
+                      onChange={() => toggleId(r.id)}
+                    />
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{fmtDate(r.fecha)}</td>
                   <td className="px-4 py-3"><TipoBadge tipo={r.tipo_cfdi} /></td>
                   <td className="px-4 py-3"><UuidCell uuid={r.uuid} /></td>
