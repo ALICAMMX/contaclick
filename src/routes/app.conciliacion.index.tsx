@@ -17,6 +17,7 @@ import {
   uploadMovimientos, listMovimientos, runReconciliation,
   getReconciliationStats, analyzeReconciliationAI, updateConciliacion,
 } from "@/lib/conciliacion/conciliacion.functions";
+import { listCuentas, createCuenta, BANCOS } from "@/lib/cuentas/cuentas.functions";
 import { exportXlsx, buildFilename } from "@/lib/export/xlsx";
 
 export const Route = createFileRoute("/app/conciliacion/")({
@@ -34,11 +35,23 @@ function ConciliacionPage() {
   const fnUpdate = useServerFn(updateConciliacion);
 
   const [banco, setBanco] = useState("BBVA");
+  const [aliasNew, setAliasNew] = useState("Principal");
+  const [maskNew, setMaskNew] = useState("");
+  const [cuentaSel, setCuentaSel] = useState<string>("__nueva__"); // id de cuenta existente o "__nueva__"
+  const [filterCuenta, setFilterCuenta] = useState<string>("__all__");
   const [parsed, setParsed] = useState<ParsedMovimiento[]>([]);
   const [parsingErr, setParsingErr] = useState<string | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiContent, setAiContent] = useState<string>("");
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const fnCuentas = useServerFn(listCuentas);
+  const fnCreateCuenta = useServerFn(createCuenta);
+  const cuentas = useQuery({
+    enabled: !!cliente,
+    queryKey: ["cuentas", cliente?.id],
+    queryFn: () => fnCuentas({ data: { cliente_id: cliente!.id } }),
+  });
 
   const stats = useQuery({
     enabled: !!cliente,
@@ -47,21 +60,53 @@ function ConciliacionPage() {
   });
   const list = useQuery({
     enabled: !!cliente,
-    queryKey: ["recon-list", cliente?.id],
-    queryFn: () => fnList({ data: { cliente_id: cliente!.id, limit: 500 } }),
+    queryKey: ["recon-list", cliente?.id, filterCuenta],
+    queryFn: () => fnList({ data: {
+      cliente_id: cliente!.id,
+      limit: 500,
+      ...(filterCuenta !== "__all__" ? { cuenta_id: filterCuenta } : {}),
+    } }),
   });
 
   const upload = useMutation({
     mutationFn: async () => {
       if (!cliente) throw new Error("Selecciona un expediente");
       if (!parsed.length) throw new Error("Sube un archivo primero");
-      return fnUpload({ data: { cliente_id: cliente.id, banco, movimientos: parsed } });
+      const payload: Record<string, unknown> = { cliente_id: cliente.id, movimientos: parsed };
+      if (cuentaSel && cuentaSel !== "__nueva__") {
+        payload.cuenta_id = cuentaSel;
+      } else {
+        payload.banco = banco;
+        payload.alias = aliasNew || "Principal";
+        if (maskNew) payload.mask = maskNew;
+      }
+      return fnUpload({ data: payload as never });
     },
     onSuccess: (res) => {
       toast.success(`${res.inserted} movimientos cargados`, { description: `${res.duplicates} duplicados ignorados` });
       setParsed([]);
+      setCuentaSel(res.cuenta_id);
       qc.invalidateQueries({ queryKey: ["recon-stats", cliente?.id] });
       qc.invalidateQueries({ queryKey: ["recon-list", cliente?.id] });
+      qc.invalidateQueries({ queryKey: ["cuentas", cliente?.id] });
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  const newCuenta = useMutation({
+    mutationFn: async (input: { banco: string; alias: string; mask?: string }) => {
+      if (!cliente) throw new Error("Selecciona un expediente");
+      return fnCreateCuenta({ data: {
+        cliente_id: cliente.id,
+        banco: input.banco,
+        alias: input.alias || "Principal",
+        numero_cuenta_mask: input.mask || null,
+      } });
+    },
+    onSuccess: (row) => {
+      toast.success(`Cuenta creada: ${row.banco} · ${row.alias}`);
+      setCuentaSel(row.id);
+      qc.invalidateQueries({ queryKey: ["cuentas", cliente?.id] });
     },
     onError: (e) => toast.error((e as Error).message),
   });
@@ -90,6 +135,13 @@ function ConciliacionPage() {
     list.data?.conciliaciones.forEach((c) => { if (c.movimiento_id) map.set(c.movimiento_id, c); });
     return map;
   }, [list.data]);
+
+  const cuentaById = useMemo(() => {
+    const map = new Map<string, { banco: string; alias: string | null }>();
+    (cuentas.data?.cuentas ?? []).forEach((c) => map.set(c.id, { banco: c.banco, alias: c.alias }));
+    (list.data?.cuentas ?? []).forEach((c) => { if (!map.has(c.id)) map.set(c.id, { banco: c.banco, alias: c.alias }); });
+    return map;
+  }, [cuentas.data, list.data]);
 
   async function onPickFiles(files: FileList | null) {
     if (!files?.length) return;
@@ -226,17 +278,43 @@ function ConciliacionPage() {
           <span className="text-xs text-muted-foreground ml-auto">CSV · XLSX</span>
         </div>
         <div className="grid md:grid-cols-3 gap-4">
-          <div className="md:col-span-1">
-            <label className="text-xs text-muted-foreground">Banco</label>
-            <select
-              value={banco}
-              onChange={(e) => setBanco(e.target.value)}
-              className="mt-1 w-full h-10 rounded-md bg-background border border-border px-3 text-sm"
-            >
-              {["BBVA", "Banorte", "Santander", "Banamex", "HSBC", "Scotiabank", "Inbursa", "Azteca", "Mifel", "Otro"].map((b) => (
-                <option key={b}>{b}</option>
-              ))}
-            </select>
+          <div className="md:col-span-1 space-y-3">
+            <div>
+              <label className="text-xs text-muted-foreground">Cuenta destino</label>
+              <select
+                value={cuentaSel}
+                onChange={(e) => setCuentaSel(e.target.value)}
+                className="mt-1 w-full h-10 rounded-md bg-background border border-border px-3 text-sm"
+              >
+                {(cuentas.data?.cuentas ?? []).map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.banco} · {c.alias}{c.numero_cuenta_mask ? ` · ${c.numero_cuenta_mask}` : ""} ({c.movimientos} mov.)
+                  </option>
+                ))}
+                <option value="__nueva__">+ Nueva cuenta…</option>
+              </select>
+            </div>
+            {cuentaSel === "__nueva__" && (
+              <div className="space-y-2 p-3 rounded-md border border-dashed border-border/60 bg-background/50">
+                <select value={banco} onChange={(e) => setBanco(e.target.value)}
+                  className="w-full h-9 rounded-md bg-background border border-border px-3 text-xs">
+                  {BANCOS.map((b) => <option key={b}>{b}</option>)}
+                </select>
+                <input value={aliasNew} onChange={(e) => setAliasNew(e.target.value)}
+                  placeholder="Alias (ej. Operativa, Nómina)"
+                  className="w-full h-9 rounded-md bg-background border border-border px-3 text-xs" />
+                <input value={maskNew} onChange={(e) => setMaskNew(e.target.value)}
+                  placeholder="Últimos 4 dígitos (opcional)"
+                  className="w-full h-9 rounded-md bg-background border border-border px-3 text-xs" />
+                <Button type="button" size="sm" variant="glass" className="w-full"
+                  onClick={() => newCuenta.mutate({ banco, alias: aliasNew, mask: maskNew })}
+                  disabled={newCuenta.isPending}>
+                  {newCuenta.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                  Guardar cuenta
+                </Button>
+                <p className="text-[10px] text-muted-foreground">También puedes subir directamente; la cuenta se creará con estos datos.</p>
+              </div>
+            )}
           </div>
           <div
             className="md:col-span-2 rounded-lg border-2 border-dashed border-border hover:border-primary/50 transition-colors p-6 text-center cursor-pointer"
@@ -273,14 +351,28 @@ function ConciliacionPage() {
 
       {/* Movimientos */}
       <div className="rounded-xl border border-border/60 bg-card/50 overflow-hidden">
-        <div className="p-4 border-b border-border/50 flex items-center justify-between">
+        <div className="p-4 border-b border-border/50 flex items-center justify-between gap-3 flex-wrap">
           <div className="font-semibold">Movimientos {list.data ? `(${list.data.movimientos.length})` : ""}</div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-muted-foreground">Cuenta:</label>
+            <select
+              value={filterCuenta}
+              onChange={(e) => setFilterCuenta(e.target.value)}
+              className="h-8 rounded-md bg-background border border-border px-2 text-xs"
+            >
+              <option value="__all__">Todas las cuentas</option>
+              {(cuentas.data?.cuentas ?? []).map((c) => (
+                <option key={c.id} value={c.id}>{c.banco} · {c.alias}</option>
+              ))}
+            </select>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/30 text-xs text-muted-foreground">
               <tr>
                 <th className="text-left px-4 py-2">Fecha</th>
+                <th className="text-left px-4 py-2">Cuenta</th>
                 <th className="text-left px-4 py-2">Concepto</th>
                 <th className="text-left px-4 py-2">Ref.</th>
                 <th className="text-right px-4 py-2">Monto</th>
@@ -309,6 +401,9 @@ function ConciliacionPage() {
                 return (
                   <tr key={m.id} className="hover:bg-accent/5">
                     <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{fmtFechaMx(m.fecha)}</td>
+                    <td className="px-4 py-2.5 text-xs whitespace-nowrap">
+                      {(() => { const ct = cuentaById.get(m.cuenta_id as string); return ct ? `${ct.banco} · ${ct.alias ?? "—"}` : "—"; })()}
+                    </td>
                     <td className="px-4 py-2.5 max-w-[280px] truncate">{m.descripcion}</td>
                     <td className="px-4 py-2.5 text-xs text-muted-foreground font-mono">{m.referencia ?? "—"}</td>
                     <td className={`px-4 py-2.5 text-right tabular-nums font-medium ${monto >= 0 ? "text-success" : "text-foreground"}`}>
@@ -330,7 +425,7 @@ function ConciliacionPage() {
                 );
               })}
               {!list.data?.movimientos.length && (
-                <tr><td colSpan={7} className="px-4 py-12 text-center text-sm text-muted-foreground">Aún no hay movimientos. Sube tu primer estado de cuenta.</td></tr>
+                <tr><td colSpan={8} className="px-4 py-12 text-center text-sm text-muted-foreground">Aún no hay movimientos. Sube tu primer estado de cuenta.</td></tr>
               )}
             </tbody>
           </table>

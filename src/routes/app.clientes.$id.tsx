@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { getCliente } from "@/lib/clientes.functions";
 import { getSatStatus, conectarSat, desconectarSat, sincronizarCfdis } from "@/lib/sat/sat.functions";
 import { getClienteHistorial } from "@/lib/clientes/historial.functions";
+import { listCuentas, createCuenta, deleteCuenta, BANCOS } from "@/lib/cuentas/cuentas.functions";
+import { Banknote, Plus, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/app/clientes/$id")({
   component: ClienteDetailPage,
@@ -238,6 +240,8 @@ function ClienteDetailPage() {
         )}
       </section>
 
+      <CuentasBancariasSection clienteId={id} />
+
       <section className="rounded-xl border border-border/60 bg-card/50 p-6 space-y-4">
         <div className="flex items-center gap-2">
           <History className="h-4 w-4 text-primary" />
@@ -299,5 +303,95 @@ function FileField({
         {file && <span className="text-xs text-muted-foreground truncate max-w-[140px]">{file.name}</span>}
       </div>
     </label>
+  );
+}
+
+function CuentasBancariasSection({ clienteId }: { clienteId: string }) {
+  const qc = useQueryClient();
+  const fnList = useServerFn(listCuentas);
+  const fnCreate = useServerFn(createCuenta);
+  const fnDelete = useServerFn(deleteCuenta);
+
+  const q = useQuery({ queryKey: ["cuentas", clienteId], queryFn: () => fnList({ data: { cliente_id: clienteId } }) });
+
+  const [banco, setBanco] = useState<string>("BBVA");
+  const [alias, setAlias] = useState("Principal");
+  const [mask, setMask] = useState("");
+  const [adding, setAdding] = useState(false);
+
+  const create = useMutation({
+    mutationFn: () => fnCreate({ data: {
+      cliente_id: clienteId, banco, alias: alias || "Principal",
+      numero_cuenta_mask: mask || null,
+    } }),
+    onSuccess: () => {
+      toast.success("Cuenta creada");
+      setAlias("Principal"); setMask(""); setAdding(false);
+      qc.invalidateQueries({ queryKey: ["cuentas", clienteId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const del = useMutation({
+    mutationFn: (id: string) => fnDelete({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Cuenta eliminada");
+      qc.invalidateQueries({ queryKey: ["cuentas", clienteId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <section className="rounded-xl border border-border/60 bg-card/50 p-6 space-y-4">
+      <div className="flex items-center gap-2">
+        <Banknote className="h-4 w-4 text-primary" />
+        <h2 className="text-lg font-semibold">Cuentas bancarias</h2>
+        <span className="text-xs text-muted-foreground ml-2">{q.data?.cuentas.length ?? 0} cuentas</span>
+        <Button variant="ghost" size="sm" className="ml-auto" onClick={() => setAdding((v) => !v)}>
+          <Plus className="h-4 w-4" /> {adding ? "Cancelar" : "Agregar cuenta"}
+        </Button>
+      </div>
+      {adding && (
+        <div className="grid sm:grid-cols-4 gap-2 p-3 rounded-md border border-dashed border-border/60 bg-background/40">
+          <select value={banco} onChange={(e) => setBanco(e.target.value)}
+            className="h-9 rounded-md bg-background border border-border px-2 text-sm">
+            {BANCOS.map((b) => <option key={b}>{b}</option>)}
+          </select>
+          <input value={alias} onChange={(e) => setAlias(e.target.value)} placeholder="Alias"
+            className="h-9 rounded-md bg-background border border-border px-2 text-sm" />
+          <input value={mask} onChange={(e) => setMask(e.target.value)} placeholder="Últimos 4 dígitos"
+            className="h-9 rounded-md bg-background border border-border px-2 text-sm" />
+          <Button variant="hero" size="sm" onClick={() => create.mutate()} disabled={create.isPending}>
+            Guardar
+          </Button>
+        </div>
+      )}
+      {q.isLoading ? (
+        <div className="text-sm text-muted-foreground">Cargando…</div>
+      ) : !q.data?.cuentas.length ? (
+        <div className="text-sm text-muted-foreground">Aún no hay cuentas bancarias. Agrega una para organizar los movimientos por banco.</div>
+      ) : (
+        <ul className="divide-y divide-border/40">
+          {q.data.cuentas.map((c) => (
+            <li key={c.id} className="py-2.5 flex items-center gap-3">
+              <div className="h-8 w-8 rounded-md bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold">
+                {c.banco.slice(0, 2).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium truncate">{c.banco} · {c.alias ?? "Principal"}</div>
+                <div className="text-xs text-muted-foreground">
+                  {c.numero_cuenta_mask ? `••${c.numero_cuenta_mask}` : "Sin número"} · {c.moneda} · {c.movimientos} movimientos
+                </div>
+              </div>
+              <Button variant="ghost" size="sm"
+                onClick={() => { if (confirm(`¿Eliminar cuenta ${c.banco} · ${c.alias}?`)) del.mutate(c.id); }}
+                disabled={del.isPending}>
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

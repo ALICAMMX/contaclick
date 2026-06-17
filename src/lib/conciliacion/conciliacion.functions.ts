@@ -61,7 +61,8 @@ const MovimientoSchema = z.object({
 
 const UploadSchema = z.object({
   cliente_id: z.string().uuid(),
-  banco: z.string().min(1).max(60),
+  cuenta_id: z.string().uuid().optional(),
+  banco: z.string().min(1).max(60).optional(),
   alias: z.string().max(80).optional(),
   mask: z.string().max(40).optional(),
   movimientos: z.array(MovimientoSchema).min(1).max(5000),
@@ -74,13 +75,19 @@ export const uploadMovimientos = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const despachoId = await ensureDespacho(supabase, userId);
-    const cuentaId = await ensureCuenta(supabase, {
-      despachoId,
-      clienteId: data.cliente_id,
-      banco: data.banco,
-      alias: data.alias,
-      mask: data.mask,
-    });
+    let cuentaId: string;
+    if (data.cuenta_id) {
+      cuentaId = data.cuenta_id;
+    } else {
+      if (!data.banco) throw new Error("Indica una cuenta existente o un banco para crearla.");
+      cuentaId = await ensureCuenta(supabase, {
+        despachoId,
+        clienteId: data.cliente_id,
+        banco: data.banco,
+        alias: data.alias,
+        mask: data.mask,
+      });
+    }
 
     let inserted = 0, duplicates = 0;
     const rows = [];
@@ -129,23 +136,32 @@ export const listMovimientos = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({
     cliente_id: z.string().uuid(),
+    cuenta_id: z.string().uuid().optional(),
     limit: z.number().min(1).max(1000).default(500),
   }).parse(d))
   .handler(async ({ data, context }) => {
-    const { data: rows, error } = await context.supabase
+    let q = context.supabase
       .from("movimientos_bancarios")
       .select("id, fecha, descripcion, referencia, cargo, abono, saldo, cuenta_id")
       .eq("cliente_id", data.cliente_id)
       .order("fecha", { ascending: false })
       .limit(data.limit);
+    if (data.cuenta_id) q = q.eq("cuenta_id", data.cuenta_id);
+    const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
 
-    const { data: matches } = await context.supabase
-      .from("conciliaciones")
-      .select("id, movimiento_id, cfdi_id, tipo_match, probabilidad, estatus, motivo, diferencia")
-      .eq("cliente_id", data.cliente_id);
+    const [{ data: matches }, { data: cuentas }] = await Promise.all([
+      context.supabase
+        .from("conciliaciones")
+        .select("id, movimiento_id, cfdi_id, tipo_match, probabilidad, estatus, motivo, diferencia")
+        .eq("cliente_id", data.cliente_id),
+      context.supabase
+        .from("cuentas_bancarias")
+        .select("id, banco, alias, numero_cuenta_mask")
+        .eq("cliente_id", data.cliente_id),
+    ]);
 
-    return { movimientos: rows ?? [], conciliaciones: matches ?? [] };
+    return { movimientos: rows ?? [], conciliaciones: matches ?? [], cuentas: cuentas ?? [] };
   });
 
 // ---- run reconciliation engine ----
