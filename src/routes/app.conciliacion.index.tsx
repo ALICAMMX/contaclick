@@ -72,13 +72,41 @@ function ConciliacionPage() {
     mutationFn: async () => {
       if (!cliente) throw new Error("Selecciona un expediente");
       if (!parsed.length) throw new Error("Sube un archivo primero");
-      return fnUpload({ data: { cliente_id: cliente.id, banco, movimientos: parsed } });
+      const payload: Record<string, unknown> = { cliente_id: cliente.id, movimientos: parsed };
+      if (cuentaSel && cuentaSel !== "__nueva__") {
+        payload.cuenta_id = cuentaSel;
+      } else {
+        payload.banco = banco;
+        payload.alias = aliasNew || "Principal";
+        if (maskNew) payload.mask = maskNew;
+      }
+      return fnUpload({ data: payload as never });
     },
     onSuccess: (res) => {
       toast.success(`${res.inserted} movimientos cargados`, { description: `${res.duplicates} duplicados ignorados` });
       setParsed([]);
+      setCuentaSel(res.cuenta_id);
       qc.invalidateQueries({ queryKey: ["recon-stats", cliente?.id] });
       qc.invalidateQueries({ queryKey: ["recon-list", cliente?.id] });
+      qc.invalidateQueries({ queryKey: ["cuentas", cliente?.id] });
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  const newCuenta = useMutation({
+    mutationFn: async (input: { banco: string; alias: string; mask?: string }) => {
+      if (!cliente) throw new Error("Selecciona un expediente");
+      return fnCreateCuenta({ data: {
+        cliente_id: cliente.id,
+        banco: input.banco,
+        alias: input.alias || "Principal",
+        numero_cuenta_mask: input.mask || null,
+      } });
+    },
+    onSuccess: (row) => {
+      toast.success(`Cuenta creada: ${row.banco} · ${row.alias}`);
+      setCuentaSel(row.id);
+      qc.invalidateQueries({ queryKey: ["cuentas", cliente?.id] });
     },
     onError: (e) => toast.error((e as Error).message),
   });
