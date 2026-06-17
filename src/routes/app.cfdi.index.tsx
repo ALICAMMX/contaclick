@@ -52,6 +52,14 @@ function CfdiDashboard() {
     q: "", tipo: "", metodo_pago: "", desde: "", hasta: "",
   });
   const [selected, setSelected] = useState<CfdiRow | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleId = (id: string) => setSelectedIds((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const clearSelection = () => setSelectedIds(new Set());
 
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const isDemo = !!cliente?.id && !UUID_RE.test(cliente.id);
