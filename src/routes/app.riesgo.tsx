@@ -33,14 +33,19 @@ function RiesgoPage() {
     return (
       <div className="space-y-6">
         <Header />
-        <div className="rounded-xl border border-border/60 bg-card/40 p-10 text-center">
-          <ShieldQuestion className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-          <p className="text-sm text-muted-foreground">
-            Selecciona un expediente para calcular el riesgo SAT.
-          </p>
-          <Link to="/app/clientes" className="inline-block mt-4 text-sm text-primary hover:underline">
-            Ver expedientes →
-          </Link>
+        <div className="rounded-xl border border-warning/40 bg-warning/5 p-6 flex items-start gap-4">
+          <AlertCircle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <div className="font-medium">Selecciona un expediente para calcular el riesgo SAT</div>
+            <p className="text-sm text-muted-foreground mt-1">
+              El análisis de riesgo cruza los 12 criterios del Plan Maestro de Fiscalización con los datos reales del contribuyente. Elige un expediente desde la barra superior, o crea uno nuevo.
+            </p>
+            <div className="mt-3">
+              <Button variant="hero" size="sm" asChild>
+                <Link to="/app/clientes">Ir a expedientes</Link>
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     );
