@@ -36,6 +36,8 @@ function ClienteDetailPage() {
 
   const cli = useQuery({ queryKey: ["cliente", id], queryFn: () => fetchCli({ data: { id } }) });
   const sat = useQuery({ queryKey: ["sat", id], queryFn: () => fetchStatus({ data: { cliente_id: id } }) });
+  const fetchHist = useServerFn(getClienteHistorial);
+  const hist = useQuery({ queryKey: ["cli-hist", id], queryFn: () => fetchHist({ data: { cliente_id: id } }) });
 
   const [cer, setCer] = useState<File | null>(null);
   const [key, setKey] = useState<File | null>(null);
