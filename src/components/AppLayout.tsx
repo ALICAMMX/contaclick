@@ -70,6 +70,20 @@ export function AppLayout() {
   const crumbs = buildCrumbs(location.pathname);
   const atHub = location.pathname === "/app";
 
+  // Auto-open tour for new users on first visit
+  const [tourOpen, setTourOpen] = useState(false);
+  useEffect(() => {
+    if (!user) return;
+    if (!shouldAutoOpenTour()) return;
+    const createdAt = user.created_at ? new Date(user.created_at).getTime() : 0;
+    const ageMs = Date.now() - createdAt;
+    // Solo si la cuenta tiene menos de 24h
+    if (createdAt && ageMs < 24 * 60 * 60 * 1000) {
+      const t = setTimeout(() => setTourOpen(true), 800);
+      return () => clearTimeout(t);
+    }
+  }, [user]);
+
   return (
     <div className="min-h-screen flex flex-col">
       <header className="border-b border-border/60 bg-card/80 backdrop-blur-md sticky top-0 z-30">
@@ -109,17 +123,21 @@ export function AppLayout() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            <CommandPaletteTrigger />
+            <NotificationsBell />
             <ThemeToggle />
             <UserMenu initials={initials} signOut={signOut} despacho={despacho?.nombre} />
           </div>
         </div>
       </header>
+      <TrialBanner />
       <main className="flex-1">
         <div className="max-w-7xl mx-auto px-6 py-8">
           <Outlet />
         </div>
       </main>
       <Toaster theme={theme} position="top-right" />
+      <Tour open={tourOpen} onClose={() => setTourOpen(false)} />
     </div>
   );
 }
