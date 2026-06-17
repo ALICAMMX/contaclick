@@ -11,7 +11,7 @@ export const Route = createFileRoute("/app/")({ component: Hub });
 const MODULES = [
   {
     key: "contable",
-    title: "Contable & Fiscal",
+    title: "Contable y Fiscal",
     short: "Cumplimiento, CFDI, declaraciones, defensa SAT.",
     description: "22 herramientas + 8 agentes IA para tu cumplimiento fiscal mensual y anual.",
     href: "/app/contable",
