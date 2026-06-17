@@ -344,14 +344,28 @@ function ConciliacionPage() {
 
       {/* Movimientos */}
       <div className="rounded-xl border border-border/60 bg-card/50 overflow-hidden">
-        <div className="p-4 border-b border-border/50 flex items-center justify-between">
+        <div className="p-4 border-b border-border/50 flex items-center justify-between gap-3 flex-wrap">
           <div className="font-semibold">Movimientos {list.data ? `(${list.data.movimientos.length})` : ""}</div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-muted-foreground">Cuenta:</label>
+            <select
+              value={filterCuenta}
+              onChange={(e) => setFilterCuenta(e.target.value)}
+              className="h-8 rounded-md bg-background border border-border px-2 text-xs"
+            >
+              <option value="__all__">Todas las cuentas</option>
+              {(cuentas.data?.cuentas ?? []).map((c) => (
+                <option key={c.id} value={c.id}>{c.banco} · {c.alias}</option>
+              ))}
+            </select>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/30 text-xs text-muted-foreground">
               <tr>
                 <th className="text-left px-4 py-2">Fecha</th>
+                <th className="text-left px-4 py-2">Cuenta</th>
                 <th className="text-left px-4 py-2">Concepto</th>
                 <th className="text-left px-4 py-2">Ref.</th>
                 <th className="text-right px-4 py-2">Monto</th>
