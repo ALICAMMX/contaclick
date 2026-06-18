@@ -1,10 +1,10 @@
 import {
   FileSearch, FileStack, Calculator, Coins, Banknote, FileBadge,
-  FileSignature, ShieldCheck, ScanSearch, Bot,
+  FileSignature, ShieldCheck, ScanSearch, Bot, ShieldAlert, Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-export type ToolCategory = "CFDI" | "Cálculo" | "Bancos" | "Documentos" | "IA";
+export type ToolCategory = "CFDI" | "Cálculo" | "Bancos" | "Documentos" | "IA" | "Defensa SAT";
 
 export type ToolDef = {
   key: string;
@@ -105,9 +105,25 @@ export const TOOLS: ToolDef[] = [
     category: "IA",
     icon: Bot,
   },
+  {
+    key: "deducibility-checker",
+    route: "/app/tools/deducibility-checker",
+    name: "Validador de Deducibilidad IA",
+    description: "Cruza CFDI recibidos contra LISR art. 27 y 28: efectivo, restaurantes, donativos, extranjeros, alcohol.",
+    category: "Defensa SAT",
+    icon: ShieldAlert,
+  },
+  {
+    key: "shadow-payroll",
+    route: "/app/tools/shadow-payroll",
+    name: "Detector de Nómina Oculta",
+    description: "Detecta pagos bancarios recurrentes sin CFDI de nómina ni honorarios. Anticipa reclasificación SAT.",
+    category: "Defensa SAT",
+    icon: Users,
+  },
 ];
 
-export const CATEGORY_ORDER: ToolCategory[] = ["CFDI", "Cálculo", "Bancos", "Documentos", "IA"];
+export const CATEGORY_ORDER: ToolCategory[] = ["Defensa SAT", "CFDI", "Cálculo", "Bancos", "Documentos", "IA"];
 
 export function getTool(key: string): ToolDef | undefined {
   return TOOLS.find((t) => t.key === key);
