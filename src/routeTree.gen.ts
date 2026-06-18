@@ -45,6 +45,7 @@ import { Route as AppConciliacionIndexRouteImport } from './routes/app.conciliac
 import { Route as AppCfdiIndexRouteImport } from './routes/app.cfdi.index'
 import { Route as AppAdminIndexRouteImport } from './routes/app.admin.index'
 import { Route as AppToolsXmlBulkReaderRouteImport } from './routes/app.tools.xml-bulk-reader'
+import { Route as AppToolsShadowPayrollRouteImport } from './routes/app.tools.shadow-payroll'
 import { Route as AppToolsResicoCalculatorRouteImport } from './routes/app.tools.resico-calculator'
 import { Route as AppToolsOficioGeneratorRouteImport } from './routes/app.tools.oficio-generator'
 import { Route as AppToolsIsrIvaPmRouteImport } from './routes/app.tools.isr-iva-pm'
@@ -52,6 +53,7 @@ import { Route as AppToolsIsrIvaCalculatorRouteImport } from './routes/app.tools
 import { Route as AppToolsFiscalAssistantRouteImport } from './routes/app.tools.fiscal-assistant'
 import { Route as AppToolsExpressAuditorRouteImport } from './routes/app.tools.express-auditor'
 import { Route as AppToolsEfosValidatorRouteImport } from './routes/app.tools.efos-validator'
+import { Route as AppToolsDeducibilityCheckerRouteImport } from './routes/app.tools.deducibility-checker'
 import { Route as AppToolsCsfParserRouteImport } from './routes/app.tools.csf-parser'
 import { Route as AppToolsCfdiVerifierRouteImport } from './routes/app.tools.cfdi-verifier'
 import { Route as AppToolsCfdiValidatorRouteImport } from './routes/app.tools.cfdi-validator'
@@ -254,6 +256,11 @@ const AppToolsXmlBulkReaderRoute = AppToolsXmlBulkReaderRouteImport.update({
   path: '/tools/xml-bulk-reader',
   getParentRoute: () => AppRoute,
 } as any)
+const AppToolsShadowPayrollRoute = AppToolsShadowPayrollRouteImport.update({
+  id: '/tools/shadow-payroll',
+  path: '/tools/shadow-payroll',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppToolsResicoCalculatorRoute =
   AppToolsResicoCalculatorRouteImport.update({
     id: '/tools/resico-calculator',
@@ -291,6 +298,12 @@ const AppToolsEfosValidatorRoute = AppToolsEfosValidatorRouteImport.update({
   path: '/tools/efos-validator',
   getParentRoute: () => AppRoute,
 } as any)
+const AppToolsDeducibilityCheckerRoute =
+  AppToolsDeducibilityCheckerRouteImport.update({
+    id: '/tools/deducibility-checker',
+    path: '/tools/deducibility-checker',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppToolsCsfParserRoute = AppToolsCsfParserRouteImport.update({
   id: '/tools/csf-parser',
   path: '/tools/csf-parser',
@@ -448,6 +461,7 @@ export interface FileRoutesByFullPath {
   '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
   '/app/tools/cfdi-verifier': typeof AppToolsCfdiVerifierRoute
   '/app/tools/csf-parser': typeof AppToolsCsfParserRoute
+  '/app/tools/deducibility-checker': typeof AppToolsDeducibilityCheckerRoute
   '/app/tools/efos-validator': typeof AppToolsEfosValidatorRoute
   '/app/tools/express-auditor': typeof AppToolsExpressAuditorRoute
   '/app/tools/fiscal-assistant': typeof AppToolsFiscalAssistantRoute
@@ -455,6 +469,7 @@ export interface FileRoutesByFullPath {
   '/app/tools/isr-iva-pm': typeof AppToolsIsrIvaPmRoute
   '/app/tools/oficio-generator': typeof AppToolsOficioGeneratorRoute
   '/app/tools/resico-calculator': typeof AppToolsResicoCalculatorRoute
+  '/app/tools/shadow-payroll': typeof AppToolsShadowPayrollRoute
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
   '/app/admin/': typeof AppAdminIndexRoute
   '/app/cfdi/': typeof AppCfdiIndexRoute
@@ -505,6 +520,7 @@ export interface FileRoutesByTo {
   '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
   '/app/tools/cfdi-verifier': typeof AppToolsCfdiVerifierRoute
   '/app/tools/csf-parser': typeof AppToolsCsfParserRoute
+  '/app/tools/deducibility-checker': typeof AppToolsDeducibilityCheckerRoute
   '/app/tools/efos-validator': typeof AppToolsEfosValidatorRoute
   '/app/tools/express-auditor': typeof AppToolsExpressAuditorRoute
   '/app/tools/fiscal-assistant': typeof AppToolsFiscalAssistantRoute
@@ -512,6 +528,7 @@ export interface FileRoutesByTo {
   '/app/tools/isr-iva-pm': typeof AppToolsIsrIvaPmRoute
   '/app/tools/oficio-generator': typeof AppToolsOficioGeneratorRoute
   '/app/tools/resico-calculator': typeof AppToolsResicoCalculatorRoute
+  '/app/tools/shadow-payroll': typeof AppToolsShadowPayrollRoute
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
   '/app/admin': typeof AppAdminIndexRoute
   '/app/cfdi': typeof AppCfdiIndexRoute
@@ -572,6 +589,7 @@ export interface FileRoutesById {
   '/app/tools/cfdi-validator': typeof AppToolsCfdiValidatorRoute
   '/app/tools/cfdi-verifier': typeof AppToolsCfdiVerifierRoute
   '/app/tools/csf-parser': typeof AppToolsCsfParserRoute
+  '/app/tools/deducibility-checker': typeof AppToolsDeducibilityCheckerRoute
   '/app/tools/efos-validator': typeof AppToolsEfosValidatorRoute
   '/app/tools/express-auditor': typeof AppToolsExpressAuditorRoute
   '/app/tools/fiscal-assistant': typeof AppToolsFiscalAssistantRoute
@@ -579,6 +597,7 @@ export interface FileRoutesById {
   '/app/tools/isr-iva-pm': typeof AppToolsIsrIvaPmRoute
   '/app/tools/oficio-generator': typeof AppToolsOficioGeneratorRoute
   '/app/tools/resico-calculator': typeof AppToolsResicoCalculatorRoute
+  '/app/tools/shadow-payroll': typeof AppToolsShadowPayrollRoute
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
   '/app/admin/': typeof AppAdminIndexRoute
   '/app/cfdi/': typeof AppCfdiIndexRoute
@@ -640,6 +659,7 @@ export interface FileRouteTypes {
     | '/app/tools/cfdi-validator'
     | '/app/tools/cfdi-verifier'
     | '/app/tools/csf-parser'
+    | '/app/tools/deducibility-checker'
     | '/app/tools/efos-validator'
     | '/app/tools/express-auditor'
     | '/app/tools/fiscal-assistant'
@@ -647,6 +667,7 @@ export interface FileRouteTypes {
     | '/app/tools/isr-iva-pm'
     | '/app/tools/oficio-generator'
     | '/app/tools/resico-calculator'
+    | '/app/tools/shadow-payroll'
     | '/app/tools/xml-bulk-reader'
     | '/app/admin/'
     | '/app/cfdi/'
@@ -697,6 +718,7 @@ export interface FileRouteTypes {
     | '/app/tools/cfdi-validator'
     | '/app/tools/cfdi-verifier'
     | '/app/tools/csf-parser'
+    | '/app/tools/deducibility-checker'
     | '/app/tools/efos-validator'
     | '/app/tools/express-auditor'
     | '/app/tools/fiscal-assistant'
@@ -704,6 +726,7 @@ export interface FileRouteTypes {
     | '/app/tools/isr-iva-pm'
     | '/app/tools/oficio-generator'
     | '/app/tools/resico-calculator'
+    | '/app/tools/shadow-payroll'
     | '/app/tools/xml-bulk-reader'
     | '/app/admin'
     | '/app/cfdi'
@@ -763,6 +786,7 @@ export interface FileRouteTypes {
     | '/app/tools/cfdi-validator'
     | '/app/tools/cfdi-verifier'
     | '/app/tools/csf-parser'
+    | '/app/tools/deducibility-checker'
     | '/app/tools/efos-validator'
     | '/app/tools/express-auditor'
     | '/app/tools/fiscal-assistant'
@@ -770,6 +794,7 @@ export interface FileRouteTypes {
     | '/app/tools/isr-iva-pm'
     | '/app/tools/oficio-generator'
     | '/app/tools/resico-calculator'
+    | '/app/tools/shadow-payroll'
     | '/app/tools/xml-bulk-reader'
     | '/app/admin/'
     | '/app/cfdi/'
@@ -1043,6 +1068,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppToolsXmlBulkReaderRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/tools/shadow-payroll': {
+      id: '/app/tools/shadow-payroll'
+      path: '/tools/shadow-payroll'
+      fullPath: '/app/tools/shadow-payroll'
+      preLoaderRoute: typeof AppToolsShadowPayrollRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/tools/resico-calculator': {
       id: '/app/tools/resico-calculator'
       path: '/tools/resico-calculator'
@@ -1090,6 +1122,13 @@ declare module '@tanstack/react-router' {
       path: '/tools/efos-validator'
       fullPath: '/app/tools/efos-validator'
       preLoaderRoute: typeof AppToolsEfosValidatorRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/tools/deducibility-checker': {
+      id: '/app/tools/deducibility-checker'
+      path: '/tools/deducibility-checker'
+      fullPath: '/app/tools/deducibility-checker'
+      preLoaderRoute: typeof AppToolsDeducibilityCheckerRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/tools/csf-parser': {
@@ -1389,6 +1428,7 @@ interface AppRouteChildren {
   AppToolsCfdiValidatorRoute: typeof AppToolsCfdiValidatorRoute
   AppToolsCfdiVerifierRoute: typeof AppToolsCfdiVerifierRoute
   AppToolsCsfParserRoute: typeof AppToolsCsfParserRoute
+  AppToolsDeducibilityCheckerRoute: typeof AppToolsDeducibilityCheckerRoute
   AppToolsEfosValidatorRoute: typeof AppToolsEfosValidatorRoute
   AppToolsExpressAuditorRoute: typeof AppToolsExpressAuditorRoute
   AppToolsFiscalAssistantRoute: typeof AppToolsFiscalAssistantRoute
@@ -1396,6 +1436,7 @@ interface AppRouteChildren {
   AppToolsIsrIvaPmRoute: typeof AppToolsIsrIvaPmRoute
   AppToolsOficioGeneratorRoute: typeof AppToolsOficioGeneratorRoute
   AppToolsResicoCalculatorRoute: typeof AppToolsResicoCalculatorRoute
+  AppToolsShadowPayrollRoute: typeof AppToolsShadowPayrollRoute
   AppToolsXmlBulkReaderRoute: typeof AppToolsXmlBulkReaderRoute
   AppToolsIndexRoute: typeof AppToolsIndexRoute
 }
@@ -1420,6 +1461,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppToolsCfdiValidatorRoute: AppToolsCfdiValidatorRoute,
   AppToolsCfdiVerifierRoute: AppToolsCfdiVerifierRoute,
   AppToolsCsfParserRoute: AppToolsCsfParserRoute,
+  AppToolsDeducibilityCheckerRoute: AppToolsDeducibilityCheckerRoute,
   AppToolsEfosValidatorRoute: AppToolsEfosValidatorRoute,
   AppToolsExpressAuditorRoute: AppToolsExpressAuditorRoute,
   AppToolsFiscalAssistantRoute: AppToolsFiscalAssistantRoute,
@@ -1427,6 +1469,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppToolsIsrIvaPmRoute: AppToolsIsrIvaPmRoute,
   AppToolsOficioGeneratorRoute: AppToolsOficioGeneratorRoute,
   AppToolsResicoCalculatorRoute: AppToolsResicoCalculatorRoute,
+  AppToolsShadowPayrollRoute: AppToolsShadowPayrollRoute,
   AppToolsXmlBulkReaderRoute: AppToolsXmlBulkReaderRoute,
   AppToolsIndexRoute: AppToolsIndexRoute,
 }
