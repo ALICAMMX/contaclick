@@ -14,9 +14,11 @@ export function SiteHeader() {
           <Link to="/app" className="hover:text-foreground transition-colors">Dashboard</Link>
         </nav>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" className="hidden sm:inline-flex">Iniciar sesión</Button>
+          <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+            <Link to="/auth">Iniciar sesión</Link>
+          </Button>
           <Button asChild size="sm" variant="hero">
-            <Link to="/app">Probar gratis</Link>
+            <Link to="/auth">Probar gratis</Link>
           </Button>
         </div>
       </div>
