@@ -1,10 +1,10 @@
-import { createFileRoute, useNavigate, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Logo } from "@/components/Logo";
-import { Sparkles, Mail, Lock, User as UserIcon, Building2 } from "lucide-react";
+import { Sparkles, Mail, Lock, User as UserIcon, Building2, Eye, EyeOff, IdCard } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
@@ -15,8 +15,13 @@ function AuthPage() {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
+  const [password2, setPassword2] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const [showPass2, setShowPass2] = useState(false);
+  const [nombre, setNombre] = useState("");
+  const [apellidos, setApellidos] = useState("");
   const [despacho, setDespacho] = useState("");
+  const [notRobot, setNotRobot] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -28,15 +33,28 @@ function AuthPage() {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (mode === "signup") {
+      if (!nombre.trim() || !apellidos.trim()) return toast.error("Ingresa tu nombre y apellidos");
+      if (!despacho.trim()) return toast.error("Ingresa el nombre del despacho");
+      if (password.length < 8) return toast.error("La contraseña debe tener al menos 8 caracteres");
+      if (password !== password2) return toast.error("Las contraseñas no coinciden");
+      if (!notRobot) return toast.error("Confirma que no eres un robot");
+    }
     setLoading(true);
     try {
       if (mode === "signup") {
+        const fullName = `${nombre.trim()} ${apellidos.trim()}`;
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/app`,
-            data: { full_name: fullName, despacho_nombre: despacho },
+            data: {
+              full_name: fullName,
+              nombre: nombre.trim(),
+              apellidos: apellidos.trim(),
+              despacho_nombre: despacho.trim(),
+            },
           },
         });
         if (error) throw error;
@@ -44,13 +62,11 @@ function AuthPage() {
           toast.success("¡Cuenta creada! Bienvenido.");
           navigate({ to: "/app" });
         } else {
-          // Fallback: intenta iniciar sesión directamente (por si email auto-confirm está activo)
           const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
           if (signInErr) {
-            toast.success("Cuenta creada. Revisa tu correo para confirmar antes de iniciar sesión.");
+            toast.success("Cuenta creada. Revisa tu correo para confirmar.");
             setMode("login");
           } else {
-            toast.success("¡Cuenta creada! Bienvenido.");
             navigate({ to: "/app" });
           }
         }
@@ -66,18 +82,6 @@ function AuthPage() {
     }
   };
 
-  const onGoogle = async () => {
-    try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: `${window.location.origin}/app`,
-      });
-      if (result.error) toast.error("No se pudo iniciar sesión con Google");
-      else if (!result.redirected) navigate({ to: "/app" });
-    } catch {
-      toast.error("Error con Google");
-    }
-  };
-
   return (
     <div className="min-h-screen flex">
       <div className="flex-1 flex items-center justify-center p-6">
@@ -90,26 +94,37 @@ function AuthPage() {
             {mode === "login" ? "Ingresa para continuar con tus clientes." : "Empieza gratis. Sin tarjeta."}
           </p>
 
-          {/*
-          <Button onClick={onGoogle} variant="glass" className="w-full mt-6 h-11">
-            <svg className="h-4 w-4" viewBox="0 0 24 24"><path fill="currentColor" d="M21.35 11.1h-9.17v2.92h5.27c-.23 1.41-1.66 4.13-5.27 4.13-3.17 0-5.76-2.62-5.76-5.85s2.59-5.85 5.76-5.85c1.81 0 3.02.77 3.71 1.43l2.53-2.44C16.94 4.06 14.83 3 12.18 3 7.13 3 3 7.13 3 12.18s4.13 9.18 9.18 9.18c5.3 0 8.82-3.72 8.82-8.97 0-.6-.07-1.06-.15-1.29z"/></svg>
-            Continuar con Google
-          </Button>
-
-          <div className="flex items-center gap-3 my-5 text-xs text-muted-foreground">
-            <div className="flex-1 h-px bg-border" /> o con email <div className="flex-1 h-px bg-border" />
-          </div>
-          */}
-
-          <form onSubmit={onSubmit} className="space-y-3">
+          <form onSubmit={onSubmit} className="space-y-3 mt-6">
             {mode === "signup" && (
               <>
-                <Field icon={UserIcon} placeholder="Nombre completo" value={fullName} onChange={setFullName} />
-                <Field icon={Building2} placeholder="Nombre del despacho" value={despacho} onChange={setDespacho} />
+                <Field icon={UserIcon} placeholder="Nombre(s)" value={nombre} onChange={setNombre} required />
+                <Field icon={IdCard} placeholder="Apellidos" value={apellidos} onChange={setApellidos} required />
+                <Field icon={Building2} placeholder="Nombre del despacho" value={despacho} onChange={setDespacho} required />
               </>
             )}
             <Field icon={Mail} type="email" placeholder="tu@email.com" value={email} onChange={setEmail} required />
-            <Field icon={Lock} type="password" placeholder="Contraseña" value={password} onChange={setPassword} required />
+            <PasswordField
+              placeholder="Contraseña"
+              value={password}
+              onChange={setPassword}
+              show={showPass}
+              onToggle={() => setShowPass((s) => !s)}
+            />
+            {mode === "signup" && (
+              <>
+                <PasswordField
+                  placeholder="Repite la contraseña"
+                  value={password2}
+                  onChange={setPassword2}
+                  show={showPass2}
+                  onToggle={() => setShowPass2((s) => !s)}
+                />
+                <label className="flex items-center gap-2 pt-1 text-sm text-muted-foreground cursor-pointer">
+                  <Checkbox checked={notRobot} onCheckedChange={(v) => setNotRobot(v === true)} />
+                  No soy un robot
+                </label>
+              </>
+            )}
 
             <Button type="submit" variant="hero" className="w-full h-11" disabled={loading}>
               {loading ? "..." : mode === "login" ? "Iniciar sesión" : "Crear cuenta"}
@@ -156,6 +171,30 @@ function Field({ icon: Icon, ...props }: { icon: typeof Mail; placeholder: strin
         required={props.required}
         className="w-full h-11 pl-10 pr-3 rounded-lg bg-input/50 border border-border text-sm focus:outline-none focus:ring-1 focus:ring-ring"
       />
+    </div>
+  );
+}
+
+function PasswordField({ placeholder, value, onChange, show, onToggle }: { placeholder: string; value: string; onChange: (v: string) => void; show: boolean; onToggle: () => void }) {
+  return (
+    <div className="relative">
+      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <input
+        type={show ? "text" : "password"}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        required
+        className="w-full h-11 pl-10 pr-10 rounded-lg bg-input/50 border border-border text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+      />
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-label={show ? "Ocultar contraseña" : "Mostrar contraseña"}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+      >
+        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
     </div>
   );
 }
