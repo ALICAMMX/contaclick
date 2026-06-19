@@ -69,7 +69,9 @@ function Landing() {
               <Button asChild size="lg" variant="hero">
                 <Link to="/app">Probar gratis <ArrowRight className="h-4 w-4" /></Link>
               </Button>
-              <Button size="lg" variant="glass">Ver demo en vivo</Button>
+              <Button asChild size="lg" variant="glass">
+                <Link to="/app/tools/cfdi-validator">Ver demo en vivo</Link>
+              </Button>
             </div>
             <div className="mt-10 flex items-center gap-6 text-xs text-muted-foreground">
               <div className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-success" /> Sin tarjeta</div>
