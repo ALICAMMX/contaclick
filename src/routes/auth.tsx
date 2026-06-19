@@ -31,7 +31,7 @@ function AuthPage() {
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -40,8 +40,20 @@ function AuthPage() {
           },
         });
         if (error) throw error;
-        toast.success("Cuenta creada. Revisa tu correo para confirmar.");
-        setMode("login");
+        if (data.session) {
+          toast.success("¡Cuenta creada! Bienvenido.");
+          navigate({ to: "/app" });
+        } else {
+          // Fallback: intenta iniciar sesión directamente (por si email auto-confirm está activo)
+          const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+          if (signInErr) {
+            toast.success("Cuenta creada. Revisa tu correo para confirmar antes de iniciar sesión.");
+            setMode("login");
+          } else {
+            toast.success("¡Cuenta creada! Bienvenido.");
+            navigate({ to: "/app" });
+          }
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
