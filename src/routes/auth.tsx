@@ -41,6 +41,7 @@ function AuthPage() {
   const [despacho, setDespacho] = useState("");
   const [notRobot, setNotRobot] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const [formMessage, setFormMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const navigate = useNavigate();
   const bootstrapWorkspace = useServerFn(ensureUserWorkspace);
@@ -61,6 +62,32 @@ function AuthPage() {
       if (data.session) navigate({ to: "/app" });
     });
   }, [navigate]);
+
+  const sendPasswordReset = async () => {
+    if (!email.trim()) {
+      const msg = "Escribe tu correo para enviarte el enlace de acceso.";
+      setFormMessage({ type: "error", text: msg });
+      toast.error(msg);
+      return;
+    }
+    setResetLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      const msg = "Te envié un enlace para crear o restablecer tu contraseña.";
+      setFormMessage({ type: "success", text: msg });
+      toast.success(msg);
+    } catch (err: unknown) {
+      const authError = getAuthFailure(err);
+      const msg = authError.message ?? "No se pudo enviar el enlace. Intenta de nuevo.";
+      setFormMessage({ type: "error", text: msg });
+      toast.error(msg, { duration: 8000 });
+    } finally {
+      setResetLoading(false);
+    }
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -217,6 +244,16 @@ function AuthPage() {
             <Button type="submit" variant="hero" className="w-full h-11" disabled={loading}>
               {loading ? "..." : mode === "login" ? "Iniciar sesión" : "Crear cuenta"}
             </Button>
+            {mode === "login" && (
+              <button
+                type="button"
+                onClick={sendPasswordReset}
+                disabled={resetLoading || loading}
+                className="w-full text-center text-sm text-muted-foreground hover:text-foreground disabled:opacity-60"
+              >
+                {resetLoading ? "Enviando enlace…" : "Crear o restablecer contraseña"}
+              </button>
+            )}
           </form>
 
           <p className="text-sm text-muted-foreground text-center mt-5">
