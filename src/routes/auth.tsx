@@ -76,7 +76,19 @@ function AuthPage() {
         navigate({ to: "/app" });
       }
     } catch (err: any) {
-      toast.error(err.message ?? "Algo salió mal");
+      const raw = (err?.message ?? "").toLowerCase();
+      const code = (err?.code ?? "").toLowerCase();
+      let msg = err?.message ?? "Algo salió mal";
+      if (code === "weak_password" || raw.includes("weak") || raw.includes("pwned")) {
+        msg = "Esa contraseña es demasiado común o ha aparecido en filtraciones públicas. Usa una más segura: combina mayúsculas, minúsculas, números y símbolos (mínimo 10 caracteres).";
+      } else if (raw.includes("already registered") || raw.includes("user already")) {
+        msg = "Ya existe una cuenta con ese correo. Inicia sesión.";
+      } else if (raw.includes("invalid login")) {
+        msg = "Correo o contraseña incorrectos.";
+      } else if (raw.includes("email") && raw.includes("invalid")) {
+        msg = "El correo no es válido.";
+      }
+      toast.error(msg, { duration: 8000 });
     } finally {
       setLoading(false);
     }
