@@ -4,12 +4,28 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Logo } from "@/components/Logo";
-import { Sparkles, Mail, Lock, User as UserIcon, Building2, Eye, EyeOff, IdCard } from "lucide-react";
+import {
+  Sparkles,
+  Mail,
+  Lock,
+  User as UserIcon,
+  Building2,
+  Eye,
+  EyeOff,
+  IdCard,
+} from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
+
+type AuthFailure = {
+  code?: string;
+  message?: string;
+};
+
+const getAuthFailure = (err: unknown) => err as AuthFailure;
 
 function AuthPage() {
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -25,10 +41,15 @@ function AuthPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const isAlreadyRegisteredError = (err: any) => {
-    const raw = (err?.message ?? "").toLowerCase();
-    const code = (err?.code ?? "").toLowerCase();
-    return code === "user_already_exists" || raw.includes("already registered") || raw.includes("user already");
+  const isAlreadyRegisteredError = (err: unknown) => {
+    const authError = getAuthFailure(err);
+    const raw = (authError.message ?? "").toLowerCase();
+    const code = (authError.code ?? "").toLowerCase();
+    return (
+      code === "user_already_exists" ||
+      raw.includes("already registered") ||
+      raw.includes("user already")
+    );
   };
 
   useEffect(() => {
@@ -65,13 +86,19 @@ function AuthPage() {
         });
         if (error) {
           if (isAlreadyRegisteredError(error)) {
-            const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+            const { error: signInErr } = await supabase.auth.signInWithPassword({
+              email,
+              password,
+            });
             if (!signInErr) {
               toast.success("Ya tenías cuenta. Sesión iniciada.");
               navigate({ to: "/app" });
               return;
             }
-            toast.error("Ese correo ya tiene una cuenta, pero la contraseña no coincide. Cambié a inicio de sesión para que pruebes o recuperes acceso.", { duration: 9000 });
+            toast.error(
+              "Ese correo ya tiene una cuenta, pero la contraseña no coincide. Cambié a inicio de sesión para que pruebes o recuperes acceso.",
+              { duration: 9000 },
+            );
             setMode("login");
             return;
           }
@@ -94,10 +121,11 @@ function AuthPage() {
         if (error) throw error;
         navigate({ to: "/app" });
       }
-    } catch (err: any) {
-      const raw = (err?.message ?? "").toLowerCase();
-      const code = (err?.code ?? "").toLowerCase();
-      let msg = err?.message ?? "Algo salió mal";
+    } catch (err: unknown) {
+      const authError = getAuthFailure(err);
+      const raw = (authError.message ?? "").toLowerCase();
+      const code = (authError.code ?? "").toLowerCase();
+      let msg = authError.message ?? "Algo salió mal";
       if (code === "weak_password" || raw.includes("weak") || raw.includes("pwned")) {
         msg = "Esa contraseña es demasiado común o ha aparecido en filtraciones públicas. Usa una más segura: combina mayúsculas, minúsculas, números y símbolos (mínimo 10 caracteres).";
       } else if (isAlreadyRegisteredError(err)) {
