@@ -3,6 +3,7 @@ import { LogOut, UserRound, Settings, Building2, Sun, Moon, ChevronRight, Home }
 import { Logo } from "./Logo";
 import { useAuth } from "@/lib/auth";
 import { useDespacho } from "@/lib/despacho/use-despacho";
+import { useTheme } from "@/lib/theme";
 import { useEffect, useRef, useState } from "react";
 import { NotificationsBell } from "./NotificationsBell";
 import { CommandPaletteTrigger } from "./CommandPalette";
