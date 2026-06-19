@@ -1,9 +1,11 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Logo } from "@/components/Logo";
+import { ensureUserWorkspace } from "@/lib/auth-bootstrap.functions";
 import {
   Sparkles,
   Mail,
@@ -39,7 +41,10 @@ function AuthPage() {
   const [despacho, setDespacho] = useState("");
   const [notRobot, setNotRobot] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [formMessage, setFormMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const navigate = useNavigate();
+  const bootstrapWorkspace = useServerFn(ensureUserWorkspace);
 
   const isAlreadyRegisteredError = (err: unknown) => {
     const authError = getAuthFailure(err);
@@ -58,8 +63,35 @@ function AuthPage() {
     });
   }, [navigate]);
 
+  const sendPasswordReset = async () => {
+    if (!email.trim()) {
+      const msg = "Escribe tu correo para enviarte el enlace de acceso.";
+      setFormMessage({ type: "error", text: msg });
+      toast.error(msg);
+      return;
+    }
+    setResetLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      const msg = "Te envié un enlace para crear o restablecer tu contraseña.";
+      setFormMessage({ type: "success", text: msg });
+      toast.success(msg);
+    } catch (err: unknown) {
+      const authError = getAuthFailure(err);
+      const msg = authError.message ?? "No se pudo enviar el enlace. Intenta de nuevo.";
+      setFormMessage({ type: "error", text: msg });
+      toast.error(msg, { duration: 8000 });
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormMessage(null);
     if (mode === "signup") {
       if (!nombre.trim() || !apellidos.trim()) return toast.error("Ingresa tu nombre y apellidos");
       if (!despacho.trim()) return toast.error("Ingresa el nombre del despacho");
@@ -91,34 +123,45 @@ function AuthPage() {
               password,
             });
             if (!signInErr) {
+              await bootstrapWorkspace({ data: { fullName: `${nombre.trim()} ${apellidos.trim()}`, despachoNombre: despacho.trim() } });
               toast.success("Ya tenías cuenta. Sesión iniciada.");
+              setFormMessage({ type: "success", text: "Ya tenías cuenta. Sesión iniciada." });
               navigate({ to: "/app" });
               return;
             }
+            const providerMessage = "Ese correo ya existe y fue creado con Google. Como Google está deshabilitado temporalmente, usa otro correo o restablece una contraseña para este correo.";
             toast.error(
-              "Ese correo ya tiene una cuenta, pero la contraseña no coincide. Cambié a inicio de sesión para que pruebes o recuperes acceso.",
+              providerMessage,
               { duration: 9000 },
             );
+            setFormMessage({ type: "error", text: providerMessage });
             setMode("login");
             return;
           }
           throw error;
         }
         if (data.session) {
+          await bootstrapWorkspace({ data: { fullName, despachoNombre: despacho.trim() } });
           toast.success("¡Cuenta creada! Bienvenido.");
+          setFormMessage({ type: "success", text: "¡Cuenta creada! Bienvenido." });
           navigate({ to: "/app" });
         } else {
           const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
           if (signInErr) {
-            toast.success("Cuenta creada. Revisa tu correo para confirmar.");
+            const successMessage = "Cuenta creada. Revisa tu correo para confirmar antes de iniciar sesión.";
+            toast.success(successMessage);
+            setFormMessage({ type: "success", text: successMessage });
             setMode("login");
           } else {
+            await bootstrapWorkspace({ data: { fullName, despachoNombre: despacho.trim() } });
+            setFormMessage({ type: "success", text: "¡Cuenta creada! Bienvenido." });
             navigate({ to: "/app" });
           }
         }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        await bootstrapWorkspace({ data: { fullName: null, despachoNombre: null } });
         navigate({ to: "/app" });
       }
     } catch (err: unknown) {
@@ -135,6 +178,7 @@ function AuthPage() {
       } else if (raw.includes("email") && raw.includes("invalid")) {
         msg = "El correo no es válido.";
       }
+      setFormMessage({ type: "error", text: msg });
       toast.error(msg, { duration: 8000 });
     } finally {
       setLoading(false);
@@ -154,6 +198,18 @@ function AuthPage() {
           </p>
 
           <form onSubmit={onSubmit} className="space-y-3 mt-6">
+            {formMessage && (
+              <div
+                role="alert"
+                className={`rounded-lg border px-3 py-2 text-sm ${
+                  formMessage.type === "error"
+                    ? "border-destructive/40 bg-destructive/10 text-destructive"
+                    : "border-primary/40 bg-primary/10 text-primary"
+                }`}
+              >
+                {formMessage.text}
+              </div>
+            )}
             {mode === "signup" && (
               <>
                 <Field icon={UserIcon} placeholder="Nombre(s)" value={nombre} onChange={setNombre} required />
@@ -188,6 +244,16 @@ function AuthPage() {
             <Button type="submit" variant="hero" className="w-full h-11" disabled={loading}>
               {loading ? "..." : mode === "login" ? "Iniciar sesión" : "Crear cuenta"}
             </Button>
+            {mode === "login" && (
+              <button
+                type="button"
+                onClick={sendPasswordReset}
+                disabled={resetLoading || loading}
+                className="w-full text-center text-sm text-muted-foreground hover:text-foreground disabled:opacity-60"
+              >
+                {resetLoading ? "Enviando enlace…" : "Crear o restablecer contraseña"}
+              </button>
+            )}
           </form>
 
           <p className="text-sm text-muted-foreground text-center mt-5">
