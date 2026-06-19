@@ -213,9 +213,9 @@ function Landing() {
           <Logo size="sm" />
           <div>© 2026 ContaClick IA · Hecho en México 🇲🇽</div>
           <div className="flex gap-5">
-            <a href="#" className="hover:text-foreground">Privacidad</a>
-            <a href="#" className="hover:text-foreground">Términos</a>
-            <a href="#" className="hover:text-foreground">Contacto</a>
+            <Link to="/privacidad" className="hover:text-foreground">Privacidad</Link>
+            <Link to="/terminos" className="hover:text-foreground">Términos</Link>
+            <Link to="/contacto" className="hover:text-foreground">Contacto</Link>
           </div>
         </div>
       </footer>
