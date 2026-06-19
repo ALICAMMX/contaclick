@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TerminosRouteImport } from './routes/terminos'
 import { Route as PrivacidadRouteImport } from './routes/privacidad'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -77,6 +78,11 @@ import { Route as AppAdminCorrespondenciaRouteImport } from './routes/app.admin.
 import { Route as AppAdminBuzonRouteImport } from './routes/app.admin.buzon'
 import { Route as AppAdminActivosRouteImport } from './routes/app.admin.activos'
 
+const TerminosRoute = TerminosRouteImport.update({
+  id: '/terminos',
+  path: '/terminos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrivacidadRoute = PrivacidadRouteImport.update({
   id: '/privacidad',
   path: '/privacidad',
@@ -424,6 +430,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/privacidad': typeof PrivacidadRoute
+  '/terminos': typeof TerminosRoute
   '/app/admin': typeof AppAdminRouteWithChildren
   '/app/administrativo': typeof AppAdministrativoRoute
   '/app/cfdi': typeof AppCfdiRouteWithChildren
@@ -491,6 +498,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/privacidad': typeof PrivacidadRoute
+  '/terminos': typeof TerminosRoute
   '/app/administrativo': typeof AppAdministrativoRoute
   '/app/clientes': typeof AppClientesRouteWithChildren
   '/app/configuracion': typeof AppConfiguracionRoute
@@ -554,6 +562,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/privacidad': typeof PrivacidadRoute
+  '/terminos': typeof TerminosRoute
   '/app/admin': typeof AppAdminRouteWithChildren
   '/app/administrativo': typeof AppAdministrativoRoute
   '/app/cfdi': typeof AppCfdiRouteWithChildren
@@ -625,6 +634,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/privacidad'
+    | '/terminos'
     | '/app/admin'
     | '/app/administrativo'
     | '/app/cfdi'
@@ -692,6 +702,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/privacidad'
+    | '/terminos'
     | '/app/administrativo'
     | '/app/clientes'
     | '/app/configuracion'
@@ -754,6 +765,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/privacidad'
+    | '/terminos'
     | '/app/admin'
     | '/app/administrativo'
     | '/app/cfdi'
@@ -824,11 +836,19 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   DashboardRoute: typeof DashboardRouteWithChildren
   PrivacidadRoute: typeof PrivacidadRoute
+  TerminosRoute: typeof TerminosRoute
   InvitarTokenRoute: typeof InvitarTokenRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terminos': {
+      id: '/terminos'
+      path: '/terminos'
+      fullPath: '/terminos'
+      preLoaderRoute: typeof TerminosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/privacidad': {
       id: '/privacidad'
       path: '/privacidad'
@@ -1526,6 +1546,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   DashboardRoute: DashboardRouteWithChildren,
   PrivacidadRoute: PrivacidadRoute,
+  TerminosRoute: TerminosRoute,
   InvitarTokenRoute: InvitarTokenRoute,
 }
 export const routeTree = rootRouteImport
