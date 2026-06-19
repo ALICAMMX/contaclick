@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TerminosRouteImport } from './routes/terminos'
 import { Route as PrivacidadRouteImport } from './routes/privacidad'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as ContactoRouteImport } from './routes/contacto'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
@@ -91,6 +92,11 @@ const PrivacidadRoute = PrivacidadRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactoRoute = ContactoRouteImport.update({
+  id: '/contacto',
+  path: '/contacto',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -428,6 +434,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
+  '/contacto': typeof ContactoRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/privacidad': typeof PrivacidadRoute
   '/terminos': typeof TerminosRoute
@@ -497,6 +504,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/contacto': typeof ContactoRoute
   '/privacidad': typeof PrivacidadRoute
   '/terminos': typeof TerminosRoute
   '/app/administrativo': typeof AppAdministrativoRoute
@@ -560,6 +568,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
+  '/contacto': typeof ContactoRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/privacidad': typeof PrivacidadRoute
   '/terminos': typeof TerminosRoute
@@ -632,6 +641,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/auth'
+    | '/contacto'
     | '/dashboard'
     | '/privacidad'
     | '/terminos'
@@ -701,6 +711,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/contacto'
     | '/privacidad'
     | '/terminos'
     | '/app/administrativo'
@@ -763,6 +774,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/auth'
+    | '/contacto'
     | '/dashboard'
     | '/privacidad'
     | '/terminos'
@@ -834,6 +846,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ContactoRoute: typeof ContactoRoute
   DashboardRoute: typeof DashboardRouteWithChildren
   PrivacidadRoute: typeof PrivacidadRoute
   TerminosRoute: typeof TerminosRoute
@@ -861,6 +874,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contacto': {
+      id: '/contacto'
+      path: '/contacto'
+      fullPath: '/contacto'
+      preLoaderRoute: typeof ContactoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -1544,6 +1564,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   AuthRoute: AuthRoute,
+  ContactoRoute: ContactoRoute,
   DashboardRoute: DashboardRouteWithChildren,
   PrivacidadRoute: PrivacidadRoute,
   TerminosRoute: TerminosRoute,
