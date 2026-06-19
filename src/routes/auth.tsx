@@ -90,6 +90,7 @@ function AuthPage() {
             {mode === "login" ? "Ingresa para continuar con tus clientes." : "Empieza gratis. Sin tarjeta."}
           </p>
 
+          {/*
           <Button onClick={onGoogle} variant="glass" className="w-full mt-6 h-11">
             <svg className="h-4 w-4" viewBox="0 0 24 24"><path fill="currentColor" d="M21.35 11.1h-9.17v2.92h5.27c-.23 1.41-1.66 4.13-5.27 4.13-3.17 0-5.76-2.62-5.76-5.85s2.59-5.85 5.76-5.85c1.81 0 3.02.77 3.71 1.43l2.53-2.44C16.94 4.06 14.83 3 12.18 3 7.13 3 3 7.13 3 12.18s4.13 9.18 9.18 9.18c5.3 0 8.82-3.72 8.82-8.97 0-.6-.07-1.06-.15-1.29z"/></svg>
             Continuar con Google
@@ -98,6 +99,7 @@ function AuthPage() {
           <div className="flex items-center gap-3 my-5 text-xs text-muted-foreground">
             <div className="flex-1 h-px bg-border" /> o con email <div className="flex-1 h-px bg-border" />
           </div>
+          */}
 
           <form onSubmit={onSubmit} className="space-y-3">
             {mode === "signup" && (
