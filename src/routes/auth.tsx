@@ -234,9 +234,24 @@ function AuthPage() {
                   show={showPass2}
                   onToggle={() => setShowPass2((s) => !s)}
                 />
-                <label className="flex items-center gap-2 pt-1 text-sm text-muted-foreground cursor-pointer">
-                  <Checkbox checked={notRobot} onCheckedChange={(v) => setNotRobot(v === true)} />
-                  No soy un robot
+                <label className="flex items-start gap-2 pt-1 text-sm text-muted-foreground cursor-pointer">
+                  <Checkbox
+                    className="mt-0.5"
+                    checked={notRobot}
+                    onCheckedChange={(v) => setNotRobot(v === true)}
+                  />
+                  <span>
+                    No soy un robot y acepto el{" "}
+                    <Link
+                      to="/privacidad"
+                      target="_blank"
+                      className="underline text-foreground hover:text-primary"
+                    >
+                      Aviso de Privacidad
+                    </Link>{" "}
+                    de Contaclick, administrado por Grupo ALICAM, así como el tratamiento de mis
+                    datos personales para la prestación del servicio.
+                  </span>
                 </label>
               </>
             )}
