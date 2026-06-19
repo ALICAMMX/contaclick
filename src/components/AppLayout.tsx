@@ -3,8 +3,6 @@ import { LogOut, UserRound, Settings, Building2, Sun, Moon, ChevronRight, Home }
 import { Logo } from "./Logo";
 import { useAuth } from "@/lib/auth";
 import { useDespacho } from "@/lib/despacho/use-despacho";
-import { useTheme } from "@/lib/theme";
-import { Toaster } from "sonner";
 import { useEffect, useRef, useState } from "react";
 import { NotificationsBell } from "./NotificationsBell";
 import { CommandPaletteTrigger } from "./CommandPalette";
@@ -67,7 +65,6 @@ export function AppLayout() {
   const { user, signOut } = useAuth();
   const location = useLocation();
   const { despacho } = useDespacho();
-  const { theme } = useTheme();
   const initials = (user?.user_metadata?.full_name ?? user?.email ?? "U").slice(0, 2).toUpperCase();
   const crumbs = buildCrumbs(location.pathname);
   const atHub = location.pathname === "/app";
@@ -138,7 +135,6 @@ export function AppLayout() {
           <Outlet />
         </div>
       </main>
-      <Toaster theme={theme} position="top-right" />
       <Tour open={tourOpen} onClose={() => setTourOpen(false)} />
     </div>
   );
