@@ -250,6 +250,7 @@ function AuthPage() {
               <>
                 <Field icon={UserIcon} placeholder="Nombre(s)" value={nombre} onChange={setNombre} required />
                 <Field icon={IdCard} placeholder="Apellidos" value={apellidos} onChange={setApellidos} required />
+                <Field icon={Phone} type="tel" placeholder="Teléfono (10 dígitos)" value={telefono} onChange={setTelefono} required />
                 <Field icon={Building2} placeholder="Nombre del despacho" value={despacho} onChange={setDespacho} required />
               </>
             )}
