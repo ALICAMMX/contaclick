@@ -676,6 +676,59 @@ export type Database = {
           },
         ]
       }
+      defensas: {
+        Row: {
+          cliente_id: string
+          conflicto: string | null
+          created_at: string
+          estatus: string
+          estrategia: string | null
+          exito: number | null
+          id: string
+          nombre: string
+          notas: string | null
+          potencial: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cliente_id: string
+          conflicto?: string | null
+          created_at?: string
+          estatus?: string
+          estrategia?: string | null
+          exito?: number | null
+          id?: string
+          nombre: string
+          notas?: string | null
+          potencial?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cliente_id?: string
+          conflicto?: string | null
+          created_at?: string
+          estatus?: string
+          estrategia?: string | null
+          exito?: number | null
+          id?: string
+          nombre?: string
+          notas?: string | null
+          potencial?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "defensas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       despachos: {
         Row: {
           created_at: string
