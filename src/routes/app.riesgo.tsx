@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { computeRiesgoSAT, type CriterioRiesgo } from "@/lib/riesgo/riesgo.functions";
 import { ShieldAlert, ShieldCheck, ShieldQuestion, Sparkles, AlertCircle, Download } from "lucide-react";
@@ -24,12 +25,18 @@ function RiesgoPage() {
   const { cliente, clear } = useActiveCliente();
   const isDemo = !!cliente?.id && !UUID_RE.test(cliente.id);
   const run = useServerFn(computeRiesgoSAT);
-  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
+  const { data: result, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["riesgo-sat", cliente?.id],
     queryFn: () => run({ data: { cliente_id: cliente!.id } }),
     enabled: !!cliente?.id && !isDemo,
     retry: false,
   });
+  const notFound = !!result && "notFound" in result && result.notFound === true;
+  const data = !notFound && result && !("notFound" in result && result.notFound) ? result : undefined;
+
+  useEffect(() => {
+    if (notFound) clear();
+  }, [notFound, clear]);
 
   if (!cliente) {
     return (

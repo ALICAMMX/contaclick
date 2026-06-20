@@ -122,6 +122,7 @@ function MiniDashboard({ nombre, rfc, clienteId }: { nombre: string; rfc: string
   const riesgoMetric = (() => {
     if (!isReal) return { value: "— / 100", sub: "Expediente demo", accent: "text-muted-foreground", dot: "bg-muted-foreground" };
     if (riesgoLoading || !riesgo) return { value: "…", sub: "Calculando", accent: "text-muted-foreground", dot: "bg-muted-foreground" };
+    if ("notFound" in riesgo && riesgo.notFound) return { value: "— / 100", sub: "Expediente no encontrado", accent: "text-muted-foreground", dot: "bg-muted-foreground" };
     const sem = riesgo.semaforo;
     const accent = sem === "rojo" ? "text-red-600 dark:text-red-300" : sem === "amarillo" ? "text-amber-600 dark:text-amber-300" : "text-emerald-600 dark:text-emerald-300";
     const dot = sem === "rojo" ? "bg-red-500" : sem === "amarillo" ? "bg-amber-500" : "bg-emerald-500";
