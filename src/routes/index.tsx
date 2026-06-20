@@ -7,14 +7,14 @@ import {
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
-import heroImg1 from "@/assets/hero-despacho-1.jpg";
-import heroImg2 from "@/assets/hero-despacho-2.jpg";
-import heroImg3 from "@/assets/hero-despacho-3.jpg";
+import heroImg1 from "@/assets/hero-bg-1.jpg";
+import heroImg2 from "@/assets/hero-bg-2.jpg";
+import heroImg3 from "@/assets/hero-bg-3.jpg";
 
 const heroSlides = [
-  { src: heroImg1, alt: "Contadores revisando documentos financieros en despacho moderno", caption: "Despachos contables modernos" },
-  { src: heroImg2, alt: "Contadora trabajando con CFDI y dashboards financieros", caption: "Analiza CFDI con IA" },
-  { src: heroImg3, alt: "Equipo de contadores en reunión con dashboards", caption: "Colabora con tu equipo" },
+  { src: heroImg1, alt: "Oficina ejecutiva moderna con vista panorámica" },
+  { src: heroImg2, alt: "Escritorio con laptop mostrando dashboards financieros" },
+  { src: heroImg3, alt: "Sala de juntas corporativa al atardecer" },
 ];
 
 export const Route = createFileRoute("/")({
