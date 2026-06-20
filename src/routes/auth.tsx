@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Logo } from "@/components/Logo";
 import { ensureUserWorkspace } from "@/lib/auth-bootstrap.functions";
+import { ensureDemoAccount } from "@/lib/demo/demo-account.functions";
+import { seedDemo } from "@/lib/demo/demo.functions";
+import { PlayCircle } from "lucide-react";
 import {
   Sparkles,
   Mail,
