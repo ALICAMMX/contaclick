@@ -10,7 +10,7 @@ export function SiteHeader() {
         <nav className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
           <a href="/#features" className="hover:text-foreground transition-colors">Producto</a>
           <a href="/#modules" className="hover:text-foreground transition-colors">Módulos</a>
-          <a href="/#pricing" className="hover:text-foreground transition-colors">Precios</a>
+          <Link to="/precios" className="hover:text-foreground transition-colors">Precios</Link>
           <Link to="/app" className="hover:text-foreground transition-colors">Dashboard</Link>
         </nav>
         <div className="flex items-center gap-2">
