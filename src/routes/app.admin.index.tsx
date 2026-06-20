@@ -68,7 +68,7 @@ function AdminCatalog() {
                     <div className="font-medium mb-1">{t.name}</div>
                     <p className="text-xs text-muted-foreground leading-relaxed flex-1">{t.desc}</p>
                     <div className="text-xs font-medium mt-4 inline-flex items-center gap-1 text-gold">
-                      Ver maqueta <span className="transition-transform group-hover:translate-x-0.5">→</span>
+                      {t.status === "live" ? "Abrir herramienta" : "Ver maqueta"} <span className="transition-transform group-hover:translate-x-0.5">→</span>
                     </div>
                   </Link>
                 );
