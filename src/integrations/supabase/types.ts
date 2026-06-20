@@ -544,6 +544,138 @@ export type Database = {
           },
         ]
       }
+      cxc: {
+        Row: {
+          cliente_id: string | null
+          concepto: string | null
+          contraparte: string
+          created_at: string
+          created_by: string | null
+          despacho_id: string
+          estado: string
+          fecha_emision: string
+          fecha_vencimiento: string
+          id: string
+          moneda: string
+          monto: number
+          notas: string | null
+          updated_at: string
+        }
+        Insert: {
+          cliente_id?: string | null
+          concepto?: string | null
+          contraparte: string
+          created_at?: string
+          created_by?: string | null
+          despacho_id: string
+          estado?: string
+          fecha_emision?: string
+          fecha_vencimiento: string
+          id?: string
+          moneda?: string
+          monto?: number
+          notas?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cliente_id?: string | null
+          concepto?: string | null
+          contraparte?: string
+          created_at?: string
+          created_by?: string | null
+          despacho_id?: string
+          estado?: string
+          fecha_emision?: string
+          fecha_vencimiento?: string
+          id?: string
+          moneda?: string
+          monto?: number
+          notas?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cxc_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cxc_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cxp: {
+        Row: {
+          cliente_id: string | null
+          concepto: string | null
+          contraparte: string
+          created_at: string
+          created_by: string | null
+          despacho_id: string
+          estado: string
+          fecha_emision: string
+          fecha_vencimiento: string
+          id: string
+          moneda: string
+          monto: number
+          notas: string | null
+          updated_at: string
+        }
+        Insert: {
+          cliente_id?: string | null
+          concepto?: string | null
+          contraparte: string
+          created_at?: string
+          created_by?: string | null
+          despacho_id: string
+          estado?: string
+          fecha_emision?: string
+          fecha_vencimiento: string
+          id?: string
+          moneda?: string
+          monto?: number
+          notas?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cliente_id?: string | null
+          concepto?: string | null
+          contraparte?: string
+          created_at?: string
+          created_by?: string | null
+          despacho_id?: string
+          estado?: string
+          fecha_emision?: string
+          fecha_vencimiento?: string
+          id?: string
+          moneda?: string
+          monto?: number
+          notas?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cxp_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cxp_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       despachos: {
         Row: {
           created_at: string
@@ -1360,6 +1492,72 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tramites: {
+        Row: {
+          autoridad: string | null
+          cliente_id: string | null
+          created_at: string
+          created_by: string | null
+          descripcion: string | null
+          despacho_id: string
+          estado: string
+          fecha_vencimiento: string | null
+          id: string
+          notas: string | null
+          orden: number
+          responsable: string | null
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          autoridad?: string | null
+          cliente_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          despacho_id: string
+          estado?: string
+          fecha_vencimiento?: string | null
+          id?: string
+          notas?: string | null
+          orden?: number
+          responsable?: string | null
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          autoridad?: string | null
+          cliente_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          despacho_id?: string
+          estado?: string
+          fecha_vencimiento?: string | null
+          id?: string
+          notas?: string | null
+          orden?: number
+          responsable?: string | null
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tramites_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tramites_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
             referencedColumns: ["id"]
           },
         ]
