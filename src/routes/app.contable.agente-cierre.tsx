@@ -164,10 +164,10 @@ function AgenteCierrePage() {
 
           <DemoCard title="Herramientas del agente">
             <div className="grid gap-2">
-              <Link to="/app/tools/isr-iva-calc" className="flex items-center gap-2 rounded-md border border-border/60 bg-card/60 hover:bg-accent px-3 py-2 text-sm">
+              <Link to="/app/tools/isr-iva-calculator" className="flex items-center gap-2 rounded-md border border-border/60 bg-card/60 hover:bg-accent px-3 py-2 text-sm">
                 <Calculator className="h-4 w-4 text-primary" /> Cálculo ISR/IVA
               </Link>
-              <Link to="/app/tools/resico-calc" className="flex items-center gap-2 rounded-md border border-border/60 bg-card/60 hover:bg-accent px-3 py-2 text-sm">
+              <Link to="/app/tools/resico-calculator" className="flex items-center gap-2 rounded-md border border-border/60 bg-card/60 hover:bg-accent px-3 py-2 text-sm">
                 <Receipt className="h-4 w-4 text-primary" /> RESICO
               </Link>
               <Link to="/app/cfdi" className="flex items-center gap-2 rounded-md border border-border/60 bg-card/60 hover:bg-accent px-3 py-2 text-sm">
