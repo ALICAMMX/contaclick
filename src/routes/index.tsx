@@ -88,14 +88,14 @@ function Landing() {
 
         <div className="mx-auto max-w-7xl px-6 pt-20 pb-28 lg:pt-28 lg:pb-36 relative w-full">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass text-xs text-muted-foreground mb-6">
-              <Sparkles className="h-3.5 w-3.5 text-primary" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass hero-chip text-xs mb-6">
+              <Sparkles className="h-3.5 w-3.5 text-gold" />
               IA fiscal entrenada para el SAT mexicano
             </div>
-            <h1 className="text-5xl md:text-7xl font-semibold leading-[0.95] tracking-tight">
-              La IA que tu <span className="gradient-text">despacho contable</span> estaba esperando.
+            <h1 className="hero-heading text-5xl md:text-7xl font-semibold leading-[0.95] tracking-tight">
+              La IA que tu <span className="hero-emphasis">despacho contable</span> estaba esperando.
             </h1>
-            <p className="mt-6 text-lg md:text-xl text-muted-foreground max-w-2xl leading-relaxed">
+            <p className="hero-copy mt-6 text-lg md:text-xl max-w-2xl leading-relaxed">
               Analiza CFDI, concilia bancos, detecta riesgos fiscales y automatiza tu despacho.
               Todo en una plataforma moderna, modular y diseñada para contadores en México.
             </p>
@@ -107,7 +107,7 @@ function Landing() {
                 <Link to="/app/tools/cfdi-validator">Ver demo en vivo</Link>
               </Button>
             </div>
-            <div className="mt-10 flex items-center gap-6 text-xs text-muted-foreground">
+            <div className="hero-subcopy mt-10 flex items-center gap-6 text-xs">
               <div className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-success" /> Sin tarjeta</div>
               <div className="flex items-center gap-1.5"><Lock className="h-4 w-4 text-success" /> Datos cifrados</div>
               <div className="flex items-center gap-1.5"><Brain className="h-4 w-4 text-success" /> IA fiscal MX</div>
@@ -117,9 +117,9 @@ function Landing() {
           {/* Stats */}
           <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-4">
             {stats.map((s) => (
-              <div key={s.label} className="glass rounded-xl p-5">
-                <div className="text-3xl md:text-4xl font-semibold gradient-text">{s.value}</div>
-                <div className="text-xs text-muted-foreground mt-1">{s.label}</div>
+              <div key={s.label} className="glass hero-stat rounded-xl p-5">
+                <div className="hero-stat-value text-3xl md:text-4xl font-semibold">{s.value}</div>
+                <div className="hero-subcopy text-xs mt-1">{s.label}</div>
               </div>
             ))}
           </div>
