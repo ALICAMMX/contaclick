@@ -42,7 +42,7 @@ const level = (puntos: number): "verde" | "amarillo" | "rojo" =>
 export const computeRiesgoSAT = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) => Input.parse(d))
-  .handler(async ({ data, context }): Promise<RiesgoSAT> => {
+  .handler(async ({ data, context }): Promise<RiesgoSATResult> => {
     const { supabase } = context;
     const today = new Date();
     const hasta = data.hasta ?? today.toISOString().slice(0, 10);
@@ -56,9 +56,7 @@ export const computeRiesgoSAT = createServerFn({ method: "POST" })
       .eq("id", data.cliente_id)
       .maybeSingle();
     if (!cli) {
-      throw new Error(
-        "El expediente seleccionado ya no existe o no tienes acceso a él. Selecciona otro expediente desde la barra superior.",
-      );
+      return { notFound: true };
     }
     const rfcCli = (cli.rfc as string).toUpperCase();
 
