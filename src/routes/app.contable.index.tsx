@@ -114,9 +114,18 @@ function MiniDashboard({ nombre, rfc, clienteId }: { nombre: string; rfc: string
   const run = useServerFn(computeRiesgoSAT);
   const { data: riesgo, isLoading: riesgoLoading } = useQuery({
     queryKey: ["riesgo-sat", clienteId],
-    queryFn: () => run({ data: { cliente_id: clienteId } }),
+    queryFn: async () => {
+      try {
+        return await run({ data: { cliente_id: clienteId } });
+      } catch (e) {
+        // Si el token caducó, el middleware lanza un Response 401: no rompemos la UI.
+        if (e instanceof Response) return { notFound: true as const };
+        throw e;
+      }
+    },
     enabled: isReal,
     staleTime: 60_000,
+    retry: (count, err) => !(err instanceof Response) && count < 1,
   });
 
   const riesgoMetric = (() => {
