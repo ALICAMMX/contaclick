@@ -61,8 +61,8 @@ function AdminCatalog() {
                       <div className="h-10 w-10 rounded-lg grid place-items-center bg-gold/15 text-gold">
                         <Icon className="h-5 w-5" />
                       </div>
-                      <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider px-2 py-1 rounded-full border border-border text-muted-foreground">
-                        <Bell className="h-3 w-3" /> Demo
+                      <span className={`inline-flex items-center gap-1 text-[10px] uppercase tracking-wider px-2 py-1 rounded-full border ${t.status === "live" ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" : "border-border text-muted-foreground"}`}>
+                        {t.status === "live" ? <><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Activo</> : <><Bell className="h-3 w-3" /> Demo</>}
                       </span>
                     </div>
                     <div className="font-medium mb-1">{t.name}</div>
