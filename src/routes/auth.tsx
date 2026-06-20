@@ -18,6 +18,7 @@ import {
   Eye,
   EyeOff,
   IdCard,
+  Phone,
 } from "lucide-react";
 import { toast } from "sonner";
 
