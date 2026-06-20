@@ -114,3 +114,65 @@ export const listClientesLite = createServerFn({ method: "GET" })
       .order("razon_social");
     return { clientes: data ?? [] };
   });
+
+const BulkTramitesSchema = z.object({
+  rows: z.array(z.object({
+    titulo: z.string().min(1).max(200),
+    descripcion: z.string().max(1000).optional().nullable(),
+    autoridad: z.string().max(80).optional().nullable(),
+    estado: z.enum(ESTADOS).default("pendiente"),
+    fecha_vencimiento: z.string().optional().nullable(),
+    cliente_rfc: z.string().optional().nullable(),
+  })).min(1).max(500),
+});
+
+export const bulkInsertTramites = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) => BulkTramitesSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const despacho_id = await getDespachoId(supabase, userId);
+    // resolve RFCs -> cliente_id
+    const rfcs = Array.from(new Set(data.rows.map(r => r.cliente_rfc).filter(Boolean))) as string[];
+    let map: Record<string, string> = {};
+    if (rfcs.length) {
+      const { data: cs } = await supabase.from("clientes").select("id, rfc").eq("despacho_id", despacho_id).in("rfc", rfcs);
+      map = Object.fromEntries((cs ?? []).map((c: any) => [c.rfc, c.id]));
+    }
+    const rows = data.rows.map((r) => ({
+      despacho_id,
+      cliente_id: r.cliente_rfc ? map[r.cliente_rfc] ?? null : null,
+      titulo: r.titulo,
+      descripcion: r.descripcion || null,
+      autoridad: r.autoridad || null,
+      estado: r.estado,
+      fecha_vencimiento: r.fecha_vencimiento || null,
+      created_by: userId,
+    }));
+    const { error } = await supabase.from("tramites").insert(rows);
+    if (error) throw new Error(error.message);
+    return { inserted: rows.length };
+  });
+
+export const seedDemoTramites = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const despacho_id = await getDespachoId(supabase, userId);
+    const today = new Date();
+    const d = (off: number) => { const x = new Date(today); x.setDate(x.getDate() + off); return x.toISOString().slice(0, 10); };
+    const rows = [
+      { titulo: "Cambio de domicilio fiscal", autoridad: "SAT", estado: "pendiente", fecha_vencimiento: d(18) },
+      { titulo: "Alta de obligaciones", autoridad: "SAT", estado: "pendiente", fecha_vencimiento: d(9) },
+      { titulo: "Devolución de IVA Q2", autoridad: "SAT", estado: "en_proceso", fecha_vencimiento: d(4) },
+      { titulo: "Respuesta a invitación SAT", autoridad: "SAT", estado: "en_proceso", fecha_vencimiento: d(2) },
+      { titulo: "Renovación e.firma", autoridad: "SAT", estado: "en_proceso", fecha_vencimiento: d(25) },
+      { titulo: "Opinión de cumplimiento 32-D", autoridad: "SAT", estado: "esperando_autoridad", fecha_vencimiento: null },
+      { titulo: "Alta patronal IMSS", autoridad: "IMSS", estado: "esperando_autoridad", fecha_vencimiento: d(7) },
+      { titulo: "Aviso de socios", autoridad: "SAT", estado: "resuelto", fecha_vencimiento: d(-3) },
+      { titulo: "Cancelación de CFDI", autoridad: "SAT", estado: "resuelto", fecha_vencimiento: d(-10) },
+    ].map((r) => ({ ...r, despacho_id, created_by: userId }));
+    const { error } = await supabase.from("tramites").insert(rows);
+    if (error) throw new Error(error.message);
+    return { inserted: rows.length };
+  });
