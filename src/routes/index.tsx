@@ -79,11 +79,11 @@ function Landing() {
               style={{ transitionDuration: "1500ms" }}
             />
           ))}
-          {/* Dark overlays for legibility + image visibility */}
-          <div className="absolute inset-0 bg-black/35" />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/35 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
-          <div className="absolute inset-0 grid-bg opacity-10" />
+          {/* Mid-tone overlays for balanced legibility + image visibility */}
+          <div className="absolute inset-0 bg-black/25" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/25 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
+          <div className="absolute inset-0 grid-bg opacity-15" />
         </div>
 
         <div className="mx-auto max-w-7xl px-6 pt-20 pb-28 lg:pt-28 lg:pb-36 relative w-full">
