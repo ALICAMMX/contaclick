@@ -1,6 +1,6 @@
 import {
   FileSearch, FileStack, Calculator, Coins, Banknote, FileBadge,
-  FileSignature, ShieldCheck, ScanSearch, Bot, ShieldAlert, Users,
+  FileSignature, ShieldCheck, ScanSearch, Bot, ShieldAlert, Users, Globe,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -120,6 +120,14 @@ export const TOOLS: ToolDef[] = [
     description: "Detecta pagos bancarios recurrentes sin CFDI de nómina ni honorarios. Anticipa reclasificación SAT.",
     category: "Defensa SAT",
     icon: Users,
+  },
+  {
+    key: "import-prices",
+    route: "/app/tools/import-prices",
+    name: "Validador de Precios de Importación",
+    description: "Comparables internos por clave SAT y memo justificativo para LISR 76-A, 179 y valor en aduana.",
+    category: "Defensa SAT",
+    icon: Globe,
   },
 ];
 
