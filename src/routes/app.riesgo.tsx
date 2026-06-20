@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { computeRiesgoSAT, type CriterioRiesgo } from "@/lib/riesgo/riesgo.functions";
 import { ShieldAlert, ShieldCheck, ShieldQuestion, Sparkles, AlertCircle, Download } from "lucide-react";
