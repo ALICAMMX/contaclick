@@ -47,6 +47,17 @@ function AgentesPage() {
                   {a.log.map((l, i) => <li key={i} className="text-muted-foreground">• {l}</li>)}
                 </ul>
               </div>
+              {a.href && (
+                <div className="mt-4 pt-3 border-t border-border/40">
+                  <Link
+                    to={a.href}
+                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" /> Activar agente
+                  </Link>
+                  {a.live && <span className="ml-2 text-[10px] uppercase tracking-wider text-emerald-600 dark:text-emerald-300">Funcional</span>}
+                </div>
+              )}
             </div>
           );
         })}
