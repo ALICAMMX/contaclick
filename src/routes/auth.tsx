@@ -8,7 +8,7 @@ import { Logo } from "@/components/Logo";
 import { ensureUserWorkspace } from "@/lib/auth-bootstrap.functions";
 import { ensureDemoAccount } from "@/lib/demo/demo-account.functions";
 import { seedDemo } from "@/lib/demo/demo.functions";
-import { PlayCircle } from "lucide-react";
+import { PlayCircle, ArrowLeft } from "lucide-react";
 import {
   Sparkles,
   Mail,
@@ -225,6 +225,11 @@ function AuthPage() {
     <div className="min-h-screen flex">
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-sm">
+          <div className="flex items-center gap-2">
+            <Link to="/" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <ArrowLeft className="h-4 w-4" /> Volver al inicio
+            </Link>
+          </div>
           <Link to="/"><Logo /></Link>
           <h1 className="text-3xl font-semibold tracking-tight mt-8">
             {mode === "login" ? "Bienvenido de vuelta" : "Crea tu despacho"}
