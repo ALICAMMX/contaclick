@@ -304,6 +304,22 @@ function AuthPage() {
             )}
           </form>
 
+          <div className="mt-5 pt-5 border-t border-border/50">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full h-11 gap-2"
+              onClick={handleDemoLogin}
+              disabled={demoLoading || loading}
+            >
+              <PlayCircle className="h-4 w-4" />
+              {demoLoading ? "Abriendo demo…" : "Probar demo (sin registrarse)"}
+            </Button>
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              Explora la herramienta con datos de ejemplo precargados.
+            </p>
+          </div>
+
           <p className="text-sm text-muted-foreground text-center mt-5">
             {mode === "login" ? "¿No tienes cuenta?" : "¿Ya tienes cuenta?"}{" "}
             <button onClick={() => setMode(mode === "login" ? "signup" : "login")} className="text-primary hover:underline">
