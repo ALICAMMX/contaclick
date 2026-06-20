@@ -96,6 +96,15 @@ function TramPage() {
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Tramite | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+
+  const bulkFn = useServerFn(bulkInsertTramites);
+  const seedFn = useServerFn(seedDemoTramites);
+  const seedMut = useMutation({
+    mutationFn: () => seedFn(),
+    onSuccess: (r: any) => { toast.success(`Cargados ${r.inserted} trámites demo`); qc.invalidateQueries({ queryKey: ["tramites"] }); },
+    onError: (e: any) => toast.error(e?.message ?? "Error"),
+  });
 
   const onDrop = (e: React.DragEvent, estado: Estado) => {
     e.preventDefault();
@@ -109,7 +118,11 @@ function TramPage() {
       subtitle="Kanban funcional con semáforo automático por vencimiento. Arrastra las tarjetas para cambiar de estado."
       icon={<FileText className="h-5 w-5" />}
       badge={null}
-      actions={<Button size="sm" variant="outline" onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-3.5 w-3.5" /> Nuevo trámite</Button>}
+      actions={<>
+        <Button size="sm" variant="outline" onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-3.5 w-3.5" /> Nuevo</Button>
+        <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}><Upload className="h-3.5 w-3.5" /> Importar</Button>
+        <Button size="sm" variant="ghost" onClick={() => seedMut.mutate()} disabled={seedMut.isPending}><Sparkles className="h-3.5 w-3.5" /> Cargar demo</Button>
+      </>}
     >
       {isLoading ? (
         <div className="text-sm text-muted-foreground py-10 text-center">Cargando…</div>
