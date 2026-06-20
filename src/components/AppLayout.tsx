@@ -1,10 +1,13 @@
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
-import { LogOut, UserRound, Settings, Building2, Sun, Moon, ChevronRight, Home } from "lucide-react";
+import { LogOut, UserRound, Settings, Building2, Sun, Moon, ChevronRight, Home, ShieldCheck } from "lucide-react";
 import { Logo } from "./Logo";
 import { useAuth } from "@/lib/auth";
 import { useDespacho } from "@/lib/despacho/use-despacho";
 import { useTheme } from "@/lib/theme";
 import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { isSuperAdmin } from "@/lib/admin-panel/admin-panel.functions";
 import { NotificationsBell } from "./NotificationsBell";
 import { CommandPaletteTrigger } from "./CommandPalette";
 import { TrialBanner } from "./TrialBanner";
@@ -198,6 +201,8 @@ function ThemeToggle() {
 function UserMenu({ initials, signOut, despacho }: { initials: string; signOut: () => void; despacho?: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const checkRole = useServerFn(isSuperAdmin);
+  const roleQ = useQuery({ queryKey: ["is-super-admin"], queryFn: () => checkRole(), staleTime: 60_000 });
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       if (!ref.current?.contains(e.target as Node)) setOpen(false);
@@ -231,6 +236,11 @@ function UserMenu({ initials, signOut, despacho }: { initials: string; signOut: 
             <Link to="/app/equipo" onClick={() => setOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent">
               <UserRound className="h-4 w-4" /> Equipo
             </Link>
+            {(roleQ.data?.isSuperAdmin || !roleQ.data?.anySuperAdmin) && (
+              <Link to="/app/admin-panel" onClick={() => setOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-gold hover:bg-accent">
+                <ShieldCheck className="h-4 w-4" /> Panel super admin
+              </Link>
+            )}
             <button onClick={signOut} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent">
               <LogOut className="h-4 w-4" /> Cerrar sesión
             </button>

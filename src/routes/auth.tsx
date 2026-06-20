@@ -18,6 +18,7 @@ import {
   Eye,
   EyeOff,
   IdCard,
+  Phone,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -42,6 +43,7 @@ function AuthPage() {
   const [nombre, setNombre] = useState("");
   const [apellidos, setApellidos] = useState("");
   const [despacho, setDespacho] = useState("");
+  const [telefono, setTelefono] = useState("");
   const [notRobot, setNotRobot] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
@@ -146,6 +148,7 @@ function AuthPage() {
               nombre: nombre.trim(),
               apellidos: apellidos.trim(),
               despacho_nombre: despacho.trim(),
+              telefono: telefono.trim(),
             },
           },
         });
@@ -247,6 +250,7 @@ function AuthPage() {
               <>
                 <Field icon={UserIcon} placeholder="Nombre(s)" value={nombre} onChange={setNombre} required />
                 <Field icon={IdCard} placeholder="Apellidos" value={apellidos} onChange={setApellidos} required />
+                <Field icon={Phone} type="tel" placeholder="Teléfono (10 dígitos)" value={telefono} onChange={setTelefono} required />
                 <Field icon={Building2} placeholder="Nombre del despacho" value={despacho} onChange={setDespacho} required />
               </>
             )}

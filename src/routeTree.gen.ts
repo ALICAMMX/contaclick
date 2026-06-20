@@ -39,6 +39,7 @@ import { Route as AppConciliacionRouteImport } from './routes/app.conciliacion'
 import { Route as AppClientesRouteImport } from './routes/app.clientes'
 import { Route as AppCfdiRouteImport } from './routes/app.cfdi'
 import { Route as AppAdministrativoRouteImport } from './routes/app.administrativo'
+import { Route as AppAdminPanelRouteImport } from './routes/app.admin-panel'
 import { Route as AppAdminRouteImport } from './routes/app.admin'
 import { Route as AppToolsIndexRouteImport } from './routes/app.tools.index'
 import { Route as AppReportesIndexRouteImport } from './routes/app.reportes.index'
@@ -233,6 +234,11 @@ const AppCfdiRoute = AppCfdiRouteImport.update({
 const AppAdministrativoRoute = AppAdministrativoRouteImport.update({
   id: '/administrativo',
   path: '/administrativo',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminPanelRoute = AppAdminPanelRouteImport.update({
+  id: '/admin-panel',
+  path: '/admin-panel',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAdminRoute = AppAdminRouteImport.update({
@@ -478,6 +484,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/terminos': typeof TerminosRoute
   '/app/admin': typeof AppAdminRouteWithChildren
+  '/app/admin-panel': typeof AppAdminPanelRoute
   '/app/administrativo': typeof AppAdministrativoRoute
   '/app/cfdi': typeof AppCfdiRouteWithChildren
   '/app/clientes': typeof AppClientesRouteWithChildren
@@ -552,6 +559,7 @@ export interface FileRoutesByTo {
   '/privacidad': typeof PrivacidadRoute
   '/reset-password': typeof ResetPasswordRoute
   '/terminos': typeof TerminosRoute
+  '/app/admin-panel': typeof AppAdminPanelRoute
   '/app/administrativo': typeof AppAdministrativoRoute
   '/app/clientes': typeof AppClientesRouteWithChildren
   '/app/configuracion': typeof AppConfiguracionRoute
@@ -624,6 +632,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/terminos': typeof TerminosRoute
   '/app/admin': typeof AppAdminRouteWithChildren
+  '/app/admin-panel': typeof AppAdminPanelRoute
   '/app/administrativo': typeof AppAdministrativoRoute
   '/app/cfdi': typeof AppCfdiRouteWithChildren
   '/app/clientes': typeof AppClientesRouteWithChildren
@@ -703,6 +712,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/terminos'
     | '/app/admin'
+    | '/app/admin-panel'
     | '/app/administrativo'
     | '/app/cfdi'
     | '/app/clientes'
@@ -777,6 +787,7 @@ export interface FileRouteTypes {
     | '/privacidad'
     | '/reset-password'
     | '/terminos'
+    | '/app/admin-panel'
     | '/app/administrativo'
     | '/app/clientes'
     | '/app/configuracion'
@@ -848,6 +859,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/terminos'
     | '/app/admin'
+    | '/app/admin-panel'
     | '/app/administrativo'
     | '/app/cfdi'
     | '/app/clientes'
@@ -1138,6 +1150,13 @@ declare module '@tanstack/react-router' {
       path: '/administrativo'
       fullPath: '/app/administrativo'
       preLoaderRoute: typeof AppAdministrativoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/admin-panel': {
+      id: '/app/admin-panel'
+      path: '/admin-panel'
+      fullPath: '/app/admin-panel'
+      preLoaderRoute: typeof AppAdminPanelRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/admin': {
@@ -1595,6 +1614,7 @@ const AppReportesRouteWithChildren = AppReportesRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppAdminRoute: typeof AppAdminRouteWithChildren
+  AppAdminPanelRoute: typeof AppAdminPanelRoute
   AppAdministrativoRoute: typeof AppAdministrativoRoute
   AppCfdiRoute: typeof AppCfdiRouteWithChildren
   AppClientesRoute: typeof AppClientesRouteWithChildren
@@ -1629,6 +1649,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAdminRoute: AppAdminRouteWithChildren,
+  AppAdminPanelRoute: AppAdminPanelRoute,
   AppAdministrativoRoute: AppAdministrativoRoute,
   AppCfdiRoute: AppCfdiRouteWithChildren,
   AppClientesRoute: AppClientesRouteWithChildren,
