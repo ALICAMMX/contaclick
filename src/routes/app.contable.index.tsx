@@ -36,10 +36,10 @@ const TOOLS: Tool[] = [
 
   // 5. Defensa SAT
   { name: "Riesgo SAT 2026", desc: "Score sobre los 12 criterios del Plan Maestro.", icon: ShieldAlert, href: "/app/riesgo", status: "live", group: "5 · Defensa SAT", doneThisMonth: true },
-  { name: "Validador de Deducibilidad", desc: "Detecta deducciones improcedentes con IA.", icon: ShieldCheck, status: "soon", group: "5 · Defensa SAT" },
+  { name: "Validador de Deducibilidad", desc: "Detecta deducciones improcedentes con IA.", icon: ShieldCheck, href: "/app/tools/deducibility-checker", status: "live", group: "5 · Defensa SAT" },
   { name: "Validador 69-B / EFOS", desc: "Cruza tus proveedores con la lista negra del SAT.", icon: AlertTriangle, href: "/app/tools/efos-validator", status: "live", group: "5 · Defensa SAT", doneThisMonth: true },
-  { name: "Validador de Precios de Importación", desc: "Comparables de mercado y memo justificativo.", icon: Globe, status: "soon", group: "5 · Defensa SAT" },
-  { name: "Detector de Nómina Oculta", desc: "Identifica pagos recurrentes a PF.", icon: Users, status: "soon", group: "5 · Defensa SAT" },
+  { name: "Validador de Precios de Importación", desc: "Comparables internos y memo justificativo (LISR 76-A, 179).", icon: Globe, href: "/app/tools/import-prices", status: "live", group: "5 · Defensa SAT" },
+  { name: "Detector de Nómina Oculta", desc: "Identifica pagos recurrentes a PF sin CFDI de nómina.", icon: Users, href: "/app/tools/shadow-payroll", status: "live", group: "5 · Defensa SAT" },
 
   // 6. Cierre y entregables
   { name: "Reportes del expediente", desc: "Exporta papeles de trabajo PDF/Excel.", icon: FileText, href: "/app/reportes", status: "live", group: "6 · Cierre & Entregables" },
