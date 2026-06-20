@@ -1,10 +1,13 @@
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
-import { LogOut, UserRound, Settings, Building2, Sun, Moon, ChevronRight, Home } from "lucide-react";
+import { LogOut, UserRound, Settings, Building2, Sun, Moon, ChevronRight, Home, ShieldCheck } from "lucide-react";
 import { Logo } from "./Logo";
 import { useAuth } from "@/lib/auth";
 import { useDespacho } from "@/lib/despacho/use-despacho";
 import { useTheme } from "@/lib/theme";
 import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { isSuperAdmin } from "@/lib/admin-panel/admin-panel.functions";
 import { NotificationsBell } from "./NotificationsBell";
 import { CommandPaletteTrigger } from "./CommandPalette";
 import { TrialBanner } from "./TrialBanner";
