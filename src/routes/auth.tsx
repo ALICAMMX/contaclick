@@ -48,6 +48,36 @@ function AuthPage() {
   const [formMessage, setFormMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const navigate = useNavigate();
   const bootstrapWorkspace = useServerFn(ensureUserWorkspace);
+  const ensureDemo = useServerFn(ensureDemoAccount);
+  const seedDemoFn = useServerFn(seedDemo);
+  const [demoLoading, setDemoLoading] = useState(false);
+
+  const handleDemoLogin = async () => {
+    setDemoLoading(true);
+    setFormMessage(null);
+    try {
+      const { email: demoEmail, password: demoPassword } = await ensureDemo();
+      const { error } = await supabase.auth.signInWithPassword({
+        email: demoEmail,
+        password: demoPassword,
+      });
+      if (error) throw error;
+      await bootstrapWorkspace({ data: { fullName: "Cuenta Demo Contaclick", despachoNombre: "Despacho Demo Contaclick" } });
+      try {
+        await seedDemoFn();
+      } catch {
+        /* seed es idempotente; si falla no bloqueamos la demo */
+      }
+      toast.success("Entrando a la cuenta demo…");
+      navigate({ to: "/app" });
+    } catch (err: unknown) {
+      const msg = getAuthFailure(err).message ?? "No se pudo abrir la cuenta demo.";
+      setFormMessage({ type: "error", text: msg });
+      toast.error(msg, { duration: 8000 });
+    } finally {
+      setDemoLoading(false);
+    }
+  };
 
   const isAlreadyRegisteredError = (err: unknown) => {
     const authError = getAuthFailure(err);
