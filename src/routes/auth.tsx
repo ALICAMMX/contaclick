@@ -43,6 +43,7 @@ function AuthPage() {
   const [nombre, setNombre] = useState("");
   const [apellidos, setApellidos] = useState("");
   const [despacho, setDespacho] = useState("");
+  const [telefono, setTelefono] = useState("");
   const [notRobot, setNotRobot] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
