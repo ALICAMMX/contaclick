@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MessageCircle, Sparkles, Send, Loader2, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useActiveCliente } from "@/lib/active-cliente";
+import { getCliente } from "@/lib/clientes.functions";
 import { renderPlantilla, redactarMensajeAI, saveMensaje, listMensajes, type PlantillaKey } from "@/lib/mensajes/mensajes.functions";
 
 export const Route = createFileRoute("/app/mensajes/")({
@@ -19,6 +20,8 @@ const PLANTILLAS: Array<{ key: PlantillaKey; label: string; vars: string[] }> = 
   { key: "resumen_ejecutivo", label: "Resumen mensual", vars: ["cliente", "periodo", "ingresos", "egresos", "utilidad"] },
 ];
 
+const todayMX = () => new Date().toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
+
 function MensajesPage() {
   const { cliente } = useActiveCliente();
   const qc = useQueryClient();
@@ -26,14 +29,34 @@ function MensajesPage() {
   const fnAI = useServerFn(redactarMensajeAI);
   const fnSave = useServerFn(saveMensaje);
   const fnList = useServerFn(listMensajes);
+  const fnGetCliente = useServerFn(getCliente);
+
+  const clienteFull = useQuery({
+    queryKey: ["cliente-full", cliente?.id],
+    queryFn: () => fnGetCliente({ data: { id: cliente!.id } }),
+    enabled: !!cliente?.id,
+  });
 
   const [plantilla, setPlantilla] = useState<PlantillaKey>("recordatorio_impuestos");
-  const [vars, setVars] = useState<Record<string, string>>({ cliente: cliente?.razon_social ?? "" });
+  const [vars, setVars] = useState<Record<string, string>>({ cliente: cliente?.razon_social ?? "", fecha: todayMX() });
   const [cuerpo, setCuerpo] = useState("");
   const [telefono, setTelefono] = useState("");
+  const [telefonoTouched, setTelefonoTouched] = useState(false);
   const [contextoIA, setContextoIA] = useState("");
   const [tono, setTono] = useState<"formal" | "cercano" | "directo">("cercano");
   const [copied, setCopied] = useState(false);
+
+  // Auto-fill teléfono y nombre desde expediente activo
+  useEffect(() => {
+    const c = clienteFull.data as { telefono?: string | null; razon_social?: string } | undefined;
+    if (!c) return;
+    if (!telefonoTouched && c.telefono) setTelefono(c.telefono);
+    setVars((v) => ({
+      ...v,
+      cliente: v.cliente || c.razon_social || "",
+      fecha: v.fecha || todayMX(),
+    }));
+  }, [clienteFull.data, telefonoTouched]);
 
   const list = useQuery({
     queryKey: ["mensajes", cliente?.id],
@@ -141,7 +164,7 @@ function MensajesPage() {
               <input
                 type="tel"
                 value={telefono}
-                onChange={(e) => setTelefono(e.target.value)}
+                onChange={(e) => { setTelefono(e.target.value); setTelefonoTouched(true); }}
                 placeholder="WhatsApp (opcional, ej. 5512345678)"
                 className="h-9 px-3 rounded-md bg-card/50 border border-border text-sm flex-1 min-w-[200px]"
               />
