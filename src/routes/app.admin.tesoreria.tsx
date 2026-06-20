@@ -153,6 +153,36 @@ function TesPage() {
           }}
         />
       )}
+
+      <ImportDialog
+        open={!!importOpen}
+        onClose={() => setImportOpen(null)}
+        title={importOpen === "cxp" ? "Cuentas por pagar" : "Cuentas por cobrar"}
+        columns={CUENTA_COLS}
+        templateRows={[
+          { contraparte: "Constructora Vega SA", concepto: "Factura A-1042", monto: 184200, moneda: "MXN", fecha_emision: "2026-06-01", fecha_vencimiento: "2026-07-01", estado: "pendiente" },
+          { contraparte: "Servicios Olmeca", concepto: "Honorarios", monto: 96800, moneda: "MXN", fecha_emision: "2026-06-10", fecha_vencimiento: "2026-07-10", estado: "pendiente" },
+        ]}
+        helpNote={<>El campo <b>estado</b> acepta: <code>pendiente</code>, <code>{importOpen === "cxp" ? "pagado" : "cobrado"}</code> o <code>cancelado</code>. Las fechas pueden venir como número de Excel; se convertirán automáticamente.</>}
+        onImport={async (rows) => {
+          const tipo = importOpen!;
+          const valid = ["pendiente", tipo === "cxc" ? "cobrado" : "pagado", "cancelado"];
+          const payload = rows.map((r) => ({
+            contraparte: String(r.contraparte),
+            concepto: r.concepto ? String(r.concepto) : null,
+            monto: Number(String(r.monto).replace(/[^0-9.\-]/g, "")) || 0,
+            moneda: r.moneda ? String(r.moneda) : "MXN",
+            fecha_emision: normalizeDate(r.fecha_emision),
+            fecha_vencimiento: normalizeDate(r.fecha_vencimiento),
+            estado: valid.includes(String(r.estado).toLowerCase()) ? String(r.estado).toLowerCase() : "pendiente",
+          }));
+          try {
+            const res: any = await bulkFn({ data: { tipo, rows: payload } });
+            toast.success(`Importadas ${res.inserted} filas`);
+            qc.invalidateQueries({ queryKey: ["tesoreria"] });
+          } catch (e: any) { toast.error(e?.message ?? "Error al importar"); }
+        }}
+      />
     </ModuleScaffold>
   );
 }
