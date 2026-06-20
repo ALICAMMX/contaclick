@@ -77,7 +77,7 @@ export const updateDefensa = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => UpdateSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const payload: Record<string, unknown> = {};
+    const payload: { estatus?: string; notas?: string | null } = {};
     if (data.estatus) payload.estatus = data.estatus;
     if (data.notas !== undefined) payload.notas = data.notas || null;
     const { data: row, error } = await supabase
