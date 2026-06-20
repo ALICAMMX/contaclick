@@ -59,6 +59,11 @@ function buildCrumbs(pathname: string) {
     acc += "/" + p;
     crumbs.push({ label: LABELS[p] ?? p, href: acc });
   }
+  // Las herramientas viven en /app/tools/* pero pertenecen al módulo Contable y Fiscal.
+  // Insertamos la miga del módulo para que el usuario pueda regresar al catálogo.
+  if (parts[0] === "app" && parts[1] === "tools" && parts.length >= 3) {
+    crumbs.splice(1, 0, { label: LABELS.contable, href: "/app/contable" });
+  }
   return crumbs;
 }
 
