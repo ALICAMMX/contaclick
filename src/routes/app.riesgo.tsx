@@ -21,13 +21,14 @@ const colorBySemaforo = (s: "verde" | "amarillo" | "rojo") =>
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function RiesgoPage() {
-  const { cliente } = useActiveCliente();
+  const { cliente, clear } = useActiveCliente();
   const isDemo = !!cliente?.id && !UUID_RE.test(cliente.id);
   const run = useServerFn(computeRiesgoSAT);
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["riesgo-sat", cliente?.id],
     queryFn: () => run({ data: { cliente_id: cliente!.id } }),
     enabled: !!cliente?.id && !isDemo,
+    retry: false,
   });
 
   if (!cliente) {
