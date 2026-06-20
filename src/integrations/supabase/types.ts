@@ -967,27 +967,33 @@ export type Database = {
       }
       profiles: {
         Row: {
+          activo: boolean
           created_at: string
           despacho_nombre: string | null
           email: string | null
           full_name: string | null
           id: string
+          telefono: string | null
           updated_at: string
         }
         Insert: {
+          activo?: boolean
           created_at?: string
           despacho_nombre?: string | null
           email?: string | null
           full_name?: string | null
           id: string
+          telefono?: string | null
           updated_at?: string
         }
         Update: {
+          activo?: boolean
           created_at?: string
           despacho_nombre?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
+          telefono?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -1440,6 +1446,7 @@ export type Database = {
         Returns: boolean
       }
       is_member_of: { Args: { _despacho: string }; Returns: boolean }
+      is_super_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       app_role:
