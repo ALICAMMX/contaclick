@@ -8,8 +8,8 @@ type Tool = { name: string; desc: string; icon: ComponentType<{ className?: stri
 
 const TOOLS: Tool[] = [
   // Operación diaria
-  { name: "Tesorería", desc: "Flujo de caja 90 días, cuentas por cobrar/pagar.", icon: TrendingUp, href: "/app/admin/tesoreria", status: "soon", group: "1 · Operación diaria" },
-  { name: "Gestor de Trámites", desc: "Kanban con semáforo por vencimiento.", icon: FileText, href: "/app/admin/tramites", status: "soon", group: "1 · Operación diaria" },
+  { name: "Tesorería", desc: "Flujo de caja 90 días, cuentas por cobrar/pagar.", icon: TrendingUp, href: "/app/admin/tesoreria", status: "live", group: "1 · Operación diaria" },
+  { name: "Gestor de Trámites", desc: "Kanban con semáforo por vencimiento.", icon: FileText, href: "/app/admin/tramites", status: "live", group: "1 · Operación diaria" },
 
   // Comunicaciones
   { name: "Buzón Tributario", desc: "Lector inteligente de notificaciones SAT.", icon: Mail, href: "/app/admin/buzon", status: "soon", group: "2 · Comunicaciones" },
@@ -61,14 +61,14 @@ function AdminCatalog() {
                       <div className="h-10 w-10 rounded-lg grid place-items-center bg-gold/15 text-gold">
                         <Icon className="h-5 w-5" />
                       </div>
-                      <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider px-2 py-1 rounded-full border border-border text-muted-foreground">
-                        <Bell className="h-3 w-3" /> Demo
+                      <span className={`inline-flex items-center gap-1 text-[10px] uppercase tracking-wider px-2 py-1 rounded-full border ${t.status === "live" ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" : "border-border text-muted-foreground"}`}>
+                        {t.status === "live" ? <><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Activo</> : <><Bell className="h-3 w-3" /> Demo</>}
                       </span>
                     </div>
                     <div className="font-medium mb-1">{t.name}</div>
                     <p className="text-xs text-muted-foreground leading-relaxed flex-1">{t.desc}</p>
                     <div className="text-xs font-medium mt-4 inline-flex items-center gap-1 text-gold">
-                      Ver maqueta <span className="transition-transform group-hover:translate-x-0.5">→</span>
+                      {t.status === "live" ? "Abrir herramienta" : "Ver maqueta"} <span className="transition-transform group-hover:translate-x-0.5">→</span>
                     </div>
                   </Link>
                 );
