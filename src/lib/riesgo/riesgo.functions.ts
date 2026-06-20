@@ -21,6 +21,7 @@ export type CriterioRiesgo = {
 };
 
 export type RiesgoSAT = {
+  notFound?: false;
   score: number; // 0..100 (más alto = más riesgo)
   semaforo: "verde" | "amarillo" | "rojo";
   criterios: CriterioRiesgo[];
@@ -31,6 +32,8 @@ export type RiesgoSAT = {
     n_mov: number;
   };
 };
+
+export type RiesgoSATResult = RiesgoSAT | { notFound: true };
 
 // Score helpers
 const level = (puntos: number): "verde" | "amarillo" | "rojo" =>
