@@ -8,8 +8,8 @@ type Tool = { name: string; desc: string; icon: ComponentType<{ className?: stri
 
 const TOOLS: Tool[] = [
   // Operación diaria
-  { name: "Tesorería", desc: "Flujo de caja 90 días, cuentas por cobrar/pagar.", icon: TrendingUp, href: "/app/admin/tesoreria", status: "soon", group: "1 · Operación diaria" },
-  { name: "Gestor de Trámites", desc: "Kanban con semáforo por vencimiento.", icon: FileText, href: "/app/admin/tramites", status: "soon", group: "1 · Operación diaria" },
+  { name: "Tesorería", desc: "Flujo de caja 90 días, cuentas por cobrar/pagar.", icon: TrendingUp, href: "/app/admin/tesoreria", status: "live", group: "1 · Operación diaria" },
+  { name: "Gestor de Trámites", desc: "Kanban con semáforo por vencimiento.", icon: FileText, href: "/app/admin/tramites", status: "live", group: "1 · Operación diaria" },
 
   // Comunicaciones
   { name: "Buzón Tributario", desc: "Lector inteligente de notificaciones SAT.", icon: Mail, href: "/app/admin/buzon", status: "soon", group: "2 · Comunicaciones" },
