@@ -23,8 +23,8 @@ export function ToolShell({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <Link to="/app/tools" className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5">
-          <ArrowLeft className="h-3.5 w-3.5" /> Volver a herramientas
+        <Link to="/app/contable" className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5">
+          <ArrowLeft className="h-3.5 w-3.5" /> Volver a Contable y Fiscal
         </Link>
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-card/50 border border-border text-xs">
           <UserRound className="h-3.5 w-3.5 text-primary" />
