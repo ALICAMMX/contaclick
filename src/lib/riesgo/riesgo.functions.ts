@@ -51,8 +51,12 @@ export const computeRiesgoSAT = createServerFn({ method: "POST" })
       .from("clientes")
       .select("rfc, razon_social, regimen_fiscal")
       .eq("id", data.cliente_id)
-      .single();
-    if (!cli) throw new Error("Cliente no encontrado");
+      .maybeSingle();
+    if (!cli) {
+      throw new Error(
+        "El expediente seleccionado ya no existe o no tienes acceso a él. Selecciona otro expediente desde la barra superior.",
+      );
+    }
     const rfcCli = (cli.rfc as string).toUpperCase();
 
     const [{ data: cfdis }, { data: movs }, { data: conc }] = await Promise.all([
