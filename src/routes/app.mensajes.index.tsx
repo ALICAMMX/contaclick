@@ -164,7 +164,7 @@ function MensajesPage() {
               <input
                 type="tel"
                 value={telefono}
-                onChange={(e) => setTelefono(e.target.value)}
+                onChange={(e) => { setTelefono(e.target.value); setTelefonoTouched(true); }}
                 placeholder="WhatsApp (opcional, ej. 5512345678)"
                 className="h-9 px-3 rounded-md bg-card/50 border border-border text-sm flex-1 min-w-[200px]"
               />
