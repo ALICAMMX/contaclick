@@ -69,7 +69,10 @@ import { Route as AppLegalMarketplaceRouteImport } from './routes/app.legal.mark
 import { Route as AppLegalLagunasRouteImport } from './routes/app.legal.lagunas'
 import { Route as AppContableHerramientasRouteImport } from './routes/app.contable.herramientas'
 import { Route as AppContableAgentesRouteImport } from './routes/app.contable.agentes'
+import { Route as AppContableAgenteConciliacionRouteImport } from './routes/app.contable.agente-conciliacion'
+import { Route as AppContableAgenteCierreRouteImport } from './routes/app.contable.agente-cierre'
 import { Route as AppContableAgenteCfdiRouteImport } from './routes/app.contable.agente-cfdi'
+import { Route as AppContableAgenteAuditorRouteImport } from './routes/app.contable.agente-auditor'
 import { Route as AppConciliacionHistorialRouteImport } from './routes/app.conciliacion.historial'
 import { Route as AppClientesIdRouteImport } from './routes/app.clientes.$id'
 import { Route as AppCfdiIdRouteImport } from './routes/app.cfdi.$id'
@@ -386,11 +389,28 @@ const AppContableAgentesRoute = AppContableAgentesRouteImport.update({
   path: '/agentes',
   getParentRoute: () => AppContableRoute,
 } as any)
+const AppContableAgenteConciliacionRoute =
+  AppContableAgenteConciliacionRouteImport.update({
+    id: '/agente-conciliacion',
+    path: '/agente-conciliacion',
+    getParentRoute: () => AppContableRoute,
+  } as any)
+const AppContableAgenteCierreRoute = AppContableAgenteCierreRouteImport.update({
+  id: '/agente-cierre',
+  path: '/agente-cierre',
+  getParentRoute: () => AppContableRoute,
+} as any)
 const AppContableAgenteCfdiRoute = AppContableAgenteCfdiRouteImport.update({
   id: '/agente-cfdi',
   path: '/agente-cfdi',
   getParentRoute: () => AppContableRoute,
 } as any)
+const AppContableAgenteAuditorRoute =
+  AppContableAgenteAuditorRouteImport.update({
+    id: '/agente-auditor',
+    path: '/agente-auditor',
+    getParentRoute: () => AppContableRoute,
+  } as any)
 const AppConciliacionHistorialRoute =
   AppConciliacionHistorialRouteImport.update({
     id: '/historial',
@@ -491,7 +511,10 @@ export interface FileRoutesByFullPath {
   '/app/cfdi/$id': typeof AppCfdiIdRoute
   '/app/clientes/$id': typeof AppClientesIdRoute
   '/app/conciliacion/historial': typeof AppConciliacionHistorialRoute
+  '/app/contable/agente-auditor': typeof AppContableAgenteAuditorRoute
   '/app/contable/agente-cfdi': typeof AppContableAgenteCfdiRoute
+  '/app/contable/agente-cierre': typeof AppContableAgenteCierreRoute
+  '/app/contable/agente-conciliacion': typeof AppContableAgenteConciliacionRoute
   '/app/contable/agentes': typeof AppContableAgentesRoute
   '/app/contable/herramientas': typeof AppContableHerramientasRoute
   '/app/legal/lagunas': typeof AppLegalLagunasRoute
@@ -556,7 +579,10 @@ export interface FileRoutesByTo {
   '/app/cfdi/$id': typeof AppCfdiIdRoute
   '/app/clientes/$id': typeof AppClientesIdRoute
   '/app/conciliacion/historial': typeof AppConciliacionHistorialRoute
+  '/app/contable/agente-auditor': typeof AppContableAgenteAuditorRoute
   '/app/contable/agente-cfdi': typeof AppContableAgenteCfdiRoute
+  '/app/contable/agente-cierre': typeof AppContableAgenteCierreRoute
+  '/app/contable/agente-conciliacion': typeof AppContableAgenteConciliacionRoute
   '/app/contable/agentes': typeof AppContableAgentesRoute
   '/app/contable/herramientas': typeof AppContableHerramientasRoute
   '/app/legal/lagunas': typeof AppLegalLagunasRoute
@@ -631,7 +657,10 @@ export interface FileRoutesById {
   '/app/cfdi/$id': typeof AppCfdiIdRoute
   '/app/clientes/$id': typeof AppClientesIdRoute
   '/app/conciliacion/historial': typeof AppConciliacionHistorialRoute
+  '/app/contable/agente-auditor': typeof AppContableAgenteAuditorRoute
   '/app/contable/agente-cfdi': typeof AppContableAgenteCfdiRoute
+  '/app/contable/agente-cierre': typeof AppContableAgenteCierreRoute
+  '/app/contable/agente-conciliacion': typeof AppContableAgenteConciliacionRoute
   '/app/contable/agentes': typeof AppContableAgentesRoute
   '/app/contable/herramientas': typeof AppContableHerramientasRoute
   '/app/legal/lagunas': typeof AppLegalLagunasRoute
@@ -707,7 +736,10 @@ export interface FileRouteTypes {
     | '/app/cfdi/$id'
     | '/app/clientes/$id'
     | '/app/conciliacion/historial'
+    | '/app/contable/agente-auditor'
     | '/app/contable/agente-cfdi'
+    | '/app/contable/agente-cierre'
+    | '/app/contable/agente-conciliacion'
     | '/app/contable/agentes'
     | '/app/contable/herramientas'
     | '/app/legal/lagunas'
@@ -772,7 +804,10 @@ export interface FileRouteTypes {
     | '/app/cfdi/$id'
     | '/app/clientes/$id'
     | '/app/conciliacion/historial'
+    | '/app/contable/agente-auditor'
     | '/app/contable/agente-cfdi'
+    | '/app/contable/agente-cierre'
+    | '/app/contable/agente-conciliacion'
     | '/app/contable/agentes'
     | '/app/contable/herramientas'
     | '/app/legal/lagunas'
@@ -846,7 +881,10 @@ export interface FileRouteTypes {
     | '/app/cfdi/$id'
     | '/app/clientes/$id'
     | '/app/conciliacion/historial'
+    | '/app/contable/agente-auditor'
     | '/app/contable/agente-cfdi'
+    | '/app/contable/agente-cierre'
+    | '/app/contable/agente-conciliacion'
     | '/app/contable/agentes'
     | '/app/contable/herramientas'
     | '/app/legal/lagunas'
@@ -1312,11 +1350,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppContableAgentesRouteImport
       parentRoute: typeof AppContableRoute
     }
+    '/app/contable/agente-conciliacion': {
+      id: '/app/contable/agente-conciliacion'
+      path: '/agente-conciliacion'
+      fullPath: '/app/contable/agente-conciliacion'
+      preLoaderRoute: typeof AppContableAgenteConciliacionRouteImport
+      parentRoute: typeof AppContableRoute
+    }
+    '/app/contable/agente-cierre': {
+      id: '/app/contable/agente-cierre'
+      path: '/agente-cierre'
+      fullPath: '/app/contable/agente-cierre'
+      preLoaderRoute: typeof AppContableAgenteCierreRouteImport
+      parentRoute: typeof AppContableRoute
+    }
     '/app/contable/agente-cfdi': {
       id: '/app/contable/agente-cfdi'
       path: '/agente-cfdi'
       fullPath: '/app/contable/agente-cfdi'
       preLoaderRoute: typeof AppContableAgenteCfdiRouteImport
+      parentRoute: typeof AppContableRoute
+    }
+    '/app/contable/agente-auditor': {
+      id: '/app/contable/agente-auditor'
+      path: '/agente-auditor'
+      fullPath: '/app/contable/agente-auditor'
+      preLoaderRoute: typeof AppContableAgenteAuditorRouteImport
       parentRoute: typeof AppContableRoute
     }
     '/app/conciliacion/historial': {
@@ -1467,14 +1526,20 @@ const AppConciliacionRouteWithChildren = AppConciliacionRoute._addFileChildren(
 )
 
 interface AppContableRouteChildren {
+  AppContableAgenteAuditorRoute: typeof AppContableAgenteAuditorRoute
   AppContableAgenteCfdiRoute: typeof AppContableAgenteCfdiRoute
+  AppContableAgenteCierreRoute: typeof AppContableAgenteCierreRoute
+  AppContableAgenteConciliacionRoute: typeof AppContableAgenteConciliacionRoute
   AppContableAgentesRoute: typeof AppContableAgentesRoute
   AppContableHerramientasRoute: typeof AppContableHerramientasRoute
   AppContableIndexRoute: typeof AppContableIndexRoute
 }
 
 const AppContableRouteChildren: AppContableRouteChildren = {
+  AppContableAgenteAuditorRoute: AppContableAgenteAuditorRoute,
   AppContableAgenteCfdiRoute: AppContableAgenteCfdiRoute,
+  AppContableAgenteCierreRoute: AppContableAgenteCierreRoute,
+  AppContableAgenteConciliacionRoute: AppContableAgenteConciliacionRoute,
   AppContableAgentesRoute: AppContableAgentesRoute,
   AppContableHerramientasRoute: AppContableHerramientasRoute,
   AppContableIndexRoute: AppContableIndexRoute,
@@ -1636,13 +1701,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
