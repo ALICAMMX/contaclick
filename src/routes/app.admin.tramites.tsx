@@ -1,16 +1,43 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ModuleScaffold } from "@/components/ModuleScaffold";
-import { FileText, Plus, Trash2, X } from "lucide-react";
+import { FileText, Plus, Trash2, X, Upload, Sparkles } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { listTramites, upsertTramite, moveTramite, deleteTramite, listClientesLite } from "@/lib/tramites/tramites.functions";
+import { listTramites, upsertTramite, moveTramite, deleteTramite, listClientesLite, bulkInsertTramites, seedDemoTramites } from "@/lib/tramites/tramites.functions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ImportDialog, type ColSpec } from "@/components/ImportDialog";
 import { toast } from "sonner";
+
+const TRAMITE_COLS: ColSpec[] = [
+  { key: "titulo", label: "titulo", required: true, example: "Devolución de IVA Q2", hint: "Nombre del trámite" },
+  { key: "descripcion", label: "descripcion", example: "Solicitud por saldo a favor" },
+  { key: "autoridad", label: "autoridad", example: "SAT", hint: "SAT | IMSS | INFONAVIT | Estatal | Municipal | Otra" },
+  { key: "estado", label: "estado", example: "pendiente", hint: "pendiente | en_proceso | esperando_autoridad | resuelto" },
+  { key: "fecha_vencimiento", label: "fecha_vencimiento", example: "2026-07-15", hint: "Formato YYYY-MM-DD (opcional)" },
+  { key: "cliente_rfc", label: "cliente_rfc", example: "VEG950822RR1", hint: "RFC del expediente — debe existir en tus clientes" },
+];
+
+function normalizeDate(v: any): string | null {
+  if (!v) return null;
+  if (v instanceof Date) return v.toISOString().slice(0, 10);
+  const s = String(v).trim();
+  if (!s) return null;
+  if (/^\d+(\.\d+)?$/.test(s) && Number(s) > 25569) {
+    return new Date((Number(s) - 25569) * 86400000).toISOString().slice(0, 10);
+  }
+  const dmy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (dmy) {
+    const yy = dmy[3].length === 2 ? "20" + dmy[3] : dmy[3];
+    return `${yy}-${dmy[2].padStart(2, "0")}-${dmy[1].padStart(2, "0")}`;
+  }
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+}
 
 export const Route = createFileRoute("/app/admin/tramites")({ component: TramPage });
 
