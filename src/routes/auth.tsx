@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Logo } from "@/components/Logo";
 import { ensureUserWorkspace } from "@/lib/auth-bootstrap.functions";
+import { ensureDemoAccount } from "@/lib/demo/demo-account.functions";
+import { seedDemo } from "@/lib/demo/demo.functions";
+import { PlayCircle } from "lucide-react";
 import {
   Sparkles,
   Mail,
@@ -45,6 +48,36 @@ function AuthPage() {
   const [formMessage, setFormMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const navigate = useNavigate();
   const bootstrapWorkspace = useServerFn(ensureUserWorkspace);
+  const ensureDemo = useServerFn(ensureDemoAccount);
+  const seedDemoFn = useServerFn(seedDemo);
+  const [demoLoading, setDemoLoading] = useState(false);
+
+  const handleDemoLogin = async () => {
+    setDemoLoading(true);
+    setFormMessage(null);
+    try {
+      const { email: demoEmail, password: demoPassword } = await ensureDemo();
+      const { error } = await supabase.auth.signInWithPassword({
+        email: demoEmail,
+        password: demoPassword,
+      });
+      if (error) throw error;
+      await bootstrapWorkspace({ data: { fullName: "Cuenta Demo Contaclick", despachoNombre: "Despacho Demo Contaclick" } });
+      try {
+        await seedDemoFn();
+      } catch {
+        /* seed es idempotente; si falla no bloqueamos la demo */
+      }
+      toast.success("Entrando a la cuenta demo…");
+      navigate({ to: "/app" });
+    } catch (err: unknown) {
+      const msg = getAuthFailure(err).message ?? "No se pudo abrir la cuenta demo.";
+      setFormMessage({ type: "error", text: msg });
+      toast.error(msg, { duration: 8000 });
+    } finally {
+      setDemoLoading(false);
+    }
+  };
 
   const isAlreadyRegisteredError = (err: unknown) => {
     const authError = getAuthFailure(err);
@@ -270,6 +303,22 @@ function AuthPage() {
               </button>
             )}
           </form>
+
+          <div className="mt-5 pt-5 border-t border-border/50">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full h-11 gap-2"
+              onClick={handleDemoLogin}
+              disabled={demoLoading || loading}
+            >
+              <PlayCircle className="h-4 w-4" />
+              {demoLoading ? "Abriendo demo…" : "Probar demo (sin registrarse)"}
+            </Button>
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              Explora la herramienta con datos de ejemplo precargados.
+            </p>
+          </div>
 
           <p className="text-sm text-muted-foreground text-center mt-5">
             {mode === "login" ? "¿No tienes cuenta?" : "¿Ya tienes cuenta?"}{" "}
