@@ -18,6 +18,7 @@ const LABELS: Record<string, string> = {
   legal: "Inteligencia Legal",
   herramientas: "Herramientas",
   agentes: "Agentes IA",
+  "agente-cfdi": "Agente CFDI",
   cfdi: "CFDI",
   conciliacion: "Conciliación bancaria",
   reportes: "Reportes",
