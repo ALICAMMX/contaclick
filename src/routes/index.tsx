@@ -1,11 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import {
   FileText, Banknote, Bot, Shield, BarChart3, Zap, Users, FileCheck,
-  ArrowRight, CheckCircle2, Sparkles, Brain, Lock,
+  ArrowRight, CheckCircle2, Sparkles, Brain, Lock, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
+import heroImg1 from "@/assets/hero-despacho-1.jpg";
+import heroImg2 from "@/assets/hero-despacho-2.jpg";
+import heroImg3 from "@/assets/hero-despacho-3.jpg";
+
+const heroSlides = [
+  { src: heroImg1, alt: "Contadores revisando documentos financieros en despacho moderno", caption: "Despachos contables modernos" },
+  { src: heroImg2, alt: "Contadora trabajando con CFDI y dashboards financieros", caption: "Analiza CFDI con IA" },
+  { src: heroImg3, alt: "Equipo de contadores en reunión con dashboards", caption: "Colabora con tu equipo" },
+];
 
 export const Route = createFileRoute("/")({
   head: () => ({
