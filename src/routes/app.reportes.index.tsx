@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { RichMarkdown } from "@/components/RichMarkdown";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { computeReporte, listReportes, summarizeReporteAI, type ReporteTipo } from "@/lib/reportes/reportes.functions";
 import { downloadReportePDF } from "@/lib/reportes/pdf";
