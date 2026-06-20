@@ -1,16 +1,27 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ModuleScaffold, KpiTile, DemoCard } from "@/components/ModuleScaffold";
-import { TrendingUp, Plus, Trash2, Check, X } from "lucide-react";
+import { TrendingUp, Plus, Trash2, Check, X, Upload, Sparkles } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { listTesoreria, upsertCuenta, deleteCuenta } from "@/lib/tesoreria/tesoreria.functions";
+import { listTesoreria, upsertCuenta, deleteCuenta, bulkInsertCuentas, seedDemoTesoreria } from "@/lib/tesoreria/tesoreria.functions";
 import { listClientesLite } from "@/lib/tramites/tramites.functions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ImportDialog, type ColSpec } from "@/components/ImportDialog";
 import { toast } from "sonner";
+
+const CUENTA_COLS: ColSpec[] = [
+  { key: "contraparte", label: "contraparte", required: true, example: "Constructora Vega SA", hint: "Nombre del cliente o proveedor" },
+  { key: "concepto", label: "concepto", example: "Factura A-1042" },
+  { key: "monto", label: "monto", required: true, example: "184200", hint: "Solo número, sin signo $ ni comas" },
+  { key: "moneda", label: "moneda", example: "MXN", hint: "Por defecto MXN" },
+  { key: "fecha_emision", label: "fecha_emision", required: true, example: "2026-06-01", hint: "Formato YYYY-MM-DD" },
+  { key: "fecha_vencimiento", label: "fecha_vencimiento", required: true, example: "2026-07-01", hint: "Formato YYYY-MM-DD" },
+  { key: "estado", label: "estado", example: "pendiente", hint: "pendiente | cobrado/pagado | cancelado" },
+];
 
 export const Route = createFileRoute("/app/admin/tesoreria")({ component: TesPage });
 
