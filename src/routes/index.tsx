@@ -1,11 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import {
   FileText, Banknote, Bot, Shield, BarChart3, Zap, Users, FileCheck,
-  ArrowRight, CheckCircle2, Sparkles, Brain, Lock,
+  ArrowRight, CheckCircle2, Sparkles, Brain, Lock, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
+import heroImg1 from "@/assets/hero-despacho-1.jpg";
+import heroImg2 from "@/assets/hero-despacho-2.jpg";
+import heroImg3 from "@/assets/hero-despacho-3.jpg";
+
+const heroSlides = [
+  { src: heroImg1, alt: "Contadores revisando documentos financieros en despacho moderno", caption: "Despachos contables modernos" },
+  { src: heroImg2, alt: "Contadora trabajando con CFDI y dashboards financieros", caption: "Analiza CFDI con IA" },
+  { src: heroImg3, alt: "Equipo de contadores en reunión con dashboards", caption: "Colabora con tu equipo" },
+];
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -40,6 +50,14 @@ const stats = [
 ];
 
 function Landing() {
+  const [slide, setSlide] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setSlide((s) => (s + 1) % heroSlides.length), 5000);
+    return () => clearInterval(id);
+  }, []);
+  const prev = () => setSlide((s) => (s - 1 + heroSlides.length) % heroSlides.length);
+  const next = () => setSlide((s) => (s + 1) % heroSlides.length);
+
   return (
     <div className="min-h-screen">
       <SiteHeader />
@@ -53,30 +71,81 @@ function Landing() {
           aria-hidden
         />
         <div className="mx-auto max-w-7xl px-6 pt-20 pb-28 lg:pt-28 lg:pb-36 relative">
-          <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass text-xs text-muted-foreground mb-6">
-              <Sparkles className="h-3.5 w-3.5 text-primary" />
-              IA fiscal entrenada para el SAT mexicano
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass text-xs text-muted-foreground mb-6">
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                IA fiscal entrenada para el SAT mexicano
+              </div>
+              <h1 className="text-5xl md:text-6xl xl:text-7xl font-semibold leading-[0.95] tracking-tight">
+                La IA que tu <span className="gradient-text">despacho contable</span> estaba esperando.
+              </h1>
+              <p className="mt-6 text-lg md:text-xl text-muted-foreground max-w-2xl leading-relaxed">
+                Analiza CFDI, concilia bancos, detecta riesgos fiscales y automatiza tu despacho.
+                Todo en una plataforma moderna, modular y diseñada para contadores en México.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <Button asChild size="lg" variant="hero">
+                  <Link to="/app">Probar gratis <ArrowRight className="h-4 w-4" /></Link>
+                </Button>
+                <Button asChild size="lg" variant="glass">
+                  <Link to="/app/tools/cfdi-validator">Ver demo en vivo</Link>
+                </Button>
+              </div>
+              <div className="mt-10 flex items-center gap-6 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-success" /> Sin tarjeta</div>
+                <div className="flex items-center gap-1.5"><Lock className="h-4 w-4 text-success" /> Datos cifrados</div>
+                <div className="flex items-center gap-1.5"><Brain className="h-4 w-4 text-success" /> IA fiscal MX</div>
+              </div>
             </div>
-            <h1 className="text-5xl md:text-7xl font-semibold leading-[0.95] tracking-tight">
-              La IA que tu <span className="gradient-text">despacho contable</span> estaba esperando.
-            </h1>
-            <p className="mt-6 text-lg md:text-xl text-muted-foreground max-w-2xl leading-relaxed">
-              Analiza CFDI, concilia bancos, detecta riesgos fiscales y automatiza tu despacho.
-              Todo en una plataforma moderna, modular y diseñada para contadores en México.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Button asChild size="lg" variant="hero">
-                <Link to="/app">Probar gratis <ArrowRight className="h-4 w-4" /></Link>
-              </Button>
-              <Button asChild size="lg" variant="glass">
-                <Link to="/app/tools/cfdi-validator">Ver demo en vivo</Link>
-              </Button>
-            </div>
-            <div className="mt-10 flex items-center gap-6 text-xs text-muted-foreground">
-              <div className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-success" /> Sin tarjeta</div>
-              <div className="flex items-center gap-1.5"><Lock className="h-4 w-4 text-success" /> Datos cifrados</div>
-              <div className="flex items-center gap-1.5"><Brain className="h-4 w-4 text-success" /> IA fiscal MX</div>
+
+            {/* Slider */}
+            <div className="relative">
+              <div className="relative aspect-[4/3] rounded-2xl overflow-hidden glass shadow-2xl ring-1 ring-border/50">
+                {heroSlides.map((s, i) => (
+                  <img
+                    key={s.src}
+                    src={s.src}
+                    alt={s.alt}
+                    width={1280}
+                    height={896}
+                    loading={i === 0 ? "eager" : "lazy"}
+                    className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${i === slide ? "opacity-100" : "opacity-0"}`}
+                  />
+                ))}
+                <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent" aria-hidden />
+                <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-3">
+                  <div className="glass rounded-lg px-3 py-2 text-sm font-medium">
+                    {heroSlides[slide].caption}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={prev}
+                      aria-label="Anterior"
+                      className="glass rounded-full p-2 hover:bg-background/80 transition"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={next}
+                      aria-label="Siguiente"
+                      className="glass rounded-full p-2 hover:bg-background/80 transition"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-1.5">
+                  {heroSlides.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setSlide(i)}
+                      aria-label={`Ir al slide ${i + 1}`}
+                      className={`h-1.5 rounded-full transition-all ${i === slide ? "w-8 bg-primary" : "w-4 bg-background/60"}`}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
 
