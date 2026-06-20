@@ -148,6 +148,7 @@ function AuthPage() {
               nombre: nombre.trim(),
               apellidos: apellidos.trim(),
               despacho_nombre: despacho.trim(),
+              telefono: telefono.trim(),
             },
           },
         });
