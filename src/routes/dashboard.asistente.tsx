@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Send, Sparkles, FileText, Banknote, Calculator, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { RichMarkdown } from "@/components/RichMarkdown";
 import { sendChat } from "@/lib/chat.functions";
 import { toast } from "sonner";
 

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { RichMarkdown } from "@/components/RichMarkdown";
 import { getCfdi, deleteCfdi, analyzeCfdiAI } from "@/lib/cfdi/cfdi.functions";
 import { analyzeCfdi as runRiskAnalysis, maxLevel } from "@/lib/cfdi/risk";
 import { parseCfdi } from "@/lib/tools/cfdi-parser";
