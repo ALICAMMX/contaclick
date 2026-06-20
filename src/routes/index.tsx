@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   FileText, Banknote, Bot, Shield, BarChart3, Zap, Users, FileCheck,
   ArrowRight, CheckCircle2, Sparkles, Brain, Lock, ChevronLeft, ChevronRight,
+  Calculator, Bell,
 } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
@@ -38,8 +39,10 @@ const modules = [
   { icon: Banknote, title: "Conciliador Bancario IA", desc: "Cruza estados de cuenta con CFDI emitidos y recibidos. Detecta depósitos no identificados al instante.", color: "from-emerald-500/20 to-emerald-500/5" },
   { icon: Shield, title: "Auditor Fiscal IA", desc: "Semáforo fiscal por cliente: ISR, IVA, RESICO, retenciones, deducciones y riesgos SAT.", color: "from-amber-500/20 to-amber-500/5" },
   { icon: Bot, title: "Asistente IA Contable", desc: "Un fiscalista mexicano experto disponible 24/7. Redacta correos, WhatsApps y reportes para clientes.", color: "from-violet-500/20 to-violet-500/5" },
-  { icon: Users, title: "CRM para Despachos", desc: "Gestiona clientes, RFC, regímenes, obligaciones y archivos en una vista limpia y moderna.", color: "from-pink-500/20 to-pink-500/5" },
   { icon: BarChart3, title: "Reportería Inteligente", desc: "Estado de resultados, flujo de efectivo, IVA, ISR y dashboards ejecutivos en PDF/Excel.", color: "from-cyan-500/20 to-cyan-500/5" },
+  { icon: Calculator, title: "Calculadora Fiscal", desc: "ISR, IVA, RESICO, retenciones y estimaciones en tiempo real. Simula escenarios fiscales al instante.", color: "from-rose-500/20 to-rose-500/5" },
+  { icon: FileCheck, title: "Validador RFC & Constancias", desc: "Verifica RFC de proveedores y clientes. Descarga constancias de situación fiscal y detecta contribuyentes con problemas.", color: "from-lime-500/20 to-lime-500/5" },
+  { icon: Bell, title: "Alertas SAT Proactivas", desc: "Vencimientos, citatorios, cambios de obligaciones y notificaciones del SAT directo a tu dashboard.", color: "from-orange-500/20 to-orange-500/5" },
 ];
 
 const stats = [
