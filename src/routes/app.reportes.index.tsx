@@ -230,7 +230,7 @@ function ReportesPage() {
               <h3 className="font-semibold flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> Resumen ejecutivo IA</h3>
               <button onClick={() => setAiOpen(null)}><X className="h-4 w-4" /></button>
             </div>
-            <div className="p-5 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed">{aiOpen.content}</div>
+            <div className="p-6 overflow-y-auto"><RichMarkdown>{aiOpen.content}</RichMarkdown></div>
             <div className="p-3 border-t border-border flex items-center justify-end gap-2">
               <Button variant="glass" size="sm" onClick={() => downloadReportePDF({ tipo: aiOpen.tipo, payload: aiOpen.payload, resumenIA: aiOpen.content })}>
                 <FileText className="h-3.5 w-3.5" /> PDF con resumen

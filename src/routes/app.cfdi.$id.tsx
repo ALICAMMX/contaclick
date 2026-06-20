@@ -200,7 +200,7 @@ function CfdiDetail() {
           </Button>
         </div>
         {iaOut ? (
-          <div className="prose prose-invert prose-sm max-w-none whitespace-pre-wrap">{iaOut}</div>
+          <RichMarkdown>{iaOut}</RichMarkdown>
         ) : (
           <p className="text-sm text-muted-foreground">La IA revisará uso CFDI, método/forma de pago, montos y dará recomendaciones contextualizadas.</p>
         )}

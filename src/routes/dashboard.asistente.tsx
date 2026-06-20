@@ -80,7 +80,11 @@ function Asistente() {
                   <Sparkles className="h-3 w-3" /> ContaClick IA
                 </div>
               )}
-              <div className="leading-relaxed whitespace-pre-wrap">{m.content}</div>
+              {m.role === "assistant" ? (
+                <RichMarkdown compact>{m.content}</RichMarkdown>
+              ) : (
+                <div className="leading-relaxed whitespace-pre-wrap">{m.content}</div>
+              )}
             </div>
           </div>
         ))}
