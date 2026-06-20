@@ -27,7 +27,15 @@ function RiesgoPage() {
   const run = useServerFn(computeRiesgoSAT);
   const { data: result, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["riesgo-sat", cliente?.id],
-    queryFn: () => run({ data: { cliente_id: cliente!.id } }),
+    queryFn: async () => {
+      try {
+        return await run({ data: { cliente_id: cliente!.id } });
+      } catch (e) {
+        // Token caducado: el middleware lanza un Response 401. Devolvemos notFound para no romper la UI.
+        if (e instanceof Response) return { notFound: true as const };
+        throw e;
+      }
+    },
     enabled: !!cliente?.id && !isDemo,
     retry: false,
   });
