@@ -84,8 +84,16 @@ function RiesgoPage() {
         </div>
       )}
       {isError && (
-        <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-300">
-          {(error as Error)?.message ?? "Error al calcular el riesgo."}
+        <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-300 space-y-3">
+          <div>{(error as Error)?.message ?? "Error al calcular el riesgo."}</div>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => clear()}>
+              Limpiar expediente
+            </Button>
+            <Button size="sm" variant="hero" asChild>
+              <Link to="/app/clientes">Ir a expedientes</Link>
+            </Button>
+          </div>
         </div>
       )}
       {data && (
