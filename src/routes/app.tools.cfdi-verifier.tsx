@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ShieldCheck, ExternalLink, Save, CheckCircle2, AlertTriangle } from "lucide-react";
+import { ShieldCheck, ExternalLink, Save, CheckCircle2, AlertTriangle, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,14 +9,30 @@ import { Label } from "@/components/ui/label";
 import { ToolShell } from "@/components/ToolShell";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { saveToolRun } from "@/lib/tool-runs.functions";
+import { parseCfdi } from "@/lib/tools/cfdi-parser";
 
 export const Route = createFileRoute("/app/tools/cfdi-verifier")({
   component: CfdiVerifier,
 });
 
 const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+const UUID_ANY = /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/;
 const RFC_RE = /^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/;
+const RFC_ANY = /\b[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}\b/g;
 const TOTAL_RE = /^-?\d+(\.\d{1,6})?$/;
+
+// Try to auto-fill from a SAT verification URL like
+// https://verificacfdi.facturaelectronica.sat.gob.mx/?id=...&re=...&rr=...&tt=...
+function parseSatUrl(text: string): { uuid?: string; emisor?: string; receptor?: string; total?: string } | null {
+  const m = text.match(/[?&]id=([^&\s]+)[^]*?[?&]re=([^&\s]+)[^]*?[?&]rr=([^&\s]+)[^]*?[?&]tt=([^&\s]+)/i);
+  if (!m) return null;
+  return {
+    uuid: decodeURIComponent(m[1]),
+    emisor: decodeURIComponent(m[2]).toUpperCase(),
+    receptor: decodeURIComponent(m[3]).toUpperCase(),
+    total: decodeURIComponent(m[4]),
+  };
+}
 
 function buildSatUrl(uuid: string, emisor: string, receptor: string, total: string) {
   // SAT verification webservice URL format
