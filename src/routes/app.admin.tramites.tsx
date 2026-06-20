@@ -192,6 +192,37 @@ function TramPage() {
           }}
         />
       )}
+
+      <ImportDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        title="Trámites"
+        columns={TRAMITE_COLS}
+        templateRows={[
+          { titulo: "Devolución de IVA Q2", descripcion: "Saldo a favor", autoridad: "SAT", estado: "en_proceso", fecha_vencimiento: "2026-07-15", cliente_rfc: "" },
+          { titulo: "Cambio de domicilio fiscal", descripcion: "", autoridad: "SAT", estado: "pendiente", fecha_vencimiento: "2026-08-01", cliente_rfc: "" },
+        ]}
+        helpNote={<>El <b>cliente_rfc</b> es opcional. Si lo incluyes, debe coincidir exactamente con el RFC de un expediente ya registrado en tu despacho; si no coincide, el trámite se crea sin expediente vinculado.</>}
+        onImport={async (rows) => {
+          const valid = ["pendiente", "en_proceso", "esperando_autoridad", "resuelto"];
+          const payload = rows.map((r) => {
+            const est = String(r.estado ?? "pendiente").toLowerCase().replace(/\s+/g, "_");
+            return {
+              titulo: String(r.titulo),
+              descripcion: r.descripcion ? String(r.descripcion) : null,
+              autoridad: r.autoridad ? String(r.autoridad) : null,
+              estado: (valid.includes(est) ? est : "pendiente") as any,
+              fecha_vencimiento: normalizeDate(r.fecha_vencimiento),
+              cliente_rfc: r.cliente_rfc ? String(r.cliente_rfc).toUpperCase().trim() : null,
+            };
+          });
+          try {
+            const res: any = await bulkFn({ data: { rows: payload } });
+            toast.success(`Importados ${res.inserted} trámites`);
+            qc.invalidateQueries({ queryKey: ["tramites"] });
+          } catch (e: any) { toast.error(e?.message ?? "Error al importar"); }
+        }}
+      />
     </ModuleScaffold>
   );
 }
