@@ -68,6 +68,7 @@ import { Route as AppLegalMarketplaceRouteImport } from './routes/app.legal.mark
 import { Route as AppLegalLagunasRouteImport } from './routes/app.legal.lagunas'
 import { Route as AppContableHerramientasRouteImport } from './routes/app.contable.herramientas'
 import { Route as AppContableAgentesRouteImport } from './routes/app.contable.agentes'
+import { Route as AppContableAgenteCfdiRouteImport } from './routes/app.contable.agente-cfdi'
 import { Route as AppConciliacionHistorialRouteImport } from './routes/app.conciliacion.historial'
 import { Route as AppClientesIdRouteImport } from './routes/app.clientes.$id'
 import { Route as AppCfdiIdRouteImport } from './routes/app.cfdi.$id'
@@ -379,6 +380,11 @@ const AppContableAgentesRoute = AppContableAgentesRouteImport.update({
   path: '/agentes',
   getParentRoute: () => AppContableRoute,
 } as any)
+const AppContableAgenteCfdiRoute = AppContableAgenteCfdiRouteImport.update({
+  id: '/agente-cfdi',
+  path: '/agente-cfdi',
+  getParentRoute: () => AppContableRoute,
+} as any)
 const AppConciliacionHistorialRoute =
   AppConciliacionHistorialRouteImport.update({
     id: '/historial',
@@ -479,6 +485,7 @@ export interface FileRoutesByFullPath {
   '/app/cfdi/$id': typeof AppCfdiIdRoute
   '/app/clientes/$id': typeof AppClientesIdRoute
   '/app/conciliacion/historial': typeof AppConciliacionHistorialRoute
+  '/app/contable/agente-cfdi': typeof AppContableAgenteCfdiRoute
   '/app/contable/agentes': typeof AppContableAgentesRoute
   '/app/contable/herramientas': typeof AppContableHerramientasRoute
   '/app/legal/lagunas': typeof AppLegalLagunasRoute
@@ -542,6 +549,7 @@ export interface FileRoutesByTo {
   '/app/cfdi/$id': typeof AppCfdiIdRoute
   '/app/clientes/$id': typeof AppClientesIdRoute
   '/app/conciliacion/historial': typeof AppConciliacionHistorialRoute
+  '/app/contable/agente-cfdi': typeof AppContableAgenteCfdiRoute
   '/app/contable/agentes': typeof AppContableAgentesRoute
   '/app/contable/herramientas': typeof AppContableHerramientasRoute
   '/app/legal/lagunas': typeof AppLegalLagunasRoute
@@ -615,6 +623,7 @@ export interface FileRoutesById {
   '/app/cfdi/$id': typeof AppCfdiIdRoute
   '/app/clientes/$id': typeof AppClientesIdRoute
   '/app/conciliacion/historial': typeof AppConciliacionHistorialRoute
+  '/app/contable/agente-cfdi': typeof AppContableAgenteCfdiRoute
   '/app/contable/agentes': typeof AppContableAgentesRoute
   '/app/contable/herramientas': typeof AppContableHerramientasRoute
   '/app/legal/lagunas': typeof AppLegalLagunasRoute
@@ -689,6 +698,7 @@ export interface FileRouteTypes {
     | '/app/cfdi/$id'
     | '/app/clientes/$id'
     | '/app/conciliacion/historial'
+    | '/app/contable/agente-cfdi'
     | '/app/contable/agentes'
     | '/app/contable/herramientas'
     | '/app/legal/lagunas'
@@ -752,6 +762,7 @@ export interface FileRouteTypes {
     | '/app/cfdi/$id'
     | '/app/clientes/$id'
     | '/app/conciliacion/historial'
+    | '/app/contable/agente-cfdi'
     | '/app/contable/agentes'
     | '/app/contable/herramientas'
     | '/app/legal/lagunas'
@@ -824,6 +835,7 @@ export interface FileRouteTypes {
     | '/app/cfdi/$id'
     | '/app/clientes/$id'
     | '/app/conciliacion/historial'
+    | '/app/contable/agente-cfdi'
     | '/app/contable/agentes'
     | '/app/contable/herramientas'
     | '/app/legal/lagunas'
@@ -1281,6 +1293,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppContableAgentesRouteImport
       parentRoute: typeof AppContableRoute
     }
+    '/app/contable/agente-cfdi': {
+      id: '/app/contable/agente-cfdi'
+      path: '/agente-cfdi'
+      fullPath: '/app/contable/agente-cfdi'
+      preLoaderRoute: typeof AppContableAgenteCfdiRouteImport
+      parentRoute: typeof AppContableRoute
+    }
     '/app/conciliacion/historial': {
       id: '/app/conciliacion/historial'
       path: '/historial'
@@ -1429,12 +1448,14 @@ const AppConciliacionRouteWithChildren = AppConciliacionRoute._addFileChildren(
 )
 
 interface AppContableRouteChildren {
+  AppContableAgenteCfdiRoute: typeof AppContableAgenteCfdiRoute
   AppContableAgentesRoute: typeof AppContableAgentesRoute
   AppContableHerramientasRoute: typeof AppContableHerramientasRoute
   AppContableIndexRoute: typeof AppContableIndexRoute
 }
 
 const AppContableRouteChildren: AppContableRouteChildren = {
+  AppContableAgenteCfdiRoute: AppContableAgenteCfdiRoute,
   AppContableAgentesRoute: AppContableAgentesRoute,
   AppContableHerramientasRoute: AppContableHerramientasRoute,
   AppContableIndexRoute: AppContableIndexRoute,

@@ -1,11 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { ModuleScaffold } from "@/components/ModuleScaffold";
-import { Bot, FileText, ShieldAlert, Banknote, ScanSearch, Building, Scale, FileBadge, Calculator } from "lucide-react";
+import { Bot, FileText, ShieldAlert, Banknote, ScanSearch, Building, Scale, FileBadge, Calculator, Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/app/contable/agentes")({ component: AgentesPage });
 
 const AGENTS = [
-  { name: "CFDI", icon: FileText, role: "Valida cada XML recibido y emitido", trigger: "Llega un XML nuevo", tools: ["Validador CFDI 4.0", "Verificador UUID", "Auditor express"], log: ["Hace 4m · Validó 18 CFDI · 2 con error de método de pago", "Hace 1h · Detectó duplicado UUID …a7b9"] },
+  { name: "CFDI", icon: FileText, role: "Valida cada XML recibido y emitido", trigger: "Llega un XML nuevo", tools: ["Validador CFDI 4.0", "Verificador UUID", "Auditor express"], log: ["Hace 4m · Validó 18 CFDI · 2 con error de método de pago", "Hace 1h · Detectó duplicado UUID …a7b9"], href: "/app/contable/agente-cfdi", live: true },
   { name: "Fiscal SAT", icon: ShieldAlert, role: "Defensa proactiva contra los 12 criterios 2026", trigger: "Cierre mensual o cambio de score", tools: ["Analizador de Riesgo SAT", "Validador 69-B"], log: ["Hace 2h · Recalculó score: 72/100 (amarillo)", "Ayer · Detectó proveedor EFOS publicado el 03-jun"] },
   { name: "Conciliación", icon: Banknote, role: "Cruza bancos vs CFDI", trigger: "Sube estado de cuenta", tools: ["Conciliador bancario"], log: ["Hace 30m · 142/145 movimientos conciliados", "Hace 30m · 3 depósitos sin CFDI flagged"] },
   { name: "Auditor", icon: ScanSearch, role: "Hallazgos preventivos de cierre", trigger: "Día 25 de cada mes", tools: ["Auditor express", "Validador de Deducibilidad"], log: ["Ayer · 7 hallazgos en gastos de representación"] },
@@ -13,7 +13,7 @@ const AGENTS = [
   { name: "Defensa", icon: Scale, role: "Activa lagunas legales", trigger: "Llega oficio del SAT", tools: ["Mapa de lagunas", "Redactor de escritos"], log: ["Hace 1d · 3 oportunidades de devolución detectadas"] },
   { name: "Materialidad", icon: FileBadge, role: "Construye soporte de operaciones", trigger: "Operación > $100K MXN sin soporte", tools: ["Validador de Deducibilidad"], log: ["Standby"] },
   { name: "Cierre", icon: Calculator, role: "Pre-cierre mensual automático", trigger: "Día 28", tools: ["ISR/IVA", "RESICO"], log: ["Activación en 4 días"] },
-];
+] as Array<{ name: string; icon: typeof Bot; role: string; trigger: string; tools: string[]; log: string[]; href?: string; live?: boolean }>;
 
 function AgentesPage() {
   return (
