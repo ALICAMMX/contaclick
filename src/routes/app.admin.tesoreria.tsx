@@ -33,6 +33,26 @@ type Row = {
 const fmt = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const addDays = (iso: string, d: number) => Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000) + (d ?? 0);
+function normalizeDate(v: any): string {
+  if (!v) return todayISO();
+  if (v instanceof Date) return v.toISOString().slice(0, 10);
+  const s = String(v).trim();
+  // Excel serial number
+  if (/^\d+(\.\d+)?$/.test(s) && Number(s) > 25569) {
+    const ms = (Number(s) - 25569) * 86400 * 1000;
+    return new Date(ms).toISOString().slice(0, 10);
+  }
+  // DD/MM/YYYY
+  const dmy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (dmy) {
+    const yy = dmy[3].length === 2 ? "20" + dmy[3] : dmy[3];
+    return `${yy}-${dmy[2].padStart(2, "0")}-${dmy[1].padStart(2, "0")}`;
+  }
+  // YYYY-MM-DD or parseable
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  return todayISO();
+}
 
 function TesPage() {
   const qc = useQueryClient();
