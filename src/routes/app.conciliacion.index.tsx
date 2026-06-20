@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { RichMarkdown } from "@/components/RichMarkdown";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Info } from "lucide-react";
 import { fmtFechaMx } from "@/lib/utils";
@@ -439,7 +440,7 @@ function ConciliacionPage() {
               <div className="flex items-center gap-2 font-semibold"><FileText className="h-4 w-4 text-primary" /> Análisis IA · Conciliación</div>
               <button onClick={() => setAiOpen(false)} className="p-1 hover:bg-accent/40 rounded"><X className="h-4 w-4" /></button>
             </div>
-            <div className="overflow-y-auto p-6 prose prose-invert prose-sm max-w-none whitespace-pre-wrap">{aiContent}</div>
+            <div className="overflow-y-auto p-6"><RichMarkdown>{aiContent}</RichMarkdown></div>
           </div>
         </div>
       )}

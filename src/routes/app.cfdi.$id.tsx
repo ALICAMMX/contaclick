@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { RichMarkdown } from "@/components/RichMarkdown";
 import { getCfdi, deleteCfdi, analyzeCfdiAI } from "@/lib/cfdi/cfdi.functions";
 import { analyzeCfdi as runRiskAnalysis, maxLevel } from "@/lib/cfdi/risk";
 import { parseCfdi } from "@/lib/tools/cfdi-parser";
@@ -200,7 +201,7 @@ function CfdiDetail() {
           </Button>
         </div>
         {iaOut ? (
-          <div className="prose prose-invert prose-sm max-w-none whitespace-pre-wrap">{iaOut}</div>
+          <RichMarkdown>{iaOut}</RichMarkdown>
         ) : (
           <p className="text-sm text-muted-foreground">La IA revisará uso CFDI, método/forma de pago, montos y dará recomendaciones contextualizadas.</p>
         )}

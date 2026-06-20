@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Send, Sparkles, FileText, Banknote, Calculator, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { RichMarkdown } from "@/components/RichMarkdown";
 import { sendChat } from "@/lib/chat.functions";
 import { toast } from "sonner";
 
@@ -80,7 +81,11 @@ function Asistente() {
                   <Sparkles className="h-3 w-3" /> ContaClick IA
                 </div>
               )}
-              <div className="leading-relaxed whitespace-pre-wrap">{m.content}</div>
+              {m.role === "assistant" ? (
+                <RichMarkdown compact>{m.content}</RichMarkdown>
+              ) : (
+                <div className="leading-relaxed whitespace-pre-wrap">{m.content}</div>
+              )}
             </div>
           </div>
         ))}
