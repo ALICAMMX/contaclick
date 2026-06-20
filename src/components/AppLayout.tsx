@@ -52,6 +52,28 @@ const LABELS: Record<string, string> = {
   marketplace: "Marketplace Legal",
 };
 
+// Mapa de qué módulo contenedor pertenece cada sección de primer nivel bajo /app.
+// Esto permite que rutas como /app/riesgo o /app/cfdi muestren la miga
+// "Contable y Fiscal" intermedia aunque no vivan literalmente bajo /app/contable.
+const MODULE_PARENT: Record<string, { key: string; href: string }> = {
+  cfdi: { key: "contable", href: "/app/contable" },
+  conciliacion: { key: "contable", href: "/app/contable" },
+  reportes: { key: "contable", href: "/app/contable" },
+  riesgo: { key: "contable", href: "/app/contable" },
+  tools: { key: "contable", href: "/app/contable" },
+  nomina: { key: "admin", href: "/app/admin" },
+  cumplimiento: { key: "admin", href: "/app/admin" },
+  activos: { key: "admin", href: "/app/admin" },
+  inventarios: { key: "admin", href: "/app/admin" },
+  tesoreria: { key: "admin", href: "/app/admin" },
+  tramites: { key: "admin", href: "/app/admin" },
+  buzon: { key: "admin", href: "/app/admin" },
+  correspondencia: { key: "admin", href: "/app/admin" },
+  lagunas: { key: "legal", href: "/app/legal" },
+  redactor: { key: "legal", href: "/app/legal" },
+  marketplace: { key: "legal", href: "/app/legal" },
+};
+
 function buildCrumbs(pathname: string) {
   const parts = pathname.split("/").filter(Boolean);
   const crumbs: { label: string; href: string }[] = [];
@@ -60,16 +82,20 @@ function buildCrumbs(pathname: string) {
     acc += "/" + p;
     crumbs.push({ label: LABELS[p] ?? p, href: acc });
   }
-  // Las herramientas viven en /app/tools/<x> pero pertenecen al módulo
-  // Contable y Fiscal. Reescribimos las migas para que la ruta jerárquica sea
-  // Inicio › Contable y Fiscal › <herramienta>, sin un crumb "Herramienta"
-  // intermedio que confunde la navegación.
-  if (parts[0] === "app" && parts[1] === "tools" && parts.length >= 3) {
-    return [
-      crumbs[0], // Inicio
-      { label: LABELS.contable, href: "/app/contable" },
-      crumbs[crumbs.length - 1], // herramienta concreta
-    ];
+
+  // Inyecta el módulo contenedor (Contable y Fiscal / Administrativo / Legal)
+  // cuando la sección vive en una ruta de primer nivel distinta.
+  if (parts[0] === "app" && parts.length >= 2) {
+    const parent = MODULE_PARENT[parts[1]];
+    if (parent) {
+      const parentCrumb = { label: LABELS[parent.key] ?? parent.key, href: parent.href };
+      // Para /app/tools/<x> dejamos: Inicio › Contable y Fiscal › <herramienta>
+      // (sin el crumb intermedio "Herramienta" que no lleva a ningún lado útil).
+      if (parts[1] === "tools" && parts.length >= 3) {
+        return [crumbs[0], parentCrumb, crumbs[crumbs.length - 1]];
+      }
+      return [crumbs[0], parentCrumb, ...crumbs.slice(1)];
+    }
   }
   return crumbs;
 }
