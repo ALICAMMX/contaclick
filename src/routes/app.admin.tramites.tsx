@@ -1,16 +1,43 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ModuleScaffold } from "@/components/ModuleScaffold";
-import { FileText, Plus, Trash2, X } from "lucide-react";
+import { FileText, Plus, Trash2, X, Upload, Sparkles } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { listTramites, upsertTramite, moveTramite, deleteTramite, listClientesLite } from "@/lib/tramites/tramites.functions";
+import { listTramites, upsertTramite, moveTramite, deleteTramite, listClientesLite, bulkInsertTramites, seedDemoTramites } from "@/lib/tramites/tramites.functions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ImportDialog, type ColSpec } from "@/components/ImportDialog";
 import { toast } from "sonner";
+
+const TRAMITE_COLS: ColSpec[] = [
+  { key: "titulo", label: "titulo", required: true, example: "Devolución de IVA Q2", hint: "Nombre del trámite" },
+  { key: "descripcion", label: "descripcion", example: "Solicitud por saldo a favor" },
+  { key: "autoridad", label: "autoridad", example: "SAT", hint: "SAT | IMSS | INFONAVIT | Estatal | Municipal | Otra" },
+  { key: "estado", label: "estado", example: "pendiente", hint: "pendiente | en_proceso | esperando_autoridad | resuelto" },
+  { key: "fecha_vencimiento", label: "fecha_vencimiento", example: "2026-07-15", hint: "Formato YYYY-MM-DD (opcional)" },
+  { key: "cliente_rfc", label: "cliente_rfc", example: "VEG950822RR1", hint: "RFC del expediente — debe existir en tus clientes" },
+];
+
+function normalizeDate(v: any): string | null {
+  if (!v) return null;
+  if (v instanceof Date) return v.toISOString().slice(0, 10);
+  const s = String(v).trim();
+  if (!s) return null;
+  if (/^\d+(\.\d+)?$/.test(s) && Number(s) > 25569) {
+    return new Date((Number(s) - 25569) * 86400000).toISOString().slice(0, 10);
+  }
+  const dmy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (dmy) {
+    const yy = dmy[3].length === 2 ? "20" + dmy[3] : dmy[3];
+    return `${yy}-${dmy[2].padStart(2, "0")}-${dmy[1].padStart(2, "0")}`;
+  }
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+}
 
 export const Route = createFileRoute("/app/admin/tramites")({ component: TramPage });
 
@@ -69,6 +96,15 @@ function TramPage() {
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Tramite | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+
+  const bulkFn = useServerFn(bulkInsertTramites);
+  const seedFn = useServerFn(seedDemoTramites);
+  const seedMut = useMutation({
+    mutationFn: () => seedFn(),
+    onSuccess: (r: any) => { toast.success(`Cargados ${r.inserted} trámites demo`); qc.invalidateQueries({ queryKey: ["tramites"] }); },
+    onError: (e: any) => toast.error(e?.message ?? "Error"),
+  });
 
   const onDrop = (e: React.DragEvent, estado: Estado) => {
     e.preventDefault();
@@ -82,7 +118,11 @@ function TramPage() {
       subtitle="Kanban funcional con semáforo automático por vencimiento. Arrastra las tarjetas para cambiar de estado."
       icon={<FileText className="h-5 w-5" />}
       badge={null}
-      actions={<Button size="sm" variant="outline" onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-3.5 w-3.5" /> Nuevo trámite</Button>}
+      actions={<>
+        <Button size="sm" variant="outline" onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-3.5 w-3.5" /> Nuevo</Button>
+        <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}><Upload className="h-3.5 w-3.5" /> Importar</Button>
+        <Button size="sm" variant="ghost" onClick={() => seedMut.mutate()} disabled={seedMut.isPending}><Sparkles className="h-3.5 w-3.5" /> Cargar demo</Button>
+      </>}
     >
       {isLoading ? (
         <div className="text-sm text-muted-foreground py-10 text-center">Cargando…</div>
@@ -152,6 +192,37 @@ function TramPage() {
           }}
         />
       )}
+
+      <ImportDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        title="Trámites"
+        columns={TRAMITE_COLS}
+        templateRows={[
+          { titulo: "Devolución de IVA Q2", descripcion: "Saldo a favor", autoridad: "SAT", estado: "en_proceso", fecha_vencimiento: "2026-07-15", cliente_rfc: "" },
+          { titulo: "Cambio de domicilio fiscal", descripcion: "", autoridad: "SAT", estado: "pendiente", fecha_vencimiento: "2026-08-01", cliente_rfc: "" },
+        ]}
+        helpNote={<>El <b>cliente_rfc</b> es opcional. Si lo incluyes, debe coincidir exactamente con el RFC de un expediente ya registrado en tu despacho; si no coincide, el trámite se crea sin expediente vinculado.</>}
+        onImport={async (rows) => {
+          const valid = ["pendiente", "en_proceso", "esperando_autoridad", "resuelto"];
+          const payload = rows.map((r) => {
+            const est = String(r.estado ?? "pendiente").toLowerCase().replace(/\s+/g, "_");
+            return {
+              titulo: String(r.titulo),
+              descripcion: r.descripcion ? String(r.descripcion) : null,
+              autoridad: r.autoridad ? String(r.autoridad) : null,
+              estado: (valid.includes(est) ? est : "pendiente") as any,
+              fecha_vencimiento: normalizeDate(r.fecha_vencimiento),
+              cliente_rfc: r.cliente_rfc ? String(r.cliente_rfc).toUpperCase().trim() : null,
+            };
+          });
+          try {
+            const res: any = await bulkFn({ data: { rows: payload } });
+            toast.success(`Importados ${res.inserted} trámites`);
+            qc.invalidateQueries({ queryKey: ["tramites"] });
+          } catch (e: any) { toast.error(e?.message ?? "Error al importar"); }
+        }}
+      />
     </ModuleScaffold>
   );
 }

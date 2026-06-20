@@ -1,16 +1,27 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ModuleScaffold, KpiTile, DemoCard } from "@/components/ModuleScaffold";
-import { TrendingUp, Plus, Trash2, Check, X } from "lucide-react";
+import { TrendingUp, Plus, Trash2, Check, X, Upload, Sparkles } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { listTesoreria, upsertCuenta, deleteCuenta } from "@/lib/tesoreria/tesoreria.functions";
+import { listTesoreria, upsertCuenta, deleteCuenta, bulkInsertCuentas, seedDemoTesoreria } from "@/lib/tesoreria/tesoreria.functions";
 import { listClientesLite } from "@/lib/tramites/tramites.functions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ImportDialog, type ColSpec } from "@/components/ImportDialog";
 import { toast } from "sonner";
+
+const CUENTA_COLS: ColSpec[] = [
+  { key: "contraparte", label: "contraparte", required: true, example: "Constructora Vega SA", hint: "Nombre del cliente o proveedor" },
+  { key: "concepto", label: "concepto", example: "Factura A-1042" },
+  { key: "monto", label: "monto", required: true, example: "184200", hint: "Solo número, sin signo $ ni comas" },
+  { key: "moneda", label: "moneda", example: "MXN", hint: "Por defecto MXN" },
+  { key: "fecha_emision", label: "fecha_emision", required: true, example: "2026-06-01", hint: "Formato YYYY-MM-DD" },
+  { key: "fecha_vencimiento", label: "fecha_vencimiento", required: true, example: "2026-07-01", hint: "Formato YYYY-MM-DD" },
+  { key: "estado", label: "estado", example: "pendiente", hint: "pendiente | cobrado/pagado | cancelado" },
+];
 
 export const Route = createFileRoute("/app/admin/tesoreria")({ component: TesPage });
 
@@ -22,6 +33,26 @@ type Row = {
 const fmt = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const addDays = (iso: string, d: number) => Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000) + (d ?? 0);
+function normalizeDate(v: any): string {
+  if (!v) return todayISO();
+  if (v instanceof Date) return v.toISOString().slice(0, 10);
+  const s = String(v).trim();
+  // Excel serial number
+  if (/^\d+(\.\d+)?$/.test(s) && Number(s) > 25569) {
+    const ms = (Number(s) - 25569) * 86400 * 1000;
+    return new Date(ms).toISOString().slice(0, 10);
+  }
+  // DD/MM/YYYY
+  const dmy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (dmy) {
+    const yy = dmy[3].length === 2 ? "20" + dmy[3] : dmy[3];
+    return `${yy}-${dmy[2].padStart(2, "0")}-${dmy[1].padStart(2, "0")}`;
+  }
+  // YYYY-MM-DD or parseable
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  return todayISO();
+}
 
 function TesPage() {
   const qc = useQueryClient();
@@ -80,6 +111,15 @@ function TesPage() {
   });
 
   const [open, setOpen] = useState<null | "cxc" | "cxp">(null);
+  const [importOpen, setImportOpen] = useState<null | "cxc" | "cxp">(null);
+
+  const bulkFn = useServerFn(bulkInsertCuentas);
+  const seedFn = useServerFn(seedDemoTesoreria);
+  const seedMut = useMutation({
+    mutationFn: () => seedFn(),
+    onSuccess: (r: any) => { toast.success(`Cargados ${r.cxc} CXC y ${r.cxp} CXP demo`); qc.invalidateQueries({ queryKey: ["tesoreria"] }); },
+    onError: (e: any) => toast.error(e?.message ?? "Error"),
+  });
 
   return (
     <ModuleScaffold
@@ -90,6 +130,9 @@ function TesPage() {
       actions={<>
         <Button size="sm" variant="outline" onClick={() => setOpen("cxc")}><Plus className="h-3.5 w-3.5" /> CXC</Button>
         <Button size="sm" variant="outline" onClick={() => setOpen("cxp")}><Plus className="h-3.5 w-3.5" /> CXP</Button>
+        <Button size="sm" variant="outline" onClick={() => setImportOpen("cxc")}><Upload className="h-3.5 w-3.5" /> Importar CXC</Button>
+        <Button size="sm" variant="outline" onClick={() => setImportOpen("cxp")}><Upload className="h-3.5 w-3.5" /> Importar CXP</Button>
+        <Button size="sm" variant="ghost" onClick={() => seedMut.mutate()} disabled={seedMut.isPending}><Sparkles className="h-3.5 w-3.5" /> Cargar demo</Button>
       </>}
     >
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -130,6 +173,36 @@ function TesPage() {
           }}
         />
       )}
+
+      <ImportDialog
+        open={!!importOpen}
+        onClose={() => setImportOpen(null)}
+        title={importOpen === "cxp" ? "Cuentas por pagar" : "Cuentas por cobrar"}
+        columns={CUENTA_COLS}
+        templateRows={[
+          { contraparte: "Constructora Vega SA", concepto: "Factura A-1042", monto: 184200, moneda: "MXN", fecha_emision: "2026-06-01", fecha_vencimiento: "2026-07-01", estado: "pendiente" },
+          { contraparte: "Servicios Olmeca", concepto: "Honorarios", monto: 96800, moneda: "MXN", fecha_emision: "2026-06-10", fecha_vencimiento: "2026-07-10", estado: "pendiente" },
+        ]}
+        helpNote={<>El campo <b>estado</b> acepta: <code>pendiente</code>, <code>{importOpen === "cxp" ? "pagado" : "cobrado"}</code> o <code>cancelado</code>. Las fechas pueden venir como número de Excel; se convertirán automáticamente.</>}
+        onImport={async (rows) => {
+          const tipo = importOpen!;
+          const valid = ["pendiente", tipo === "cxc" ? "cobrado" : "pagado", "cancelado"];
+          const payload = rows.map((r) => ({
+            contraparte: String(r.contraparte),
+            concepto: r.concepto ? String(r.concepto) : null,
+            monto: Number(String(r.monto).replace(/[^0-9.\-]/g, "")) || 0,
+            moneda: r.moneda ? String(r.moneda) : "MXN",
+            fecha_emision: normalizeDate(r.fecha_emision),
+            fecha_vencimiento: normalizeDate(r.fecha_vencimiento),
+            estado: valid.includes(String(r.estado).toLowerCase()) ? String(r.estado).toLowerCase() : "pendiente",
+          }));
+          try {
+            const res: any = await bulkFn({ data: { tipo, rows: payload } });
+            toast.success(`Importadas ${res.inserted} filas`);
+            qc.invalidateQueries({ queryKey: ["tesoreria"] });
+          } catch (e: any) { toast.error(e?.message ?? "Error al importar"); }
+        }}
+      />
     </ModuleScaffold>
   );
 }
