@@ -91,6 +91,15 @@ function TesPage() {
   });
 
   const [open, setOpen] = useState<null | "cxc" | "cxp">(null);
+  const [importOpen, setImportOpen] = useState<null | "cxc" | "cxp">(null);
+
+  const bulkFn = useServerFn(bulkInsertCuentas);
+  const seedFn = useServerFn(seedDemoTesoreria);
+  const seedMut = useMutation({
+    mutationFn: () => seedFn(),
+    onSuccess: (r: any) => { toast.success(`Cargados ${r.cxc} CXC y ${r.cxp} CXP demo`); qc.invalidateQueries({ queryKey: ["tesoreria"] }); },
+    onError: (e: any) => toast.error(e?.message ?? "Error"),
+  });
 
   return (
     <ModuleScaffold
@@ -101,6 +110,9 @@ function TesPage() {
       actions={<>
         <Button size="sm" variant="outline" onClick={() => setOpen("cxc")}><Plus className="h-3.5 w-3.5" /> CXC</Button>
         <Button size="sm" variant="outline" onClick={() => setOpen("cxp")}><Plus className="h-3.5 w-3.5" /> CXP</Button>
+        <Button size="sm" variant="outline" onClick={() => setImportOpen("cxc")}><Upload className="h-3.5 w-3.5" /> Importar CXC</Button>
+        <Button size="sm" variant="outline" onClick={() => setImportOpen("cxp")}><Upload className="h-3.5 w-3.5" /> Importar CXP</Button>
+        <Button size="sm" variant="ghost" onClick={() => seedMut.mutate()} disabled={seedMut.isPending}><Sparkles className="h-3.5 w-3.5" /> Cargar demo</Button>
       </>}
     >
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
