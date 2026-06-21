@@ -58,7 +58,12 @@ function ClientesPage() {
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Expedientes</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Cada expediente es un RFC sobre el que ejecutas las herramientas. {data?.clientes.length ?? 0} en total.
+            Cada expediente es un RFC sobre el que ejecutas las herramientas.{" "}
+            {isLoading ? (
+              <span className="inline-block h-3 w-10 align-middle rounded bg-muted/50 animate-pulse" />
+            ) : (
+              <>{data?.clientes.length ?? 0} en total.</>
+            )}
           </p>
         </div>
         <Button variant="hero" onClick={() => setOpenForm((v) => !v)}>
