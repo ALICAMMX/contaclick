@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
+import { resolveActiveDespachoId } from "@/lib/despacho/resolve";
 import { z } from "zod";
 
 const ESTATUS = ["activa", "en_proceso", "resuelta_favorable", "resuelta_desfavorable", "archivada"] as const;
@@ -54,10 +55,12 @@ export const createDefensa = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => CreateSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    const despachoId = await resolveActiveDespachoId(supabase as never, userId);
     const { data: row, error } = await supabase
       .from("defensas")
       .insert({
         user_id: userId,
+        despacho_id: despachoId,
         cliente_id: data.cliente_id,
         nombre: data.nombre,
         conflicto: data.conflicto || null,

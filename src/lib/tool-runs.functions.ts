@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
+import { resolveActiveDespachoId } from "@/lib/despacho/resolve";
 import { z } from "zod";
 
 const SaveSchema = z.object({
@@ -17,10 +18,12 @@ export const saveToolRun = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => SaveSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    const despachoId = await resolveActiveDespachoId(supabase as never, userId);
     const { data: row, error } = await supabase
       .from("tool_runs")
       .insert({
         user_id: userId,
+        despacho_id: despachoId,
         cliente_id: data.cliente_id ?? null,
         tool_key: data.tool_key,
         status: data.status,

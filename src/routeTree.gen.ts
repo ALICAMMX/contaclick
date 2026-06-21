@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TerminosRouteImport } from './routes/terminos'
+import { Route as SeguridadRouteImport } from './routes/seguridad'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PrivacidadRouteImport } from './routes/privacidad'
 import { Route as PreciosRouteImport } from './routes/precios'
@@ -93,6 +94,11 @@ import { Route as AppAdminActivosRouteImport } from './routes/app.admin.activos'
 const TerminosRoute = TerminosRouteImport.update({
   id: '/terminos',
   path: '/terminos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SeguridadRoute = SeguridadRouteImport.update({
+  id: '/seguridad',
+  path: '/seguridad',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -507,6 +513,7 @@ export interface FileRoutesByFullPath {
   '/precios': typeof PreciosRoute
   '/privacidad': typeof PrivacidadRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/seguridad': typeof SeguridadRoute
   '/terminos': typeof TerminosRoute
   '/app/admin': typeof AppAdminRouteWithChildren
   '/app/admin-panel': typeof AppAdminPanelRoute
@@ -587,6 +594,7 @@ export interface FileRoutesByTo {
   '/precios': typeof PreciosRoute
   '/privacidad': typeof PrivacidadRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/seguridad': typeof SeguridadRoute
   '/terminos': typeof TerminosRoute
   '/app/admin-panel': typeof AppAdminPanelRoute
   '/app/administrativo': typeof AppAdministrativoRoute
@@ -663,6 +671,7 @@ export interface FileRoutesById {
   '/precios': typeof PreciosRoute
   '/privacidad': typeof PrivacidadRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/seguridad': typeof SeguridadRoute
   '/terminos': typeof TerminosRoute
   '/app/admin': typeof AppAdminRouteWithChildren
   '/app/admin-panel': typeof AppAdminPanelRoute
@@ -747,6 +756,7 @@ export interface FileRouteTypes {
     | '/precios'
     | '/privacidad'
     | '/reset-password'
+    | '/seguridad'
     | '/terminos'
     | '/app/admin'
     | '/app/admin-panel'
@@ -827,6 +837,7 @@ export interface FileRouteTypes {
     | '/precios'
     | '/privacidad'
     | '/reset-password'
+    | '/seguridad'
     | '/terminos'
     | '/app/admin-panel'
     | '/app/administrativo'
@@ -902,6 +913,7 @@ export interface FileRouteTypes {
     | '/precios'
     | '/privacidad'
     | '/reset-password'
+    | '/seguridad'
     | '/terminos'
     | '/app/admin'
     | '/app/admin-panel'
@@ -985,6 +997,7 @@ export interface RootRouteChildren {
   PreciosRoute: typeof PreciosRoute
   PrivacidadRoute: typeof PrivacidadRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SeguridadRoute: typeof SeguridadRoute
   TerminosRoute: typeof TerminosRoute
   InvitarTokenRoute: typeof InvitarTokenRoute
 }
@@ -996,6 +1009,13 @@ declare module '@tanstack/react-router' {
       path: '/terminos'
       fullPath: '/terminos'
       preLoaderRoute: typeof TerminosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/seguridad': {
+      id: '/seguridad'
+      path: '/seguridad'
+      fullPath: '/seguridad'
+      preLoaderRoute: typeof SeguridadRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -1800,6 +1820,7 @@ const rootRouteChildren: RootRouteChildren = {
   PreciosRoute: PreciosRoute,
   PrivacidadRoute: PrivacidadRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SeguridadRoute: SeguridadRoute,
   TerminosRoute: TerminosRoute,
   InvitarTokenRoute: InvitarTokenRoute,
 }
