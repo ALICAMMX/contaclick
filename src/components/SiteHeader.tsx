@@ -12,7 +12,8 @@ export function SiteHeader() {
           <a href="/#modules" className="hover:text-foreground transition-colors">Módulos</a>
           <Link to="/precios" className="hover:text-foreground transition-colors">Precios</Link>
           <Link to="/seguridad" className="hover:text-foreground transition-colors">Seguridad</Link>
-          <Link to="/app" className="hover:text-foreground transition-colors">Dashboard</Link>
+          <Link to="/contacto" className="hover:text-foreground transition-colors">Contacto</Link>
+
         </nav>
         <div className="flex items-center gap-2">
           <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
