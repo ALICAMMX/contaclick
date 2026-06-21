@@ -34,11 +34,13 @@ import { Route as AppLegalRouteImport } from './routes/app.legal'
 import { Route as AppExpedientesRouteImport } from './routes/app.expedientes'
 import { Route as AppEquipoRouteImport } from './routes/app.equipo'
 import { Route as AppDespachoRouteImport } from './routes/app.despacho'
+import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
 import { Route as AppContableRouteImport } from './routes/app.contable'
 import { Route as AppConfiguracionRouteImport } from './routes/app.configuracion'
 import { Route as AppConciliacionRouteImport } from './routes/app.conciliacion'
 import { Route as AppClientesRouteImport } from './routes/app.clientes'
 import { Route as AppCfdiRouteImport } from './routes/app.cfdi'
+import { Route as AppBuzonRouteImport } from './routes/app.buzon'
 import { Route as AppAdministrativoRouteImport } from './routes/app.administrativo'
 import { Route as AppAdminPanelRouteImport } from './routes/app.admin-panel'
 import { Route as AppAdminRouteImport } from './routes/app.admin'
@@ -52,6 +54,7 @@ import { Route as AppCfdiIndexRouteImport } from './routes/app.cfdi.index'
 import { Route as AppAdminIndexRouteImport } from './routes/app.admin.index'
 import { Route as AppToolsXmlBulkReaderRouteImport } from './routes/app.tools.xml-bulk-reader'
 import { Route as AppToolsShadowPayrollRouteImport } from './routes/app.tools.shadow-payroll'
+import { Route as AppToolsSatRiskRouteImport } from './routes/app.tools.sat-risk'
 import { Route as AppToolsResicoCalculatorRouteImport } from './routes/app.tools.resico-calculator'
 import { Route as AppToolsOficioGeneratorRouteImport } from './routes/app.tools.oficio-generator'
 import { Route as AppToolsIsrIvaPmRouteImport } from './routes/app.tools.isr-iva-pm'
@@ -212,6 +215,11 @@ const AppDespachoRoute = AppDespachoRouteImport.update({
   path: '/despacho',
   getParentRoute: () => AppRoute,
 } as any)
+const AppDashboardRoute = AppDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppContableRoute = AppContableRouteImport.update({
   id: '/contable',
   path: '/contable',
@@ -235,6 +243,11 @@ const AppClientesRoute = AppClientesRouteImport.update({
 const AppCfdiRoute = AppCfdiRouteImport.update({
   id: '/cfdi',
   path: '/cfdi',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppBuzonRoute = AppBuzonRouteImport.update({
+  id: '/buzon',
+  path: '/buzon',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAdministrativoRoute = AppAdministrativoRouteImport.update({
@@ -300,6 +313,11 @@ const AppToolsXmlBulkReaderRoute = AppToolsXmlBulkReaderRouteImport.update({
 const AppToolsShadowPayrollRoute = AppToolsShadowPayrollRouteImport.update({
   id: '/tools/shadow-payroll',
   path: '/tools/shadow-payroll',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppToolsSatRiskRoute = AppToolsSatRiskRouteImport.update({
+  id: '/tools/sat-risk',
+  path: '/tools/sat-risk',
   getParentRoute: () => AppRoute,
 } as any)
 const AppToolsResicoCalculatorRoute =
@@ -493,11 +511,13 @@ export interface FileRoutesByFullPath {
   '/app/admin': typeof AppAdminRouteWithChildren
   '/app/admin-panel': typeof AppAdminPanelRoute
   '/app/administrativo': typeof AppAdministrativoRoute
+  '/app/buzon': typeof AppBuzonRoute
   '/app/cfdi': typeof AppCfdiRouteWithChildren
   '/app/clientes': typeof AppClientesRouteWithChildren
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
   '/app/configuracion': typeof AppConfiguracionRoute
   '/app/contable': typeof AppContableRouteWithChildren
+  '/app/dashboard': typeof AppDashboardRoute
   '/app/despacho': typeof AppDespachoRoute
   '/app/equipo': typeof AppEquipoRoute
   '/app/expedientes': typeof AppExpedientesRoute
@@ -548,6 +568,7 @@ export interface FileRoutesByFullPath {
   '/app/tools/isr-iva-pm': typeof AppToolsIsrIvaPmRoute
   '/app/tools/oficio-generator': typeof AppToolsOficioGeneratorRoute
   '/app/tools/resico-calculator': typeof AppToolsResicoCalculatorRoute
+  '/app/tools/sat-risk': typeof AppToolsSatRiskRoute
   '/app/tools/shadow-payroll': typeof AppToolsShadowPayrollRoute
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
   '/app/admin/': typeof AppAdminIndexRoute
@@ -569,8 +590,10 @@ export interface FileRoutesByTo {
   '/terminos': typeof TerminosRoute
   '/app/admin-panel': typeof AppAdminPanelRoute
   '/app/administrativo': typeof AppAdministrativoRoute
+  '/app/buzon': typeof AppBuzonRoute
   '/app/clientes': typeof AppClientesRouteWithChildren
   '/app/configuracion': typeof AppConfiguracionRoute
+  '/app/dashboard': typeof AppDashboardRoute
   '/app/despacho': typeof AppDespachoRoute
   '/app/equipo': typeof AppEquipoRoute
   '/app/expedientes': typeof AppExpedientesRoute
@@ -618,6 +641,7 @@ export interface FileRoutesByTo {
   '/app/tools/isr-iva-pm': typeof AppToolsIsrIvaPmRoute
   '/app/tools/oficio-generator': typeof AppToolsOficioGeneratorRoute
   '/app/tools/resico-calculator': typeof AppToolsResicoCalculatorRoute
+  '/app/tools/sat-risk': typeof AppToolsSatRiskRoute
   '/app/tools/shadow-payroll': typeof AppToolsShadowPayrollRoute
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
   '/app/admin': typeof AppAdminIndexRoute
@@ -643,11 +667,13 @@ export interface FileRoutesById {
   '/app/admin': typeof AppAdminRouteWithChildren
   '/app/admin-panel': typeof AppAdminPanelRoute
   '/app/administrativo': typeof AppAdministrativoRoute
+  '/app/buzon': typeof AppBuzonRoute
   '/app/cfdi': typeof AppCfdiRouteWithChildren
   '/app/clientes': typeof AppClientesRouteWithChildren
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
   '/app/configuracion': typeof AppConfiguracionRoute
   '/app/contable': typeof AppContableRouteWithChildren
+  '/app/dashboard': typeof AppDashboardRoute
   '/app/despacho': typeof AppDespachoRoute
   '/app/equipo': typeof AppEquipoRoute
   '/app/expedientes': typeof AppExpedientesRoute
@@ -698,6 +724,7 @@ export interface FileRoutesById {
   '/app/tools/isr-iva-pm': typeof AppToolsIsrIvaPmRoute
   '/app/tools/oficio-generator': typeof AppToolsOficioGeneratorRoute
   '/app/tools/resico-calculator': typeof AppToolsResicoCalculatorRoute
+  '/app/tools/sat-risk': typeof AppToolsSatRiskRoute
   '/app/tools/shadow-payroll': typeof AppToolsShadowPayrollRoute
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
   '/app/admin/': typeof AppAdminIndexRoute
@@ -724,11 +751,13 @@ export interface FileRouteTypes {
     | '/app/admin'
     | '/app/admin-panel'
     | '/app/administrativo'
+    | '/app/buzon'
     | '/app/cfdi'
     | '/app/clientes'
     | '/app/conciliacion'
     | '/app/configuracion'
     | '/app/contable'
+    | '/app/dashboard'
     | '/app/despacho'
     | '/app/equipo'
     | '/app/expedientes'
@@ -779,6 +808,7 @@ export interface FileRouteTypes {
     | '/app/tools/isr-iva-pm'
     | '/app/tools/oficio-generator'
     | '/app/tools/resico-calculator'
+    | '/app/tools/sat-risk'
     | '/app/tools/shadow-payroll'
     | '/app/tools/xml-bulk-reader'
     | '/app/admin/'
@@ -800,8 +830,10 @@ export interface FileRouteTypes {
     | '/terminos'
     | '/app/admin-panel'
     | '/app/administrativo'
+    | '/app/buzon'
     | '/app/clientes'
     | '/app/configuracion'
+    | '/app/dashboard'
     | '/app/despacho'
     | '/app/equipo'
     | '/app/expedientes'
@@ -849,6 +881,7 @@ export interface FileRouteTypes {
     | '/app/tools/isr-iva-pm'
     | '/app/tools/oficio-generator'
     | '/app/tools/resico-calculator'
+    | '/app/tools/sat-risk'
     | '/app/tools/shadow-payroll'
     | '/app/tools/xml-bulk-reader'
     | '/app/admin'
@@ -873,11 +906,13 @@ export interface FileRouteTypes {
     | '/app/admin'
     | '/app/admin-panel'
     | '/app/administrativo'
+    | '/app/buzon'
     | '/app/cfdi'
     | '/app/clientes'
     | '/app/conciliacion'
     | '/app/configuracion'
     | '/app/contable'
+    | '/app/dashboard'
     | '/app/despacho'
     | '/app/equipo'
     | '/app/expedientes'
@@ -928,6 +963,7 @@ export interface FileRouteTypes {
     | '/app/tools/isr-iva-pm'
     | '/app/tools/oficio-generator'
     | '/app/tools/resico-calculator'
+    | '/app/tools/sat-risk'
     | '/app/tools/shadow-payroll'
     | '/app/tools/xml-bulk-reader'
     | '/app/admin/'
@@ -1130,6 +1166,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDespachoRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/dashboard': {
+      id: '/app/dashboard'
+      path: '/dashboard'
+      fullPath: '/app/dashboard'
+      preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/contable': {
       id: '/app/contable'
       path: '/contable'
@@ -1163,6 +1206,13 @@ declare module '@tanstack/react-router' {
       path: '/cfdi'
       fullPath: '/app/cfdi'
       preLoaderRoute: typeof AppCfdiRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/buzon': {
+      id: '/app/buzon'
+      path: '/buzon'
+      fullPath: '/app/buzon'
+      preLoaderRoute: typeof AppBuzonRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/administrativo': {
@@ -1254,6 +1304,13 @@ declare module '@tanstack/react-router' {
       path: '/tools/shadow-payroll'
       fullPath: '/app/tools/shadow-payroll'
       preLoaderRoute: typeof AppToolsShadowPayrollRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/tools/sat-risk': {
+      id: '/app/tools/sat-risk'
+      path: '/tools/sat-risk'
+      fullPath: '/app/tools/sat-risk'
+      preLoaderRoute: typeof AppToolsSatRiskRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/tools/resico-calculator': {
@@ -1636,11 +1693,13 @@ interface AppRouteChildren {
   AppAdminRoute: typeof AppAdminRouteWithChildren
   AppAdminPanelRoute: typeof AppAdminPanelRoute
   AppAdministrativoRoute: typeof AppAdministrativoRoute
+  AppBuzonRoute: typeof AppBuzonRoute
   AppCfdiRoute: typeof AppCfdiRouteWithChildren
   AppClientesRoute: typeof AppClientesRouteWithChildren
   AppConciliacionRoute: typeof AppConciliacionRouteWithChildren
   AppConfiguracionRoute: typeof AppConfiguracionRoute
   AppContableRoute: typeof AppContableRouteWithChildren
+  AppDashboardRoute: typeof AppDashboardRoute
   AppDespachoRoute: typeof AppDespachoRoute
   AppEquipoRoute: typeof AppEquipoRoute
   AppExpedientesRoute: typeof AppExpedientesRoute
@@ -1662,6 +1721,7 @@ interface AppRouteChildren {
   AppToolsIsrIvaPmRoute: typeof AppToolsIsrIvaPmRoute
   AppToolsOficioGeneratorRoute: typeof AppToolsOficioGeneratorRoute
   AppToolsResicoCalculatorRoute: typeof AppToolsResicoCalculatorRoute
+  AppToolsSatRiskRoute: typeof AppToolsSatRiskRoute
   AppToolsShadowPayrollRoute: typeof AppToolsShadowPayrollRoute
   AppToolsXmlBulkReaderRoute: typeof AppToolsXmlBulkReaderRoute
   AppToolsIndexRoute: typeof AppToolsIndexRoute
@@ -1671,11 +1731,13 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminRoute: AppAdminRouteWithChildren,
   AppAdminPanelRoute: AppAdminPanelRoute,
   AppAdministrativoRoute: AppAdministrativoRoute,
+  AppBuzonRoute: AppBuzonRoute,
   AppCfdiRoute: AppCfdiRouteWithChildren,
   AppClientesRoute: AppClientesRouteWithChildren,
   AppConciliacionRoute: AppConciliacionRouteWithChildren,
   AppConfiguracionRoute: AppConfiguracionRoute,
   AppContableRoute: AppContableRouteWithChildren,
+  AppDashboardRoute: AppDashboardRoute,
   AppDespachoRoute: AppDespachoRoute,
   AppEquipoRoute: AppEquipoRoute,
   AppExpedientesRoute: AppExpedientesRoute,
@@ -1697,6 +1759,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppToolsIsrIvaPmRoute: AppToolsIsrIvaPmRoute,
   AppToolsOficioGeneratorRoute: AppToolsOficioGeneratorRoute,
   AppToolsResicoCalculatorRoute: AppToolsResicoCalculatorRoute,
+  AppToolsSatRiskRoute: AppToolsSatRiskRoute,
   AppToolsShadowPayrollRoute: AppToolsShadowPayrollRoute,
   AppToolsXmlBulkReaderRoute: AppToolsXmlBulkReaderRoute,
   AppToolsIndexRoute: AppToolsIndexRoute,
@@ -1743,13 +1806,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
