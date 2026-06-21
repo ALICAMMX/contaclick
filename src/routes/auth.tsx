@@ -314,9 +314,21 @@ function AuthPage() {
           </form>
 
           <div className="mt-5 pt-5 border-t border-border/50">
-            <p className="text-xs text-muted-foreground text-center">
-              Durante esta fase de validación el acceso es solo con cuenta registrada.
-              ¿Quieres una demo guiada? <Link to="/contacto" className="text-primary hover:underline">Escríbenos</Link>.
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full h-11 gap-2"
+              onClick={handleDemoLogin}
+              disabled={demoLoading || loading}
+            >
+              <PlayCircle className="h-4 w-4" />
+              {demoLoading ? "Abriendo demo…" : "Probar demo (sin registrarse)"}
+            </Button>
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              Explora la herramienta con datos de ejemplo. Para empezar a trabajar con tus clientes,
+              <button onClick={() => setMode("signup")} className="text-primary hover:underline ml-1">
+                regístrate gratis
+              </button>.
             </p>
           </div>
 
