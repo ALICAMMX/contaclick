@@ -681,6 +681,7 @@ export type Database = {
           cliente_id: string
           conflicto: string | null
           created_at: string
+          despacho_id: string
           estatus: string
           estrategia: string | null
           exito: number | null
@@ -695,6 +696,7 @@ export type Database = {
           cliente_id: string
           conflicto?: string | null
           created_at?: string
+          despacho_id: string
           estatus?: string
           estrategia?: string | null
           exito?: number | null
@@ -709,6 +711,7 @@ export type Database = {
           cliente_id?: string
           conflicto?: string | null
           created_at?: string
+          despacho_id?: string
           estatus?: string
           estrategia?: string | null
           exito?: number | null
@@ -725,6 +728,13 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "defensas_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
             referencedColumns: ["id"]
           },
         ]
@@ -1509,6 +1519,7 @@ export type Database = {
         Row: {
           cliente_id: string | null
           created_at: string
+          despacho_id: string
           id: string
           input: Json | null
           notes: string | null
@@ -1520,6 +1531,7 @@ export type Database = {
         Insert: {
           cliente_id?: string | null
           created_at?: string
+          despacho_id: string
           id?: string
           input?: Json | null
           notes?: string | null
@@ -1531,6 +1543,7 @@ export type Database = {
         Update: {
           cliente_id?: string | null
           created_at?: string
+          despacho_id?: string
           id?: string
           input?: Json | null
           notes?: string | null
@@ -1545,6 +1558,13 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tool_runs_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
             referencedColumns: ["id"]
           },
         ]
