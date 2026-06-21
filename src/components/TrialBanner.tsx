@@ -12,6 +12,10 @@ function daysUntil(iso: string | null): number | null {
 }
 
 export function TrialBanner() {
+  // Acceso gratuito durante la fase pre-comercialización: el banner queda deshabilitado.
+  // Se reactivará al iniciar la comercialización (revierte este early-return).
+  return null;
+  // eslint-disable-next-line no-unreachable
   const { despacho } = useDespacho();
   const [dismissed, setDismissed] = useState(() => {
     if (typeof window === "undefined") return false;
