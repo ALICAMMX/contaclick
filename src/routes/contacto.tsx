@@ -94,12 +94,19 @@ function ContactoPage() {
             <Button type="submit" variant="hero" className="w-full h-11">
               Enviar mensaje
             </Button>
+            <Button asChild variant="outline" className="w-full h-11 gap-2">
+              <a href="https://wa.me/5215545282044?text=Hola,%20quiero%20información%20sobre%20ContaClick%20IA" target="_blank" rel="noopener noreferrer">
+                <WhatsAppIcon className="h-5 w-5" />
+                O escríbenos directo al WhatsApp
+              </a>
+            </Button>
             <p className="text-xs text-muted-foreground text-center">
               También puedes escribirnos directo a{" "}
               <a href={`mailto:${DESTINO}?subject=${encodeURIComponent(ASUNTO)}`} className="text-primary hover:underline">
                 {DESTINO}
               </a>
             </p>
+
           </form>
         )}
       </main>
