@@ -66,7 +66,7 @@ export function TrialBanner() {
           )}
         </div>
         <Link
-          to="/app/configuracion"
+          to="/precios"
           className={
             expirado
               ? "h-7 px-3 rounded-md bg-destructive text-destructive-foreground text-xs font-medium grid place-items-center hover:opacity-90"
