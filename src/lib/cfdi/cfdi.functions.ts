@@ -246,10 +246,14 @@ export const listCfdi = createServerFn({ method: "POST" })
     if (data.desde) q = q.gte("fecha", data.desde);
     if (data.hasta) q = q.lte("fecha", data.hasta);
     if (data.q) {
-      const term = data.q.trim();
-      q = q.or(
-        `uuid.ilike.%${term}%,rfc_emisor.ilike.%${term}%,rfc_receptor.ilike.%${term}%,nombre_emisor.ilike.%${term}%,nombre_receptor.ilike.%${term}%`
-      );
+      // Sanitize: PostgREST's .or() uses , ( ) . as syntax — strip them to prevent filter injection.
+      const term = data.q.trim().replace(/[,()\\*]/g, "").replace(/\./g, " ").slice(0, 120);
+      if (term) {
+        const safe = term.replace(/%/g, "");
+        q = q.or(
+          `uuid.ilike.%${safe}%,rfc_emisor.ilike.%${safe}%,rfc_receptor.ilike.%${safe}%,nombre_emisor.ilike.%${safe}%,nombre_receptor.ilike.%${safe}%`
+        );
+      }
     }
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
