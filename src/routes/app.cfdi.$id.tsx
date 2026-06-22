@@ -10,6 +10,8 @@ import { RichMarkdown } from "@/components/RichMarkdown";
 import { getCfdi, deleteCfdi, analyzeCfdiAI } from "@/lib/cfdi/cfdi.functions";
 import { analyzeCfdi as runRiskAnalysis, maxLevel } from "@/lib/cfdi/risk";
 import { parseCfdi } from "@/lib/tools/cfdi-parser";
+import { FindingExplain, LegalFooter } from "@/components/FindingExplain";
+import { metaForCfdi } from "@/lib/legal/referencias";
 
 export const Route = createFileRoute("/app/cfdi/$id")({
   component: CfdiDetail,
@@ -174,22 +176,31 @@ function CfdiDetail() {
           <span className="text-xs text-muted-foreground">{findings.length} hallazgo(s)</span>
         </div>
         {findings.length === 0 ? (
-          <div className="flex items-center gap-2 text-sm text-emerald-400">
-            <CheckCircle2 className="h-4 w-4" /> Sin observaciones automáticas. CFDI aritméticamente consistente.
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm text-emerald-400">
+              <CheckCircle2 className="h-4 w-4" /> Sin observaciones automáticas. CFDI aritméticamente consistente.
+            </div>
+            <FindingExplain level="ok" open />
           </div>
         ) : (
-          <ul className="space-y-2">
+          <ul className="space-y-3">
             {findings.map((f) => (
-              <li key={f.code} className="flex items-start gap-3 text-sm">
-                <span className={`mt-0.5 inline-block h-2 w-2 rounded-full ${f.level === "alto" ? "bg-rose-400" : f.level === "medio" ? "bg-amber-400" : "bg-blue-400"}`} />
-                <div>
-                  <span className="font-medium mr-2">[{f.code}]</span>
-                  <span className="text-muted-foreground">{f.message}</span>
+              <li key={f.code} className="rounded-lg border border-border/40 bg-card/30 p-3">
+                <div className="flex items-start gap-3 text-sm">
+                  <span className={`mt-1.5 inline-block h-2 w-2 rounded-full shrink-0 ${f.level === "alto" ? "bg-rose-400" : f.level === "medio" ? "bg-amber-400" : "bg-blue-400"}`} />
+                  <div className="flex-1">
+                    <div>
+                      <span className="font-medium mr-2">[{f.code}]</span>
+                      <span className="text-muted-foreground">{f.message}</span>
+                    </div>
+                    <FindingExplain level={f.level} meta={metaForCfdi(f.code)} />
+                  </div>
                 </div>
               </li>
             ))}
           </ul>
         )}
+        <LegalFooter className="mt-4" />
       </div>
 
       {/* IA */}

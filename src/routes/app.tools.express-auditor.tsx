@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { runExpressAudit, type AuditFinding } from "@/lib/auditor/auditor.functions";
 import { exportXlsx, buildFilename } from "@/lib/export/xlsx";
+import { FindingExplain, LegalFooter } from "@/components/FindingExplain";
+import { metaForAudit, severidadToLevel } from "@/lib/legal/referencias";
 
 export const Route = createFileRoute("/app/tools/express-auditor")({
   component: ExpressAuditor,
@@ -244,11 +246,17 @@ function ExpressAuditor() {
                   <td className="px-4 py-2.5 text-xs font-mono text-muted-foreground">{f.uuid.slice(0, 18)}…</td>
                   <td className="px-4 py-2.5 text-xs text-muted-foreground">{f.fecha?.slice(0, 10) ?? "—"}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums">${f.monto.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</td>
-                  <td className="px-4 py-2.5 text-xs">{f.descripcion}</td>
+                  <td className="px-4 py-2.5 text-xs">
+                    <div>{f.descripcion}</div>
+                    <FindingExplain level={severidadToLevel(f.severidad)} meta={metaForAudit(f.tipo)} />
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          <div className="px-4 py-3 border-t border-border/40">
+            <LegalFooter />
+          </div>
         </div>
       ) : stats && stats.total > 0 ? (
         <div className="rounded-xl border border-success/30 bg-success/5 p-5 flex items-center gap-3 mt-4">

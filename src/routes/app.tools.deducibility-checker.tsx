@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { runDeducibilityCheck, type DeducFinding } from "@/lib/defensa/deducibilidad.functions";
 import { exportXlsx, buildFilename } from "@/lib/export/xlsx";
+import { FindingExplain, LegalFooter } from "@/components/FindingExplain";
+import { metaForDeduc, severidadToLevel } from "@/lib/legal/referencias";
 
 export const Route = createFileRoute("/app/tools/deducibility-checker")({
   component: DeducibilityChecker,
@@ -133,6 +135,11 @@ function DeducibilityChecker() {
                       : "bg-muted text-muted-foreground"
                     }`}>{f.regla}</span>
                     <div className="text-xs text-muted-foreground mt-1">{f.detalle}</div>
+                    <FindingExplain
+                      level={severidadToLevel(f.severidad)}
+                      meta={metaForDeduc(f.regla)}
+                      legalText={f.fundamento}
+                    />
                   </td>
                   <td className="px-4 py-2.5">
                     <div className="font-medium">{f.nombre_emisor ?? "—"}</div>
@@ -145,6 +152,7 @@ function DeducibilityChecker() {
               ))}
             </tbody>
           </table>
+          <div className="px-4 py-3 border-t border-border/40"><LegalFooter /></div>
         </div>
       ) : stats && stats.total_cfdi > 0 ? (
         <div className="rounded-xl border border-success/30 bg-success/5 p-5 flex items-center gap-3 mt-4">

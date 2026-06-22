@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { runImportPriceCheck } from "@/lib/defensa/precios-importacion.functions";
 import { exportXlsx, buildFilename } from "@/lib/export/xlsx";
+import { FindingExplain, LegalFooter } from "@/components/FindingExplain";
+import { META_IMPORT_PRICE_OUTLIER, META_IMPORT_PRICE_DESC_GENERICA, severidadToLevel } from "@/lib/legal/referencias";
 
 export const Route = createFileRoute("/app/tools/import-prices")({
   component: ImportPrices,
@@ -172,11 +174,17 @@ function ImportPrices() {
                   <td className="px-4 py-2.5 text-xs text-muted-foreground hidden md:table-cell">
                     <div>{f.motivo}</div>
                     <div className="opacity-70 mt-1">{f.fundamento}</div>
+                    <FindingExplain
+                      level={severidadToLevel(f.severidad)}
+                      meta={f.desviacion_pct === 0 ? META_IMPORT_PRICE_DESC_GENERICA : META_IMPORT_PRICE_OUTLIER}
+                      legalText={f.fundamento}
+                    />
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          <div className="px-4 py-3 border-t border-border/40"><LegalFooter /></div>
         </div>
       ) : stats && stats.cfdi_importacion > 0 ? (
         <div className="rounded-xl border border-success/30 bg-success/5 p-5 flex items-center gap-3 mt-4">
