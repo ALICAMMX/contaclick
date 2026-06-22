@@ -370,8 +370,7 @@ function CsfParser() {
             </div>
           )}
 
-            </div>
-          )}
+
 
           {data.warnings.length > 0 && (
             <div className="rounded-lg border border-sky-500/40 bg-sky-500/10 dark:bg-sky-400/10 p-3 text-xs space-y-1">
