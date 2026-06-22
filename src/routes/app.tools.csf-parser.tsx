@@ -20,6 +20,7 @@ type CsfData = {
   regimenes: string[];
   obligaciones: string[];
   domicilio?: string;
+  codigoPostal?: string;
   fechaInicioOperaciones?: string;
   estatus?: string;
   fechaUltimoCambio?: string;
