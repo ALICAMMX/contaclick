@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, Search, UserRound, X } from "lucide-react";
+import { Plus, Search, UserRound, X, FileBadge } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { listClientes, createCliente, deleteCliente } from "@/lib/clientes.functions";
@@ -66,9 +66,14 @@ function ClientesPage() {
             )}
           </p>
         </div>
-        <Button variant="hero" onClick={() => setOpenForm((v) => !v)}>
-          {openForm ? <><X className="h-4 w-4" /> Cancelar</> : <><Plus className="h-4 w-4" /> Nuevo expediente</>}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Link to="/app/rfcs-vinculados" className="inline-flex items-center gap-1.5 h-10 px-3 rounded-md border border-border bg-card hover:bg-accent text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+            <FileBadge className="h-4 w-4" /> RFC vinculados
+          </Link>
+          <Button variant="hero" onClick={() => setOpenForm((v) => !v)}>
+            {openForm ? <><X className="h-4 w-4" /> Cancelar</> : <><Plus className="h-4 w-4" /> Nuevo expediente</>}
+          </Button>
+        </div>
       </div>
 
       {openForm && <NewClienteForm onSubmit={(d) => createMut.mutate(d)} loading={createMut.isPending} />}
