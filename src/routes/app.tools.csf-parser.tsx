@@ -1,12 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { FileBadge, Upload, Save, CheckCircle2, AlertTriangle, Eye, FolderOpen } from "lucide-react";
+import { FileBadge, Upload, Save, CheckCircle2, AlertTriangle, Eye, FolderOpen, UserPlus, Truck, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ToolShell } from "@/components/ToolShell";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { saveToolRun } from "@/lib/tool-runs.functions";
+import { upsertClienteFromCsf } from "@/lib/clientes.functions";
+
 
 export const Route = createFileRoute("/app/tools/csf-parser")({
   component: CsfParser,
