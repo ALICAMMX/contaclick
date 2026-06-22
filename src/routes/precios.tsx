@@ -99,8 +99,8 @@ const plans = [
     features: [
       "Todo lo de Despacho, más:",
       "Usuarios ilimitados y SSO",
-      "API y conectores personalizados",
-      "Integración con ERPs (CONTPAQi, Aspel, SAP)",
+      "Importación masiva de cartera desde Excel/CSV",
+      "Validador de Deducibilidad IA y Detector de Nómina Oculta",
       "Modelo de IA dedicado y SLA",
       "Manager de cuenta dedicado",
       "Capacitación on-site",
