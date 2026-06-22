@@ -74,6 +74,14 @@ export const TOOLS: ToolDef[] = [
     icon: FileBadge,
   },
   {
+    key: "import-clientes",
+    route: "/app/tools/import-clientes",
+    name: "Importar cartera (Excel)",
+    description: "Migra tu cartera de clientes desde Excel o CSV. Hasta 500 RFC por carga, sin duplicados.",
+    category: "Documentos",
+    icon: Upload,
+  },
+  {
     key: "oficio-generator",
     route: "/app/tools/oficio-generator",
     name: "Generador de oficios SAT",
