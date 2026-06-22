@@ -330,8 +330,13 @@ export type Database = {
       }
       clientes: {
         Row: {
+          cliente_padre_id: string | null
+          codigo_postal: string | null
           created_at: string
+          csf_ultima_emision: string | null
+          curp: string | null
           despacho_id: string | null
+          domicilio_fiscal: string | null
           email: string | null
           estado_mes: string | null
           id: string
@@ -342,12 +347,19 @@ export type Database = {
           rfc: string
           semaforo: string
           telefono: string | null
+          tipo_persona: string | null
+          tipo_relacion: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          cliente_padre_id?: string | null
+          codigo_postal?: string | null
           created_at?: string
+          csf_ultima_emision?: string | null
+          curp?: string | null
           despacho_id?: string | null
+          domicilio_fiscal?: string | null
           email?: string | null
           estado_mes?: string | null
           id?: string
@@ -358,12 +370,19 @@ export type Database = {
           rfc: string
           semaforo?: string
           telefono?: string | null
+          tipo_persona?: string | null
+          tipo_relacion?: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          cliente_padre_id?: string | null
+          codigo_postal?: string | null
           created_at?: string
+          csf_ultima_emision?: string | null
+          curp?: string | null
           despacho_id?: string | null
+          domicilio_fiscal?: string | null
           email?: string | null
           estado_mes?: string | null
           id?: string
@@ -374,10 +393,19 @@ export type Database = {
           rfc?: string
           semaforo?: string
           telefono?: string | null
+          tipo_persona?: string | null
+          tipo_relacion?: string
           updated_at?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "clientes_cliente_padre_id_fkey"
+            columns: ["cliente_padre_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "clientes_despacho_id_fkey"
             columns: ["despacho_id"]
