@@ -103,7 +103,7 @@ const plans = [
       "Validador de Deducibilidad IA y Detector de Nómina Oculta",
       "Modelo de IA dedicado y SLA",
       "Manager de cuenta dedicado",
-      "Capacitación on-site",
+      "Capacitación online (y on-site si se requiere)",
     ],
   },
 ];
