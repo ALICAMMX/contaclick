@@ -1,6 +1,6 @@
 import {
   FileSearch, FileStack, Calculator, Coins, Banknote, FileBadge,
-  FileSignature, ShieldCheck, ScanSearch, Bot, ShieldAlert, Users, Globe,
+  FileSignature, ShieldCheck, ScanSearch, Bot, ShieldAlert, Users, Globe, Upload,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
