@@ -2,14 +2,15 @@ import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, ShieldCheck, ShieldAlert, ShieldOff, Upload, Unlink, RefreshCw, CheckCircle2, History, Wrench, FileText } from "lucide-react";
+import { ArrowLeft, ShieldCheck, ShieldAlert, ShieldOff, Upload, Unlink, RefreshCw, CheckCircle2, History, Wrench, FileText, MapPin, Truck, Receipt, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { getCliente } from "@/lib/clientes.functions";
+import { getCliente, listTerceros } from "@/lib/clientes.functions";
 import { getSatStatus, conectarSat, desconectarSat, sincronizarCfdis } from "@/lib/sat/sat.functions";
 import { getClienteHistorial } from "@/lib/clientes/historial.functions";
 import { listCuentas, createCuenta, deleteCuenta, BANCOS } from "@/lib/cuentas/cuentas.functions";
 import { Banknote, Plus, Trash2 } from "lucide-react";
+
 
 export const Route = createFileRoute("/app/clientes/$id")({
   component: ClienteDetailPage,
@@ -108,6 +109,9 @@ function ClienteDetailPage() {
         </h1>
         <p className="text-sm text-muted-foreground font-mono mt-1">{cli.data?.rfc}</p>
       </div>
+
+      <DatosFiscalesSection cli={cli.data} />
+
 
       <section className="rounded-xl border border-border/60 bg-card/50 p-6 space-y-5">
         <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -241,6 +245,9 @@ function ClienteDetailPage() {
       </section>
 
       <CuentasBancariasSection clienteId={id} />
+
+      <TercerosSection clienteId={id} />
+
 
       <section className="rounded-xl border border-border/60 bg-card/50 p-6 space-y-4">
         <div className="flex items-center gap-2">
@@ -395,3 +402,104 @@ function CuentasBancariasSection({ clienteId }: { clienteId: string }) {
     </section>
   );
 }
+
+function DatosFiscalesSection({ cli }: { cli: any }) {
+  if (!cli) return null;
+  const has = cli.curp || cli.domicilio_fiscal || cli.codigo_postal || cli.tipo_persona || cli.csf_ultima_emision;
+  return (
+    <section className="rounded-xl border border-border/60 bg-card/50 p-6 space-y-3">
+      <div className="flex items-center gap-2">
+        <MapPin className="h-4 w-4 text-primary" />
+        <h2 className="text-lg font-semibold">Datos fiscales</h2>
+        {cli.csf_ultima_emision && (
+          <span className="ml-auto text-[11px] uppercase tracking-wider text-muted-foreground">
+            CSF: {new Date(cli.csf_ultima_emision).toLocaleDateString("es-MX")}
+          </span>
+        )}
+      </div>
+      {!has ? (
+        <p className="text-sm text-muted-foreground">
+          Aún no hay datos fiscales. Sube una CSF en{" "}
+          <Link to="/app/tools/csf-parser" className="text-primary hover:underline">Lector de CSF</Link>{" "}
+          y elige <em>"Crear / actualizar cliente"</em> para rellenar este expediente.
+        </p>
+      ) : (
+        <div className="grid sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+          <FieldRow label="Tipo de persona" value={cli.tipo_persona === "fisica" ? "Persona Física" : cli.tipo_persona === "moral" ? "Persona Moral" : null} />
+          <FieldRow label="CURP" value={cli.curp} mono />
+          <FieldRow label="Régimen fiscal" value={cli.regimen_fiscal} className="sm:col-span-2" />
+          <FieldRow label="Domicilio fiscal" value={cli.domicilio_fiscal} className="sm:col-span-2" />
+          <FieldRow label="Código postal" value={cli.codigo_postal} mono />
+        </div>
+      )}
+    </section>
+  );
+}
+
+function FieldRow({ label, value, mono, className = "" }: { label: string; value?: string | null; mono?: boolean; className?: string }) {
+  return (
+    <div className={className}>
+      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className={mono ? "font-mono text-xs mt-0.5" : "mt-0.5"}>{value || "—"}</div>
+    </div>
+  );
+}
+
+function TercerosSection({ clienteId }: { clienteId: string }) {
+  const fn = useServerFn(listTerceros);
+  const q = useQuery({ queryKey: ["terceros", clienteId], queryFn: () => fn({ data: { cliente_id: clienteId } }) });
+  const terceros = q.data?.terceros ?? [];
+  const proveedores = terceros.filter((t: any) => t.tipo_relacion === "proveedor");
+  const acreedores = terceros.filter((t: any) => t.tipo_relacion === "acreedor");
+
+  return (
+    <section className="rounded-xl border border-border/60 bg-card/50 p-6 space-y-4">
+      <div className="flex items-center gap-2">
+        <Users className="h-4 w-4 text-primary" />
+        <h2 className="text-lg font-semibold">Terceros vinculados</h2>
+        <span className="text-xs text-muted-foreground ml-2">{terceros.length}</span>
+      </div>
+      {q.isLoading ? (
+        <div className="text-sm text-muted-foreground">Cargando…</div>
+      ) : terceros.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          No hay proveedores ni acreedores vinculados. Desde{" "}
+          <Link to="/app/tools/csf-parser" className="text-primary hover:underline">Lector de CSF</Link>{" "}
+          con este cliente activo, sube la CSF del tercero y elige <em>"Agregar como proveedor"</em> o <em>"acreedor"</em>.
+        </p>
+      ) : (
+        <div className="space-y-4">
+          {[
+            { titulo: "Proveedores", icon: Truck, items: proveedores },
+            { titulo: "Acreedores", icon: Receipt, items: acreedores },
+          ].map(({ titulo, icon: Icon, items }) => items.length > 0 && (
+            <div key={titulo}>
+              <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+                <Icon className="h-3.5 w-3.5" /> {titulo} ({items.length})
+              </div>
+              <ul className="divide-y divide-border/40 rounded-md border border-border/40">
+                {items.map((t: any) => (
+                  <li key={t.id} className="px-3 py-2 flex items-center gap-3 hover:bg-accent/5">
+                    <Link to="/app/clientes/$id" params={{ id: t.id }} className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">{t.razon_social}</div>
+                      <div className="text-xs font-mono text-muted-foreground">{t.rfc}</div>
+                    </Link>
+                    {t.regimen_fiscal && (
+                      <div className="text-xs text-muted-foreground hidden sm:block max-w-[260px] truncate">{t.regimen_fiscal}</div>
+                    )}
+                    {t.csf_ultima_emision && (
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        CSF {new Date(t.csf_ultima_emision).toLocaleDateString("es-MX")}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
