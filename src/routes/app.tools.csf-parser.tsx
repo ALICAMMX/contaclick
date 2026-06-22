@@ -241,6 +241,7 @@ function CsfParser() {
             </Card>
             <Card title="Domicilio">
               <div className="text-sm">{data.domicilio ?? "—"}</div>
+              <div className="pt-2"><Row k="Código Postal" v={data.codigoPostal} mono /></div>
             </Card>
             <Card title="Regímenes">
               {data.regimenes.length ? (
