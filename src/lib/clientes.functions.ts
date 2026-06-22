@@ -21,6 +21,8 @@ export const listClientes = createServerFn({ method: "GET" })
     const { data, error } = await supabase
       .from("clientes")
       .select("id, rfc, razon_social, regimen_fiscal, semaforo, estado_mes, email, telefono, created_at")
+      .eq("tipo_relacion", "cliente")
+      .is("cliente_padre_id", null)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     return { clientes: data ?? [] };
@@ -35,6 +37,47 @@ export const getCliente = createServerFn({ method: "GET" })
       .from("clientes").select("*").eq("id", data.id).single();
     if (error) throw new Error(error.message);
     return row;
+  });
+
+export const resolveActiveCliente = createServerFn({ method: "GET" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const select = "id, rfc, razon_social, regimen_fiscal, tipo_relacion, cliente_padre_id";
+    const { data: row, error } = await supabase
+      .from("clientes")
+      .select(select)
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row) return null;
+
+    if (row.tipo_relacion === "cliente" && !row.cliente_padre_id) {
+      return {
+        id: row.id,
+        rfc: row.rfc,
+        razon_social: row.razon_social,
+        regimen_fiscal: row.regimen_fiscal,
+      };
+    }
+
+    if (!row.cliente_padre_id) return null;
+    const { data: parent, error: parentError } = await supabase
+      .from("clientes")
+      .select(select)
+      .eq("id", row.cliente_padre_id)
+      .eq("tipo_relacion", "cliente")
+      .is("cliente_padre_id", null)
+      .maybeSingle();
+    if (parentError) throw new Error(parentError.message);
+    if (!parent) return null;
+    return {
+      id: parent.id,
+      rfc: parent.rfc,
+      razon_social: parent.razon_social,
+      regimen_fiscal: parent.regimen_fiscal,
+    };
   });
 
 export const createCliente = createServerFn({ method: "POST" })
