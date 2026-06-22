@@ -22,6 +22,14 @@ export function ActiveClienteProvider({ children }: { children: ReactNode }) {
   const [cliente, setClienteState] = useState<ActiveCliente>(null);
   const resolveCliente = useServerFn(resolveActiveCliente);
 
+  const setCliente = useCallback((c: ActiveCliente) => {
+    setClienteState(c);
+    try {
+      if (c) localStorage.setItem(STORAGE_KEY, JSON.stringify(c));
+      else localStorage.removeItem(STORAGE_KEY);
+    } catch { /* ignore */ }
+  }, []);
+
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -42,15 +50,7 @@ export function ActiveClienteProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => { /* si no puede validar, conserva el estado local */ });
     return () => { alive = false; };
-  }, [cliente, resolveCliente]);
-
-  const setCliente = useCallback((c: ActiveCliente) => {
-    setClienteState(c);
-    try {
-      if (c) localStorage.setItem(STORAGE_KEY, JSON.stringify(c));
-      else localStorage.removeItem(STORAGE_KEY);
-    } catch { /* ignore */ }
-  }, []);
+  }, [cliente, resolveCliente, setCliente]);
 
   const value = useMemo<Ctx>(() => ({ cliente, setCliente, clear: () => setCliente(null) }), [cliente, setCliente]);
   return <ActiveCtx.Provider value={value}>{children}</ActiveCtx.Provider>;
