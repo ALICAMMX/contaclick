@@ -60,7 +60,7 @@ function parseCsf(text: string): CsfData {
   // Preserve newlines; collapse only multiple spaces
   const t = text.replace(/[ \t\f\v]+/g, " ").replace(/\n{2,}/g, "\n").trim();
   const flat = t.replace(/\s+/g, " ");
-  const out: CsfData = { regimenes: [], obligaciones: [], rawTextSample: t.slice(0, 600), warnings: [] };
+  const out: CsfData = { regimenes: [], obligaciones: [], rawTextSample: t.slice(0, 4000), warnings: [] };
 
   // RFC
   const rfc = flat.match(/\b([A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3})\b/);
