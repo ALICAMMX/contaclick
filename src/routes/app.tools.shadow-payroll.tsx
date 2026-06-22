@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { runShadowPayrollCheck } from "@/lib/defensa/nomina-oculta.functions";
 import { exportXlsx, buildFilename } from "@/lib/export/xlsx";
+import { FindingExplain, LegalFooter } from "@/components/FindingExplain";
+import { META_SHADOW_PAYROLL, severidadToLevel } from "@/lib/legal/referencias";
 
 export const Route = createFileRoute("/app/tools/shadow-payroll")({
   component: ShadowPayroll,
@@ -155,11 +157,15 @@ function ShadowPayroll() {
                   <td className="px-4 py-2.5 text-right tabular-nums">{f.ocurrencias}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums">${f.monto_total.toLocaleString("es-MX", { maximumFractionDigits: 0 })}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums text-destructive font-medium">${f.diferencia.toLocaleString("es-MX", { maximumFractionDigits: 0 })}</td>
-                  <td className="px-4 py-2.5 text-xs text-muted-foreground max-w-md">{f.evidencia}</td>
+                  <td className="px-4 py-2.5 text-xs text-muted-foreground max-w-md">
+                    <div>{f.evidencia}</div>
+                    <FindingExplain level={severidadToLevel(f.severidad)} meta={META_SHADOW_PAYROLL} />
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          <div className="px-4 py-3 border-t border-border/40"><LegalFooter /></div>
         </div>
       ) : stats && stats.cargos_analizados > 0 ? (
         <div className="rounded-xl border border-success/30 bg-success/5 p-5 flex items-center gap-3 mt-4">
