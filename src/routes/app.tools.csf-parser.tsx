@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { FileBadge, Upload, Save, CheckCircle2 } from "lucide-react";
+import { FileBadge, Upload, Save, CheckCircle2, AlertTriangle, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ToolShell } from "@/components/ToolShell";
@@ -16,13 +16,16 @@ type CsfData = {
   rfc?: string;
   curp?: string;
   nombre?: string;
+  tipoPersona?: "Física" | "Moral";
   regimenes: string[];
   obligaciones: string[];
   domicilio?: string;
   fechaInicioOperaciones?: string;
   estatus?: string;
+  fechaUltimoCambio?: string;
   fechaEmision?: string;
   rawTextSample?: string;
+  warnings: string[];
 };
 
 const PDFJS_VERSION = "4.0.379";
@@ -53,28 +56,65 @@ async function extractPdfText(file: File): Promise<string> {
 }
 
 function parseCsf(text: string): CsfData {
-  const out: CsfData = { regimenes: [], obligaciones: [], rawTextSample: text.slice(0, 200) };
-  const t = text.replace(/\s+/g, " ");
+  // Preserve newlines; collapse only multiple spaces
+  const t = text.replace(/[ \t\f\v]+/g, " ").replace(/\n{2,}/g, "\n").trim();
+  const flat = t.replace(/\s+/g, " ");
+  const out: CsfData = { regimenes: [], obligaciones: [], rawTextSample: t.slice(0, 600), warnings: [] };
 
-  const rfc = t.match(/\b([A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3})\b/);
+  // RFC
+  const rfc = flat.match(/\b([A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3})\b/);
   if (rfc) out.rfc = rfc[1];
 
-  const curp = t.match(/\b([A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d)\b/);
+  // CURP (sólo Persona Física)
+  const curp = flat.match(/\b([A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d)\b/);
   if (curp) out.curp = curp[1];
 
-  const nombre = t.match(/(?:Denominaci[oó]n\/Raz[oó]n Social|Nombre[s]?[^:]*?):\s*([A-ZÁÉÍÓÚÑ0-9 ,\.&-]{4,})\s+(?:RFC|CURP|Régimen|Regimen|Fecha)/i);
-  if (nombre) out.nombre = nombre[1].trim();
+  // Tipo de persona: PM si RFC tiene 3 letras iniciales, PF si tiene 4
+  if (out.rfc) {
+    const letras = out.rfc.match(/^[A-ZÑ&]+/)?.[0].length ?? 0;
+    out.tipoPersona = letras === 3 ? "Moral" : "Física";
+  }
 
-  const fIni = t.match(/Fecha de inicio de operaciones:\s*([0-9]{1,2}[\/\-][0-9]{1,2}[\/\-][0-9]{2,4}|\d{4}-\d{2}-\d{2})/i);
-  if (fIni) out.fechaInicioOperaciones = fIni[1];
+  // Nombre / Razón social
+  // PM: "Denominación o Razón Social: XXX"
+  const razonPM = flat.match(/Denominaci[oó]n\s*\/?\s*o?\s*Raz[oó]n\s+Social[:\s]+([A-ZÁÉÍÓÚÑ0-9&.,\-\s]{3,120}?)\s+(?:R[ée]gimen|RFC|CURP|Fecha|Nombre\s+Comercial|Estatus|Domicilio)/i);
+  if (razonPM) out.nombre = razonPM[1].replace(/\s+/g, " ").trim();
 
-  const estatus = t.match(/Estatus en el padr[oó]n:\s*([A-Za-zÁÉÍÓÚáéíóúñÑ ]{3,30})/i);
-  if (estatus) out.estatus = estatus[1].trim();
+  // PF: "Nombre(s): X  Primer Apellido: Y  Segundo Apellido: Z"
+  if (!out.nombre) {
+    const n = flat.match(/Nombre\s*\(s\)\s*:?\s*([A-ZÁÉÍÓÚÑ\s]{2,60}?)\s+Primer\s+Apellido[:\s]+([A-ZÁÉÍÓÚÑ\s]{2,40}?)\s+Segundo\s+Apellido[:\s]*([A-ZÁÉÍÓÚÑ\s]{0,40}?)\s+(?:Fecha|CURP|RFC|R[ée]gimen|Estatus|Domicilio)/i);
+    if (n) out.nombre = [n[1], n[2], n[3]].map(s => s.trim()).filter(Boolean).join(" ").replace(/\s+/g, " ");
+  }
 
-  const emision = t.match(/Lugar y Fecha de Emisi[oó]n[^0-9]*([0-9]{1,2}[^0-9]+\w+[^0-9]+\d{4})/i);
+  // Validar nombre: rechazar si contiene dígitos o frases de plantilla
+  if (out.nombre) {
+    const bad = /\d|VALIDA\s+TU|CONSTANCIA\s+DE\s+SITUACI[OÓ]N|INFORMACI[OÓ]N\s+FISCAL|Lugar\s+y\s+Fecha/i;
+    if (bad.test(out.nombre) || out.nombre.length < 3) {
+      out.warnings.push("No se pudo identificar con certeza el nombre o razón social (formato de CSF no reconocido).");
+      out.nombre = undefined;
+    }
+  } else {
+    out.warnings.push("No se detectó nombre o razón social.");
+  }
+
+  // Fecha de inicio de operaciones (varios formatos)
+  const fIni = flat.match(/Fecha\s+(?:de\s+)?inicio\s+de\s+operaciones[:\s]+(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\d{4}-\d{2}-\d{2}|\d{1,2}\s+de\s+[A-Za-zÁÉÍÓÚáéíóú]+\s+de\s+\d{4})/i);
+  if (fIni) out.fechaInicioOperaciones = fIni[1].trim();
+  else out.warnings.push("No se detectó la fecha de inicio de operaciones.");
+
+  // Estatus
+  const estatus = flat.match(/Estatus\s+(?:en\s+el\s+padr[oó]n|del\s+contribuyente)[:\s]+([A-Za-zÁÉÍÓÚáéíóúñÑ ]{3,30})/i);
+  if (estatus) out.estatus = estatus[1].trim().replace(/\s+(?:Fecha|R[ée]gimen|Nombre).*$/i, "");
+
+  // Fecha de último cambio
+  const ultimo = flat.match(/Fecha\s+de\s+[úu]ltimo\s+cambio[^:]*:?\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\d{4}-\d{2}-\d{2}|\d{1,2}\s+de\s+[A-Za-zÁÉÍÓÚáéíóú]+\s+de\s+\d{4})/i);
+  if (ultimo) out.fechaUltimoCambio = ultimo[1].trim();
+
+  // Fecha de emisión: "Lugar y Fecha de Emisión ... DD DE MES DE AAAA"
+  const emision = flat.match(/Lugar\s+y\s+Fecha\s+de\s+Emisi[oó]n[^A-Z0-9]*?(\d{1,2}\s+DE\s+[A-ZÁÉÍÓÚ]+\s+DE\s+\d{4})/i);
   if (emision) out.fechaEmision = emision[1].trim();
 
-  // Regímenes: cadenas conocidas
+  // Regímenes conocidos
   const regList = [
     "Régimen Simplificado de Confianza",
     "Régimen de Sueldos y Salarios e Ingresos Asimilados a Salarios",
@@ -87,18 +127,22 @@ function parseCsf(text: string): CsfData {
     "Régimen de los Ingresos por Dividendos",
     "Régimen de los Ingresos por Intereses",
     "Régimen de los demás ingresos",
+    "Régimen de Enajenación o Adquisición de Bienes",
   ];
   for (const r of regList) {
-    if (new RegExp(r.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(t)) out.regimenes.push(r);
+    if (new RegExp(r.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(flat)) out.regimenes.push(r);
   }
+  if (!out.regimenes.length) out.warnings.push("No se detectaron regímenes fiscales.");
 
-  // Obligaciones (líneas que comienzan con "Declaración" o "Pago" o contengan "mensual"/"anual")
-  const obs = t.match(/(Declaraci[oó]n[^.;]+?(mensual|anual|provisional)[^.;]*?)[.;]/gi);
-  if (obs) out.obligaciones = Array.from(new Set(obs.map((s) => s.replace(/[.;]$/, "").trim()))).slice(0, 8);
+  // Obligaciones
+  const obs = flat.match(/(Declaraci[oó]n[^.;]+?(mensual|anual|provisional|bimestral)[^.;]*?)[.;]/gi);
+  if (obs) out.obligaciones = Array.from(new Set(obs.map((s) => s.replace(/[.;]$/, "").trim()))).slice(0, 10);
+  if (!out.obligaciones.length) out.warnings.push("No se detectaron obligaciones declaradas.");
 
-  // Domicilio: heurística
-  const dom = t.match(/Domicilio Fiscal[:\s]+([A-Z0-9ÁÉÍÓÚÑ ,\.\-#]+?)\s+(?:Actividades|Reg[ií]men|Obligaciones|Fecha)/i);
+  // Domicilio
+  const dom = flat.match(/Domicilio\s+(?:Registrado|Fiscal)[:\s]+([A-Z0-9ÁÉÍÓÚÑ ,\.\-#]+?)\s+(?:Actividades|Reg[ií]men|Obligaciones|Fecha|Correo|Tel[eé]fono)/i);
   if (dom) out.domicilio = dom[1].trim();
+  else out.warnings.push("No se detectó el domicilio fiscal.");
 
   return out;
 }
@@ -151,17 +195,38 @@ function CsfParser() {
 
       {data && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-success" /> Datos detectados</h3>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <h3 className="font-semibold flex items-center gap-2">
+              {data.warnings.length === 0
+                ? <><CheckCircle2 className="h-4 w-4 text-success" /> Datos detectados</>
+                : <><AlertTriangle className="h-4 w-4 text-amber-400" /> Datos parcialmente detectados</>}
+            </h3>
             <Button variant="glass" size="sm" onClick={onSave}><Save className="h-3.5 w-3.5" /> Guardar en expediente</Button>
           </div>
+
+          {data.warnings.length > 0 && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs space-y-1">
+              <div className="font-medium text-amber-300 flex items-center gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5" /> Revisión recomendada — la extracción está incompleta
+              </div>
+              <ul className="text-amber-200/90 list-disc pl-5 space-y-0.5">
+                {data.warnings.map((w, i) => <li key={i}>{w}</li>)}
+              </ul>
+              <div className="text-muted-foreground pt-1">
+                Es probable que tu CSF tenga un formato distinto al esperado. Verifica los datos manualmente antes de guardar.
+              </div>
+            </div>
+          )}
+
           <div className="grid sm:grid-cols-2 gap-4">
             <Card title="Identificación">
               <Row k="RFC" v={data.rfc} mono />
+              <Row k="Tipo" v={data.tipoPersona ? `Persona ${data.tipoPersona}` : undefined} />
               <Row k="CURP" v={data.curp} mono />
               <Row k="Nombre" v={data.nombre} />
               <Row k="Estatus" v={data.estatus} />
               <Row k="Inicio operaciones" v={data.fechaInicioOperaciones} />
+              <Row k="Último cambio" v={data.fechaUltimoCambio} />
               <Row k="Emisión CSF" v={data.fechaEmision} />
             </Card>
             <Card title="Domicilio">
@@ -178,6 +243,13 @@ function CsfParser() {
               ) : <div className="text-sm text-muted-foreground">No detectadas</div>}
             </Card>
           </div>
+
+          <details className="rounded-lg border border-border/60 bg-card/40 p-3 text-xs">
+            <summary className="cursor-pointer flex items-center gap-1.5 text-muted-foreground hover:text-foreground">
+              <Eye className="h-3.5 w-3.5" /> Ver texto extraído del PDF (depuración)
+            </summary>
+            <pre className="mt-2 whitespace-pre-wrap text-[11px] text-muted-foreground max-h-64 overflow-auto">{data.rawTextSample}</pre>
+          </details>
         </div>
       )}
     </ToolShell>
