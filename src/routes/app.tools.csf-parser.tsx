@@ -216,6 +216,12 @@ function toIsoDate(s?: string): string | null {
 
 type UpsertResult = { accion: "creado" | "actualizado"; cliente: { id: string; razon_social: string; rfc: string }; diferencias: string[]; tipo_relacion: "cliente" | "proveedor" | "acreedor" };
 
+const RELACION_LABEL: Record<UpsertResult["tipo_relacion"], string> = {
+  cliente: "cliente",
+  proveedor: "proveedor vinculado",
+  acreedor: "acreedor vinculado",
+};
+
 function CsfParser() {
   const { cliente } = useActiveCliente();
   const [data, setData] = useState<CsfData | null>(null);
@@ -272,7 +278,11 @@ function CsfParser() {
       try {
         await save({ data: { cliente_id: padre, tool_key: "csf-parser", input: { fileName, tipo_relacion: tipo }, output: data as any, notes: `${tipo} · ${data.rfc}` } });
       } catch { /* historial es opcional */ }
-      toast.success(r.accion === "creado" ? "Expediente creado" : "Expediente actualizado");
+      toast.success(
+        tipo === "cliente"
+          ? (r.accion === "creado" ? "Expediente creado" : "Expediente actualizado")
+          : `${tipo === "proveedor" ? "Proveedor" : "Acreedor"} vinculado al expediente activo`
+      );
     } catch (e: any) {
       toast.error(e?.message ?? "No se pudo procesar");
     } finally {
@@ -350,7 +360,7 @@ function CsfParser() {
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-success" />
                 <span>
-                  Expediente <strong>{result.accion}</strong> como <strong>{result.tipo_relacion}</strong>:{" "}
+                  Registro <strong>{result.accion}</strong> como <strong>{RELACION_LABEL[result.tipo_relacion]}</strong>:{" "}
                   <strong>{result.cliente.razon_social}</strong> ({result.cliente.rfc})
                 </span>
               </div>
@@ -364,8 +374,8 @@ function CsfParser() {
                   La CSF no introdujo cambios respecto a los datos ya registrados.
                 </div>
               )}
-              <Link to="/app/clientes/$id" params={{ id: result.cliente.id }}>
-                <Button variant="outline" size="sm"><FolderOpen className="h-3.5 w-3.5" /> Abrir expediente</Button>
+              <Link to="/app/clientes/$id" params={{ id: result.tipo_relacion === "cliente" ? result.cliente.id : cliente!.id }}>
+                <Button variant="outline" size="sm"><FolderOpen className="h-3.5 w-3.5" /> {result.tipo_relacion === "cliente" ? "Abrir expediente" : "Ver en proveedores y acreedores"}</Button>
               </Link>
             </div>
           )}

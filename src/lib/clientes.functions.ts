@@ -21,6 +21,8 @@ export const listClientes = createServerFn({ method: "GET" })
     const { data, error } = await supabase
       .from("clientes")
       .select("id, rfc, razon_social, regimen_fiscal, semaforo, estado_mes, email, telefono, created_at")
+      .eq("tipo_relacion", "cliente")
+      .is("cliente_padre_id", null)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     return { clientes: data ?? [] };
