@@ -192,17 +192,44 @@ function parseCsf(text: string): CsfData {
   return out;
 }
 
+// Convierte "02 DE ABRIL DE 2026" o "02/04/2026" a "YYYY-MM-DD"
+function toIsoDate(s?: string): string | null {
+  if (!s) return null;
+  const meses: Record<string, string> = {
+    enero: "01", febrero: "02", marzo: "03", abril: "04", mayo: "05", junio: "06",
+    julio: "07", agosto: "08", septiembre: "09", setiembre: "09", octubre: "10", noviembre: "11", diciembre: "12",
+  };
+  const m1 = s.match(/(\d{1,2})\s+de\s+([A-Za-zÁÉÍÓÚáéíóú]+)\s+de\s+(\d{4})/i);
+  if (m1) {
+    const mes = meses[m1[2].toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")];
+    if (mes) return `${m1[3]}-${mes}-${m1[1].padStart(2, "0")}`;
+  }
+  const m2 = s.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if (m2) {
+    const yyyy = m2[3].length === 2 ? `20${m2[3]}` : m2[3];
+    return `${yyyy}-${m2[2].padStart(2, "0")}-${m2[1].padStart(2, "0")}`;
+  }
+  const m3 = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m3) return s;
+  return null;
+}
+
+type UpsertResult = { accion: "creado" | "actualizado"; cliente: { id: string; razon_social: string; rfc: string }; diferencias: string[]; tipo_relacion: "cliente" | "proveedor" | "acreedor" };
+
 function CsfParser() {
   const { cliente } = useActiveCliente();
   const [data, setData] = useState<CsfData | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [result, setResult] = useState<UpsertResult | null>(null);
+  const [acting, setActing] = useState<null | "cliente" | "proveedor" | "acreedor">(null);
   const save = useServerFn(saveToolRun);
+  const upsert = useServerFn(upsertClienteFromCsf);
 
   const onFile = async (file: File) => {
     setFileName(file.name);
     setBusy(true);
+    setResult(null);
     try {
       const text = await extractPdfText(file);
       setData(parseCsf(text));
@@ -213,12 +240,51 @@ function CsfParser() {
     }
   };
 
-  const onSave = async () => {
+  const onUpsert = async (tipo: "cliente" | "proveedor" | "acreedor") => {
+    if (!data) return;
+    if (!data.rfc || !data.nombre) {
+      toast.error("La CSF no contiene RFC o razón social válidos");
+      return;
+    }
+    if (tipo !== "cliente" && !cliente?.id) {
+      toast.error("Selecciona primero un cliente activo desde la barra superior");
+      return;
+    }
+    setActing(tipo);
+    try {
+      const r = await upsert({
+        data: {
+          rfc: data.rfc,
+          razon_social: data.nombre,
+          regimen_fiscal: data.regimenes.join(" · ") || null,
+          curp: data.curp ?? null,
+          tipo_persona: data.tipoPersona === "Física" ? "fisica" : data.tipoPersona === "Moral" ? "moral" : null,
+          domicilio_fiscal: data.domicilio ?? null,
+          codigo_postal: data.codigoPostal ?? null,
+          csf_ultima_emision: toIsoDate(data.fechaEmision),
+          tipo_relacion: tipo,
+          cliente_padre_id: tipo === "cliente" ? null : cliente!.id,
+        },
+      });
+      setResult({ ...(r as any), tipo_relacion: tipo });
+      // Respaldo documental en el historial
+      const padre = tipo === "cliente" ? r.cliente.id : cliente!.id;
+      try {
+        await save({ data: { cliente_id: padre, tool_key: "csf-parser", input: { fileName, tipo_relacion: tipo }, output: data as any, notes: `${tipo} · ${data.rfc}` } });
+      } catch { /* historial es opcional */ }
+      toast.success(r.accion === "creado" ? "Expediente creado" : "Expediente actualizado");
+    } catch (e: any) {
+      toast.error(e?.message ?? "No se pudo procesar");
+    } finally {
+      setActing(null);
+    }
+  };
+
+  const onSaveSolo = async () => {
     if (!data) return;
     try {
       await save({ data: { cliente_id: cliente?.id ?? null, tool_key: "csf-parser", input: { fileName }, output: data as any, notes: data.rfc ?? null } });
-      toast.success("Constancia guardada en el expediente");
-      setSaved(true);
+      toast.success("Constancia guardada en el historial");
     } catch (e: any) {
       toast.error(e?.message ?? "No se pudo guardar");
     }
@@ -227,7 +293,7 @@ function CsfParser() {
   return (
     <ToolShell
       title="Lector de Constancia Fiscal"
-      description="Sube la CSF en PDF y extrae régimen, obligaciones y domicilio fiscal."
+      description="Sube la CSF en PDF y crea o actualiza expedientes a partir de los datos extraídos."
       icon={<FileBadge className="h-5 w-5 text-primary-foreground" />}
     >
       <label className="block rounded-xl border-2 border-dashed border-border bg-card/30 p-10 text-center hover:border-primary/50 transition-colors cursor-pointer">
@@ -248,18 +314,62 @@ function CsfParser() {
                 ? <><CheckCircle2 className="h-4 w-4 text-success" /> Datos detectados</>
                 : <><AlertTriangle className="h-4 w-4 text-sky-600 dark:text-sky-300" /> Datos parcialmente detectados</>}
             </h3>
-            <Button variant="glass" size="sm" onClick={onSave}><Save className="h-3.5 w-3.5" /> Guardar en expediente</Button>
           </div>
 
-          {saved && cliente?.id && (
-            <div className="rounded-lg border border-success/30 bg-success/5 p-3 text-sm flex items-start sm:items-center justify-between gap-3 flex-wrap">
+          {/* Acciones sobre el expediente */}
+          <div className="rounded-xl border border-border/60 bg-card/40 p-4 space-y-3">
+            <div className="text-sm font-medium">¿Qué quieres hacer con esta CSF?</div>
+            <div className="grid sm:grid-cols-3 gap-2">
+              <Button variant="hero" disabled={!!acting} onClick={() => onUpsert("cliente")}>
+                <UserPlus className="h-4 w-4" />
+                {acting === "cliente" ? "Guardando…" : "Crear / actualizar cliente"}
+              </Button>
+              <Button variant="outline" disabled={!!acting || !cliente?.id} onClick={() => onUpsert("proveedor")} title={!cliente?.id ? "Selecciona primero un cliente activo" : undefined}>
+                <Truck className="h-4 w-4" />
+                {acting === "proveedor" ? "Guardando…" : "Agregar como proveedor"}
+              </Button>
+              <Button variant="outline" disabled={!!acting || !cliente?.id} onClick={() => onUpsert("acreedor")} title={!cliente?.id ? "Selecciona primero un cliente activo" : undefined}>
+                <Receipt className="h-4 w-4" />
+                {acting === "acreedor" ? "Guardando…" : "Agregar como acreedor"}
+              </Button>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              <strong>Cliente</strong>: crea o actualiza el expediente del contribuyente de la CSF.{" "}
+              <strong>Proveedor / acreedor</strong>: crea un expediente vinculado al cliente activo
+              {cliente?.razon_social ? <> (<span className="font-medium">{cliente.razon_social}</span>)</> : null}.
+            </div>
+            <div className="pt-1">
+              <Button variant="ghost" size="sm" onClick={onSaveSolo}>
+                <Save className="h-3.5 w-3.5" /> Solo guardar en historial (sin crear expediente)
+              </Button>
+            </div>
+          </div>
+
+          {result && (
+            <div className="rounded-lg border border-success/30 bg-success/5 p-3 text-sm space-y-2">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-success" />
-                <span>Guardado en el expediente de <strong>{cliente.razon_social ?? cliente.rfc ?? "este cliente"}</strong>.</span>
+                <span>
+                  Expediente <strong>{result.accion}</strong> como <strong>{result.tipo_relacion}</strong>:{" "}
+                  <strong>{result.cliente.razon_social}</strong> ({result.cliente.rfc})
+                </span>
               </div>
-              <Link to="/app/clientes/$id" params={{ id: cliente.id }}>
+              {result.accion === "actualizado" && result.diferencias.length > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  Campos actualizados: {result.diferencias.join(", ")}
+                </div>
+              )}
+              {result.accion === "actualizado" && result.diferencias.length === 0 && (
+                <div className="text-xs text-muted-foreground">
+                  La CSF no introdujo cambios respecto a los datos ya registrados.
+                </div>
+              )}
+              <Link to="/app/clientes/$id" params={{ id: result.cliente.id }}>
                 <Button variant="outline" size="sm"><FolderOpen className="h-3.5 w-3.5" /> Abrir expediente</Button>
               </Link>
+            </div>
+          )}
+
             </div>
           )}
 
