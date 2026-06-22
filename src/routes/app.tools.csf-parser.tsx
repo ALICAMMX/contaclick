@@ -60,7 +60,7 @@ function parseCsf(text: string): CsfData {
   // Preserve newlines; collapse only multiple spaces
   const t = text.replace(/[ \t\f\v]+/g, " ").replace(/\n{2,}/g, "\n").trim();
   const flat = t.replace(/\s+/g, " ");
-  const out: CsfData = { regimenes: [], obligaciones: [], rawTextSample: t.slice(0, 600), warnings: [] };
+  const out: CsfData = { regimenes: [], obligaciones: [], rawTextSample: t.slice(0, 4000), warnings: [] };
 
   // RFC
   const rfc = flat.match(/\b([A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3})\b/);
@@ -140,18 +140,51 @@ function parseCsf(text: string): CsfData {
   if (obs) out.obligaciones = Array.from(new Set(obs.map((s) => s.replace(/[.;]$/, "").trim()))).slice(0, 10);
   if (!out.obligaciones.length) out.warnings.push("No se detectaron obligaciones declaradas.");
 
-  // Domicilio (acepta varias variantes: "Domicilio Registrado", "Domicilio Fiscal", "Datos del Domicilio")
-  const dom = flat.match(/Domicilio\s+(?:Registrado|Fiscal|del\s+Contribuyente)?[:\s-]+([A-Z0-9ÁÉÍÓÚÑ ,\.\-#°ºªN()\/]+?)\s+(?:Actividades|Reg[ií]menes?|Obligaciones|Fecha|Correo|Tel[eé]fono|C\.?P\.?\s*\d)/i);
-  if (dom) out.domicilio = dom[1].replace(/\s+/g, " ").trim();
-  else out.warnings.push("No se detectó el domicilio fiscal.");
+  // ---- Domicilio fiscal ----
+  // Estrategia 1: extraer campos individuales típicos de la CSF y componer
+  const grab = (label: RegExp): string | undefined => {
+    const m = flat.match(label);
+    if (!m) return undefined;
+    return m[1].replace(/\s+/g, " ").trim().replace(/[,;.]+$/, "");
+  };
+  const stop = "(?=\\s+(?:C[oó]digo\\s+Postal|Tipo\\s+de\\s+Vialidad|Nombre\\s+de\\s+(?:la\\s+)?(?:Vialidad|Colonia|Localidad|Municipio|Demarcaci[oó]n|Entidad)|N[uú]mero\\s+(?:Exterior|Interior)|Entre\\s+Calle|Y\\s+Calle|Correo|Tel[eé]fono|Actividades|Reg[ií]menes?|Obligaciones|Fecha|$))";
+  const cpField   = grab(new RegExp(`C[oó]digo\\s+Postal[:\\s-]*?(\\d{5})`, "i"));
+  const vialTipo  = grab(new RegExp(`Tipo\\s+de\\s+Vialidad[:\\s-]*([A-ZÁÉÍÓÚÑ ]{2,40}?)${stop}`, "i"));
+  const vialNom   = grab(new RegExp(`Nombre\\s+de\\s+(?:la\\s+)?Vialidad[:\\s-]*([A-Z0-9ÁÉÍÓÚÑ \\.\\-#&]{2,80}?)${stop}`, "i"));
+  const numExt    = grab(new RegExp(`N[uú]mero\\s+Exterior[:\\s-]*([A-Z0-9\\-\\/]{1,15}?)${stop}`, "i"));
+  const numInt    = grab(new RegExp(`N[uú]mero\\s+Interior[:\\s-]*([A-Z0-9\\-\\/]{1,15}?)${stop}`, "i"));
+  const colonia   = grab(new RegExp(`Nombre\\s+de\\s+la\\s+Colonia[:\\s-]*([A-Z0-9ÁÉÍÓÚÑ \\.\\-#&]{2,80}?)${stop}`, "i"));
+  const localidad = grab(new RegExp(`Nombre\\s+de\\s+la\\s+Localidad[:\\s-]*([A-Z0-9ÁÉÍÓÚÑ \\.\\-#&]{2,80}?)${stop}`, "i"));
+  const municipio = grab(new RegExp(`Nombre\\s+del?\\s+Municipio(?:\\s+o\\s+Demarcaci[oó]n\\s+Territorial)?[:\\s-]*([A-Z0-9ÁÉÍÓÚÑ \\.\\-#&]{2,80}?)${stop}`, "i"));
+  const entidad   = grab(new RegExp(`Nombre\\s+de\\s+la\\s+Entidad\\s+Federativa[:\\s-]*([A-Z0-9ÁÉÍÓÚÑ \\.\\-#&]{2,80}?)${stop}`, "i"));
 
-  // Código Postal: "C.P. 12345", "CP: 12345" o "Código Postal 12345"
-  const cp = flat.match(/(?:C[oó]digo\s+Postal|C\.?\s*P\.?)\s*[:\s]*?(\d{5})\b/i);
-  if (cp) out.codigoPostal = cp[1];
-  // Fallback: si hay un domicilio detectado, busca el primer grupo de 5 dígitos dentro
-  if (!out.codigoPostal && out.domicilio) {
-    const inner = out.domicilio.match(/\b(\d{5})\b/);
-    if (inner) out.codigoPostal = inner[1];
+  if (cpField) out.codigoPostal = cpField;
+
+  const partes = [
+    [vialTipo, vialNom].filter(Boolean).join(" "),
+    numExt ? `No. Ext. ${numExt}` : "",
+    numInt ? `Int. ${numInt}` : "",
+    colonia ? `Col. ${colonia}` : "",
+    localidad,
+    municipio,
+    entidad,
+    out.codigoPostal ? `C.P. ${out.codigoPostal}` : "",
+  ].map(s => (s ?? "").trim()).filter(Boolean);
+
+  if (partes.length >= 2) {
+    out.domicilio = partes.join(", ");
+  } else {
+    // Estrategia 2: bloque corrido tras "Domicilio Fiscal/Registrado"
+    const dom = flat.match(/Domicilio\s+(?:Fiscal|Registrado|del\s+Contribuyente)?[:\s-]+([A-Z0-9ÁÉÍÓÚÑ ,\.\-#°ºªN()\/]+?)\s+(?:Actividades|Reg[ií]menes?|Obligaciones|Fecha|Correo|Tel[eé]fono)/i);
+    if (dom) out.domicilio = dom[1].replace(/\s+/g, " ").trim();
+  }
+
+  if (!out.domicilio) out.warnings.push("No se detectó el domicilio fiscal.");
+
+  // Fallback CP: "C.P. 12345" en cualquier parte
+  if (!out.codigoPostal) {
+    const cp = flat.match(/\bC\.?\s*P\.?\s*[:\s]*(\d{5})\b/i);
+    if (cp) out.codigoPostal = cp[1];
   }
 
   return out;
@@ -209,20 +242,20 @@ function CsfParser() {
             <h3 className="font-semibold flex items-center gap-2">
               {data.warnings.length === 0
                 ? <><CheckCircle2 className="h-4 w-4 text-success" /> Datos detectados</>
-                : <><AlertTriangle className="h-4 w-4 text-amber-400" /> Datos parcialmente detectados</>}
+                : <><AlertTriangle className="h-4 w-4 text-sky-600 dark:text-sky-300" /> Datos parcialmente detectados</>}
             </h3>
             <Button variant="glass" size="sm" onClick={onSave}><Save className="h-3.5 w-3.5" /> Guardar en expediente</Button>
           </div>
 
           {data.warnings.length > 0 && (
-            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs space-y-1">
-              <div className="font-medium text-amber-300 flex items-center gap-1.5">
+            <div className="rounded-lg border border-sky-500/40 bg-sky-500/10 dark:bg-sky-400/10 p-3 text-xs space-y-1">
+              <div className="font-medium text-sky-700 dark:text-sky-200 flex items-center gap-1.5">
                 <AlertTriangle className="h-3.5 w-3.5" /> Revisión recomendada — la extracción está incompleta
               </div>
-              <ul className="text-amber-200/90 list-disc pl-5 space-y-0.5">
+              <ul className="text-sky-800/90 dark:text-sky-100/90 list-disc pl-5 space-y-0.5">
                 {data.warnings.map((w, i) => <li key={i}>{w}</li>)}
               </ul>
-              <div className="text-muted-foreground pt-1">
+              <div className="text-sky-700/80 dark:text-sky-200/70 pt-1">
                 Es probable que tu CSF tenga un formato distinto al esperado. Verifica los datos manualmente antes de guardar.
               </div>
             </div>
