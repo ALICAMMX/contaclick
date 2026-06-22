@@ -76,6 +76,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      // Evita que el traductor del navegador (Chrome / Google Translate) mute el DOM
+      // y rompa React con "insertBefore ... not a child of this node".
+      { name: "google", content: "notranslate" },
       { title: "ContaClick IA — Plataforma de IA para contadores en México" },
       { name: "description", content: "Analiza CFDI, concilia bancos y detecta riesgos fiscales con IA. SaaS moderno para despachos contables en México." },
       { property: "og:title", content: "ContaClick IA — Plataforma de IA para contadores en México" },
