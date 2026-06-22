@@ -85,3 +85,119 @@ export const deleteCliente = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+const UpsertFromCsfSchema = z.object({
+  rfc: z.string().regex(RFC_REGEX, "RFC inválido").transform((s) => s.toUpperCase()),
+  razon_social: z.string().min(2).max(200),
+  regimen_fiscal: z.string().max(500).optional().nullable(),
+  curp: z.string().max(20).optional().nullable(),
+  tipo_persona: z.enum(["fisica", "moral"]).optional().nullable(),
+  domicilio_fiscal: z.string().max(500).optional().nullable(),
+  codigo_postal: z.string().max(10).optional().nullable(),
+  csf_ultima_emision: z.string().optional().nullable(), // ISO date
+  tipo_relacion: z.enum(["cliente", "proveedor", "acreedor"]).default("cliente"),
+  cliente_padre_id: z.string().uuid().optional().nullable(),
+});
+
+export const upsertClienteFromCsf = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) => UpsertFromCsfSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    // Resolver despacho_id
+    let despachoId: string | null = null;
+    const { data: mem } = await supabase
+      .from("user_memberships")
+      .select("despacho_id")
+      .eq("user_id", userId)
+      .eq("estado", "activo")
+      .limit(1)
+      .maybeSingle();
+    if (mem?.despacho_id) despachoId = mem.despacho_id as string;
+    if (!despachoId) {
+      const { data: own } = await supabase
+        .from("despachos").select("id").eq("owner_user_id", userId).limit(1).maybeSingle();
+      if (own?.id) despachoId = own.id as string;
+    }
+
+    // Buscar existente por (despacho, rfc, tipo_relacion, padre)
+    let query = supabase
+      .from("clientes")
+      .select("*")
+      .eq("rfc", data.rfc)
+      .eq("tipo_relacion", data.tipo_relacion);
+    if (despachoId) query = query.eq("despacho_id", despachoId);
+    else query = query.eq("user_id", userId);
+    if (data.cliente_padre_id) query = query.eq("cliente_padre_id", data.cliente_padre_id);
+    else query = query.is("cliente_padre_id", null);
+
+    const { data: existing } = await query.maybeSingle();
+
+    const csfFecha = data.csf_ultima_emision || null;
+
+    const payload = {
+      razon_social: data.razon_social,
+      regimen_fiscal: data.regimen_fiscal || null,
+      curp: data.curp || null,
+      tipo_persona: data.tipo_persona || null,
+      domicilio_fiscal: data.domicilio_fiscal || null,
+      codigo_postal: data.codigo_postal || null,
+      csf_ultima_emision: csfFecha,
+    };
+
+    if (existing) {
+      const diffs: string[] = [];
+      const labelMap: Record<string, string> = {
+        razon_social: "Razón social",
+        regimen_fiscal: "Régimen fiscal",
+        curp: "CURP",
+        tipo_persona: "Tipo de persona",
+        domicilio_fiscal: "Domicilio fiscal",
+        codigo_postal: "Código postal",
+      };
+      for (const k of Object.keys(labelMap)) {
+        const nuevo = (payload as any)[k];
+        const viejo = (existing as any)[k];
+        if (nuevo && nuevo !== viejo) diffs.push(labelMap[k]);
+      }
+      const { data: updated, error } = await supabase
+        .from("clientes")
+        .update(payload)
+        .eq("id", existing.id)
+        .select()
+        .single();
+      if (error) throw new Error(error.message);
+      return { accion: "actualizado" as const, cliente: updated, diferencias: diffs };
+    }
+
+    const { data: inserted, error } = await supabase
+      .from("clientes")
+      .insert({
+        user_id: userId,
+        despacho_id: despachoId,
+        rfc: data.rfc,
+        tipo_relacion: data.tipo_relacion,
+        cliente_padre_id: data.cliente_padre_id || null,
+        ...payload,
+      })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return { accion: "creado" as const, cliente: inserted, diferencias: [] as string[] };
+  });
+
+export const listTerceros = createServerFn({ method: "GET" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ cliente_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await context.supabase
+      .from("clientes")
+      .select("id, rfc, razon_social, regimen_fiscal, tipo_relacion, csf_ultima_emision")
+      .eq("cliente_padre_id", data.cliente_id)
+      .in("tipo_relacion", ["proveedor", "acreedor"])
+      .order("razon_social", { ascending: true });
+    if (error) throw new Error(error.message);
+    return { terceros: rows ?? [] };
+  });
+
