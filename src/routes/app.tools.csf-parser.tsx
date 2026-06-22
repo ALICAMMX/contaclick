@@ -66,8 +66,8 @@ function parseCsf(text: string): CsfData {
   const rfc = flat.match(/\b([A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3})\b/);
   if (rfc) out.rfc = rfc[1];
 
-  // CURP (sólo Persona Física)
-  const curp = flat.match(/\b([A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d)\b/);
+  // CURP (sólo Persona Física). Acepta etiqueta pegada al valor: "CURPABCD..."
+  const curp = flat.match(/\b(?:CURP[:\s]*)?([A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d)\b/);
   if (curp) out.curp = curp[1];
 
   // Tipo de persona: PM si RFC tiene 3 letras iniciales, PF si tiene 4
