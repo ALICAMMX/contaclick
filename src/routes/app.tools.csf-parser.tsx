@@ -16,13 +16,16 @@ type CsfData = {
   rfc?: string;
   curp?: string;
   nombre?: string;
+  tipoPersona?: "Física" | "Moral";
   regimenes: string[];
   obligaciones: string[];
   domicilio?: string;
   fechaInicioOperaciones?: string;
   estatus?: string;
+  fechaUltimoCambio?: string;
   fechaEmision?: string;
   rawTextSample?: string;
+  warnings: string[];
 };
 
 const PDFJS_VERSION = "4.0.379";
