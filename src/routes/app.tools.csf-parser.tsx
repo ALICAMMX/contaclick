@@ -195,17 +195,38 @@ function CsfParser() {
 
       {data && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-success" /> Datos detectados</h3>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <h3 className="font-semibold flex items-center gap-2">
+              {data.warnings.length === 0
+                ? <><CheckCircle2 className="h-4 w-4 text-success" /> Datos detectados</>
+                : <><AlertTriangle className="h-4 w-4 text-amber-400" /> Datos parcialmente detectados</>}
+            </h3>
             <Button variant="glass" size="sm" onClick={onSave}><Save className="h-3.5 w-3.5" /> Guardar en expediente</Button>
           </div>
+
+          {data.warnings.length > 0 && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs space-y-1">
+              <div className="font-medium text-amber-300 flex items-center gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5" /> Revisión recomendada — la extracción está incompleta
+              </div>
+              <ul className="text-amber-200/90 list-disc pl-5 space-y-0.5">
+                {data.warnings.map((w, i) => <li key={i}>{w}</li>)}
+              </ul>
+              <div className="text-muted-foreground pt-1">
+                Es probable que tu CSF tenga un formato distinto al esperado. Verifica los datos manualmente antes de guardar.
+              </div>
+            </div>
+          )}
+
           <div className="grid sm:grid-cols-2 gap-4">
             <Card title="Identificación">
               <Row k="RFC" v={data.rfc} mono />
+              <Row k="Tipo" v={data.tipoPersona ? `Persona ${data.tipoPersona}` : undefined} />
               <Row k="CURP" v={data.curp} mono />
               <Row k="Nombre" v={data.nombre} />
               <Row k="Estatus" v={data.estatus} />
               <Row k="Inicio operaciones" v={data.fechaInicioOperaciones} />
+              <Row k="Último cambio" v={data.fechaUltimoCambio} />
               <Row k="Emisión CSF" v={data.fechaEmision} />
             </Card>
             <Card title="Domicilio">
@@ -222,6 +243,13 @@ function CsfParser() {
               ) : <div className="text-sm text-muted-foreground">No detectadas</div>}
             </Card>
           </div>
+
+          <details className="rounded-lg border border-border/60 bg-card/40 p-3 text-xs">
+            <summary className="cursor-pointer flex items-center gap-1.5 text-muted-foreground hover:text-foreground">
+              <Eye className="h-3.5 w-3.5" /> Ver texto extraído del PDF (depuración)
+            </summary>
+            <pre className="mt-2 whitespace-pre-wrap text-[11px] text-muted-foreground max-h-64 overflow-auto">{data.rawTextSample}</pre>
+          </details>
         </div>
       )}
     </ToolShell>
