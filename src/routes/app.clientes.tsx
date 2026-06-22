@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, Search, UserRound, X, FileBadge } from "lucide-react";
+import { Plus, Search, UserRound, X, FileBadge, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { listClientes, createCliente, deleteCliente } from "@/lib/clientes.functions";
