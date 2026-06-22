@@ -244,3 +244,15 @@ export const listTerceros = createServerFn({ method: "GET" })
     return { terceros: rows ?? [] };
   });
 
+export const listRfcsVinculados = createServerFn({ method: "GET" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase } = context;
+    const { data, error } = await supabase
+      .from("clientes")
+      .select("id, rfc, razon_social, regimen_fiscal, tipo_relacion, tipo_persona, codigo_postal, csf_ultima_emision, created_at")
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return { rfcs: data ?? [] };
+  });
+

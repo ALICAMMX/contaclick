@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { FileBadge, Upload, Save, CheckCircle2, AlertTriangle, Eye, FolderOpen, UserPlus, Truck, Receipt } from "lucide-react";
+import { FileBadge, Upload, Save, CheckCircle2, AlertTriangle, Eye, FolderOpen, UserPlus, Truck, Receipt, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ToolShell } from "@/components/ToolShell";
@@ -252,10 +252,6 @@ function CsfParser() {
       toast.error("La CSF no contiene RFC o razón social válidos");
       return;
     }
-    if (tipo !== "cliente" && !cliente?.id) {
-      toast.error("Selecciona primero un cliente activo desde la barra superior");
-      return;
-    }
     setActing(tipo);
     try {
       const r = await upsert({
@@ -269,19 +265,18 @@ function CsfParser() {
           codigo_postal: data.codigoPostal ?? null,
           csf_ultima_emision: toIsoDate(data.fechaEmision),
           tipo_relacion: tipo,
-          cliente_padre_id: tipo === "cliente" ? null : cliente!.id,
+          cliente_padre_id: null,
         },
       });
       setResult({ ...(r as any), tipo_relacion: tipo });
-      // Respaldo documental en el historial
-      const padre = tipo === "cliente" ? r.cliente.id : cliente!.id;
+      // Respaldo documental en el historial (en el propio registro)
       try {
-        await save({ data: { cliente_id: padre, tool_key: "csf-parser", input: { fileName, tipo_relacion: tipo }, output: data as any, notes: `${tipo} · ${data.rfc}` } });
+        await save({ data: { cliente_id: r.cliente.id, tool_key: "csf-parser", input: { fileName, tipo_relacion: tipo }, output: data as any, notes: `${tipo} · ${data.rfc}` } });
       } catch { /* historial es opcional */ }
       toast.success(
-        tipo === "cliente"
-          ? (r.accion === "creado" ? "Expediente creado" : "Expediente actualizado")
-          : `${tipo === "proveedor" ? "Proveedor" : "Acreedor"} vinculado al expediente activo`
+        r.accion === "creado"
+          ? `Guardado en RFC vinculados como ${RELACION_LABEL[tipo]}`
+          : `Actualizado en RFC vinculados (${RELACION_LABEL[tipo]})`
       );
     } catch (e: any) {
       toast.error(e?.message ?? "No se pudo procesar");
@@ -328,29 +323,27 @@ function CsfParser() {
 
           {/* Acciones sobre el expediente */}
           <div className="rounded-xl border border-border/60 bg-card/40 p-4 space-y-3">
-            <div className="text-sm font-medium">¿Qué quieres hacer con esta CSF?</div>
+            <div className="text-sm font-medium">Guardar en RFC vinculados como:</div>
             <div className="grid sm:grid-cols-3 gap-2">
               <Button variant="hero" disabled={!!acting} onClick={() => onUpsert("cliente")}>
                 <UserPlus className="h-4 w-4" />
-                {acting === "cliente" ? "Guardando…" : "Crear / actualizar cliente"}
+                {acting === "cliente" ? "Guardando…" : "Cliente"}
               </Button>
-              <Button variant="outline" disabled={!!acting || !cliente?.id} onClick={() => onUpsert("proveedor")} title={!cliente?.id ? "Selecciona primero un cliente activo" : undefined}>
+              <Button variant="outline" disabled={!!acting} onClick={() => onUpsert("proveedor")}>
                 <Truck className="h-4 w-4" />
-                {acting === "proveedor" ? "Guardando…" : "Agregar como proveedor"}
+                {acting === "proveedor" ? "Guardando…" : "Proveedor"}
               </Button>
-              <Button variant="outline" disabled={!!acting || !cliente?.id} onClick={() => onUpsert("acreedor")} title={!cliente?.id ? "Selecciona primero un cliente activo" : undefined}>
+              <Button variant="outline" disabled={!!acting} onClick={() => onUpsert("acreedor")}>
                 <Receipt className="h-4 w-4" />
-                {acting === "acreedor" ? "Guardando…" : "Agregar como acreedor"}
+                {acting === "acreedor" ? "Guardando…" : "Acreedor"}
               </Button>
             </div>
             <div className="text-xs text-muted-foreground">
-              <strong>Cliente</strong>: crea o actualiza el expediente del contribuyente de la CSF.{" "}
-              <strong>Proveedor / acreedor</strong>: crea un expediente vinculado al cliente activo
-              {cliente?.razon_social ? <> (<span className="font-medium">{cliente.razon_social}</span>)</> : null}.
+              Todos los RFC se depositan en <strong>RFC vinculados</strong>. Solo los que marques como <strong>Cliente</strong> aparecen además en <strong>Expedientes</strong> con sus herramientas completas. Los proveedores y acreedores se invocarán automáticamente cuando una herramienta los necesite.
             </div>
             <div className="pt-1">
               <Button variant="ghost" size="sm" onClick={onSaveSolo}>
-                <Save className="h-3.5 w-3.5" /> Solo guardar en historial (sin crear expediente)
+                <Save className="h-3.5 w-3.5" /> Solo guardar en historial (sin crear registro)
               </Button>
             </div>
           </div>
@@ -374,11 +367,16 @@ function CsfParser() {
                   La CSF no introdujo cambios respecto a los datos ya registrados.
                 </div>
               )}
-              {(result.tipo_relacion === "cliente" || cliente?.id) && (
-                <Link to="/app/clientes/$id" params={{ id: result.tipo_relacion === "cliente" ? result.cliente.id : cliente!.id }}>
-                  <Button variant="outline" size="sm"><FolderOpen className="h-3.5 w-3.5" /> {result.tipo_relacion === "cliente" ? "Abrir expediente" : "Ver en proveedores y acreedores"}</Button>
+              <div className="flex flex-wrap gap-2">
+                <Link to="/app/rfcs-vinculados">
+                  <Button variant="outline" size="sm"><ListChecks className="h-3.5 w-3.5" /> Ver en RFC vinculados</Button>
                 </Link>
-              )}
+                {result.tipo_relacion === "cliente" && (
+                  <Link to="/app/clientes/$id" params={{ id: result.cliente.id }}>
+                    <Button variant="outline" size="sm"><FolderOpen className="h-3.5 w-3.5" /> Abrir expediente</Button>
+                  </Link>
+                )}
+              </div>
             </div>
           )}
 

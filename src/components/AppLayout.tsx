@@ -31,6 +31,7 @@ const LABELS: Record<string, string> = {
   riesgo: "Riesgo SAT",
   mensajes: "Mensajería IA",
   clientes: "Expedientes",
+  "rfcs-vinculados": "RFC vinculados",
   configuracion: "Configuración",
   equipo: "Equipo",
   tools: "Herramienta",
