@@ -456,7 +456,7 @@ function TercerosSection({ clienteId }: { clienteId: string }) {
     <section className="rounded-xl border border-border/60 bg-card/50 p-6 space-y-4">
       <div className="flex items-center gap-2">
         <Users className="h-4 w-4 text-primary" />
-        <h2 className="text-lg font-semibold">Terceros vinculados</h2>
+        <h2 className="text-lg font-semibold">Proveedores y acreedores</h2>
         <span className="text-xs text-muted-foreground ml-2">{terceros.length}</span>
       </div>
       {q.isLoading ? (
