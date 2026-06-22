@@ -25,16 +25,31 @@ function DefaultNotFound() {
 }
 
 function DefaultError({ error, reset }: { error: Error; reset: () => void }) {
-  console.error(error);
+  console.error("[Router DefaultError]", error);
+  const message = error?.message || String(error);
+  const stack = error?.stack ?? "";
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
+      <div className="max-w-xl text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
           No se pudo cargar la página
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Algo salió mal. Puedes intentar de nuevo o regresar al inicio.
         </p>
+        <details className="mt-4 text-left rounded-md border border-border bg-card/50 p-3 text-xs">
+          <summary className="cursor-pointer text-foreground font-medium">
+            Detalles del error (compártelos con soporte)
+          </summary>
+          <div className="mt-2 font-mono text-[11px] text-destructive whitespace-pre-wrap break-words">
+            {message}
+          </div>
+          {stack && (
+            <pre className="mt-2 max-h-48 overflow-auto text-[10px] text-muted-foreground whitespace-pre-wrap break-words">
+              {stack}
+            </pre>
+          )}
+        </details>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={reset}
@@ -53,6 +68,7 @@ function DefaultError({ error, reset }: { error: Error; reset: () => void }) {
     </div>
   );
 }
+
 
 export const getRouter = () => {
   const queryClient = new QueryClient();
