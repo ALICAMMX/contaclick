@@ -110,6 +110,9 @@ function ClienteDetailPage() {
         <p className="text-sm text-muted-foreground font-mono mt-1">{cli.data?.rfc}</p>
       </div>
 
+      <DatosFiscalesSection cli={cli.data} />
+
+
       <section className="rounded-xl border border-border/60 bg-card/50 p-6 space-y-5">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
