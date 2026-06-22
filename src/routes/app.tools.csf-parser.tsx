@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { FileBadge, Upload, Save, CheckCircle2, AlertTriangle, Eye } from "lucide-react";
+import { FileBadge, Upload, Save, CheckCircle2, AlertTriangle, Eye, FolderOpen } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ToolShell } from "@/components/ToolShell";
@@ -195,6 +195,7 @@ function CsfParser() {
   const [data, setData] = useState<CsfData | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
   const save = useServerFn(saveToolRun);
 
   const onFile = async (file: File) => {
@@ -215,6 +216,7 @@ function CsfParser() {
     try {
       await save({ data: { cliente_id: cliente?.id ?? null, tool_key: "csf-parser", input: { fileName }, output: data as any, notes: data.rfc ?? null } });
       toast.success("Constancia guardada en el expediente");
+      setSaved(true);
     } catch (e: any) {
       toast.error(e?.message ?? "No se pudo guardar");
     }
