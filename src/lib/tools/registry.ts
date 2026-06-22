@@ -1,6 +1,6 @@
 import {
   FileSearch, FileStack, Calculator, Coins, Banknote, FileBadge,
-  FileSignature, ShieldCheck, ScanSearch, Bot, ShieldAlert, Users, Globe,
+  FileSignature, ShieldCheck, ScanSearch, Bot, ShieldAlert, Users, Globe, Upload,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -72,6 +72,14 @@ export const TOOLS: ToolDef[] = [
     description: "Sube la CSF en PDF y extrae régimen, obligaciones y domicilio fiscal.",
     category: "Documentos",
     icon: FileBadge,
+  },
+  {
+    key: "import-clientes",
+    route: "/app/tools/import-clientes",
+    name: "Importar cartera (Excel)",
+    description: "Migra tu cartera de clientes desde Excel o CSV. Hasta 500 RFC por carga, sin duplicados.",
+    category: "Documentos",
+    icon: Upload,
   },
   {
     key: "oficio-generator",

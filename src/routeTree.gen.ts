@@ -62,6 +62,7 @@ import { Route as AppToolsOficioGeneratorRouteImport } from './routes/app.tools.
 import { Route as AppToolsIsrIvaPmRouteImport } from './routes/app.tools.isr-iva-pm'
 import { Route as AppToolsIsrIvaCalculatorRouteImport } from './routes/app.tools.isr-iva-calculator'
 import { Route as AppToolsImportPricesRouteImport } from './routes/app.tools.import-prices'
+import { Route as AppToolsImportClientesRouteImport } from './routes/app.tools.import-clientes'
 import { Route as AppToolsFiscalAssistantRouteImport } from './routes/app.tools.fiscal-assistant'
 import { Route as AppToolsExpressAuditorRouteImport } from './routes/app.tools.express-auditor'
 import { Route as AppToolsEfosValidatorRouteImport } from './routes/app.tools.efos-validator'
@@ -359,6 +360,11 @@ const AppToolsImportPricesRoute = AppToolsImportPricesRouteImport.update({
   path: '/tools/import-prices',
   getParentRoute: () => AppRoute,
 } as any)
+const AppToolsImportClientesRoute = AppToolsImportClientesRouteImport.update({
+  id: '/tools/import-clientes',
+  path: '/tools/import-clientes',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppToolsFiscalAssistantRoute = AppToolsFiscalAssistantRouteImport.update({
   id: '/tools/fiscal-assistant',
   path: '/tools/fiscal-assistant',
@@ -577,6 +583,7 @@ export interface FileRoutesByFullPath {
   '/app/tools/efos-validator': typeof AppToolsEfosValidatorRoute
   '/app/tools/express-auditor': typeof AppToolsExpressAuditorRoute
   '/app/tools/fiscal-assistant': typeof AppToolsFiscalAssistantRoute
+  '/app/tools/import-clientes': typeof AppToolsImportClientesRoute
   '/app/tools/import-prices': typeof AppToolsImportPricesRoute
   '/app/tools/isr-iva-calculator': typeof AppToolsIsrIvaCalculatorRoute
   '/app/tools/isr-iva-pm': typeof AppToolsIsrIvaPmRoute
@@ -652,6 +659,7 @@ export interface FileRoutesByTo {
   '/app/tools/efos-validator': typeof AppToolsEfosValidatorRoute
   '/app/tools/express-auditor': typeof AppToolsExpressAuditorRoute
   '/app/tools/fiscal-assistant': typeof AppToolsFiscalAssistantRoute
+  '/app/tools/import-clientes': typeof AppToolsImportClientesRoute
   '/app/tools/import-prices': typeof AppToolsImportPricesRoute
   '/app/tools/isr-iva-calculator': typeof AppToolsIsrIvaCalculatorRoute
   '/app/tools/isr-iva-pm': typeof AppToolsIsrIvaPmRoute
@@ -737,6 +745,7 @@ export interface FileRoutesById {
   '/app/tools/efos-validator': typeof AppToolsEfosValidatorRoute
   '/app/tools/express-auditor': typeof AppToolsExpressAuditorRoute
   '/app/tools/fiscal-assistant': typeof AppToolsFiscalAssistantRoute
+  '/app/tools/import-clientes': typeof AppToolsImportClientesRoute
   '/app/tools/import-prices': typeof AppToolsImportPricesRoute
   '/app/tools/isr-iva-calculator': typeof AppToolsIsrIvaCalculatorRoute
   '/app/tools/isr-iva-pm': typeof AppToolsIsrIvaPmRoute
@@ -823,6 +832,7 @@ export interface FileRouteTypes {
     | '/app/tools/efos-validator'
     | '/app/tools/express-auditor'
     | '/app/tools/fiscal-assistant'
+    | '/app/tools/import-clientes'
     | '/app/tools/import-prices'
     | '/app/tools/isr-iva-calculator'
     | '/app/tools/isr-iva-pm'
@@ -898,6 +908,7 @@ export interface FileRouteTypes {
     | '/app/tools/efos-validator'
     | '/app/tools/express-auditor'
     | '/app/tools/fiscal-assistant'
+    | '/app/tools/import-clientes'
     | '/app/tools/import-prices'
     | '/app/tools/isr-iva-calculator'
     | '/app/tools/isr-iva-pm'
@@ -982,6 +993,7 @@ export interface FileRouteTypes {
     | '/app/tools/efos-validator'
     | '/app/tools/express-auditor'
     | '/app/tools/fiscal-assistant'
+    | '/app/tools/import-clientes'
     | '/app/tools/import-prices'
     | '/app/tools/isr-iva-calculator'
     | '/app/tools/isr-iva-pm'
@@ -1387,6 +1399,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppToolsImportPricesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/tools/import-clientes': {
+      id: '/app/tools/import-clientes'
+      path: '/tools/import-clientes'
+      fullPath: '/app/tools/import-clientes'
+      preLoaderRoute: typeof AppToolsImportClientesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/tools/fiscal-assistant': {
       id: '/app/tools/fiscal-assistant'
       path: '/tools/fiscal-assistant'
@@ -1756,6 +1775,7 @@ interface AppRouteChildren {
   AppToolsEfosValidatorRoute: typeof AppToolsEfosValidatorRoute
   AppToolsExpressAuditorRoute: typeof AppToolsExpressAuditorRoute
   AppToolsFiscalAssistantRoute: typeof AppToolsFiscalAssistantRoute
+  AppToolsImportClientesRoute: typeof AppToolsImportClientesRoute
   AppToolsImportPricesRoute: typeof AppToolsImportPricesRoute
   AppToolsIsrIvaCalculatorRoute: typeof AppToolsIsrIvaCalculatorRoute
   AppToolsIsrIvaPmRoute: typeof AppToolsIsrIvaPmRoute
@@ -1795,6 +1815,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppToolsEfosValidatorRoute: AppToolsEfosValidatorRoute,
   AppToolsExpressAuditorRoute: AppToolsExpressAuditorRoute,
   AppToolsFiscalAssistantRoute: AppToolsFiscalAssistantRoute,
+  AppToolsImportClientesRoute: AppToolsImportClientesRoute,
   AppToolsImportPricesRoute: AppToolsImportPricesRoute,
   AppToolsIsrIvaCalculatorRoute: AppToolsIsrIvaCalculatorRoute,
   AppToolsIsrIvaPmRoute: AppToolsIsrIvaPmRoute,
@@ -1848,13 +1869,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
