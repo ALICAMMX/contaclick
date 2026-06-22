@@ -253,7 +253,7 @@ function CsfParser() {
             <div className="rounded-lg border border-success/30 bg-success/5 p-3 text-sm flex items-start sm:items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-success" />
-                <span>Guardado en el expediente de <strong>{cliente.razon_social ?? cliente.nombre ?? cliente.rfc ?? "este cliente"}</strong>.</span>
+                <span>Guardado en el expediente de <strong>{cliente.razon_social ?? cliente.rfc ?? "este cliente"}</strong>.</span>
               </div>
               <Link to="/app/clientes/$id" params={{ id: cliente.id }}>
                 <Button variant="outline" size="sm"><FolderOpen className="h-3.5 w-3.5" /> Abrir expediente</Button>
