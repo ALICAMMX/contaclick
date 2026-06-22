@@ -242,20 +242,20 @@ function CsfParser() {
             <h3 className="font-semibold flex items-center gap-2">
               {data.warnings.length === 0
                 ? <><CheckCircle2 className="h-4 w-4 text-success" /> Datos detectados</>
-                : <><AlertTriangle className="h-4 w-4 text-amber-400" /> Datos parcialmente detectados</>}
+                : <><AlertTriangle className="h-4 w-4 text-sky-600 dark:text-sky-300" /> Datos parcialmente detectados</>}
             </h3>
             <Button variant="glass" size="sm" onClick={onSave}><Save className="h-3.5 w-3.5" /> Guardar en expediente</Button>
           </div>
 
           {data.warnings.length > 0 && (
-            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs space-y-1">
-              <div className="font-medium text-amber-300 flex items-center gap-1.5">
+            <div className="rounded-lg border border-sky-500/40 bg-sky-500/10 dark:bg-sky-400/10 p-3 text-xs space-y-1">
+              <div className="font-medium text-sky-700 dark:text-sky-200 flex items-center gap-1.5">
                 <AlertTriangle className="h-3.5 w-3.5" /> Revisión recomendada — la extracción está incompleta
               </div>
-              <ul className="text-amber-200/90 list-disc pl-5 space-y-0.5">
+              <ul className="text-sky-800/90 dark:text-sky-100/90 list-disc pl-5 space-y-0.5">
                 {data.warnings.map((w, i) => <li key={i}>{w}</li>)}
               </ul>
-              <div className="text-muted-foreground pt-1">
+              <div className="text-sky-700/80 dark:text-sky-200/70 pt-1">
                 Es probable que tu CSF tenga un formato distinto al esperado. Verifica los datos manualmente antes de guardar.
               </div>
             </div>
