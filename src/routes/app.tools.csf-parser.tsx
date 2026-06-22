@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { FileBadge, Upload, Save, CheckCircle2, AlertTriangle, Eye } from "lucide-react";
+import { FileBadge, Upload, Save, CheckCircle2, AlertTriangle, Eye, FolderOpen } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ToolShell } from "@/components/ToolShell";
@@ -195,6 +195,7 @@ function CsfParser() {
   const [data, setData] = useState<CsfData | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
   const save = useServerFn(saveToolRun);
 
   const onFile = async (file: File) => {
@@ -215,6 +216,7 @@ function CsfParser() {
     try {
       await save({ data: { cliente_id: cliente?.id ?? null, tool_key: "csf-parser", input: { fileName }, output: data as any, notes: data.rfc ?? null } });
       toast.success("Constancia guardada en el expediente");
+      setSaved(true);
     } catch (e: any) {
       toast.error(e?.message ?? "No se pudo guardar");
     }
@@ -246,6 +248,18 @@ function CsfParser() {
             </h3>
             <Button variant="glass" size="sm" onClick={onSave}><Save className="h-3.5 w-3.5" /> Guardar en expediente</Button>
           </div>
+
+          {saved && cliente?.id && (
+            <div className="rounded-lg border border-success/30 bg-success/5 p-3 text-sm flex items-start sm:items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-success" />
+                <span>Guardado en el expediente de <strong>{cliente.razon_social ?? cliente.rfc ?? "este cliente"}</strong>.</span>
+              </div>
+              <Link to="/app/clientes/$id" params={{ id: cliente.id }}>
+                <Button variant="outline" size="sm"><FolderOpen className="h-3.5 w-3.5" /> Abrir expediente</Button>
+              </Link>
+            </div>
+          )}
 
           {data.warnings.length > 0 && (
             <div className="rounded-lg border border-sky-500/40 bg-sky-500/10 dark:bg-sky-400/10 p-3 text-xs space-y-1">

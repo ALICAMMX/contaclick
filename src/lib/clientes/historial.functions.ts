@@ -71,6 +71,10 @@ function prettyTool(key: string): string {
     efos: "Revisión EFOS",
     resumen_fiscal: "Resumen fiscal",
     descarga_sat: "Descarga CFDI SAT",
+    "csf-parser": "Lector de Constancia Fiscal",
+    "cfdi-validator": "Validador CFDI",
+    "cfdi-verifier": "Verificador CFDI",
+    "oficio-generator": "Generador de oficios",
   };
   return map[key] ?? key;
 }
