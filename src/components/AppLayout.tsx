@@ -46,6 +46,7 @@ const LABELS: Record<string, string> = {
   "resico-calculator": "Calculadora RESICO",
   "oficio-generator": "Generador de oficios",
   "csf-parser": "Lector de Constancia",
+  "import-clientes": "Importar cartera",
   nomina: "Nómina IA",
   cumplimiento: "Cumplimiento laboral",
   activos: "Activos fijos",
