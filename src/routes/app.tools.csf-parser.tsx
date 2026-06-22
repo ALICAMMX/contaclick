@@ -140,10 +140,19 @@ function parseCsf(text: string): CsfData {
   if (obs) out.obligaciones = Array.from(new Set(obs.map((s) => s.replace(/[.;]$/, "").trim()))).slice(0, 10);
   if (!out.obligaciones.length) out.warnings.push("No se detectaron obligaciones declaradas.");
 
-  // Domicilio
-  const dom = flat.match(/Domicilio\s+(?:Registrado|Fiscal)[:\s]+([A-Z0-9ÁÉÍÓÚÑ ,\.\-#]+?)\s+(?:Actividades|Reg[ií]men|Obligaciones|Fecha|Correo|Tel[eé]fono)/i);
-  if (dom) out.domicilio = dom[1].trim();
+  // Domicilio (acepta varias variantes: "Domicilio Registrado", "Domicilio Fiscal", "Datos del Domicilio")
+  const dom = flat.match(/Domicilio\s+(?:Registrado|Fiscal|del\s+Contribuyente)?[:\s-]+([A-Z0-9ÁÉÍÓÚÑ ,\.\-#°ºªN()\/]+?)\s+(?:Actividades|Reg[ií]menes?|Obligaciones|Fecha|Correo|Tel[eé]fono|C\.?P\.?\s*\d)/i);
+  if (dom) out.domicilio = dom[1].replace(/\s+/g, " ").trim();
   else out.warnings.push("No se detectó el domicilio fiscal.");
+
+  // Código Postal: "C.P. 12345", "CP: 12345" o "Código Postal 12345"
+  const cp = flat.match(/(?:C[oó]digo\s+Postal|C\.?\s*P\.?)\s*[:\s]*?(\d{5})\b/i);
+  if (cp) out.codigoPostal = cp[1];
+  // Fallback: si hay un domicilio detectado, busca el primer grupo de 5 dígitos dentro
+  if (!out.codigoPostal && out.domicilio) {
+    const inner = out.domicilio.match(/\b(\d{5})\b/);
+    if (inner) out.codigoPostal = inner[1];
+  }
 
   return out;
 }
