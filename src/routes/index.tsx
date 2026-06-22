@@ -46,10 +46,10 @@ const modules = [
 ];
 
 const stats = [
-  { value: "10×", label: "más rápido" },
-  { value: "99.4%", label: "precisión XML" },
-  { value: "+2,300", label: "CFDI por minuto" },
-  { value: "24/7", label: "asistente IA" },
+  { value: "Rápido", label: "análisis en segundos" },
+  { value: "Preciso", label: "detección de duplicados y cancelados" },
+  { value: "Masivo", label: "miles de CFDI por carga" },
+  { value: "24/7", label: "asistente IA contable" },
 ];
 
 function Landing() {

@@ -28,7 +28,7 @@ function CFDI() {
           <Upload className="h-6 w-6 text-primary-foreground" />
         </div>
         <div className="font-medium">Arrastra tus XML, ZIP o carpetas aquí</div>
-        <div className="text-xs text-muted-foreground mt-1">o haz clic para seleccionar · Procesa hasta 5,000 CFDI por minuto</div>
+        <div className="text-xs text-muted-foreground mt-1">o haz clic para seleccionar · Soporta miles de CFDI por carga</div>
         <Button variant="hero" size="sm" className="mt-4">Seleccionar archivos</Button>
       </div>
 
