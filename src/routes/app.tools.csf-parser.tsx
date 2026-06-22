@@ -367,11 +367,16 @@ function CsfParser() {
                   La CSF no introdujo cambios respecto a los datos ya registrados.
                 </div>
               )}
-              {(result.tipo_relacion === "cliente" || cliente?.id) && (
-                <Link to="/app/clientes/$id" params={{ id: result.tipo_relacion === "cliente" ? result.cliente.id : cliente!.id }}>
-                  <Button variant="outline" size="sm"><FolderOpen className="h-3.5 w-3.5" /> {result.tipo_relacion === "cliente" ? "Abrir expediente" : "Ver en proveedores y acreedores"}</Button>
+              <div className="flex flex-wrap gap-2">
+                <Link to="/app/rfcs-vinculados">
+                  <Button variant="outline" size="sm"><ListChecks className="h-3.5 w-3.5" /> Ver en RFC vinculados</Button>
                 </Link>
-              )}
+                {result.tipo_relacion === "cliente" && (
+                  <Link to="/app/clientes/$id" params={{ id: result.cliente.id }}>
+                    <Button variant="outline" size="sm"><FolderOpen className="h-3.5 w-3.5" /> Abrir expediente</Button>
+                  </Link>
+                )}
+              </div>
             </div>
           )}
 
