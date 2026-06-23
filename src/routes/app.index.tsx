@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Calculator, Briefcase, Scale, ArrowRight, FileText, ShieldAlert, Users, TrendingUp, Mail, Banknote, UserRound, Plus, X } from "lucide-react";
+import { UsageMeters } from "@/components/UsageMeters";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
