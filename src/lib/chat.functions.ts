@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 import { z } from "zod";
+import { resolveActiveDespachoId } from "@/lib/despacho/resolve";
+import { assertWithinLimit, recordIaUsage, UsageLimitError } from "@/lib/usage/limits";
 
 const Schema = z.object({
   messages: z.array(z.object({
