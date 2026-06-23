@@ -148,6 +148,9 @@ function ConfigPage() {
         <ChevronRight className="h-4 w-4 text-muted-foreground" />
       </Link>
 
+      <UsageMeters />
+      <UsageHistoryPanel />
+
       <div className="rounded-xl border border-primary/30 bg-primary/5 p-5 space-y-4">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-lg bg-primary/15 flex items-center justify-center">
