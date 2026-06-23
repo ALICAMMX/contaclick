@@ -123,6 +123,18 @@ export function NotificationsBell() {
                           </Link>
                         </>
                       )}
+                      {a.tipo === "uso_limite" && (
+                        <>
+                          <span>·</span>
+                          <Link
+                            to="/precios"
+                            onClick={() => setOpen(false)}
+                            className="text-primary hover:underline"
+                          >
+                            Mejorar plan
+                          </Link>
+                        </>
+                      )}
                     </div>
                   </div>
                   <button
