@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 import { z } from "zod";
+import { assertWithinLimit, UsageLimitError } from "@/lib/usage/limits";
 
 const RFC_REGEX = /^[A-ZÑ&]{3,4}\d{6}[A-Z\d]{3}$/i;
 
@@ -100,6 +101,14 @@ export const createCliente = createServerFn({ method: "POST" })
       const { data: own } = await supabase
         .from("despachos").select("id").eq("owner_user_id", userId).limit(1).maybeSingle();
       if (own?.id) despachoId = own.id as string;
+    }
+
+    if (despachoId) {
+      try { await assertWithinLimit(supabase, despachoId, "rfcs"); }
+      catch (e) {
+        if (e instanceof UsageLimitError) throw new Error(e.message);
+        throw e;
+      }
     }
 
     const { data: row, error } = await supabase

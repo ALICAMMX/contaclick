@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Calculator, Briefcase, Scale, ArrowRight, FileText, ShieldAlert, Users, TrendingUp, Mail, Banknote, UserRound, Plus, X } from "lucide-react";
+import { UsageMeters } from "@/components/UsageMeters";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -55,6 +56,11 @@ function Hub() {
       {/* Two big modules */}
       <section className="grid md:grid-cols-2 gap-5">
         {MODULES.map((m) => <ModuleCard key={m.key} m={m} />)}
+      </section>
+
+      {/* Plan & uso */}
+      <section className="max-w-2xl mx-auto w-full">
+        <UsageMeters />
       </section>
 
       {/* Legal — secondary card */}

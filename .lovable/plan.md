@@ -1,107 +1,111 @@
+# Control de uso: RFC e IA por plan
 
-# Plan: ContaClick Desktop (modo híbrido local)
-
-Convertir ContaClick en una aplicación de escritorio donde los **datos fiscales sensibles nunca salen de la PC**, pero la **IA y catálogos legales** sí usan internet (sin enviar datos de clientes).
-
----
-
-## Arquitectura propuesta
-
-```text
-┌─────────────────────────────────────────────────┐
-│  ContaClick Desktop (Electron .exe / .dmg)      │
-│                                                 │
-│  ┌──────────────────┐   ┌──────────────────┐    │
-│  │  UI (React)      │   │  Núcleo local    │    │
-│  │  = código actual │◄──┤  SQLite cifrado  │    │
-│  └──────────────────┘   │  (better-sqlite3)│    │
-│           │             └──────────────────┘    │
-│           │                                     │
-│           ▼ solo prompts anonimizados           │
-│  ┌──────────────────────────────────────────┐   │
-│  │ Internet (opcional)                      │   │
-│  │  • Lovable AI (chat, agentes)            │   │
-│  │  • SAT (validación CFDI, EFOS, LCO)      │   │
-│  │  • Catálogos legales (referencias.ts)    │   │
-│  └──────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────┘
-```
-
-**Lo que cambia vs versión nube:**
-- Supabase → SQLite local (`better-sqlite3`) con cifrado AES por contraseña maestra del despacho.
-- Server functions de TanStack → handlers IPC de Electron al mismo motor SQLite.
-- Auth → login local (bcrypt) + opcional sincronización de licencia con servidor.
-- IA → sigue llamando a Lovable AI Gateway pero con **capa de anonimización** que reemplaza RFCs, nombres y montos por tokens antes de enviar.
+Objetivo: medir, limitar y notificar el consumo de **RFC activos** y **solicitudes/tokens de IA** según el plan del despacho (Starter, Profesional, Despacho, Enterprise), con avisos visibles en el dashboard del usuario.
 
 ---
 
-## Fases (entregables incrementales)
+## 1. Modelo de datos (Lovable Cloud)
 
-### Fase 1 — Base Electron + SQLite (semana 1)
-- Configurar Electron con `@electron/packager`, `vite.config.ts` con `base: './'`.
-- `electron/main.cjs` con BrowserWindow + IPC bridge.
-- Esquema SQLite espejo de las 31 tablas Supabase actuales.
-- Capa de adaptador `src/integrations/local/client.ts` con la misma API que el cliente Supabase (drop-in).
-- Login local con contraseña maestra + cifrado de DB.
+Una migración con GRANTs + RLS:
 
-### Fase 2 — Migración de herramientas core (semana 2)
-- Lector/Validador CFDI offline (parser XML ya es local).
-- Carga masiva de XMLs → SQLite local.
-- Conciliación bancaria (parsers ya son locales).
-- Auditor Express, Deducibilidad, Nómina Oculta, Precios Importación.
-- Exportes Excel/PDF (ya son locales).
+**`planes`** (catálogo, ya existe — lo extendemos):
+- `id`, `code` (`starter|pro|despacho|enterprise`), `nombre`
+- `limite_rfc` int
+- `limite_ia_requests` int (mensual)
+- `limite_ia_tokens` bigint (mensual)
+- `limite_storage_mb` int
 
-### Fase 3 — IA con anonimización (semana 3)
-- Módulo `src/lib/privacy/anonymizer.ts`:
-  - Reemplaza RFC → `RFC_001`, razón social → `EMPRESA_A`, montos → rangos.
-  - Mantiene mapa local para "des-anonimizar" la respuesta.
-- Agente Auditor, Agente CFDI, Asistente Fiscal envían prompts anonimizados.
-- Banner visible: "Esta consulta enviará datos anonimizados a la IA".
-- Toggle por despacho: "Modo paranoia" (deshabilita IA por completo).
+**`suscripciones`** (ya existe): añadimos `plan_code`, `periodo_inicio`, `periodo_fin`.
 
-### Fase 4 — SAT y validaciones (semana 4)
-- Validación CFDI contra SAT desde el cliente local (CORS via Electron).
-- Descarga masiva SAT con e.firma → guarda XMLs en `%APPDATA%/ContaClick/xmls/` cifrados.
-- EFOS: descarga periódica de la lista oficial y cachea local.
+**`uso_periodo`** (nueva, una fila por despacho × periodo mensual):
+- `despacho_id`, `periodo` (`YYYY-MM`)
+- `ia_requests`, `ia_tokens`, `ia_costo_credits`
+- `rfc_activos` (snapshot calculado)
+- `updated_at`
 
-### Fase 5 — Empaquetado y distribución (semana 5)
-- `.exe` (Windows), `.dmg` (Mac), `.AppImage` (Linux) firmados.
-- Auto-updater (electron-updater) apuntando a servidor de releases.
-- Sistema de licencias: el ejecutable valida licencia 1x/mes contra servidor.
-- Backups automáticos del SQLite a carpeta local elegida por el usuario.
+**`uso_eventos`** (auditoría fina, append-only):
+- `despacho_id`, `tipo` (`ia_request|rfc_add|tool_run`), `tool`, `tokens_in`, `tokens_out`, `model`, `created_at`, `metadata jsonb`
+
+**`notificaciones_uso`** (para el bell del dashboard):
+- `despacho_id`, `tipo` (`warn_80|warn_100|rfc_limit`), `recurso` (`rfc|ia_requests|ia_tokens`), `periodo`, `leida_at`, `created_at`
+- Único por `(despacho_id, tipo, recurso, periodo)` para no duplicar avisos.
+
+RLS: todo scoped por `is_member_of(despacho_id)`. `uso_eventos` solo `INSERT` desde server functions.
 
 ---
 
-## Detalles técnicos clave
+## 2. Enforcement (server-side)
 
-**Reuso del código actual:** ~80% del frontend (`src/components`, `src/routes`, parsers, lógica de risk/referencias) se reutiliza sin cambios. Solo cambia la capa de datos.
+Helper `assertWithinLimits(despachoId, recurso)` en `src/lib/usage/limits.functions.ts`:
+1. Lee plan vigente de `suscripciones`.
+2. Lee `uso_periodo` del mes actual (lo crea si no existe).
+3. Compara contra el límite del plan.
+4. Si está al 80% → inserta `notificaciones_uso` tipo `warn_80` (idempotente).
+5. Si está al 100% → inserta `warn_100` y **lanza error 402-like** (`LIMIT_EXCEEDED`).
 
-**Capa de datos polimórfica:** crear `src/integrations/data/index.ts` que exponga `getClient()` y devuelva Supabase (web) o el adaptador SQLite (Electron) según `import.meta.env.VITE_TARGET`.
+Se llama:
+- **IA**: dentro de `sendChat` y de cada herramienta IA antes del `fetch` al gateway. Tras la respuesta, `recordIaUsage(despachoId, {requests:1, tokens_in, tokens_out, model})` actualiza `uso_periodo` + `uso_eventos`.
+- **RFC**: en `clientes.functions.ts` (crear/activar RFC) → cuenta `rfcs` activos; si supera `limite_rfc`, devuelve error legible.
 
-**Build dual:**
-- `bun run build` → versión web (actual).
-- `bun run build:desktop` → versión Electron.
-
-Mismo repo, dos targets.
-
-**Anonimización IA:** el `Anonymizer` extrae entidades con regex (RFC: `[A-Z&Ñ]{3,4}\d{6}[A-Z\d]{3}`), genera tokens estables por sesión, sustituye en el prompt, y revierte en la respuesta. La IA nunca ve RFCs ni nombres reales.
-
-**Cumplimiento legal MX:**
-- Cumple LFPDPPP (datos quedan en posesión del titular del despacho).
-- El aviso de privacidad del producto baja a "no tratamos datos personales de tus clientes — solo viven en tu equipo".
+Errores se traducen a toast: *"Alcanzaste el límite de tu plan Starter (200 IA / mes). Mejora tu plan o espera al ciclo siguiente."*
 
 ---
 
-## Out of scope
+## 3. UI — Dashboard
 
-- Sincronización entre múltiples PCs del despacho (sería Fase 6, requiere servidor de sync).
-- Mobile (iOS/Android).
-- IA 100% offline con Ollama (rechazada por el usuario).
+**`src/components/UsageMeters.tsx`** (card en `/app` y `/app/configuracion`):
+- 3 barras: RFC activos, Solicitudes IA, Tokens IA.
+- Color: verde <70%, ámbar 70-95%, rojo ≥95%.
+- Texto: `12 / 25 RFC`, `840 / 1,500 solicitudes IA`, reset en `30 de jun`.
+- CTA "Mejorar plan" → `/precios`.
+
+**`NotificationsBell`** (ya existe): añadimos fuente `notificaciones_uso` con icono ⚠ y link a `/app/configuracion#uso`.
+
+**`/app/configuracion` → tab "Plan y uso"**:
+- Plan actual + tarjeta de uso del periodo.
+- Histórico últimos 6 meses (tabla `uso_periodo`).
+- Botón "Comprar paquete adicional" (placeholder hasta integrar Stripe).
 
 ---
 
-## Primer paso si apruebas
+## 4. Notificaciones
 
-Arranco con **Fase 1** completa: Electron + SQLite + login local + adaptador que ya permite abrir la app de escritorio y ver el dashboard leyendo de la DB local vacía. Eso te lo entrego en una iteración y a partir de ahí migramos herramientas una por una.
+Dos canales:
+- **In-app (siempre)**: `NotificationsBell` lee `notificaciones_uso` no leídas.
+- **Email (opcional, fase 2)**: trigger SQL → server fn que envía email via Lovable AI / Brevo connector cuando se inserta un `warn_80` o `warn_100`.
 
-¿Procedo con Fase 1?
+Reglas:
+- Un aviso por umbral por mes (idempotente vía índice único).
+- Al iniciar nuevo periodo (cron diario `/api/public/cron/usage-rollover`), se resetea el `uso_periodo` y se limpian flags.
+
+---
+
+## 5. Cron de cierre/rollover
+
+Server route `src/routes/api/public/cron/usage-rollover.ts` (verifica header `x-cron-secret`):
+- Cada 1 del mes a las 00:05 (configurable en `pg_cron` o llamado desde un scheduler externo).
+- Cierra periodo anterior, crea fila nueva con contadores en 0.
+- Recalcula `rfc_activos` por despacho.
+
+---
+
+## 6. Aspectos técnicos
+
+- Todo el conteo de IA se hace **server-side** dentro de los `createServerFn` que llaman al gateway, leyendo `usage` del response (`json.usage.prompt_tokens`, `completion_tokens`).
+- Para evitar race conditions: `UPDATE uso_periodo SET ia_requests = ia_requests + 1 RETURNING ia_requests` (incremento atómico).
+- Cliente NUNCA decide si tiene crédito — solo muestra los medidores.
+- Compatible con la futura versión desktop: el ejecutable también consultará `uso_periodo` vía la misma server fn (la IA sigue siendo en la nube según definimos).
+
+---
+
+## Entregables por fase
+
+**Fase A (1 sesión):** migración + helpers `assertWithinLimits` / `recordIaUsage` + integración en `sendChat` y en creación de RFC.
+
+**Fase B (1 sesión):** `UsageMeters`, tab "Plan y uso", notificaciones en bell.
+
+**Fase C (futuro):** emails, cron de rollover, paquetes adicionales con Stripe.
+
+---
+
+¿Procedo con **Fase A** ahora?
