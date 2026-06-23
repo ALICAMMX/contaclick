@@ -1,72 +1,107 @@
-# Justificación legal y motivo en cada alerta
 
-Hoy las herramientas muestran hallazgos en rojo / ámbar / verde pero sin explicar **por qué** ese color ni en qué **artículo/regla** del SAT se basan. Vamos a estandarizar esto en toda la plataforma.
+# Plan: ContaClick Desktop (modo híbrido local)
 
-## Qué cambia para el usuario
+Convertir ContaClick en una aplicación de escritorio donde los **datos fiscales sensibles nunca salen de la PC**, pero la **IA y catálogos legales** sí usan internet (sin enviar datos de clientes).
 
-Cada hallazgo (en CFDI, Auditor Express, Nómina Oculta, Deducibilidad, Precios de Importación, etc.) mostrará tres cosas nuevas, siempre visibles:
+---
 
-1. **Motivo del color** — frase corta del tipo *"Rojo porque el SAT puede rechazar la deducción y multar (~$400–$600 por CFDI)"*.
-2. **Fundamento legal** — artículo y ley vigente: *"Art. 29-A fracc. VII inciso b) CFF · RMF 2026 regla 2.7.1.32"*, con la fecha en que se verificó la vigencia.
-3. **Qué hacer** — acción concreta (emitir REP, cancelar con motivo 02, etc.).
-
-Ejemplo visual en cada finding:
+## Arquitectura propuesta
 
 ```text
-🔴 PPD sin Complemento de Pago timbrado
-   Por qué rojo: El SAT considera el ingreso no acumulado y aplica multa
-                 de $400–$600 por CFDI (Art. 81-82 CFF).
-   Fundamento:  Art. 29-A CFF · RMF 2026 regla 2.7.1.32 · Guía REP SAT v3.3
-   Acción:      Emite el Complemento de Pago dentro de los 5 días naturales
-                del mes siguiente al cobro.
+┌─────────────────────────────────────────────────┐
+│  ContaClick Desktop (Electron .exe / .dmg)      │
+│                                                 │
+│  ┌──────────────────┐   ┌──────────────────┐    │
+│  │  UI (React)      │   │  Núcleo local    │    │
+│  │  = código actual │◄──┤  SQLite cifrado  │    │
+│  └──────────────────┘   │  (better-sqlite3)│    │
+│           │             └──────────────────┘    │
+│           │                                     │
+│           ▼ solo prompts anonimizados           │
+│  ┌──────────────────────────────────────────┐   │
+│  │ Internet (opcional)                      │   │
+│  │  • Lovable AI (chat, agentes)            │   │
+│  │  • SAT (validación CFDI, EFOS, LCO)      │   │
+│  │  • Catálogos legales (referencias.ts)    │   │
+│  └──────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────┘
 ```
 
-## Alcance (qué herramientas se actualizan)
+**Lo que cambia vs versión nube:**
+- Supabase → SQLite local (`better-sqlite3`) con cifrado AES por contraseña maestra del despacho.
+- Server functions de TanStack → handlers IPC de Electron al mismo motor SQLite.
+- Auth → login local (bcrypt) + opcional sincronización de licencia con servidor.
+- IA → sigue llamando a Lovable AI Gateway pero con **capa de anonimización** que reemplaza RFCs, nombres y montos por tokens antes de enviar.
 
-- Lector / Validador CFDI (`risk.ts` + `app.cfdi.$id.tsx`)
-- Auditor Express (`auditor.functions.ts` + `app.tools.express-auditor.tsx`)
-- Nómina Oculta (`nomina-oculta.functions.ts` + `app.tools.shadow-payroll.tsx`)
-- Deducibilidad (`deducibilidad.functions.ts` + `app.tools.deducibility-checker.tsx`)
-- Precios de Importación (`precios-importacion.functions.ts` + `app.tools.import-prices.tsx`)
-- Agentes Auditor y CFDI (heredan del mismo modelo)
+---
 
-## Detalles técnicos
+## Fases (entregables incrementales)
 
-1. **Extender el tipo `RiskFinding`** en `src/lib/cfdi/risk.ts`:
-   ```ts
-   type RiskFinding = {
-     code: string;
-     level: "bajo" | "medio" | "alto";
-     message: string;
-     why: string;           // por qué este color
-     legal: LegalRef[];     // fundamentos
-     action?: string;       // qué hacer
-   };
-   type LegalRef = {
-     ley: "CFF" | "LISR" | "LIVA" | "RMF" | "CFDI" | "Guía SAT";
-     cita: string;          // "Art. 29-A fracc. VII"
-     vigencia: string;      // "2026"
-     url?: string;          // link oficial cuando exista
-   };
-   ```
+### Fase 1 — Base Electron + SQLite (semana 1)
+- Configurar Electron con `@electron/packager`, `vite.config.ts` con `base: './'`.
+- `electron/main.cjs` con BrowserWindow + IPC bridge.
+- Esquema SQLite espejo de las 31 tablas Supabase actuales.
+- Capa de adaptador `src/integrations/local/client.ts` con la misma API que el cliente Supabase (drop-in).
+- Login local con contraseña maestra + cifrado de DB.
 
-2. **Catálogo central de referencias** en nuevo archivo `src/lib/legal/referencias.ts` (single source of truth, con la fecha de última revisión). Esto evita que cada regla repita texto legal y permite actualizar la legislación en un solo lugar cuando cambia la RMF.
+### Fase 2 — Migración de herramientas core (semana 2)
+- Lector/Validador CFDI offline (parser XML ya es local).
+- Carga masiva de XMLs → SQLite local.
+- Conciliación bancaria (parsers ya son locales).
+- Auditor Express, Deducibilidad, Nómina Oculta, Precios Importación.
+- Exportes Excel/PDF (ya son locales).
 
-3. **Mismo patrón** para los demás módulos: cada función que produce hallazgos (`buildAuditoria`, `detectNominaOculta`, `evaluarDeducibilidad`, `analizarPreciosImportacion`) devuelve findings con `why` + `legal` + `action`.
+### Fase 3 — IA con anonimización (semana 3)
+- Módulo `src/lib/privacy/anonymizer.ts`:
+  - Reemplaza RFC → `RFC_001`, razón social → `EMPRESA_A`, montos → rangos.
+  - Mantiene mapa local para "des-anonimizar" la respuesta.
+- Agente Auditor, Agente CFDI, Asistente Fiscal envían prompts anonimizados.
+- Banner visible: "Esta consulta enviará datos anonimizados a la IA".
+- Toggle por despacho: "Modo paranoia" (deshabilita IA por completo).
 
-4. **Componente `<FindingCard />`** reutilizable que renderiza: badge de color, mensaje, panel colapsable "¿Por qué este color?" y chips con cada referencia legal (clickeables al DOF/SAT cuando hay URL).
+### Fase 4 — SAT y validaciones (semana 4)
+- Validación CFDI contra SAT desde el cliente local (CORS via Electron).
+- Descarga masiva SAT con e.firma → guarda XMLs en `%APPDATA%/ContaClick/xmls/` cifrados.
+- EFOS: descarga periódica de la lista oficial y cachea local.
 
-5. **Semáforo justificado a nivel reporte**: el resumen general (ej. "Riesgo Alto") también explica *"Alto porque hay 3 hallazgos rojos con fundamento en Art. X CFF"*.
+### Fase 5 — Empaquetado y distribución (semana 5)
+- `.exe` (Windows), `.dmg` (Mac), `.AppImage` (Linux) firmados.
+- Auto-updater (electron-updater) apuntando a servidor de releases.
+- Sistema de licencias: el ejecutable valida licencia 1x/mes contra servidor.
+- Backups automáticos del SQLite a carpeta local elegida por el usuario.
 
-## Consideraciones
+---
 
-- **Vigencia**: el catálogo legal lleva campo `vigencia` y una constante `LEGISLACION_VERIFICADA_AL = "2026-06-22"` visible en el pie de cada reporte, para que el contador sepa con qué versión de la ley se evaluó.
-- **No cambia la lógica de detección**, solo enriquece la salida. Las reglas que ya existen siguen disparándose igual.
-- **Exportaciones (CSV/Excel/PDF)**: se añaden columnas "Motivo" y "Fundamento" para que el contador pueda entregar el reporte al cliente con sustento legal.
+## Detalles técnicos clave
 
-## Fuera de alcance
+**Reuso del código actual:** ~80% del frontend (`src/components`, `src/routes`, parsers, lógica de risk/referencias) se reutiliza sin cambios. Solo cambia la capa de datos.
 
-- Validador en línea contra la base oficial del SAT (eso requiere conexión SAT, lo dejamos para cuando esté la descarga masiva).
-- Re-clasificación de niveles existentes (rojo/ámbar/verde se mantienen como están hoy; solo se justifican).
+**Capa de datos polimórfica:** crear `src/integrations/data/index.ts` que exponga `getClient()` y devuelva Supabase (web) o el adaptador SQLite (Electron) según `import.meta.env.VITE_TARGET`.
 
-¿Procedo así o quieres que arranque solo por una herramienta (ej. CFDI) como piloto antes de propagarlo?
+**Build dual:**
+- `bun run build` → versión web (actual).
+- `bun run build:desktop` → versión Electron.
+
+Mismo repo, dos targets.
+
+**Anonimización IA:** el `Anonymizer` extrae entidades con regex (RFC: `[A-Z&Ñ]{3,4}\d{6}[A-Z\d]{3}`), genera tokens estables por sesión, sustituye en el prompt, y revierte en la respuesta. La IA nunca ve RFCs ni nombres reales.
+
+**Cumplimiento legal MX:**
+- Cumple LFPDPPP (datos quedan en posesión del titular del despacho).
+- El aviso de privacidad del producto baja a "no tratamos datos personales de tus clientes — solo viven en tu equipo".
+
+---
+
+## Out of scope
+
+- Sincronización entre múltiples PCs del despacho (sería Fase 6, requiere servidor de sync).
+- Mobile (iOS/Android).
+- IA 100% offline con Ollama (rechazada por el usuario).
+
+---
+
+## Primer paso si apruebas
+
+Arranco con **Fase 1** completa: Electron + SQLite + login local + adaptador que ya permite abrir la app de escritorio y ver el dashboard leyendo de la DB local vacía. Eso te lo entrego en una iteración y a partir de ahí migramos herramientas una por una.
+
+¿Procedo con Fase 1?
