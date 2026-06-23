@@ -58,6 +58,11 @@ function Hub() {
         {MODULES.map((m) => <ModuleCard key={m.key} m={m} />)}
       </section>
 
+      {/* Plan & uso */}
+      <section className="max-w-2xl mx-auto w-full">
+        <UsageMeters />
+      </section>
+
       {/* Legal — secondary card */}
       <section>
         <Link
