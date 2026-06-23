@@ -1730,6 +1730,91 @@ export type Database = {
           },
         ]
       }
+      uso_eventos: {
+        Row: {
+          created_at: string
+          despacho_id: string
+          id: string
+          metadata: Json | null
+          model: string | null
+          tipo: string
+          tokens_in: number
+          tokens_out: number
+          tool: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          despacho_id: string
+          id?: string
+          metadata?: Json | null
+          model?: string | null
+          tipo: string
+          tokens_in?: number
+          tokens_out?: number
+          tool?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          despacho_id?: string
+          id?: string
+          metadata?: Json | null
+          model?: string | null
+          tipo?: string
+          tokens_in?: number
+          tokens_out?: number
+          tool?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uso_eventos_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uso_periodo: {
+        Row: {
+          despacho_id: string
+          ia_requests: number
+          ia_tokens: number
+          id: string
+          periodo: string
+          rfc_activos: number
+          updated_at: string
+        }
+        Insert: {
+          despacho_id: string
+          ia_requests?: number
+          ia_tokens?: number
+          id?: string
+          periodo: string
+          rfc_activos?: number
+          updated_at?: string
+        }
+        Update: {
+          despacho_id?: string
+          ia_requests?: number
+          ia_tokens?: number
+          id?: string
+          periodo?: string
+          rfc_activos?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uso_periodo_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1743,6 +1828,29 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
         }
         Returns: boolean
+      }
+      incrementar_uso_ia: {
+        Args: {
+          _despacho: string
+          _periodo: string
+          _requests: number
+          _tokens: number
+        }
+        Returns: {
+          despacho_id: string
+          ia_requests: number
+          ia_tokens: number
+          id: string
+          periodo: string
+          rfc_activos: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uso_periodo"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       is_member_of: { Args: { _despacho: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
