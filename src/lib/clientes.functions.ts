@@ -103,6 +103,14 @@ export const createCliente = createServerFn({ method: "POST" })
       if (own?.id) despachoId = own.id as string;
     }
 
+    if (despachoId) {
+      try { await assertWithinLimit(supabase, despachoId, "rfcs"); }
+      catch (e) {
+        if (e instanceof UsageLimitError) throw new Error(e.message);
+        throw e;
+      }
+    }
+
     const { data: row, error } = await supabase
       .from("clientes")
       .insert({
