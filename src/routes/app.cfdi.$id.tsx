@@ -30,6 +30,7 @@ function CfdiDetail() {
   const ai = useServerFn(analyzeCfdiAI);
 
   const [iaOut, setIaOut] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["cfdi", id],
