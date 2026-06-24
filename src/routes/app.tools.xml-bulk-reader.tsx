@@ -249,7 +249,18 @@ function BulkReader() {
       description="Sube un ZIP del SAT o varios XML. Obtén una tabla completa con todos los datos clave: emisor, receptor, total, método de pago y estado."
       icon={<FileStack className="h-5 w-5 text-primary-foreground" />}
     >
-      <label className="block rounded-xl border-2 border-dashed border-border bg-card/30 p-10 text-center hover:border-primary/50 transition-colors cursor-pointer">
+      {cliente ? (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-2.5 text-sm flex items-center gap-2 mb-3">
+          <CheckCircle2 className="h-4 w-4 text-primary" />
+          <span>Expediente activo: <strong>{cliente.razon_social}</strong> · RFC <span className="font-mono">{cliente.rfc}</span>. Solo se aceptarán XML donde este RFC sea emisor o receptor.</span>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-2.5 text-sm flex items-center gap-2 mb-3">
+          <AlertTriangle className="h-4 w-4 text-destructive" />
+          <span>No hay expediente activo. Selecciona un RFC en la barra superior antes de cargar XML.</span>
+        </div>
+      )}
+      <label className={`block rounded-xl border-2 border-dashed bg-card/30 p-10 text-center transition-colors ${cliente ? "border-border hover:border-primary/50 cursor-pointer" : "border-border/40 opacity-60 cursor-not-allowed"}`}>
         <input
           type="file"
           accept=".xml,.zip,text/xml,application/xml,application/zip"
