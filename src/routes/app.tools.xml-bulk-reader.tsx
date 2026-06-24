@@ -116,6 +116,11 @@ function BulkReader() {
 
 
   const handleFiles = async (files: FileList) => {
+    if (!cliente) {
+      toast.error("Selecciona primero un expediente (RFC) en la barra superior. La herramienta no puede leer XML sin un RFC activo para evitar mezclar contabilidades.");
+      return;
+    }
+    const rfcActivo = cliente.rfc.toUpperCase();
     setBusy(true);
     const next: Row[] = [];
     const xmlFiles: { name: string; getText: () => Promise<string> }[] = [];
@@ -138,10 +143,20 @@ function BulkReader() {
     }
 
     setProgress({ done: 0, total: xmlFiles.length });
+    let rechazados = 0;
     for (let i = 0; i < xmlFiles.length; i++) {
       try {
         const txt = await xmlFiles[i].getText();
-        next.push(rowFromXml(xmlFiles[i].name, txt));
+        const row = rowFromXml(xmlFiles[i].name, txt);
+        const emisor = (row.rfcEmisor ?? "").toUpperCase();
+        const receptor = (row.rfcReceptor ?? "").toUpperCase();
+        if (emisor !== rfcActivo && receptor !== rfcActivo) {
+          rechazados++;
+          // No se agrega a la tabla: no se "lee" para el expediente.
+          setProgress({ done: i + 1, total: xmlFiles.length });
+          continue;
+        }
+        next.push(row);
       } catch {
         next.push({
           archivo: xmlFiles[i].name,
@@ -154,7 +169,14 @@ function BulkReader() {
     setRows((prev) => [...prev, ...next]);
     setBusy(false);
     setProgress(null);
+    if (rechazados > 0) {
+      toast.warning(`${rechazados} XML rechazado(s): no corresponden al RFC ${rfcActivo} del expediente activo.`);
+    }
+    if (next.length > 0) {
+      toast.success(`${next.length} CFDI(s) válidos para ${rfcActivo}.`);
+    }
   };
+
 
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -227,7 +249,18 @@ function BulkReader() {
       description="Sube un ZIP del SAT o varios XML. Obtén una tabla completa con todos los datos clave: emisor, receptor, total, método de pago y estado."
       icon={<FileStack className="h-5 w-5 text-primary-foreground" />}
     >
-      <label className="block rounded-xl border-2 border-dashed border-border bg-card/30 p-10 text-center hover:border-primary/50 transition-colors cursor-pointer">
+      {cliente ? (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-2.5 text-sm flex items-center gap-2 mb-3">
+          <CheckCircle2 className="h-4 w-4 text-primary" />
+          <span>Expediente activo: <strong>{cliente.razon_social}</strong> · RFC <span className="font-mono">{cliente.rfc}</span>. Solo se aceptarán XML donde este RFC sea emisor o receptor.</span>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-2.5 text-sm flex items-center gap-2 mb-3">
+          <AlertTriangle className="h-4 w-4 text-destructive" />
+          <span>No hay expediente activo. Selecciona un RFC en la barra superior antes de cargar XML.</span>
+        </div>
+      )}
+      <label className={`block rounded-xl border-2 border-dashed bg-card/30 p-10 text-center transition-colors ${cliente ? "border-border hover:border-primary/50 cursor-pointer" : "border-border/40 opacity-60 cursor-not-allowed"}`}>
         <input
           type="file"
           accept=".xml,.zip,text/xml,application/xml,application/zip"
