@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { listClientes, createCliente, deleteCliente } from "@/lib/clientes.functions";
 import { useActiveCliente } from "@/lib/active-cliente";
+import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 
 export const Route = createFileRoute("/app/clientes")({
   component: ClientesPage,
@@ -20,6 +21,7 @@ function ClientesPage() {
   const { cliente: active, setCliente } = useActiveCliente();
   const [openForm, setOpenForm] = useState(false);
   const [q, setQ] = useState("");
+  const [toDelete, setToDelete] = useState<{ id: string; rfc: string; razon: string } | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["clientes"],
