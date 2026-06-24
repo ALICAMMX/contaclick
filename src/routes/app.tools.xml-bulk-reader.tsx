@@ -310,6 +310,10 @@ function BulkReader() {
             <Button variant="glass" size="sm" onClick={exportXlsx}>
               <FileSpreadsheet className="h-3.5 w-3.5" /> Excel
             </Button>
+            <Button variant="hero" size="sm" onClick={guardarEnExpediente} disabled={saving || !cliente}>
+              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              {cliente ? `Guardar en ${cliente.rfc}` : "Selecciona expediente"}
+            </Button>
           </div>
 
           {/* Tabla */}
