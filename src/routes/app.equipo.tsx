@@ -17,6 +17,8 @@ const TEAM_ROLES: { value: TeamRole; label: string; description: string }[] = [
   { value: "auxiliar", label: "Auxiliar", description: "Acceso operativo limitado a los RFC asignados." },
 ];
 
+const roleLabel = (value?: string) => TEAM_ROLES.find((r) => r.value === value)?.label ?? "Colaborador";
+
 export const Route = createFileRoute("/app/equipo")({
   component: EquipoPage,
   head: () => ({ meta: [{ title: "Equipo · CFDI Cloud" }] }),
@@ -211,7 +213,7 @@ function EquipoPage() {
                       {inv.email || <span className="text-muted-foreground italic">Sin correo (link directo)</span>}
                     </div>
                     <div className="text-xs text-muted-foreground mt-0.5">
-                      Pendiente · Expira {new Date(inv.expires_at).toLocaleDateString("es-MX")}
+                      {roleLabel(inv.role)} · Expira {new Date(inv.expires_at).toLocaleDateString("es-MX")}
                     </div>
                   </div>
                   <Button size="sm" variant="outline" title="Copiar link de respaldo" onClick={() => { navigator.clipboard.writeText(url); toast.success("Link copiado"); }}>
