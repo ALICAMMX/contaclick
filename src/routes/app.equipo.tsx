@@ -4,12 +4,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { listTeam, createInvitation, revokeInvitation, removeMember } from "@/lib/equipo/equipo.functions";
+import { listClientes } from "@/lib/clientes.functions";
 import { getAccesoConfig, toggleAccesoRestringido, listAsignaciones, setAsignacion } from "@/lib/asignaciones/asignaciones.functions";
 import { Button } from "@/components/ui/button";
-import { Copy, Link2, Lock, Mail, Trash2, UserPlus, Users, X, ShieldCheck, Info, Check } from "lucide-react";
+import { Copy, Link2, Lock, Mail, Trash2, UserPlus, Users, X, ShieldCheck, Info, Check, UserCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
-type TeamRole = "colaborador" | "contador" | "auxiliar";
+type TeamRole = "colaborador" | "contador" | "auxiliar" | "cliente_final";
 
 const TEAM_ROLES: {
   value: TeamRole;
