@@ -931,6 +931,7 @@ export type Database = {
           created_at: string
           created_by: string
           despacho_id: string
+          email: string | null
           expires_at: string
           id: string
           revoked_at: string | null
@@ -943,6 +944,7 @@ export type Database = {
           created_at?: string
           created_by: string
           despacho_id: string
+          email?: string | null
           expires_at?: string
           id?: string
           revoked_at?: string | null
@@ -955,6 +957,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           despacho_id?: string
+          email?: string | null
           expires_at?: string
           id?: string
           revoked_at?: string | null
