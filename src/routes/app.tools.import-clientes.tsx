@@ -76,6 +76,7 @@ function ImportClientesPage() {
       const err = out.length - ok;
       qc.invalidateQueries({ queryKey: ["clientes"] });
       qc.invalidateQueries({ queryKey: ["rfcs-vinculados"] });
+      qc.invalidateQueries({ queryKey: ["usage"] });
       if (err === 0) toast.success(`Importación completa: ${ok} registros`);
       else toast.warning(`${ok} importados, ${err} con error`);
     },
