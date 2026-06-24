@@ -9,6 +9,16 @@ import { Button } from "@/components/ui/button";
 import { Copy, Link2, Lock, Mail, Trash2, UserPlus, Users, X, ShieldCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
+type TeamRole = "colaborador" | "contador" | "auxiliar";
+
+const TEAM_ROLES: { value: TeamRole; label: string; description: string }[] = [
+  { value: "colaborador", label: "Colaborador", description: "Sólo ve los RFC asignados cuando el acceso está restringido." },
+  { value: "contador", label: "Contador", description: "Puede trabajar expedientes asignados, sin permisos de administración." },
+  { value: "auxiliar", label: "Auxiliar", description: "Acceso operativo limitado a los RFC asignados." },
+];
+
+const roleLabel = (value?: string) => TEAM_ROLES.find((r) => r.value === value)?.label ?? "Colaborador";
+
 export const Route = createFileRoute("/app/equipo")({
   component: EquipoPage,
   head: () => ({ meta: [{ title: "Equipo · CFDI Cloud" }] }),
@@ -23,13 +33,14 @@ function EquipoPage() {
 
   const { data, isLoading } = useQuery({ queryKey: ["team"], queryFn: () => fetchTeam() });
   const [email, setEmail] = useState("");
-  const [lastResult, setLastResult] = useState<{ matched: boolean; email: string; full_name?: string | null; link?: string } | null>(null);
+  const [role, setRole] = useState<TeamRole>("colaborador");
+  const [lastResult, setLastResult] = useState<{ matched: boolean; email: string; role_label?: string; full_name?: string | null; link?: string } | null>(null);
 
   const createMut = useMutation({
-    mutationFn: (em: string) => createFn({ data: { email: em, role: "colaborador" } }),
+    mutationFn: (input: { email: string; role: TeamRole }) => createFn({ data: input }),
     onSuccess: (r: any) => {
       const link = `${window.location.origin}/invitar/${r.token}`;
-      setLastResult({ matched: !!r.matched, email: r.email, full_name: r.full_name, link });
+      setLastResult({ matched: !!r.matched, email: r.email, role_label: r.role_label, full_name: r.full_name, link });
       setEmail("");
       if (r.matched) {
         toast.success(`${r.full_name || r.email} se agregó al despacho`);
@@ -75,7 +86,7 @@ function EquipoPage() {
       toast.error("Escribe un correo válido");
       return;
     }
-    createMut.mutate(v);
+    createMut.mutate({ email: v, role });
   };
 
   return (
@@ -105,11 +116,25 @@ function EquipoPage() {
             className="flex-1"
             autoComplete="off"
           />
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value as TeamRole)}
+            disabled={createMut.isPending || !canInvite}
+            className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm sm:w-44"
+            aria-label="Rol del invitado"
+          >
+            {TEAM_ROLES.map((r) => (
+              <option key={r.value} value={r.value}>{r.label}</option>
+            ))}
+          </select>
           <Button type="submit" disabled={createMut.isPending || !canInvite || !email.trim()}>
             <UserPlus className="h-4 w-4 mr-2" />
             {createMut.isPending ? "Invitando…" : "Invitar"}
           </Button>
         </form>
+        <p className="text-xs text-muted-foreground">
+          {TEAM_ROLES.find((r) => r.value === role)?.description}
+        </p>
         {!canInvite && (
           <p className="text-xs text-amber-500">Alcanzaste el límite de tu plan. Mejora tu plan para invitar a más miembros.</p>
         )}
@@ -122,12 +147,12 @@ function EquipoPage() {
               <div className="text-sm font-medium flex items-center gap-2">
                 <UserPlus className="h-4 w-4" /> {lastResult.full_name || lastResult.email} ya tenía cuenta y se agregó al despacho.
               </div>
-              <p className="text-xs text-muted-foreground">Ya puede iniciar sesión y verá este despacho en su lista.</p>
+              <p className="text-xs text-muted-foreground">Rol asignado: {lastResult.role_label ?? "Colaborador"}. Ya puede iniciar sesión y verá este despacho en su lista.</p>
             </>
           ) : (
             <>
               <div className="text-sm font-medium flex items-center gap-2">
-                <Mail className="h-4 w-4" /> Invitación pendiente para {lastResult.email}.
+                <Mail className="h-4 w-4" /> Invitación pendiente para {lastResult.email} · {lastResult.role_label ?? "Colaborador"}.
               </div>
               <p className="text-xs text-muted-foreground">
                 Pídele que se registre en ContaClick con ese mismo correo — entrará a tu despacho automáticamente. Si prefieres, también puedes mandarle este link:
@@ -157,7 +182,7 @@ function EquipoPage() {
               </div>
               <div className="flex items-center gap-3">
                 <span className={`text-xs px-2 py-0.5 rounded-full ${m.role === "despacho" ? "bg-primary/15 text-primary" : "bg-accent/30 text-foreground"}`}>
-                  {m.role === "despacho" ? "Admin" : "Colaborador"}
+                  {m.role_label ?? (m.role === "despacho" ? "Admin" : "Colaborador")}
                 </span>
                 {!m.is_self && m.role !== "despacho" && (
                   <Button size="sm" variant="ghost" onClick={() => { if (confirm("¿Remover a este miembro?")) removeMut.mutate(m.user_id); }}>
@@ -188,7 +213,7 @@ function EquipoPage() {
                       {inv.email || <span className="text-muted-foreground italic">Sin correo (link directo)</span>}
                     </div>
                     <div className="text-xs text-muted-foreground mt-0.5">
-                      Pendiente · Expira {new Date(inv.expires_at).toLocaleDateString("es-MX")}
+                      {roleLabel(inv.role)} · Expira {new Date(inv.expires_at).toLocaleDateString("es-MX")}
                     </div>
                   </div>
                   <Button size="sm" variant="outline" title="Copiar link de respaldo" onClick={() => { navigator.clipboard.writeText(url); toast.success("Link copiado"); }}>
@@ -236,7 +261,7 @@ function AccesoExpedientesSection() {
   });
 
   const restringido = !!cfg.data?.accesoRestringido;
-  const miembros = (data.data?.miembros ?? []).filter((m) => m.role !== "despacho");
+  const miembros = (data.data?.miembros ?? []).filter((m: any) => m.role !== "despacho");
   const clientes = data.data?.clientes ?? [];
   const asignados = new Set((data.data?.asignaciones ?? []).map((a) => `${a.user_id}|${a.cliente_id}`));
 
@@ -282,7 +307,7 @@ function AccesoExpedientesSection() {
               <thead className="text-xs uppercase text-muted-foreground bg-muted/30">
                 <tr>
                   <th className="text-left px-3 py-2 sticky left-0 bg-muted/30">Expediente</th>
-                  {miembros.map((m) => (
+                  {miembros.map((m: any) => (
                     <th key={m.user_id} className="px-3 py-2 text-center font-medium">
                       <div className="truncate max-w-[140px]">{m.full_name || m.email || m.user_id.slice(0, 6)}</div>
                     </th>
@@ -296,7 +321,7 @@ function AccesoExpedientesSection() {
                       <div className="font-medium">{c.razon_social}</div>
                       <div className="text-xs font-mono text-muted-foreground">{c.rfc}</div>
                     </td>
-                    {miembros.map((m) => {
+                    {miembros.map((m: any) => {
                       const checked = asignados.has(`${m.user_id}|${c.id}`);
                       return (
                         <td key={m.user_id} className="px-3 py-2 text-center">

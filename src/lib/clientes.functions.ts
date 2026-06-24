@@ -16,6 +16,31 @@ const CreateSchema = z.object({
   notas: z.string().max(2000).optional().nullable(),
 });
 
+async function canManageExpedientes(supabase: any, userId: string, despachoId: string | null) {
+  if (!despachoId) return true;
+  const { data: despacho } = await supabase
+    .from("despachos")
+    .select("owner_user_id")
+    .eq("id", despachoId)
+    .maybeSingle();
+  if (despacho?.owner_user_id === userId) return true;
+
+  const { data: role } = await supabase
+    .from("user_roles")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("despacho_id", despachoId)
+    .eq("role", "despacho")
+    .maybeSingle();
+  return !!role;
+}
+
+async function assertCanCreateExpediente(supabase: any, userId: string, despachoId: string | null) {
+  if (!(await canManageExpedientes(supabase, userId, despachoId))) {
+    throw new Error("Tu rol no permite cargar nuevos expedientes. Pide al administrador que lo cargue o te asigne el RFC.");
+  }
+}
+
 export const listClientes = createServerFn({ method: "GET" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -33,7 +58,7 @@ export const listClientes = createServerFn({ method: "GET" })
     // Si el despacho activa acceso_restringido, los colaboradores sólo ven
     // los expedientes que les fueron asignados. Owner y rol "despacho" ven todo.
     const despachoIds = Array.from(new Set(rows.map((r: any) => r.despacho_id).filter(Boolean)));
-    if (despachoIds.length === 0) return { clientes: rows.map(({ despacho_id: _d, ...r }: any) => r) };
+    if (despachoIds.length === 0) return { clientes: rows.map(({ despacho_id: _d, ...r }: any) => r), canManageExpedientes: true };
 
     const { data: desps } = await supabase
       .from("despachos").select("id, owner_user_id, acceso_restringido").in("id", despachoIds);
@@ -67,7 +92,10 @@ export const listClientes = createServerFn({ method: "GET" })
       return allowedSet?.has(r.id);
     }).map(({ despacho_id: _d, ...r }: any) => r);
 
-    return { clientes: visible };
+    let activeDespachoId: string | null = null;
+    try { activeDespachoId = await resolveActiveDespachoId(supabase, userId); } catch { activeDespachoId = null; }
+
+    return { clientes: visible, canManageExpedientes: await canManageExpedientes(supabase, userId, activeDespachoId) };
   });
 
 export const getCliente = createServerFn({ method: "GET" })
@@ -130,6 +158,8 @@ export const createCliente = createServerFn({ method: "POST" })
 
     let despachoId: string | null = null;
     try { despachoId = await resolveActiveDespachoId(supabase, userId); } catch { despachoId = null; }
+
+    await assertCanCreateExpediente(supabase, userId, despachoId);
 
     if (despachoId) {
       try { await assertWithinLimit(supabase, despachoId, "rfcs"); }
@@ -201,6 +231,10 @@ export const upsertClienteFromCsf = createServerFn({ method: "POST" })
 
     const { data: existing } = await query.maybeSingle();
 
+    if (!existing) {
+      await assertCanCreateExpediente(supabase, userId, despachoId);
+    }
+
     const csfFecha = data.csf_ultima_emision || null;
 
     const payload = {
@@ -271,12 +305,14 @@ export const listTerceros = createServerFn({ method: "GET" })
 export const listRfcsVinculados = createServerFn({ method: "GET" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const { data, error } = await supabase
       .from("clientes")
       .select("id, rfc, razon_social, regimen_fiscal, tipo_relacion, tipo_persona, codigo_postal, csf_ultima_emision, created_at")
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
-    return { rfcs: data ?? [] };
+    let activeDespachoId: string | null = null;
+    try { activeDespachoId = await resolveActiveDespachoId(supabase, userId); } catch { activeDespachoId = null; }
+    return { rfcs: data ?? [], canManageExpedientes: await canManageExpedientes(supabase, userId, activeDespachoId) };
   });
 

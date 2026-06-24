@@ -63,11 +63,13 @@ function RfcsVinculadosPage() {
             Depósito de todas las CSF que has cargado: clientes, proveedores y acreedores. Las herramientas que necesiten un RFC podrán invocarlos de aquí.
           </p>
         </div>
-        <Link to="/app/tools/csf-parser">
-          <Button variant="hero">
-            <Upload className="h-4 w-4" /> Cargar CSF
-          </Button>
-        </Link>
+        {data?.canManageExpedientes && (
+          <Link to="/app/tools/csf-parser">
+            <Button variant="hero">
+              <Upload className="h-4 w-4" /> Cargar CSF
+            </Button>
+          </Link>
+        )}
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
@@ -141,14 +143,16 @@ function RfcsVinculadosPage() {
                             Abrir expediente
                           </Link>
                         )}
-                        <button
-                          onClick={() => {
-                            if (confirm(`¿Eliminar el RFC ${r.rfc}?`)) deleteMut.mutate(r.id);
-                          }}
-                          className="text-xs px-2 py-1 rounded-md text-destructive hover:bg-destructive/10 inline-flex items-center gap-1"
-                        >
-                          <Trash2 className="h-3 w-3" /> Eliminar
-                        </button>
+                        {data?.canManageExpedientes && (
+                          <button
+                            onClick={() => {
+                              if (confirm(`¿Eliminar el RFC ${r.rfc}?`)) deleteMut.mutate(r.id);
+                            }}
+                            className="text-xs px-2 py-1 rounded-md text-destructive hover:bg-destructive/10 inline-flex items-center gap-1"
+                          >
+                            <Trash2 className="h-3 w-3" /> Eliminar
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

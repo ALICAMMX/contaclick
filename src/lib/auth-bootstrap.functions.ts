@@ -7,6 +7,11 @@ const BootstrapSchema = z.object({
   despachoNombre: z.string().max(180).optional().nullable(),
 });
 
+function normalizeInvitedRole(role: string | null | undefined) {
+  if (role === "contador" || role === "auxiliar" || role === "colaborador") return role;
+  return "colaborador";
+}
+
 export const ensureUserWorkspace = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => BootstrapSchema.parse(data))
@@ -67,7 +72,7 @@ export const ensureUserWorkspace = createServerFn({ method: "POST" })
           {
             user_id: userId,
             despacho_id: inv.despacho_id,
-            role: inv.role ?? "colaborador",
+              role: normalizeInvitedRole(inv.role),
           },
           { onConflict: "user_id,role,despacho_id,cliente_id" },
         );
