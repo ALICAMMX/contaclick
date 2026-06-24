@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.incrementar_uso_ia(uuid, text, integer, bigint) FROM PUBLIC, anon;
