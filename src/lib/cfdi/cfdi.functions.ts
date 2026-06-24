@@ -224,8 +224,65 @@ async function ingestOneInternal(
     );
   }
 
+  // CANDADO: validar UUIDs relacionados (Pago 2.0 y CfdiRelacionados)
+  // Si un complemento de pago apunta a un UUID que NO está en el expediente,
+  // o el padre tiene un emisor distinto al receptor del pago, lo registramos
+  // como advertencia para que el contador no concilie pagos huérfanos.
+  if (parsed.relacionados.length) {
+    const uuidsRel = parsed.relacionados.map((r) => r.uuid.toUpperCase());
+    const { data: parents } = await supabase
+      .from("cfdi_xml")
+      .select("uuid, rfc_emisor, rfc_receptor, estatus_sat, total")
+      .eq("cliente_id", clienteId)
+      .in("uuid", uuidsRel);
+    const parentByUuid = new Map(
+      (parents ?? []).map((p) => [String(p.uuid).toUpperCase(), p]),
+    );
+
+    const relRows: Array<{ cfdi_id: string; uuid_relacionado: string; tipo_relacion: string }> = [];
+    const advertencias: string[] = [];
+    for (const r of parsed.relacionados) {
+      const u = r.uuid.toUpperCase();
+      const parent = parentByUuid.get(u);
+      if (!parent) {
+        advertencias.push(`UUID relacionado ${u} no existe en el expediente.`);
+      } else if (parsed.tipoComprobante === "P") {
+        // En un complemento de pago, el emisor del pago debe coincidir con el receptor
+        // de la factura (quien cobra). Si no, hay riesgo de pago mal aplicado.
+        if (parsed.emisor.rfc?.toUpperCase() !== String(parent.rfc_emisor).toUpperCase()) {
+          advertencias.push(
+            `UUID ${u}: el emisor del pago (${parsed.emisor.rfc}) no coincide con el emisor de la factura padre (${parent.rfc_emisor}).`,
+          );
+        }
+        if (parent.estatus_sat === "cancelado") {
+          advertencias.push(`UUID ${u}: la factura padre está cancelada en el SAT.`);
+        }
+      }
+      relRows.push({
+        cfdi_id: ins.id,
+        uuid_relacionado: u,
+        tipo_relacion: r.tipo === "pago" ? "pago" : (r.tipoRelacion ?? "relacion"),
+      });
+    }
+    if (relRows.length) {
+      await supabase.from("cfdi_relaciones").insert(relRows);
+    }
+    if (advertencias.length) {
+      console.warn(`[cfdi ${parsed.uuid}] relaciones con advertencias:`, advertencias);
+      // Registrar como alerta para el contador
+      await supabase.from("audit_logs").insert({
+        despacho_id: despachoId,
+        accion: "cfdi.relacion.advertencia",
+        entidad: "cfdi_xml",
+        entidad_id: ins.id,
+        payload: { uuid: parsed.uuid, tipo: parsed.tipoComprobante, advertencias },
+      });
+    }
+  }
+
   return { id: ins.id as string, uuid: parsed.uuid, duplicado: false };
 }
+
 
 export const getExistingCfdiKeys = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
