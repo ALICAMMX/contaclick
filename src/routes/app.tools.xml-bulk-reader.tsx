@@ -1,12 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { FileStack, Upload, Download, FileSpreadsheet, AlertTriangle, CheckCircle2, Search } from "lucide-react";
+import { FileStack, Upload, Download, FileSpreadsheet, AlertTriangle, CheckCircle2, Search, Save, Loader2 } from "lucide-react";
 import JSZip from "jszip";
 import * as XLSX from "xlsx";
+import { useServerFn } from "@tanstack/react-start";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ToolShell } from "@/components/ToolShell";
 import { parseCfdi } from "@/lib/tools/cfdi-parser";
+import { useActiveCliente } from "@/lib/active-cliente";
+import { uploadCfdiBatch } from "@/lib/cfdi/cfdi.functions";
 
 export const Route = createFileRoute("/app/tools/xml-bulk-reader")({
   component: BulkReader,
