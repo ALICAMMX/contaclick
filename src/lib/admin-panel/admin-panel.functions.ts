@@ -52,7 +52,7 @@ export const adminListUsers = createServerFn({ method: "GET" })
     await assertSuperAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const [profilesRes, despachosRes, subsRes, pagosRes, iaRes, rolesRes, membRes, planesRes, authRes] = await Promise.all([
+    const [profilesRes, despachosRes, subsRes, pagosRes, iaRes, rolesRes, membRes, planesRes, authRes, clientesRes] = await Promise.all([
       supabaseAdmin.from("profiles").select("*"),
       supabaseAdmin.from("despachos").select("*"),
       supabaseAdmin.from("suscripciones").select("*").order("created_at", { ascending: false }),
@@ -62,6 +62,7 @@ export const adminListUsers = createServerFn({ method: "GET" })
       supabaseAdmin.from("user_memberships").select("*"),
       supabaseAdmin.from("planes").select("*"),
       supabaseAdmin.auth.admin.listUsers({ perPage: 1000 }),
+      supabaseAdmin.from("clientes").select("despacho_id, tipo_relacion"),
     ]);
 
     if (profilesRes.error) throw new Error(profilesRes.error.message);
