@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { FileStack, Upload, Download, FileSpreadsheet, AlertTriangle, CheckCircle2, Search, Save, Loader2, ShieldAlert, XCircle, Copy } from "lucide-react";
+import { FileStack, Upload, Download, FileSpreadsheet, AlertTriangle, CheckCircle2, Search, Save, Loader2 } from "lucide-react";
 import JSZip from "jszip";
 import * as XLSX from "xlsx";
 import { useServerFn } from "@tanstack/react-start";
@@ -8,7 +8,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ToolShell } from "@/components/ToolShell";
 import { parseCfdi } from "@/lib/tools/cfdi-parser";
 import { useActiveCliente } from "@/lib/active-cliente";
@@ -67,22 +66,10 @@ function rowFromXml(filename: string, xml: string): Row {
   };
 }
 
-type Rejection = { archivo: string; motivo: string; detalle?: string };
-type RejectReport = {
-  rfc: string;
-  aceptados: number;
-  rfcAjeno: Rejection[];
-  duplicadosLocal: Rejection[];
-  duplicadosExpediente: Rejection[];
-  sinUuid: Rejection[];
-  errores: Rejection[];
-};
+import { classifyXmls, reportTotalRejections, type RejectReport } from "@/lib/cfdi/dedup-xml";
+import { RejectModal } from "@/components/RejectModal";
 
-async function sha256Hex(text: string): Promise<string> {
-  const enc = new TextEncoder().encode(text);
-  const buf = await crypto.subtle.digest("SHA-256", enc);
-  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
-}
+
 
 function BulkReader() {
   const [rows, setRows] = useState<Row[]>([]);
@@ -176,58 +163,38 @@ function BulkReader() {
     }
 
     setProgress({ done: 0, total: xmlFiles.length });
-    const next: Row[] = [];
-    const rep: RejectReport = {
-      rfc: rfcActivo,
-      aceptados: 0,
-      rfcAjeno: [],
-      duplicadosLocal: [],
-      duplicadosExpediente: [],
-      sinUuid: [],
-      errores: [],
-    };
-
+    // Cargar textos primero para mostrar progreso (lectura), luego clasificar
+    const filesText: Array<{ filename: string; xml: string }> = [];
     for (let i = 0; i < xmlFiles.length; i++) {
-      const name = xmlFiles[i].name;
       try {
         const txt = await xmlFiles[i].getText();
-        const row = rowFromXml(name, txt);
-        const emisor = (row.rfcEmisor ?? "").toUpperCase();
-        const receptor = (row.rfcReceptor ?? "").toUpperCase();
-        const uuid = (row.uuid ?? "").toUpperCase();
-        const hash = await sha256Hex(txt);
-
-        if (emisor !== rfcActivo && receptor !== rfcActivo) {
-          rep.rfcAjeno.push({ archivo: name, motivo: "RFC ajeno", detalle: `Emisor ${emisor || "—"} · Receptor ${receptor || "—"}` });
-        } else if (!uuid) {
-          rep.sinUuid.push({ archivo: name, motivo: "Sin UUID (no timbrado)" });
-        } else if (localUuids.has(uuid) || localHashes.has(hash)) {
-          rep.duplicadosLocal.push({ archivo: name, motivo: "Ya cargado en esta sesión", detalle: `UUID ${uuid}` });
-        } else if (dbUuids.has(uuid) || dbHashes.has(hash)) {
-          rep.duplicadosExpediente.push({ archivo: name, motivo: "Ya existe en el expediente", detalle: `UUID ${uuid}` });
-        } else {
-          next.push(row);
-          localUuids.add(uuid);
-          localHashes.add(hash);
-          rep.aceptados++;
-        }
-      } catch (e) {
-        rep.errores.push({ archivo: name, motivo: "No se pudo leer el archivo", detalle: e instanceof Error ? e.message : "" });
+        filesText.push({ filename: xmlFiles[i].name, xml: txt });
+      } catch {
+        filesText.push({ filename: xmlFiles[i].name, xml: "" });
       }
       setProgress({ done: i + 1, total: xmlFiles.length });
     }
 
+    const { accepted, report: rep } = await classifyXmls({
+      rfcActivo,
+      files: filesText,
+      dbUuids,
+      dbHashes,
+      seenUuids: new Set(rows.map((r) => (r.uuid ?? "").toUpperCase()).filter(Boolean)),
+    });
+
+    const next: Row[] = accepted.map((a) => rowFromXml(a.filename, a.xml));
     setRows((prev) => [...prev, ...next]);
     setBusy(false);
     setProgress(null);
 
-    const totalRechazos = rep.rfcAjeno.length + rep.duplicadosLocal.length + rep.duplicadosExpediente.length + rep.sinUuid.length + rep.errores.length;
-    if (totalRechazos > 0) {
+    if (reportTotalRejections(rep) > 0) {
       setReport(rep);
     } else if (rep.aceptados > 0) {
       toast.success(`${rep.aceptados} CFDI(s) cargados para ${rfcActivo}.`);
     }
   };
+
 
 
 
@@ -547,65 +514,3 @@ function EstadoBadge({ estado, warnings }: { estado: Row["estado"]; warnings: nu
   );
 }
 
-function RejectModal({ report, onClose }: { report: RejectReport | null; onClose: () => void }) {
-  const open = !!report;
-  const groups = report
-    ? [
-        { key: "rfcAjeno", title: "RFC ajeno (no corresponde al expediente)", icon: <ShieldAlert className="h-4 w-4" />, tone: "destructive" as const, items: report.rfcAjeno },
-        { key: "duplicadosExpediente", title: "Ya existen en el expediente", icon: <Copy className="h-4 w-4" />, tone: "warning" as const, items: report.duplicadosExpediente },
-        { key: "duplicadosLocal", title: "Duplicados en esta carga", icon: <Copy className="h-4 w-4" />, tone: "warning" as const, items: report.duplicadosLocal },
-        { key: "sinUuid", title: "Sin UUID (no timbrados)", icon: <XCircle className="h-4 w-4" />, tone: "muted" as const, items: report.sinUuid },
-        { key: "errores", title: "Errores de lectura", icon: <XCircle className="h-4 w-4" />, tone: "destructive" as const, items: report.errores },
-      ].filter((g) => g.items.length > 0)
-    : [];
-  const totalRechazos = groups.reduce((a, g) => a + g.items.length, 0);
-
-  return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-destructive">
-            <ShieldAlert className="h-5 w-5" />
-            Se rechazaron {totalRechazos} archivo{totalRechazos !== 1 ? "s" : ""}
-          </DialogTitle>
-          <DialogDescription>
-            Expediente activo: <strong>RFC {report?.rfc}</strong>. Se aceptaron {report?.aceptados ?? 0} CFDI(s).
-            Los archivos rechazados <strong>no se cargaron</strong> para evitar mezclar contabilidades o duplicar información.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-          {groups.map((g) => (
-            <div
-              key={g.key}
-              className={`rounded-lg border p-3 ${
-                g.tone === "destructive" ? "border-destructive/40 bg-destructive/5"
-                : g.tone === "warning" ? "border-warning/40 bg-warning/5"
-                : "border-border bg-muted/30"
-              }`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  {g.icon} {g.title}
-                </div>
-                <span className="text-xs font-semibold tabular-nums">{g.items.length}</span>
-              </div>
-              <ul className="text-xs space-y-1 max-h-40 overflow-y-auto">
-                {g.items.map((it, i) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <span className="font-mono text-muted-foreground truncate max-w-[55%]">{it.archivo}</span>
-                    {it.detalle && <span className="text-muted-foreground">· {it.detalle}</span>}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-
-        <DialogFooter>
-          <Button onClick={onClose}>Entendido</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}

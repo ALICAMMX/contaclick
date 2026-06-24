@@ -4,8 +4,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useRef, useState } from "react";
 import {
   Banknote, Upload, Sparkles, AlertTriangle, CheckCircle2, FileSpreadsheet,
-  Loader2, TrendingUp, TrendingDown, Wand2, X, Download, FileText,
+  Loader2, TrendingUp, TrendingDown, Wand2, X, Download, FileText, ShieldAlert,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { RichMarkdown } from "@/components/RichMarkdown";
@@ -13,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Info } from "lucide-react";
 import { fmtFechaMx } from "@/lib/utils";
 import { useActiveCliente } from "@/lib/active-cliente";
-import { parseBankFile, type ParsedMovimiento } from "@/lib/conciliacion/parsers";
+import { parseBankFile, extractBankFileText, bankFileMatchesContribuyente, type ParsedMovimiento } from "@/lib/conciliacion/parsers";
 import {
   uploadMovimientos, listMovimientos, runReconciliation,
   getReconciliationStats, analyzeReconciliationAI, updateConciliacion,
@@ -144,24 +145,38 @@ function ConciliacionPage() {
     return map;
   }, [cuentas.data, list.data]);
 
+  const [bankReject, setBankReject] = useState<{ archivo: string; razon: string } | null>(null);
+
   async function onPickFiles(files: FileList | null) {
     if (!files?.length) return;
+    if (!cliente) {
+      toast.error("Selecciona un expediente (RFC) en la barra superior antes de cargar estados de cuenta.");
+      return;
+    }
     setParsingErr(null);
     const all: ParsedMovimiento[] = [];
     try {
       for (const f of Array.from(files)) {
+        // CANDADO: verificar que el estado de cuenta sea del contribuyente activo
+        const text = await extractBankFileText(f);
+        const check = bankFileMatchesContribuyente(text, { rfc: cliente.rfc, razon_social: cliente.razon_social });
+        if (!check.match) {
+          setBankReject({ archivo: f.name, razon: check.reason ?? "El archivo no coincide con el contribuyente del expediente." });
+          return; // no procesamos NINGÚN archivo del lote para evitar conciliaciones cruzadas
+        }
         const rows = await parseBankFile(f);
         all.push(...rows);
       }
       if (!all.length) throw new Error("No se detectaron movimientos. Verifica que el archivo tenga columnas Fecha, Descripción y Cargo/Abono o Monto.");
       setParsed(all);
-      toast.success(`${all.length} movimientos detectados`);
+      toast.success(`${all.length} movimientos detectados para ${cliente.rfc}`);
     } catch (e) {
       const msg = (e as Error).message;
       setParsingErr(msg);
       toast.error(msg);
     }
   }
+
 
   function exportCsv() {
     if (!list.data) return;
@@ -233,6 +248,11 @@ function ConciliacionPage() {
 
   return (
     <div className="space-y-6">
+      <BankRejectDialog
+        info={bankReject}
+        cliente={cliente ? { rfc: cliente.rfc, razon_social: cliente.razon_social } : null}
+        onClose={() => setBankReject(null)}
+      />
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="flex items-start gap-4">
           <div className="h-12 w-12 rounded-xl flex items-center justify-center" style={{ background: "var(--gradient-primary)" }}>
@@ -470,4 +490,41 @@ function MatchBadge({ c }: { c?: { tipo_match: string; probabilidad: number | nu
 
 function fmtMxn(n: number) {
   return `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function BankRejectDialog({
+  info, cliente, onClose,
+}: {
+  info: { archivo: string; razon: string } | null;
+  cliente: { rfc: string; razon_social: string } | null;
+  onClose: () => void;
+}) {
+  return (
+    <Dialog open={!!info} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-destructive">
+            <ShieldAlert className="h-5 w-5" /> Estado de cuenta rechazado
+          </DialogTitle>
+          <DialogDescription>
+            No se cargó <strong className="font-mono">{info?.archivo}</strong> para evitar conciliar movimientos del contribuyente equivocado.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm space-y-2">
+          <div><strong>Motivo:</strong> {info?.razon}</div>
+          {cliente && (
+            <div>
+              <strong>Expediente activo:</strong> RFC <span className="font-mono">{cliente.rfc}</span> · {cliente.razon_social}
+            </div>
+          )}
+          <div className="text-xs text-muted-foreground">
+            Verifica que el archivo corresponda a la cuenta bancaria de este contribuyente antes de subirlo de nuevo.
+          </div>
+        </div>
+        <DialogFooter>
+          <Button onClick={onClose}>Entendido</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
