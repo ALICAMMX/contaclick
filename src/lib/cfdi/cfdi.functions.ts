@@ -227,6 +227,20 @@ async function ingestOneInternal(
   return { id: ins.id as string, uuid: parsed.uuid, duplicado: false };
 }
 
+export const getExistingCfdiKeys = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ cliente_id: z.string().min(1) }).parse(d))
+  .handler(async ({ data, context }) => {
+    if (!UUID_RE.test(data.cliente_id)) return { uuids: [] as string[], hashes: [] as string[] };
+    const { data: rows } = await context.supabase
+      .from("cfdi_xml")
+      .select("uuid, archivo_hash")
+      .eq("cliente_id", data.cliente_id);
+    const uuids = (rows ?? []).map((r) => String(r.uuid ?? "").toUpperCase()).filter(Boolean);
+    const hashes = (rows ?? []).map((r) => String(r.archivo_hash ?? "")).filter(Boolean);
+    return { uuids, hashes };
+  });
+
 export const listCfdi = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) => ListSchema.parse(d))
