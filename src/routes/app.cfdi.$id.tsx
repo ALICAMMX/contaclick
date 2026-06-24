@@ -100,10 +100,27 @@ function CfdiDetail() {
         <Link to="/app/cfdi" className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
           <ArrowLeft className="h-4 w-4" /> Volver
         </Link>
-        <Button variant="ghost" size="sm" onClick={() => delM.mutate()} disabled={delM.isPending}>
+        <Button variant="ghost" size="sm" onClick={() => setConfirmOpen(true)} disabled={delM.isPending}>
           <Trash2 className="h-4 w-4 mr-1" /> Eliminar
         </Button>
       </div>
+
+      <ConfirmDeleteDialog
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        loading={delM.isPending}
+        title="Eliminar CFDI"
+        expected={c.uuid.slice(0, 8).toUpperCase()}
+        warning="El CFDI se eliminará del expediente y se quitará de los cálculos de ISR/IVA y conciliación. Esta acción no se puede deshacer."
+        description={
+          <>
+            Vas a eliminar el CFDI con UUID{" "}
+            <span className="font-mono text-foreground">{c.uuid}</span> por un total de{" "}
+            <span className="font-semibold">{fmt(Number(c.total))}</span>.
+          </>
+        }
+        onConfirm={() => delM.mutate()}
+      />
 
       <div className="rounded-2xl border border-border bg-gradient-to-br from-card via-card to-card/40 p-6">
         <div className="flex items-start justify-between gap-4">
