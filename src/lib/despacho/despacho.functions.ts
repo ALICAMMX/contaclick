@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
+import { resolveActiveDespachoId } from "@/lib/despacho/resolve";
 
 // Returns the active despacho for the signed-in user.
 // If none exists (legacy user), creates one on demand and returns it.
@@ -10,20 +11,13 @@ export const getMyDespacho = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
 
-    // Try membership first
-    const { data: mem } = await supabase
-      .from("user_memberships")
-      .select("despacho_id")
-      .eq("user_id", userId)
-      .eq("estado", "activo")
-      .limit(1)
-      .maybeSingle();
-
-    if (mem?.despacho_id) {
+    // Resolve centralizes the rule: invited collaborators adopt the inviter's despacho.
+    try {
+      const despachoId = await resolveActiveDespachoId(supabase, userId);
       const { data: d } = await supabase
         .from("despachos")
         .select("id, nombre, rfc_despacho, estado, trial_ends_at, plan_id")
-        .eq("id", mem.despacho_id)
+        .eq("id", despachoId)
         .maybeSingle();
       if (d) {
         return {
@@ -37,6 +31,8 @@ export const getMyDespacho = createServerFn({ method: "GET" })
           },
         };
       }
+    } catch {
+      // Fall back to legacy owner lookup below.
     }
 
     // Fallback: owner row (legacy)
