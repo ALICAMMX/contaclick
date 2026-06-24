@@ -392,7 +392,7 @@ function CuentasBancariasSection({ clienteId }: { clienteId: string }) {
                 </div>
               </div>
               <Button variant="ghost" size="sm"
-                onClick={() => { if (confirm(`¿Eliminar cuenta ${c.banco} · ${c.alias}?`)) del.mutate(c.id); }}
+                onClick={() => setToDelete({ id: c.id, banco: c.banco, alias: c.alias ?? "Principal", mask: c.numero_cuenta_mask ?? null })}
                 disabled={del.isPending}>
                 <Trash2 className="h-4 w-4 text-destructive" />
               </Button>
@@ -400,6 +400,22 @@ function CuentasBancariasSection({ clienteId }: { clienteId: string }) {
           ))}
         </ul>
       )}
+      <ConfirmDeleteDialog
+        open={!!toDelete}
+        onClose={() => setToDelete(null)}
+        loading={del.isPending}
+        title="Eliminar cuenta bancaria"
+        expected={toDelete ? (toDelete.mask || toDelete.alias).toUpperCase() : ""}
+        warning="Si la cuenta tiene movimientos cargados, también se quitarán del expediente."
+        description={
+          <>
+            Vas a eliminar la cuenta{" "}
+            <span className="font-semibold">{toDelete?.banco} · {toDelete?.alias}</span>
+            {toDelete?.mask ? <> (••{toDelete.mask})</> : null}.
+          </>
+        }
+        onConfirm={() => { if (toDelete) del.mutate(toDelete.id, { onSuccess: () => setToDelete(null) }); }}
+      />
     </section>
   );
 }
