@@ -9,7 +9,7 @@ import { useDespacho } from "@/lib/despacho/use-despacho";
 import { updateDespacho, createDespacho } from "@/lib/despacho/despacho.functions";
 import { seedDemo, clearDemo } from "@/lib/demo/demo.functions";
 import { Tour, resetTour } from "@/components/Tour";
-import { UsageMeters } from "@/components/UsageMeters";
+import { UsageProfileCard } from "@/components/UsageProfileCard";
 import { UsageHistoryPanel } from "@/components/UsageHistoryPanel";
 
 export const Route = createFileRoute("/app/configuracion")({
