@@ -1,8 +1,11 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { AppLayout } from "@/components/AppLayout";
 import { ActiveClienteProvider } from "@/lib/active-cliente";
 import { useAuth } from "@/lib/auth";
+import { getPortalContext } from "@/lib/portal/portal.functions";
 import { Sparkles, Home, Wrench, FolderOpen, ArrowLeft } from "lucide-react";
 
 function AppNotFound() {
@@ -53,31 +56,23 @@ export const Route = createFileRoute("/app")({
 function AppRoot() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const fetchPortalContext = useServerFn(getPortalContext);
+  const portalContext = useQuery({
+    queryKey: ["portal-context", "app-guard", user?.id],
+    queryFn: () => fetchPortalContext(),
+    enabled: !!user,
+    retry: 1,
+  });
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
   }, [loading, user, navigate]);
 
-  // Redirige a clientes finales al portal
   useEffect(() => {
-    let cancelled = false;
-    async function check() {
-      if (!user) return;
-      const { supabase } = await import("@/integrations/supabase/client");
-      const { data } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("role", "cliente_final")
-        .limit(1)
-        .maybeSingle();
-      if (!cancelled && data) navigate({ to: "/portal", replace: true });
-    }
-    check();
-    return () => { cancelled = true; };
-  }, [user, navigate]);
+    if (portalContext.data?.isClient) navigate({ to: "/portal", replace: true });
+  }, [portalContext.data?.isClient, navigate]);
 
-  if (loading || !user) {
+  if (loading || !user || portalContext.isLoading || portalContext.data?.isClient) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex items-center gap-3 text-muted-foreground">
