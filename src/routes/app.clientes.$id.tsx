@@ -10,6 +10,7 @@ import { getSatStatus, conectarSat, desconectarSat, sincronizarCfdis } from "@/l
 import { getClienteHistorial } from "@/lib/clientes/historial.functions";
 import { listCuentas, createCuenta, deleteCuenta, BANCOS } from "@/lib/cuentas/cuentas.functions";
 import { Banknote, Plus, Trash2 } from "lucide-react";
+import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 
 
 export const Route = createFileRoute("/app/clientes/$id")({
