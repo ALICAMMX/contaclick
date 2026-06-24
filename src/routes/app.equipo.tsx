@@ -287,6 +287,58 @@ function EquipoPage() {
   );
 }
 
+function RolesGuide() {
+  return (
+    <section className="rounded-xl border border-border bg-card/40 p-5 space-y-4">
+      <header className="space-y-1">
+        <h2 className="text-base font-semibold flex items-center gap-2">
+          <Info className="h-4 w-4 text-primary" /> ¿Qué puede hacer cada rol?
+        </h2>
+        <p className="text-xs text-muted-foreground">
+          Elige el rol según las tareas que harán tus invitados. Puedes cambiarlo cuando quieras desde aquí.
+          Ningún invitado puede invitar a otras personas, crear expedientes nuevos ni modificar la configuración del despacho —
+          eso siempre queda en tus manos como administrador.
+        </p>
+      </header>
+      <div className="grid gap-3 md:grid-cols-3">
+        {TEAM_ROLES.map((r) => (
+          <div key={r.value} className="rounded-lg border border-border bg-background/40 p-4 space-y-3">
+            <div>
+              <div className="text-sm font-semibold">{r.label}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">{r.description}</div>
+            </div>
+            <div>
+              <div className="text-[11px] uppercase tracking-wide text-emerald-500 font-semibold mb-1">Puede</div>
+              <ul className="space-y-1">
+                {r.can.map((t) => (
+                  <li key={t} className="text-xs flex gap-1.5 text-foreground/90">
+                    <Check className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                    <span>{t}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">No puede</div>
+              <ul className="space-y-1">
+                {r.cant.map((t) => (
+                  <li key={t} className="text-xs flex gap-1.5 text-muted-foreground">
+                    <X className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    <span>{t}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Además, si activas <strong>Permisos por expediente</strong> abajo, cada invitado solo verá los RFC que le asignes explícitamente.
+      </p>
+    </section>
+  );
+}
+
 function AccesoExpedientesSection() {
   const qc = useQueryClient();
   const cfgFn = useServerFn(getAccesoConfig);
