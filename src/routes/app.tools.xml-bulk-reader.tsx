@@ -453,6 +453,8 @@ function BulkReader() {
           </div>
         </div>
       )}
+
+      <RejectModal report={report} onClose={() => setReport(null)} />
     </ToolShell>
   );
 }
