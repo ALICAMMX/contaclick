@@ -16,8 +16,10 @@ import { Input } from "@/components/ui/input";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { fmtFechaMx } from "@/lib/utils";
 import {
-  uploadCfdiBatch, listCfdi, getCfdiStats,
+  uploadCfdiBatch, listCfdi, getCfdiStats, getExistingCfdiKeys,
 } from "@/lib/cfdi/cfdi.functions";
+import { classifyXmls, reportTotalRejections, type RejectReport } from "@/lib/cfdi/dedup-xml";
+import { RejectModal } from "@/components/RejectModal";
 
 export const Route = createFileRoute("/app/cfdi/")({
   component: CfdiDashboard,
