@@ -46,10 +46,42 @@ export const createCuenta = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => CuentaSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    // Resolve despacho_id from the client record
+    // CANDADO: validar que el expediente exista y pertenezca a un despacho donde el usuario es miembro
     const { data: cli, error: ec } = await supabase
-      .from("clientes").select("despacho_id").eq("id", data.cliente_id).single();
-    if (ec || !cli?.despacho_id) throw new Error("Cliente sin despacho asignado");
+      .from("clientes")
+      .select("id, rfc, razon_social, despacho_id")
+      .eq("id", data.cliente_id)
+      .maybeSingle();
+    if (ec || !cli) throw new Error("Expediente no encontrado");
+    if (!cli.despacho_id) throw new Error("Cliente sin despacho asignado");
+
+    const { data: mem } = await supabase
+      .from("user_memberships")
+      .select("despacho_id")
+      .eq("user_id", userId)
+      .eq("despacho_id", cli.despacho_id)
+      .eq("estado", "activo")
+      .maybeSingle();
+    if (!mem) {
+      throw new Error("No tienes acceso a este expediente. La cuenta no se creó.");
+    }
+
+    // CANDADO: evitar cuentas duplicadas (mismo banco + mismo número enmascarado en el mismo expediente)
+    if (data.numero_cuenta_mask) {
+      const { data: dup } = await supabase
+        .from("cuentas_bancarias")
+        .select("id, banco, alias")
+        .eq("cliente_id", data.cliente_id)
+        .eq("banco", data.banco)
+        .eq("numero_cuenta_mask", data.numero_cuenta_mask)
+        .maybeSingle();
+      if (dup) {
+        throw new Error(
+          `Ya existe una cuenta ${dup.banco} (${dup.alias ?? "Principal"}) con ese número en el expediente ${cli.rfc}. No se creó una duplicada.`,
+        );
+      }
+    }
+
     const { data: row, error } = await supabase
       .from("cuentas_bancarias")
       .insert({
@@ -63,9 +95,9 @@ export const createCuenta = createServerFn({ method: "POST" })
       .select("id, banco, alias, numero_cuenta_mask, moneda, created_at")
       .single();
     if (error) throw new Error(error.message);
-    void userId;
     return row;
   });
+
 
 export const updateCuenta = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
