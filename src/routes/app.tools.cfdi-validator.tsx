@@ -8,6 +8,8 @@ import { ToolShell } from "@/components/ToolShell";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { parseCfdi, type CfdiParsed } from "@/lib/tools/cfdi-parser";
 import { saveToolRun } from "@/lib/tool-runs.functions";
+import { RejectModal } from "@/components/RejectModal";
+import { emptyReport, type RejectReport } from "@/lib/cfdi/dedup-xml";
 
 export const Route = createFileRoute("/app/tools/cfdi-validator")({
   component: CfdiValidator,
@@ -17,21 +19,43 @@ function CfdiValidator() {
   const { cliente } = useActiveCliente();
   const [parsed, setParsed] = useState<CfdiParsed | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [report, setReport] = useState<RejectReport | null>(null);
   const save = useServerFn(saveToolRun);
 
   const onFile = async (file: File) => {
-    setFileName(file.name);
-    const text = await file.text();
-    const result = parseCfdi(text);
-    setParsed(result);
-
-    // Cross-checks against active cliente
-    if (cliente && result.emisor.rfc && result.receptor.rfc) {
-      const rfc = cliente.rfc.toUpperCase();
-      if (result.emisor.rfc.toUpperCase() !== rfc && result.receptor.rfc.toUpperCase() !== rfc) {
-        result.warnings.push(`Ni emisor ni receptor coinciden con el RFC del expediente activo (${rfc}).`);
-      }
+    if (!cliente) {
+      toast.error("Selecciona un expediente activo antes de validar un CFDI.");
+      return;
     }
+    const text = await file.text();
+    let result: CfdiParsed;
+    try {
+      result = parseCfdi(text);
+    } catch (e: any) {
+      const rep = emptyReport(cliente.rfc.toUpperCase());
+      rep.errores.push({ archivo: file.name, motivo: "No se pudo leer el XML", detalle: e?.message ?? "" });
+      setReport(rep);
+      setParsed(null);
+      setFileName(null);
+      return;
+    }
+    const rfc = cliente.rfc.toUpperCase();
+    const emisor = (result.emisor.rfc ?? "").toUpperCase();
+    const receptor = (result.receptor.rfc ?? "").toUpperCase();
+    if (emisor !== rfc && receptor !== rfc) {
+      const rep = emptyReport(rfc);
+      rep.rfcAjeno.push({
+        archivo: file.name,
+        motivo: "RFC ajeno al expediente",
+        detalle: `Emisor ${emisor || "—"} · Receptor ${receptor || "—"}`,
+      });
+      setReport(rep);
+      setParsed(null);
+      setFileName(null);
+      return;
+    }
+    setFileName(file.name);
+    setParsed(result);
   };
 
   const onSave = async () => {
@@ -52,7 +76,7 @@ function CfdiValidator() {
     >
       <label className="block rounded-xl border-2 border-dashed border-border bg-card/30 p-10 text-center hover:border-primary/50 transition-colors cursor-pointer">
         <input type="file" accept=".xml,text/xml,application/xml" className="hidden"
-          onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])} />
+          onChange={async (e) => { const f = e.target.files?.[0]; if (f) await onFile(f); e.target.value = ""; }} />
         <div className="h-12 w-12 rounded-xl mx-auto flex items-center justify-center mb-3" style={{ background: "var(--gradient-primary)" }}>
           <Upload className="h-5 w-5 text-primary-foreground" />
         </div>
@@ -140,6 +164,7 @@ function CfdiValidator() {
           )}
         </div>
       )}
+      <RejectModal report={report} onClose={() => setReport(null)} title="No se pudo validar el CFDI" />
     </ToolShell>
   );
 }

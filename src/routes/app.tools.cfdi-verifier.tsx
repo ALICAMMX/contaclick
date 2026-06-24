@@ -10,6 +10,8 @@ import { ToolShell } from "@/components/ToolShell";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { saveToolRun } from "@/lib/tool-runs.functions";
 import { parseCfdi } from "@/lib/tools/cfdi-parser";
+import { RejectModal } from "@/components/RejectModal";
+import { emptyReport, type RejectReport } from "@/lib/cfdi/dedup-xml";
 
 export const Route = createFileRoute("/app/tools/cfdi-verifier")({
   component: CfdiVerifier,
@@ -47,6 +49,7 @@ function CfdiVerifier() {
   const [emisor, setEmisor] = useState("");
   const [receptor, setReceptor] = useState(cliente?.rfc ?? "");
   const [total, setTotal] = useState("");
+  const [report, setReport] = useState<RejectReport | null>(null);
 
   const checks = useMemo(() => {
     return {
@@ -79,10 +82,31 @@ function CfdiVerifier() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const autoFillFromText = (raw: string, sourceLabel: string) => {
+  const ensureBelongsToCliente = (em: string, rc: string, filename: string): boolean => {
+    if (!cliente) return true;
+    const rfc = cliente.rfc.toUpperCase();
+    const emU = (em ?? "").toUpperCase();
+    const rcU = (rc ?? "").toUpperCase();
+    // Si no logramos extraer ningún RFC, no bloqueamos (el usuario captura a mano).
+    if (!emU && !rcU) return true;
+    if (emU !== rfc && rcU !== rfc) {
+      const rep = emptyReport(rfc);
+      rep.rfcAjeno.push({
+        archivo: filename,
+        motivo: "RFC ajeno al expediente",
+        detalle: `Emisor ${emU || "—"} · Receptor ${rcU || "—"}`,
+      });
+      setReport(rep);
+      return false;
+    }
+    return true;
+  };
+
+  const autoFillFromText = (raw: string, sourceLabel: string, filename: string) => {
     // 1) Try SAT URL (QR contenido)
     const fromUrl = parseSatUrl(raw);
     if (fromUrl?.uuid) {
+      if (!ensureBelongsToCliente(fromUrl.emisor ?? "", fromUrl.receptor ?? "", filename)) return false;
       if (fromUrl.uuid) setUuid(fromUrl.uuid);
       if (fromUrl.emisor) setEmisor(fromUrl.emisor);
       if (fromUrl.receptor) setReceptor(fromUrl.receptor);
@@ -94,6 +118,7 @@ function CfdiVerifier() {
     if (/<\s*(?:[a-zA-Z0-9]+:)?Comprobante\b/.test(raw)) {
       try {
         const p = parseCfdi(raw);
+        if (!ensureBelongsToCliente(p.emisor.rfc ?? "", p.receptor.rfc ?? "", filename)) return false;
         if (p.uuid) setUuid(p.uuid);
         if (p.emisor.rfc) setEmisor(p.emisor.rfc.toUpperCase());
         if (p.receptor.rfc) setReceptor(p.receptor.rfc.toUpperCase());
@@ -109,6 +134,7 @@ function CfdiVerifier() {
     const rfcs = Array.from(new Set((raw.match(RFC_ANY) ?? []).map((r) => r.toUpperCase())));
     const totalM = raw.match(/Total[^\d-]{0,20}(-?\d{1,15}(?:[.,]\d{1,6})?)/i)
       ?? raw.match(/\b(\d{1,15}\.\d{2})\b/);
+    if (!ensureBelongsToCliente(rfcs[0] ?? "", rfcs[1] ?? "", filename)) return false;
     let filled = 0;
     if (uuidM) { setUuid(uuidM[0]); filled++; }
     if (rfcs.length >= 1) { setEmisor(rfcs[0]); filled++; }
@@ -127,7 +153,7 @@ function CfdiVerifier() {
       const name = file.name.toLowerCase();
       if (name.endsWith(".xml") || file.type.includes("xml")) {
         const text = await file.text();
-        autoFillFromText(text, "XML");
+        autoFillFromText(text, "XML", file.name);
         return;
       }
       if (name.endsWith(".pdf") || file.type === "application/pdf") {
@@ -135,12 +161,12 @@ function CfdiVerifier() {
         const buf = new Uint8Array(await file.arrayBuffer());
         let text = "";
         for (let i = 0; i < buf.length; i++) text += String.fromCharCode(buf[i]);
-        autoFillFromText(text, "PDF");
+        autoFillFromText(text, "PDF", file.name);
         return;
       }
       // Cualquier otro: intenta como texto plano
       const text = await file.text();
-      autoFillFromText(text, "archivo");
+      autoFillFromText(text, "archivo", file.name);
     } catch (e: any) {
       toast.error(e?.message ?? "No se pudo leer el archivo");
     }
@@ -231,6 +257,7 @@ function CfdiVerifier() {
           )}
         </div>
       </div>
+      <RejectModal report={report} onClose={() => setReport(null)} title="El archivo no corresponde al expediente" />
     </ToolShell>
   );
 }
