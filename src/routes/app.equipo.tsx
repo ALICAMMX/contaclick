@@ -174,7 +174,7 @@ function EquipoPage() {
         <h2 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Invitaciones pendientes ({activeInvites.length})</h2>
         {activeInvites.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-            Sin invitaciones activas. Genera un link arriba para invitar a alguien.
+            Sin invitaciones activas. Invita a alguien por correo arriba.
           </div>
         ) : (
           <div className="rounded-lg border border-border divide-y divide-border/60">
@@ -183,13 +183,16 @@ function EquipoPage() {
               return (
                 <div key={inv.id} className="flex items-center justify-between p-4 gap-3">
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs font-mono truncate text-muted-foreground">{url}</div>
+                    <div className="text-sm font-medium truncate flex items-center gap-2">
+                      <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                      {inv.email || <span className="text-muted-foreground italic">Sin correo (link directo)</span>}
+                    </div>
                     <div className="text-xs text-muted-foreground mt-0.5">
-                      Expira {new Date(inv.expires_at).toLocaleDateString("es-MX")}
+                      Pendiente · Expira {new Date(inv.expires_at).toLocaleDateString("es-MX")}
                     </div>
                   </div>
-                  <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(url); toast.success("Copiado"); }}>
-                    <Copy className="h-3.5 w-3.5" />
+                  <Button size="sm" variant="outline" title="Copiar link de respaldo" onClick={() => { navigator.clipboard.writeText(url); toast.success("Link copiado"); }}>
+                    <Link2 className="h-3.5 w-3.5" />
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => revokeMut.mutate(inv.id)}>
                     <X className="h-3.5 w-3.5" />
@@ -198,6 +201,7 @@ function EquipoPage() {
               );
             })}
           </div>
+
         )}
       </section>
 
