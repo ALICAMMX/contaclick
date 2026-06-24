@@ -46,6 +46,7 @@ function rowFromXml(filename: string, xml: string): Row {
   const cancelado = /Estatus\s*=\s*"(0|Cancelado|cancelado)"/.test(xml) || /\bCancelado\b/i.test(xml.slice(0, 1000));
   return {
     archivo: filename,
+    xml,
     uuid: p.uuid,
     fecha: p.fecha,
     rfcEmisor: p.emisor.rfc,
