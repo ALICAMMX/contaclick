@@ -49,6 +49,7 @@ function CfdiVerifier() {
   const [emisor, setEmisor] = useState("");
   const [receptor, setReceptor] = useState(cliente?.rfc ?? "");
   const [total, setTotal] = useState("");
+  const [report, setReport] = useState<RejectReport | null>(null);
 
   const checks = useMemo(() => {
     return {
