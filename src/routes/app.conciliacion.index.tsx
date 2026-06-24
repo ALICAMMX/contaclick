@@ -4,8 +4,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useRef, useState } from "react";
 import {
   Banknote, Upload, Sparkles, AlertTriangle, CheckCircle2, FileSpreadsheet,
-  Loader2, TrendingUp, TrendingDown, Wand2, X, Download, FileText,
+  Loader2, TrendingUp, TrendingDown, Wand2, X, Download, FileText, ShieldAlert,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { RichMarkdown } from "@/components/RichMarkdown";
