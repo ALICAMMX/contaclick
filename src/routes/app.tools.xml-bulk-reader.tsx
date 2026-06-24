@@ -116,6 +116,11 @@ function BulkReader() {
 
 
   const handleFiles = async (files: FileList) => {
+    if (!cliente) {
+      toast.error("Selecciona primero un expediente (RFC) en la barra superior. La herramienta no puede leer XML sin un RFC activo para evitar mezclar contabilidades.");
+      return;
+    }
+    const rfcActivo = cliente.rfc.toUpperCase();
     setBusy(true);
     const next: Row[] = [];
     const xmlFiles: { name: string; getText: () => Promise<string> }[] = [];
@@ -138,10 +143,20 @@ function BulkReader() {
     }
 
     setProgress({ done: 0, total: xmlFiles.length });
+    let rechazados = 0;
     for (let i = 0; i < xmlFiles.length; i++) {
       try {
         const txt = await xmlFiles[i].getText();
-        next.push(rowFromXml(xmlFiles[i].name, txt));
+        const row = rowFromXml(xmlFiles[i].name, txt);
+        const emisor = (row.rfcEmisor ?? "").toUpperCase();
+        const receptor = (row.rfcReceptor ?? "").toUpperCase();
+        if (emisor !== rfcActivo && receptor !== rfcActivo) {
+          rechazados++;
+          // No se agrega a la tabla: no se "lee" para el expediente.
+          setProgress({ done: i + 1, total: xmlFiles.length });
+          continue;
+        }
+        next.push(row);
       } catch {
         next.push({
           archivo: xmlFiles[i].name,
@@ -154,7 +169,14 @@ function BulkReader() {
     setRows((prev) => [...prev, ...next]);
     setBusy(false);
     setProgress(null);
+    if (rechazados > 0) {
+      toast.warning(`${rechazados} XML rechazado(s): no corresponden al RFC ${rfcActivo} del expediente activo.`);
+    }
+    if (next.length > 0) {
+      toast.success(`${next.length} CFDI(s) válidos para ${rfcActivo}.`);
+    }
   };
+
 
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
