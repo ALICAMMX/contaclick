@@ -54,6 +54,17 @@ function AuthPage() {
   const seedDemoFn = useServerFn(seedDemo);
   const [demoLoading, setDemoLoading] = useState(false);
 
+  const finishAuthenticatedEntry = async (payload: { fullName: string | null; despachoNombre: string | null }) => {
+    await bootstrapWorkspace({ data: payload });
+    const { data: clientRole } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("role", "cliente_final")
+      .limit(1)
+      .maybeSingle();
+    navigate({ to: clientRole ? "/portal" : "/app", replace: true });
+  };
+
   const handleDemoLogin = async () => {
     setDemoLoading(true);
     setFormMessage(null);
@@ -159,10 +170,9 @@ function AuthPage() {
               password,
             });
             if (!signInErr) {
-              await bootstrapWorkspace({ data: { fullName: `${nombre.trim()} ${apellidos.trim()}`, despachoNombre: despacho.trim() } });
+              await finishAuthenticatedEntry({ fullName: `${nombre.trim()} ${apellidos.trim()}`, despachoNombre: despacho.trim() });
               toast.success("Ya tenías cuenta. Sesión iniciada.");
               setFormMessage({ type: "success", text: "Ya tenías cuenta. Sesión iniciada." });
-              navigate({ to: "/app" });
               return;
             }
             const providerMessage = "Ese correo ya existe y fue creado con Google. Como Google está deshabilitado temporalmente, usa otro correo o restablece una contraseña para este correo.";
@@ -177,10 +187,9 @@ function AuthPage() {
           throw error;
         }
         if (data.session) {
-          await bootstrapWorkspace({ data: { fullName, despachoNombre: despacho.trim() } });
+          await finishAuthenticatedEntry({ fullName, despachoNombre: despacho.trim() });
           toast.success("¡Cuenta creada! Bienvenido.");
           setFormMessage({ type: "success", text: "¡Cuenta creada! Bienvenido." });
-          navigate({ to: "/app" });
         } else {
           const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
           if (signInErr) {
@@ -189,16 +198,14 @@ function AuthPage() {
             setFormMessage({ type: "success", text: successMessage });
             setMode("login");
           } else {
-            await bootstrapWorkspace({ data: { fullName, despachoNombre: despacho.trim() } });
+            await finishAuthenticatedEntry({ fullName, despachoNombre: despacho.trim() });
             setFormMessage({ type: "success", text: "¡Cuenta creada! Bienvenido." });
-            navigate({ to: "/app" });
           }
         }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        await bootstrapWorkspace({ data: { fullName: null, despachoNombre: null } });
-        navigate({ to: "/app" });
+        await finishAuthenticatedEntry({ fullName: null, despachoNombre: null });
       }
     } catch (err: unknown) {
       const authError = getAuthFailure(err);
