@@ -73,6 +73,47 @@ function BulkReader() {
   const [filter, setFilter] = useState("");
   const [tipoFiltro, setTipoFiltro] = useState<string>("");
   const [estadoFiltro, setEstadoFiltro] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+  const { cliente } = useActiveCliente();
+  const uploadBatch = useServerFn(uploadCfdiBatch);
+  const qc = useQueryClient();
+
+  const guardarEnExpediente = async () => {
+    if (!cliente) {
+      toast.error("Selecciona un expediente activo en la barra superior antes de guardar.");
+      return;
+    }
+    const persistibles = rows.filter((r) => r.xml && r.uuid);
+    if (!persistibles.length) {
+      toast.error("No hay CFDIs válidos (con UUID) para guardar.");
+      return;
+    }
+    setSaving(true);
+    let inserted = 0, duplicates = 0, failed = 0;
+    try {
+      const CHUNK = 50;
+      for (let i = 0; i < persistibles.length; i += CHUNK) {
+        const slice = persistibles.slice(i, i + CHUNK);
+        const res = await uploadBatch({
+          data: {
+            cliente_id: cliente.id,
+            files: slice.map((r) => ({ filename: r.archivo, xml: r.xml! })),
+          },
+        });
+        inserted += res.summary.inserted;
+        duplicates += res.summary.duplicates;
+        failed += res.summary.failed;
+      }
+      await qc.invalidateQueries();
+      toast.success(`Expediente actualizado: ${inserted} guardados, ${duplicates} duplicados, ${failed} con error.`);
+    } catch (e) {
+      toast.error(`No se pudo guardar: ${e instanceof Error ? e.message : "error"}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+
 
   const handleFiles = async (files: FileList) => {
     setBusy(true);
