@@ -6,15 +6,61 @@ import { toast } from "sonner";
 import { listTeam, createInvitation, revokeInvitation, removeMember } from "@/lib/equipo/equipo.functions";
 import { getAccesoConfig, toggleAccesoRestringido, listAsignaciones, setAsignacion } from "@/lib/asignaciones/asignaciones.functions";
 import { Button } from "@/components/ui/button";
-import { Copy, Link2, Lock, Mail, Trash2, UserPlus, Users, X, ShieldCheck } from "lucide-react";
+import { Copy, Link2, Lock, Mail, Trash2, UserPlus, Users, X, ShieldCheck, Info, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 type TeamRole = "colaborador" | "contador" | "auxiliar";
 
-const TEAM_ROLES: { value: TeamRole; label: string; description: string }[] = [
-  { value: "colaborador", label: "Colaborador", description: "Sólo ve los RFC asignados cuando el acceso está restringido." },
-  { value: "contador", label: "Contador", description: "Puede trabajar expedientes asignados, sin permisos de administración." },
-  { value: "auxiliar", label: "Auxiliar", description: "Acceso operativo limitado a los RFC asignados." },
+const TEAM_ROLES: {
+  value: TeamRole;
+  label: string;
+  description: string;
+  can: string[];
+  cant: string[];
+}[] = [
+  {
+    value: "contador",
+    label: "Contador",
+    description: "Profesional que lleva la contabilidad de los expedientes asignados.",
+    can: [
+      "Ver y editar expedientes asignados (CFDI, conciliaciones, obligaciones, trámites)",
+      "Cargar XML, generar reportes y registrar pagos de los RFC asignados",
+      "Usar las herramientas de IA y SAT en sus expedientes",
+    ],
+    cant: [
+      "Crear o eliminar expedientes nuevos",
+      "Invitar o remover miembros del equipo",
+      "Cambiar configuración del despacho o el plan",
+    ],
+  },
+  {
+    value: "auxiliar",
+    label: "Auxiliar",
+    description: "Apoyo operativo (captura, descarga, organización de documentos).",
+    can: [
+      "Ver expedientes asignados y subir documentos / XML",
+      "Capturar movimientos y consultar reportes existentes",
+    ],
+    cant: [
+      "Crear o eliminar expedientes",
+      "Modificar configuración fiscal o credenciales SAT sensibles",
+      "Invitar miembros ni gestionar el equipo",
+    ],
+  },
+  {
+    value: "colaborador",
+    label: "Colaborador",
+    description: "Acceso básico de consulta; ideal para socios o clientes invitados.",
+    can: [
+      "Consultar los expedientes asignados",
+      "Descargar reportes y CFDI compartidos",
+    ],
+    cant: [
+      "Editar o eliminar información",
+      "Crear expedientes o invitar usuarios",
+      "Cambiar configuración del despacho",
+    ],
+  },
 ];
 
 const roleLabel = (value?: string) => TEAM_ROLES.find((r) => r.value === value)?.label ?? "Colaborador";
@@ -169,6 +215,8 @@ function EquipoPage() {
           )}
         </div>
       )}
+      <RolesGuide />
+
 
 
       <section>
@@ -236,6 +284,58 @@ function EquipoPage() {
         <Link to="/app/configuracion" className="hover:underline">← Configuración del despacho</Link>
       </div>
     </div>
+  );
+}
+
+function RolesGuide() {
+  return (
+    <section className="rounded-xl border border-border bg-card/40 p-5 space-y-4">
+      <header className="space-y-1">
+        <h2 className="text-base font-semibold flex items-center gap-2">
+          <Info className="h-4 w-4 text-primary" /> ¿Qué puede hacer cada rol?
+        </h2>
+        <p className="text-xs text-muted-foreground">
+          Elige el rol según las tareas que harán tus invitados. Puedes cambiarlo cuando quieras desde aquí.
+          Ningún invitado puede invitar a otras personas, crear expedientes nuevos ni modificar la configuración del despacho —
+          eso siempre queda en tus manos como administrador.
+        </p>
+      </header>
+      <div className="grid gap-3 md:grid-cols-3">
+        {TEAM_ROLES.map((r) => (
+          <div key={r.value} className="rounded-lg border border-border bg-background/40 p-4 space-y-3">
+            <div>
+              <div className="text-sm font-semibold">{r.label}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">{r.description}</div>
+            </div>
+            <div>
+              <div className="text-[11px] uppercase tracking-wide text-emerald-500 font-semibold mb-1">Puede</div>
+              <ul className="space-y-1">
+                {r.can.map((t) => (
+                  <li key={t} className="text-xs flex gap-1.5 text-foreground/90">
+                    <Check className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                    <span>{t}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">No puede</div>
+              <ul className="space-y-1">
+                {r.cant.map((t) => (
+                  <li key={t} className="text-xs flex gap-1.5 text-muted-foreground">
+                    <X className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    <span>{t}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Además, si activas <strong>Permisos por expediente</strong> abajo, cada invitado solo verá los RFC que le asignes explícitamente.
+      </p>
+    </section>
   );
 }
 
