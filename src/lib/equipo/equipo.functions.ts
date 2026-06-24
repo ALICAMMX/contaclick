@@ -84,7 +84,7 @@ export const listTeam = createServerFn({ method: "GET" })
     // Invitations
     const { data: invs } = await supabase
       .from("invitaciones")
-      .select("id, token, role, created_at, expires_at, used_at, revoked_at")
+      .select("id, token, email, role, created_at, expires_at, used_at, revoked_at")
       .eq("despacho_id", despachoId)
       .order("created_at", { ascending: false });
 
@@ -102,7 +102,10 @@ export const listTeam = createServerFn({ method: "GET" })
 export const createInvitation = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) =>
-    z.object({ role: z.enum(["colaborador"]).default("colaborador") }).parse(d ?? {}),
+    z.object({
+      email: z.string().trim().toLowerCase().email("Correo inválido"),
+      role: z.enum(["colaborador"]).default("colaborador"),
+    }).parse(d ?? {}),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
