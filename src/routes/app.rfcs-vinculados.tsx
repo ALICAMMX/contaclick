@@ -32,6 +32,7 @@ function RfcsVinculadosPage() {
       toast.success("RFC eliminado");
       qc.invalidateQueries({ queryKey: ["rfcs-vinculados"] });
       qc.invalidateQueries({ queryKey: ["clientes"] });
+      qc.invalidateQueries({ queryKey: ["usage"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
