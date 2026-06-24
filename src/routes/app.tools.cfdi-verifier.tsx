@@ -257,6 +257,7 @@ function CfdiVerifier() {
           )}
         </div>
       </div>
+      <RejectModal report={report} onClose={() => setReport(null)} title="El archivo no corresponde al expediente" />
     </ToolShell>
   );
 }
