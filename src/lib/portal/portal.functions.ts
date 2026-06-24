@@ -49,7 +49,7 @@ async function resolveClienteFinalContext(supabase: any, userId: string) {
   const { data: des } = await supabaseAdmin
     .from("despachos")
     .select("id, nombre")
-    .eq("id", cli.despacho_id)
+    .eq("id", role.despacho_id)
     .maybeSingle();
 
   const { data: cfg } = await supabaseAdmin
