@@ -8,7 +8,13 @@ const BootstrapSchema = z.object({
 });
 
 function normalizeInvitedRole(role: string | null | undefined) {
-  if (role === "contador" || role === "auxiliar" || role === "colaborador") return role;
+  if (
+    role === "contador" ||
+    role === "auxiliar" ||
+    role === "colaborador" ||
+    role === "cliente_final"
+  )
+    return role;
   return "colaborador";
 }
 
