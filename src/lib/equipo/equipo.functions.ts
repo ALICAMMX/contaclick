@@ -2,7 +2,15 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+
+const TeamRoleSchema = z.enum(["colaborador", "contador", "auxiliar"]);
+
+const ROLE_LABELS: Record<string, string> = {
+  despacho: "Admin",
+  contador: "Contador",
+  auxiliar: "Auxiliar",
+  colaborador: "Colaborador",
+};
 
 async function resolveAdminDespacho(supabase: any, userId: string) {
   const { data: role } = await supabase
@@ -24,6 +32,7 @@ async function resolveAdminDespacho(supabase: any, userId: string) {
 }
 
 async function getMembersLimit(despachoId: string): Promise<number | null> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   // Read plan from despacho. If no plan, default to trial=2.
   const { data: d } = await supabaseAdmin
     .from("despachos")
@@ -48,6 +57,7 @@ export const listTeam = createServerFn({ method: "GET" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const despachoId = await resolveAdminDespacho(supabase, userId);
     if (!despachoId) return { members: [], invitations: [], limit: 0, isAdmin: false };
 
@@ -76,6 +86,7 @@ export const listTeam = createServerFn({ method: "GET" })
         email: p?.email ?? null,
         full_name: p?.full_name ?? null,
         role: (roleMap.get(m.user_id) as string) ?? "colaborador",
+        role_label: ROLE_LABELS[(roleMap.get(m.user_id) as string) ?? "colaborador"] ?? "Colaborador",
         created_at: m.created_at as string,
         is_self: m.user_id === userId,
       };
@@ -104,11 +115,12 @@ export const createInvitation = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     z.object({
       email: z.string().trim().toLowerCase().email("Correo inválido"),
-      role: z.enum(["colaborador"]).default("colaborador"),
+      role: TeamRoleSchema.default("colaborador"),
     }).parse(d ?? {}),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const despachoId = await resolveAdminDespacho(supabase, userId);
     if (!despachoId) throw new Error("No tienes un despacho administrado");
 
@@ -195,6 +207,8 @@ export const createInvitation = createServerFn({ method: "POST" })
         expires_at: row.expires_at as string,
         matched: true as const,
         email,
+        role: data.role,
+        role_label: ROLE_LABELS[data.role],
         full_name: existingProfile.full_name as string | null,
       };
     }
@@ -205,6 +219,8 @@ export const createInvitation = createServerFn({ method: "POST" })
       expires_at: row.expires_at as string,
       matched: false as const,
       email,
+      role: data.role,
+      role_label: ROLE_LABELS[data.role],
     };
   });
 
@@ -225,6 +241,7 @@ export const removeMember = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ user_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     if (data.user_id === userId) throw new Error("No puedes removerte a ti mismo");
     const despachoId = await resolveAdminDespacho(supabase, userId);
     if (!despachoId) throw new Error("Sin despacho");
@@ -243,6 +260,7 @@ export const getInvitationByToken = createServerFn({ method: "GET" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ token: z.string().min(8) }).parse(d))
   .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // Use admin client to look up by exact token only; broad SELECT policy is removed.
     const { data: inv } = await supabaseAdmin
       .from("invitaciones")
