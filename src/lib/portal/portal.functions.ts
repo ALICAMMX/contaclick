@@ -33,6 +33,7 @@ async function resolveClienteFinalContext(supabase: any, userId: string) {
     .select("despacho_id, cliente_id")
     .eq("user_id", userId)
     .eq("role", "cliente_final")
+    .not("cliente_id", "is", null)
     .limit(1)
     .maybeSingle();
   if (!role?.cliente_id) return null;

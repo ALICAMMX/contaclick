@@ -55,9 +55,27 @@ function AuthPage() {
   const seedDemoFn = useServerFn(seedDemo);
   const [demoLoading, setDemoLoading] = useState(false);
 
+  const hasClientRoleFallback = async () => {
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+    if (!userId) return false;
+
+    const { data } = await supabase
+      .from("user_roles")
+      .select("cliente_id")
+      .eq("user_id", userId)
+      .eq("role", "cliente_final")
+      .not("cliente_id", "is", null)
+      .limit(1)
+      .maybeSingle();
+
+    return !!data?.cliente_id;
+  };
+
   const finishAuthenticatedEntry = async (payload: { fullName: string | null; despachoNombre: string | null }) => {
     const entry = await bootstrapWorkspace({ data: payload });
-    navigate({ to: entry.isClient ? "/portal" : "/app", replace: true });
+    const isClient = entry.isClient || (await hasClientRoleFallback());
+    navigate({ to: isClient ? "/portal" : "/app", replace: true });
   };
 
   const handleDemoLogin = async () => {
@@ -102,7 +120,8 @@ function AuthPage() {
     supabase.auth.getSession().then(async ({ data }) => {
       if (!data.session) return;
       const entry = await getEntry();
-      navigate({ to: entry.isClient ? "/portal" : "/app", replace: true });
+      const isClient = entry.isClient || (await hasClientRoleFallback());
+      navigate({ to: isClient ? "/portal" : "/app", replace: true });
     });
   }, [getEntry, navigate]);
 
