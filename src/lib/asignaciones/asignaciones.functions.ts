@@ -52,6 +52,7 @@ export const listAsignaciones = createServerFn({ method: "GET" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const despachoId = await resolveAdminDespacho(supabase, userId);
     if (!despachoId) return { asignaciones: [], clientes: [], miembros: [] };
 
