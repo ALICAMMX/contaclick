@@ -201,13 +201,14 @@ function BulkReader() {
           rep.rfcAjeno.push({ archivo: name, motivo: "RFC ajeno", detalle: `Emisor ${emisor || "—"} · Receptor ${receptor || "—"}` });
         } else if (!uuid) {
           rep.sinUuid.push({ archivo: name, motivo: "Sin UUID (no timbrado)" });
-        } else if (localUuids.has(uuid)) {
+        } else if (localUuids.has(uuid) || localHashes.has(hash)) {
           rep.duplicadosLocal.push({ archivo: name, motivo: "Ya cargado en esta sesión", detalle: `UUID ${uuid}` });
         } else if (dbUuids.has(uuid) || dbHashes.has(hash)) {
           rep.duplicadosExpediente.push({ archivo: name, motivo: "Ya existe en el expediente", detalle: `UUID ${uuid}` });
         } else {
           next.push(row);
           localUuids.add(uuid);
+          localHashes.add(hash);
           rep.aceptados++;
         }
       } catch (e) {
