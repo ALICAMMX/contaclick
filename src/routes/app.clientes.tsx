@@ -57,6 +57,7 @@ function ClientesPage() {
     const s = q.toLowerCase();
     return c.rfc.toLowerCase().includes(s) || c.razon_social.toLowerCase().includes(s);
   });
+  const canManageExpedientes = !!data?.canManageExpedientes;
 
   return (
     <div className="space-y-6">
@@ -73,19 +74,23 @@ function ClientesPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link to="/app/tools/import-clientes" className="inline-flex items-center gap-1.5 h-10 px-3 rounded-md border border-border bg-card hover:bg-accent text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-            <Upload className="h-4 w-4" /> Importar Excel
-          </Link>
+          {canManageExpedientes && (
+            <Link to="/app/tools/import-clientes" className="inline-flex items-center gap-1.5 h-10 px-3 rounded-md border border-border bg-card hover:bg-accent text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              <Upload className="h-4 w-4" /> Importar Excel
+            </Link>
+          )}
           <Link to="/app/rfcs-vinculados" className="inline-flex items-center gap-1.5 h-10 px-3 rounded-md border border-border bg-card hover:bg-accent text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
             <FileBadge className="h-4 w-4" /> RFC vinculados
           </Link>
-          <Button variant="hero" onClick={() => setOpenForm((v) => !v)}>
-            {openForm ? <><X className="h-4 w-4" /> Cancelar</> : <><Plus className="h-4 w-4" /> Nuevo expediente</>}
-          </Button>
+          {canManageExpedientes && (
+            <Button variant="hero" onClick={() => setOpenForm((v) => !v)}>
+              {openForm ? <><X className="h-4 w-4" /> Cancelar</> : <><Plus className="h-4 w-4" /> Nuevo expediente</>}
+            </Button>
+          )}
         </div>
       </div>
 
-      {openForm && <NewClienteForm onSubmit={(d) => createMut.mutate(d)} loading={createMut.isPending} />}
+      {openForm && canManageExpedientes && <NewClienteForm onSubmit={(d) => createMut.mutate(d)} loading={createMut.isPending} />}
 
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
