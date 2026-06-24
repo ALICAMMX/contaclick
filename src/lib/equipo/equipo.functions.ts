@@ -157,26 +157,40 @@ export const createInvitation = createServerFn({ method: "POST" })
     const despachoId = await resolveAdminDespacho(supabase, userId);
     if (!despachoId) throw new Error("No tienes un despacho administrado");
 
-    // Check limit
+    // Check limit (cliente_final NO ocupa asiento del equipo)
     const limit = await getMembersLimit(supabaseAdmin, despachoId);
-    if (limit !== null) {
-      const { count: memberCount } = await supabaseAdmin
+    if (limit !== null && data.role !== "cliente_final") {
+      // Cuenta miembros activos que NO sean cliente_final
+      const { data: memRows } = await supabaseAdmin
         .from("user_memberships")
-        .select("user_id", { count: "exact", head: true })
+        .select("user_id")
         .eq("despacho_id", despachoId)
         .eq("estado", "activo");
+      const memIds = (memRows ?? []).map((m: any) => m.user_id as string);
+      let memberCount = 0;
+      if (memIds.length) {
+        const { data: rolesRows } = await supabaseAdmin
+          .from("user_roles")
+          .select("user_id, role")
+          .eq("despacho_id", despachoId)
+          .in("user_id", memIds);
+        const clienteIds = new Set((rolesRows ?? []).filter((r: any) => r.role === "cliente_final").map((r: any) => r.user_id));
+        memberCount = memIds.filter((id) => !clienteIds.has(id)).length;
+      }
       const { count: pendingCount } = await supabaseAdmin
         .from("invitaciones")
         .select("id", { count: "exact", head: true })
         .eq("despacho_id", despachoId)
+        .neq("role", "cliente_final")
         .is("used_at", null)
         .is("revoked_at", null)
         .gt("expires_at", new Date().toISOString());
-      const total = (memberCount ?? 0) + (pendingCount ?? 0);
+      const total = memberCount + (pendingCount ?? 0);
       if (total >= limit) {
-        throw new Error(`Tu plan permite máximo ${limit} miembros (incluye invitaciones pendientes). Mejora tu plan para invitar a más.`);
+        throw new Error(`Tu plan permite máximo ${limit} miembros del equipo (no cuenta clientes). Mejora tu plan para invitar a más.`);
       }
     }
+
 
     const email = data.email;
 
