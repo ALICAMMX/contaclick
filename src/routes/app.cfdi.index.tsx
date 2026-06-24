@@ -182,6 +182,7 @@ function CfdiDashboard() {
 
   return (
     <div className="space-y-6">
+      <RejectModal report={report} onClose={() => setReport(null)} />
       {/* Header */}
       <div className="flex items-end justify-between gap-4">
         <div>
