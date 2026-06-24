@@ -247,6 +247,11 @@ function ConciliacionPage() {
 
   return (
     <div className="space-y-6">
+      <BankRejectDialog
+        info={bankReject}
+        cliente={cliente ? { rfc: cliente.rfc, razon_social: cliente.razon_social } : null}
+        onClose={() => setBankReject(null)}
+      />
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="flex items-start gap-4">
           <div className="h-12 w-12 rounded-xl flex items-center justify-center" style={{ background: "var(--gradient-primary)" }}>
