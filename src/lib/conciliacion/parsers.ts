@@ -128,3 +128,54 @@ export async function parseBankFile(file: File): Promise<ParsedMovimiento[]> {
   }
   throw new Error(`Formato no soportado: ${file.name}`);
 }
+
+/** Extrae todo el texto plano del archivo (encabezado + filas) para validar titularidad. */
+export async function extractBankFileText(file: File): Promise<string> {
+  const name = file.name.toLowerCase();
+  if (name.endsWith(".csv") || file.type === "text/csv") {
+    return (await file.text()).slice(0, 200_000);
+  }
+  if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: "array", cellDates: false });
+    const parts: string[] = [];
+    for (const sn of wb.SheetNames) {
+      const ws = wb.Sheets[sn];
+      const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, raw: true, defval: null });
+      for (const r of rows.slice(0, 80)) parts.push((r ?? []).map((c) => String(c ?? "")).join(" "));
+    }
+    return parts.join("\n");
+  }
+  return "";
+}
+
+function normalizeForMatch(s: string): string {
+  return s.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+/**
+ * Verifica que el estado de cuenta pertenezca al contribuyente activo.
+ * Busca el RFC o palabras significativas de la razón social en el texto del archivo.
+ */
+export function bankFileMatchesContribuyente(
+  text: string,
+  cliente: { rfc: string; razon_social: string },
+): { match: boolean; reason?: string } {
+  if (!text || text.length < 5) {
+    return { match: false, reason: "El archivo está vacío o no se pudo leer texto." };
+  }
+  const haystack = normalizeForMatch(text);
+  const rfc = cliente.rfc.toUpperCase();
+  if (haystack.includes(rfc.toLowerCase())) return { match: true };
+  // Razón social: requiere al menos 2 palabras significativas (>3 letras) presentes
+  const palabras = normalizeForMatch(cliente.razon_social)
+    .split(" ")
+    .filter((w) => w.length > 3 && !["sapi", "sade", "scvi", "sade", "cvde", "rldc"].includes(w));
+  const hits = palabras.filter((w) => haystack.includes(w)).length;
+  if (palabras.length > 0 && hits >= Math.min(2, palabras.length)) return { match: true };
+  return {
+    match: false,
+    reason: `No se encontró el RFC ${rfc} ni la razón social "${cliente.razon_social}" dentro del estado de cuenta.`,
+  };
+}
+
