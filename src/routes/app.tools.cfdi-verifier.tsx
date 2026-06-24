@@ -10,6 +10,8 @@ import { ToolShell } from "@/components/ToolShell";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { saveToolRun } from "@/lib/tool-runs.functions";
 import { parseCfdi } from "@/lib/tools/cfdi-parser";
+import { RejectModal } from "@/components/RejectModal";
+import { emptyReport, type RejectReport } from "@/lib/cfdi/dedup-xml";
 
 export const Route = createFileRoute("/app/tools/cfdi-verifier")({
   component: CfdiVerifier,
