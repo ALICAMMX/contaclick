@@ -148,7 +148,7 @@ function ConfigPage() {
         <ChevronRight className="h-4 w-4 text-muted-foreground" />
       </Link>
 
-      <UsageMeters />
+      <UsageProfileCard />
       <UsageHistoryPanel />
 
       <div className="rounded-xl border border-primary/30 bg-primary/5 p-5 space-y-4">
