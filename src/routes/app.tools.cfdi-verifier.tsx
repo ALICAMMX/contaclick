@@ -153,7 +153,7 @@ function CfdiVerifier() {
       const name = file.name.toLowerCase();
       if (name.endsWith(".xml") || file.type.includes("xml")) {
         const text = await file.text();
-        autoFillFromText(text, "XML");
+        autoFillFromText(text, "XML", file.name);
         return;
       }
       if (name.endsWith(".pdf") || file.type === "application/pdf") {
@@ -161,12 +161,12 @@ function CfdiVerifier() {
         const buf = new Uint8Array(await file.arrayBuffer());
         let text = "";
         for (let i = 0; i < buf.length; i++) text += String.fromCharCode(buf[i]);
-        autoFillFromText(text, "PDF");
+        autoFillFromText(text, "PDF", file.name);
         return;
       }
       // Cualquier otro: intenta como texto plano
       const text = await file.text();
-      autoFillFromText(text, "archivo");
+      autoFillFromText(text, "archivo", file.name);
     } catch (e: any) {
       toast.error(e?.message ?? "No se pudo leer el archivo");
     }
