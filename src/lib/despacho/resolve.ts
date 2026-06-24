@@ -6,6 +6,20 @@ export async function resolveActiveDespachoId(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<string> {
+  // Invitados: si alguien fue agregado a un despacho, ese despacho debe ser
+  // su contexto principal. Esto evita que un colaborador caiga en su despacho
+  // personal creado antes de aceptar/recibir la invitación.
+  const { data: invited } = await supabase
+    .from("user_memberships")
+    .select("despacho_id")
+    .eq("user_id", userId)
+    .eq("estado", "activo")
+    .not("invited_by", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (invited?.despacho_id) return invited.despacho_id as string;
+
   const { data: mem } = await supabase
     .from("user_memberships")
     .select("despacho_id")
