@@ -8,11 +8,11 @@ import { Button } from "@/components/ui/button";
 import { ImportDialog, type ColSpec } from "@/components/ImportDialog";
 import { upsertClienteFromCsf } from "@/lib/clientes.functions";
 
+import { validateRfc } from "@/lib/sat/rfc";
+
 export const Route = createFileRoute("/app/tools/import-clientes")({
   component: ImportClientesPage,
 });
-
-const RFC_REGEX = /^[A-ZÑ&]{3,4}\d{6}[A-Z\d]{3}$/i;
 
 const COLUMNS: ColSpec[] = [
   { key: "rfc", label: "RFC", required: true, example: "GAJP800101AB1", hint: "13 caracteres (PF) o 12 (PM)" },
