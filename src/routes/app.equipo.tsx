@@ -215,6 +215,8 @@ function EquipoPage() {
           )}
         </div>
       )}
+      <RolesGuide />
+
 
 
       <section>
