@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { AppLayout } from "@/components/AppLayout";
 import { ActiveClienteProvider } from "@/lib/active-cliente";
 import { useAuth } from "@/lib/auth";
-import { getPortalContext } from "@/lib/portal/portal.functions";
+import { getEntryContext } from "@/lib/auth-bootstrap.functions";
 import { Sparkles, Home, Wrench, FolderOpen, ArrowLeft } from "lucide-react";
 
 function AppNotFound() {
@@ -56,10 +56,10 @@ export const Route = createFileRoute("/app")({
 function AppRoot() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const fetchPortalContext = useServerFn(getPortalContext);
-  const portalContext = useQuery({
-    queryKey: ["portal-context", "app-guard", user?.id],
-    queryFn: () => fetchPortalContext(),
+  const fetchEntryContext = useServerFn(getEntryContext);
+  const entryContext = useQuery({
+    queryKey: ["entry-context", "app-guard", user?.id],
+    queryFn: () => fetchEntryContext(),
     enabled: !!user,
     retry: 1,
   });
@@ -69,10 +69,10 @@ function AppRoot() {
   }, [loading, user, navigate]);
 
   useEffect(() => {
-    if (portalContext.data?.isClient) navigate({ to: "/portal", replace: true });
-  }, [portalContext.data?.isClient, navigate]);
+    if (entryContext.data?.isClient) navigate({ to: "/portal", replace: true });
+  }, [entryContext.data?.isClient, navigate]);
 
-  if (loading || !user || portalContext.isLoading || portalContext.data?.isClient) {
+  if (loading || !user || entryContext.isLoading || entryContext.data?.isClient) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex items-center gap-3 text-muted-foreground">
