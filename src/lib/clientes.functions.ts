@@ -58,7 +58,7 @@ export const listClientes = createServerFn({ method: "GET" })
     // Si el despacho activa acceso_restringido, los colaboradores sólo ven
     // los expedientes que les fueron asignados. Owner y rol "despacho" ven todo.
     const despachoIds = Array.from(new Set(rows.map((r: any) => r.despacho_id).filter(Boolean)));
-    if (despachoIds.length === 0) return { clientes: rows.map(({ despacho_id: _d, ...r }: any) => r) };
+    if (despachoIds.length === 0) return { clientes: rows.map(({ despacho_id: _d, ...r }: any) => r), canManageExpedientes: true };
 
     const { data: desps } = await supabase
       .from("despachos").select("id, owner_user_id, acceso_restringido").in("id", despachoIds);
