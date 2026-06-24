@@ -31,8 +31,7 @@ async function resolveAdminDespacho(supabase: any, userId: string) {
   return (owned?.id as string | undefined) ?? null;
 }
 
-async function getMembersLimit(despachoId: string): Promise<number | null> {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+async function getMembersLimit(supabaseAdmin: any, despachoId: string): Promise<number | null> {
   // Read plan from despacho. If no plan, default to trial=2.
   const { data: d } = await supabaseAdmin
     .from("despachos")
@@ -99,7 +98,7 @@ export const listTeam = createServerFn({ method: "GET" })
       .eq("despacho_id", despachoId)
       .order("created_at", { ascending: false });
 
-    const limit = await getMembersLimit(despachoId);
+    const limit = await getMembersLimit(supabaseAdmin, despachoId);
 
     return {
       members,
@@ -125,7 +124,7 @@ export const createInvitation = createServerFn({ method: "POST" })
     if (!despachoId) throw new Error("No tienes un despacho administrado");
 
     // Check limit
-    const limit = await getMembersLimit(despachoId);
+    const limit = await getMembersLimit(supabaseAdmin, despachoId);
     if (limit !== null) {
       const { count: memberCount } = await supabaseAdmin
         .from("user_memberships")
@@ -241,7 +240,6 @@ export const removeMember = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ user_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     if (data.user_id === userId) throw new Error("No puedes removerte a ti mismo");
     const despachoId = await resolveAdminDespacho(supabase, userId);
     if (!despachoId) throw new Error("Sin despacho");
