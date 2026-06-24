@@ -95,15 +95,23 @@ function BulkReader() {
       toast.error("No hay CFDIs válidos (con UUID) para guardar.");
       return;
     }
+    // CANDADO: congelar el expediente al inicio de la operación
+    const frozenId = cliente.id;
+    const frozenRfc = cliente.rfc;
     setSaving(true);
     let inserted = 0, duplicates = 0, failed = 0;
     try {
       const CHUNK = 50;
       for (let i = 0; i < persistibles.length; i += CHUNK) {
+        // Revalidar antes de cada chunk: si el usuario cambió el expediente
+        // activo a mitad de la subida, abortamos para no mezclar contabilidades.
+        if (cliente?.id !== frozenId) {
+          throw new Error(`El expediente activo cambió de ${frozenRfc} durante la carga. Operación cancelada para evitar mezclar contabilidades.`);
+        }
         const slice = persistibles.slice(i, i + CHUNK);
         const res = await uploadBatch({
           data: {
-            cliente_id: cliente.id,
+            cliente_id: frozenId,
             files: slice.map((r) => ({ filename: r.archivo, xml: r.xml! })),
           },
         });
@@ -112,13 +120,14 @@ function BulkReader() {
         failed += res.summary.failed;
       }
       await qc.invalidateQueries();
-      toast.success(`Expediente actualizado: ${inserted} guardados, ${duplicates} duplicados, ${failed} con error.`);
+      toast.success(`Expediente ${frozenRfc} actualizado: ${inserted} guardados, ${duplicates} duplicados, ${failed} con error.`);
     } catch (e) {
       toast.error(`No se pudo guardar: ${e instanceof Error ? e.message : "error"}`);
     } finally {
       setSaving(false);
     }
   };
+
 
   const handleFiles = async (files: FileList) => {
     if (!cliente) {

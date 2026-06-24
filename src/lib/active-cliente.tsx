@@ -61,3 +61,30 @@ export function useActiveCliente() {
   if (!ctx) throw new Error("useActiveCliente must be used inside ActiveClienteProvider");
   return ctx;
 }
+
+/**
+ * Congela el expediente activo al montarse el componente. Permite detectar si
+ * el usuario cambió de expediente a mitad de una operación larga (subir XML,
+ * conciliar, etc.) y abortar antes de mezclar contabilidades.
+ *
+ * Uso:
+ *   const frozen = useFrozenCliente();
+ *   frozen.assertSame(); // throw si el activo cambió
+ */
+export function useFrozenCliente() {
+  const { cliente } = useActiveCliente();
+  const [frozen] = useState<ActiveCliente>(cliente);
+  const currentMatches = !!frozen && frozen.id === cliente?.id;
+  const assertSame = useCallback(() => {
+    if (!frozen) {
+      throw new Error("No había expediente activo cuando inició la operación.");
+    }
+    if (!cliente || cliente.id !== frozen.id) {
+      throw new Error(
+        `El expediente activo cambió durante la operación (de ${frozen.rfc} a ${cliente?.rfc ?? "ninguno"}). Para evitar mezclar contabilidades, la acción fue cancelada. Vuelve al expediente ${frozen.rfc} y reintenta.`,
+      );
+    }
+  }, [frozen, cliente]);
+  return { frozen, current: cliente, currentMatches, assertSame };
+}
+

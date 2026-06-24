@@ -74,7 +74,10 @@ function ConciliacionPage() {
     mutationFn: async () => {
       if (!cliente) throw new Error("Selecciona un expediente");
       if (!parsed.length) throw new Error("Sube un archivo primero");
-      const payload: Record<string, unknown> = { cliente_id: cliente.id, movimientos: parsed };
+      // CANDADO: congelar expediente al ejecutar la carga
+      const frozenId = cliente.id;
+      const frozenRfc = cliente.rfc;
+      const payload: Record<string, unknown> = { cliente_id: frozenId, movimientos: parsed };
       if (cuentaSel && cuentaSel !== "__nueva__") {
         payload.cuenta_id = cuentaSel;
       } else {
@@ -82,10 +85,11 @@ function ConciliacionPage() {
         payload.alias = aliasNew || "Principal";
         if (maskNew) payload.mask = maskNew;
       }
-      return fnUpload({ data: payload as never });
+      const res = await fnUpload({ data: payload as never });
+      return { ...res, frozenRfc };
     },
     onSuccess: (res) => {
-      toast.success(`${res.inserted} movimientos cargados`, { description: `${res.duplicates} duplicados ignorados` });
+      toast.success(`${res.inserted} movimientos cargados en ${res.frozenRfc}`, { description: `${res.duplicates} duplicados ignorados` });
       setParsed([]);
       setCuentaSel(res.cuenta_id);
       qc.invalidateQueries({ queryKey: ["recon-stats", cliente?.id] });
@@ -94,6 +98,7 @@ function ConciliacionPage() {
     },
     onError: (e) => toast.error((e as Error).message),
   });
+
 
   const newCuenta = useMutation({
     mutationFn: async (input: { banco: string; alias: string; mask?: string }) => {
@@ -153,13 +158,16 @@ function ConciliacionPage() {
       toast.error("Selecciona un expediente (RFC) en la barra superior antes de cargar estados de cuenta.");
       return;
     }
+    // CANDADO: congelar expediente durante el parseo
+    const frozenId = cliente.id;
+    const frozenRfc = cliente.rfc;
+    const frozenRazon = cliente.razon_social;
     setParsingErr(null);
     const all: ParsedMovimiento[] = [];
     try {
       for (const f of Array.from(files)) {
-        // CANDADO: verificar que el estado de cuenta sea del contribuyente activo
         const text = await extractBankFileText(f);
-        const check = bankFileMatchesContribuyente(text, { rfc: cliente.rfc, razon_social: cliente.razon_social });
+        const check = bankFileMatchesContribuyente(text, { rfc: frozenRfc, razon_social: frozenRazon });
         if (!check.match) {
           setBankReject({ archivo: f.name, razon: check.reason ?? "El archivo no coincide con el contribuyente del expediente." });
           return; // no procesamos NINGÚN archivo del lote para evitar conciliaciones cruzadas
@@ -168,14 +176,19 @@ function ConciliacionPage() {
         all.push(...rows);
       }
       if (!all.length) throw new Error("No se detectaron movimientos. Verifica que el archivo tenga columnas Fecha, Descripción y Cargo/Abono o Monto.");
+      if (cliente?.id !== frozenId) {
+        toast.error(`El expediente activo cambió durante la lectura (de ${frozenRfc}). Operación cancelada para evitar mezclar contabilidades.`);
+        return;
+      }
       setParsed(all);
-      toast.success(`${all.length} movimientos detectados para ${cliente.rfc}`);
+      toast.success(`${all.length} movimientos detectados para ${frozenRfc}`);
     } catch (e) {
       const msg = (e as Error).message;
       setParsingErr(msg);
       toast.error(msg);
     }
   }
+
 
 
   function exportCsv() {

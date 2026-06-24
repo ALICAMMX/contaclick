@@ -105,6 +105,9 @@ function CfdiDashboard() {
 
   const handleFiles = useCallback(async (fileList: FileList | File[]) => {
     if (!cliente) return;
+    // CANDADO: congelar expediente desde el inicio para no mezclar contabilidades
+    const frozenId = cliente.id;
+    const frozenRfc = cliente.rfc;
     const files = Array.from(fileList);
     const payload: Array<{ filename: string; xml: string }> = [];
 
@@ -125,11 +128,16 @@ function CfdiDashboard() {
       return;
     }
 
+    if (cliente?.id !== frozenId) {
+      toast.error(`El expediente activo cambió durante la lectura (de ${frozenRfc}). Operación cancelada.`);
+      return;
+    }
+
     // CANDADO: validar RFC + duplicados ANTES de subir al expediente
     let dbUuids = new Set<string>();
     let dbHashes = new Set<string>();
     try {
-      const k = await fetchKeys({ data: { cliente_id: cliente.id } });
+      const k = await fetchKeys({ data: { cliente_id: frozenId } });
       dbUuids = new Set((k.uuids ?? []).map((u) => u.toUpperCase()));
       dbHashes = new Set(k.hashes ?? []);
     } catch (e) {
@@ -139,7 +147,7 @@ function CfdiDashboard() {
     }
 
     const { accepted, report: rep } = await classifyXmls({
-      rfcActivo: cliente.rfc,
+      rfcActivo: frozenRfc,
       files: payload,
       dbUuids,
       dbHashes,
@@ -157,7 +165,14 @@ function CfdiDashboard() {
     for (let i = 0; i < accepted.length; i += 50) {
       chunks.push(accepted.slice(i, i + 50).map((a) => ({ filename: a.filename, xml: a.xml })));
     }
-    for (const c of chunks) await uploadM.mutateAsync(c);
+    for (const c of chunks) {
+      if (cliente?.id !== frozenId) {
+        toast.error(`El expediente activo cambió a mitad de la subida (de ${frozenRfc}). Carga cancelada.`);
+        return;
+      }
+      await uploadM.mutateAsync(c);
+    }
+
   }, [cliente, uploadM, fetchKeys]);
 
   if (!cliente || isDemo) {
