@@ -19,8 +19,11 @@ export type CfdiParsed = {
   fechaTimbrado?: string;
   conceptos: Array<{ descripcion?: string; cantidad?: number; valorUnitario?: number; importe?: number; claveProdServ?: string }>;
   impuestos: { totalTrasladados?: number; totalRetenidos?: number };
+  /** UUIDs relacionados: DoctoRelacionado (Pago 2.0) o CfdiRelacionados. */
+  relacionados: Array<{ uuid: string; tipo: "pago" | "relacion"; tipoRelacion?: string }>;
   warnings: string[];
 };
+
 
 function attr(tag: string | undefined, name: string): string | undefined {
   if (!tag) return undefined;
@@ -44,6 +47,24 @@ function findAllOpenTags(xml: string, localName: string): string[] {
   const re = new RegExp(`<(?:[a-zA-Z0-9]+:)?${localName}\\b[^>]*\\/?>`, "g");
   return xml.match(re) ?? [];
 }
+
+function extractRelacionados(xml: string): Array<{ uuid: string; tipo: "pago" | "relacion"; tipoRelacion?: string }> {
+  const out: Array<{ uuid: string; tipo: "pago" | "relacion"; tipoRelacion?: string }> = [];
+  // Pago 2.0: <pago20:DoctoRelacionado IdDocumento="UUID" .../>
+  for (const tag of findAllOpenTags(xml, "DoctoRelacionado")) {
+    const id = attr(tag, "IdDocumento");
+    if (id) out.push({ uuid: id.toLowerCase(), tipo: "pago" });
+  }
+  // CfdiRelacionados (egresos, sustituciones, etc.)
+  const rels = findOpenTag(xml, "CfdiRelacionados");
+  const tipoRel = attr(rels, "TipoRelacion");
+  for (const tag of findAllOpenTags(xml, "CfdiRelacionado")) {
+    const id = attr(tag, "UUID");
+    if (id) out.push({ uuid: id.toLowerCase(), tipo: "relacion", tipoRelacion: tipoRel });
+  }
+  return out;
+}
+
 
 export function parseCfdi(xml: string): CfdiParsed {
   const warnings: string[] = [];
@@ -95,8 +116,10 @@ export function parseCfdi(xml: string): CfdiParsed {
       totalTrasladados: num(attr(impuestosTag, "TotalImpuestosTrasladados")),
       totalRetenidos: num(attr(impuestosTag, "TotalImpuestosRetenidos")),
     },
+    relacionados: extractRelacionados(xml),
     warnings,
   };
+
 
   if (result.version && result.version !== "4.0") {
     warnings.push(`Versión CFDI ${result.version}. La normativa actual es 4.0.`);
