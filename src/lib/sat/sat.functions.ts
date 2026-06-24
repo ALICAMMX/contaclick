@@ -96,6 +96,22 @@ export const conectarSat = createServerFn({ method: "POST" })
       .maybeSingle();
     if (cliErr || !cli) throw new Error("Expediente no encontrado");
     if (!cli.despacho_id) throw new Error("Expediente sin despacho asignado");
+    if (!cli.rfc) throw new Error("El expediente no tiene RFC capturado");
+
+    // CANDADO: el .cer debe pertenecer al RFC del expediente activo.
+    const rfcsCer = extraerRfcsDeCer(data.cer_b64);
+    const rfcCliente = cli.rfc.toUpperCase();
+    if (rfcsCer.length === 0) {
+      throw new Error(
+        "No se pudo leer el RFC del certificado (.cer). Verifica que estés subiendo el archivo correcto de la e.firma.",
+      );
+    }
+    if (!rfcsCer.includes(rfcCliente)) {
+      throw new Error(
+        `La e.firma NO corresponde a este expediente. El certificado pertenece a ${rfcsCer.join(", ")} pero el expediente activo es ${rfcCliente}. Para evitar firmar declaraciones con la e.firma equivocada, la carga fue rechazada.`,
+      );
+    }
+
 
     let result: { token: string; simulated: boolean };
     try {
