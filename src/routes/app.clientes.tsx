@@ -158,6 +158,25 @@ function ClientesPage() {
           </table>
         )}
       </div>
+
+      <ConfirmDeleteDialog
+        open={!!toDelete}
+        onClose={() => setToDelete(null)}
+        loading={deleteMut.isPending}
+        title="Eliminar expediente"
+        expected={toDelete?.rfc ?? ""}
+        warning="Se eliminarán también los CFDI, movimientos y demás datos asociados a este expediente. Esta acción no se puede deshacer."
+        description={
+          <>
+            Estás a punto de eliminar el expediente{" "}
+            <span className="font-semibold">{toDelete?.razon}</span> (RFC{" "}
+            <span className="font-mono">{toDelete?.rfc}</span>).
+          </>
+        }
+        onConfirm={() => {
+          if (toDelete) deleteMut.mutate(toDelete.id, { onSuccess: () => setToDelete(null) });
+        }}
+      />
     </div>
   );
 }
