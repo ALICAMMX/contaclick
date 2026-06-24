@@ -74,7 +74,10 @@ function ConciliacionPage() {
     mutationFn: async () => {
       if (!cliente) throw new Error("Selecciona un expediente");
       if (!parsed.length) throw new Error("Sube un archivo primero");
-      const payload: Record<string, unknown> = { cliente_id: cliente.id, movimientos: parsed };
+      // CANDADO: congelar expediente al ejecutar la carga
+      const frozenId = cliente.id;
+      const frozenRfc = cliente.rfc;
+      const payload: Record<string, unknown> = { cliente_id: frozenId, movimientos: parsed };
       if (cuentaSel && cuentaSel !== "__nueva__") {
         payload.cuenta_id = cuentaSel;
       } else {
@@ -82,10 +85,11 @@ function ConciliacionPage() {
         payload.alias = aliasNew || "Principal";
         if (maskNew) payload.mask = maskNew;
       }
-      return fnUpload({ data: payload as never });
+      const res = await fnUpload({ data: payload as never });
+      return { ...res, frozenRfc };
     },
     onSuccess: (res) => {
-      toast.success(`${res.inserted} movimientos cargados`, { description: `${res.duplicates} duplicados ignorados` });
+      toast.success(`${res.inserted} movimientos cargados en ${res.frozenRfc}`, { description: `${res.duplicates} duplicados ignorados` });
       setParsed([]);
       setCuentaSel(res.cuenta_id);
       qc.invalidateQueries({ queryKey: ["recon-stats", cliente?.id] });
@@ -94,6 +98,7 @@ function ConciliacionPage() {
     },
     onError: (e) => toast.error((e as Error).message),
   });
+
 
   const newCuenta = useMutation({
     mutationFn: async (input: { banco: string; alias: string; mask?: string }) => {
