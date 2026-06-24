@@ -49,6 +49,8 @@ function CfdiDashboard() {
   const list = useServerFn(listCfdi);
   const stats = useServerFn(getCfdiStats);
   const upload = useServerFn(uploadCfdiBatch);
+  const fetchKeys = useServerFn(getExistingCfdiKeys);
+  const [report, setReport] = useState<RejectReport | null>(null);
 
   const [filters, setFilters] = useState<{ q: string; tipo: string; metodo_pago: string; desde: string; hasta: string }>({
     q: "", tipo: "", metodo_pago: "", desde: "", hasta: "",
