@@ -85,8 +85,10 @@ function CfdiDetail() {
       importe: Number((x as { importe?: number }).importe ?? 0),
     })),
     impuestos: { totalTrasladados: Number(c.iva_trasladado), totalRetenidos: Number(c.iva_retenido) },
+    relacionados: [],
     warnings: [],
   });
+
 
   const level = maxLevel(findings);
 
