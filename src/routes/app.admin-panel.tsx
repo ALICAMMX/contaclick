@@ -220,6 +220,7 @@ function Dashboard() {
               <TableHead>Usuario</TableHead>
               <TableHead>Despacho</TableHead>
               <TableHead>Plan</TableHead>
+              <TableHead>RFCs</TableHead>
               <TableHead>Pago</TableHead>
               <TableHead>IA (mes)</TableHead>
               <TableHead>Roles</TableHead>
@@ -248,7 +249,7 @@ function Dashboard() {
             ))}
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground py-10">
+                <TableCell colSpan={9} className="text-center text-muted-foreground py-10">
                   Sin resultados
                 </TableCell>
               </TableRow>
@@ -331,6 +332,9 @@ function UserRow({
           )}
         </TableCell>
         <TableCell>
+          <UsageMini usado={row.rfc_activos} limite={row.rfc_limite} />
+        </TableCell>
+        <TableCell>
           {row.ultimo_pago_at ? (
             <>
               <div className="text-sm tabular-nums">
@@ -348,8 +352,8 @@ function UserRow({
           </div>
         </TableCell>
         <TableCell>
-          <div className="text-sm tabular-nums">{row.ia_calls_mes} usos</div>
-          <div className="text-xs text-muted-foreground tabular-nums">
+          <UsageMini usado={row.ia_calls_mes} limite={row.ia_msgs_limite} label="msgs" />
+          <div className="text-[10px] text-muted-foreground tabular-nums mt-0.5">
             ${row.ia_costo_usd_mes.toFixed(3)} USD · {row.ia_tokens_mes.toLocaleString()} tok
           </div>
         </TableCell>
@@ -385,7 +389,7 @@ function UserRow({
       </TableRow>
       {open && (
         <TableRow>
-          <TableCell colSpan={8} className="bg-muted/30">
+          <TableCell colSpan={9} className="bg-muted/30">
             <div className="grid md:grid-cols-2 gap-4 p-3">
               <div>
                 <div className="text-xs font-semibold mb-2">Roles / privilegios</div>
@@ -437,5 +441,35 @@ function UserRow({
         </TableRow>
       )}
     </>
+  );
+}
+
+function UsageMini({ usado, limite, label }: { usado: number; limite: number; label?: string }) {
+  const ilimitado = limite < 0;
+  const sinLimite = !ilimitado && limite === 0;
+  const pct = ilimitado || sinLimite ? 0 : Math.min(100, (usado / limite) * 100);
+  const tone =
+    ilimitado || sinLimite
+      ? "bg-muted-foreground/40"
+      : pct >= 100
+        ? "bg-destructive"
+        : pct >= 80
+          ? "bg-warning"
+          : pct >= 50
+            ? "bg-primary"
+            : "bg-emerald-500";
+  return (
+    <div className="min-w-[110px]">
+      <div className="text-sm tabular-nums">
+        {usado.toLocaleString("es-MX")}
+        {ilimitado ? " / ∞" : sinLimite ? "" : ` / ${limite.toLocaleString("es-MX")}`}
+        {label && <span className="text-[10px] text-muted-foreground ml-1">{label}</span>}
+      </div>
+      {!ilimitado && !sinLimite && (
+        <div className="h-1 rounded-full bg-muted/40 overflow-hidden mt-1">
+          <div className={`h-full ${tone}`} style={{ width: `${pct}%` }} />
+        </div>
+      )}
+    </div>
   );
 }

@@ -39,6 +39,10 @@ export type AdminUserRow = {
   ia_calls_mes: number;
   ia_tokens_mes: number;
   ia_costo_usd_mes: number;
+  rfc_activos: number;
+  rfc_limite: number;
+  ia_msgs_limite: number;
+  ia_tokens_limite: number;
 };
 
 /** Lista todos los usuarios con su despacho, plan, pagos y consumo IA del mes. */
@@ -48,7 +52,7 @@ export const adminListUsers = createServerFn({ method: "GET" })
     await assertSuperAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const [profilesRes, despachosRes, subsRes, pagosRes, iaRes, rolesRes, membRes, planesRes, authRes] = await Promise.all([
+    const [profilesRes, despachosRes, subsRes, pagosRes, iaRes, rolesRes, membRes, planesRes, authRes, clientesRes] = await Promise.all([
       supabaseAdmin.from("profiles").select("*"),
       supabaseAdmin.from("despachos").select("*"),
       supabaseAdmin.from("suscripciones").select("*").order("created_at", { ascending: false }),
@@ -58,6 +62,7 @@ export const adminListUsers = createServerFn({ method: "GET" })
       supabaseAdmin.from("user_memberships").select("*"),
       supabaseAdmin.from("planes").select("*"),
       supabaseAdmin.auth.admin.listUsers({ perPage: 1000 }),
+      supabaseAdmin.from("clientes").select("despacho_id, tipo_relacion"),
     ]);
 
     if (profilesRes.error) throw new Error(profilesRes.error.message);
@@ -70,11 +75,18 @@ export const adminListUsers = createServerFn({ method: "GET" })
     const memberships = membRes.data ?? [];
     const planes = planesRes.data ?? [];
     const authUsers = authRes.data?.users ?? [];
+    const clientes = clientesRes.data ?? [];
 
     const planById = new Map(planes.map((p) => [p.id, p]));
     const despachoById = new Map(despachos.map((d) => [d.id, d]));
     const subByDespacho = new Map<string, any>();
     for (const s of subs) if (!subByDespacho.has(s.despacho_id)) subByDespacho.set(s.despacho_id, s);
+
+    const rfcsByDespacho = new Map<string, number>();
+    for (const c of clientes as any[]) {
+      if (!c.despacho_id || c.tipo_relacion !== "cliente") continue;
+      rfcsByDespacho.set(c.despacho_id, (rfcsByDespacho.get(c.despacho_id) ?? 0) + 1);
+    }
 
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
@@ -126,6 +138,10 @@ export const adminListUsers = createServerFn({ method: "GET" })
         ia_calls_mes: iaCalls,
         ia_tokens_mes: iaTokens,
         ia_costo_usd_mes: Number(iaCosto.toFixed(4)),
+        rfc_activos: despacho ? (rfcsByDespacho.get(despacho.id) ?? 0) : 0,
+        rfc_limite: Number((plan as any)?.limites?.rfcs ?? 0),
+        ia_msgs_limite: Number((plan as any)?.limites?.ia_msgs ?? 0),
+        ia_tokens_limite: Number((plan as any)?.limites?.ia_tokens ?? 0),
       };
     });
 
