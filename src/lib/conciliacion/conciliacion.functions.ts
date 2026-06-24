@@ -75,8 +75,32 @@ export const uploadMovimientos = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const despachoId = await ensureDespacho(supabase, userId);
+
+    // CANDADO: el expediente debe pertenecer al despacho del usuario
+    const { data: cli, error: cliErr } = await supabase
+      .from("clientes")
+      .select("id, rfc, despacho_id")
+      .eq("id", data.cliente_id)
+      .maybeSingle();
+    if (cliErr || !cli) throw new Error("Expediente no encontrado");
+    if (cli.despacho_id !== despachoId) {
+      throw new Error("El expediente no pertenece a tu despacho. Operación cancelada.");
+    }
+
     let cuentaId: string;
     if (data.cuenta_id) {
+      // CANDADO: la cuenta bancaria debe pertenecer al MISMO expediente que se está conciliando
+      const { data: cta, error: ctaErr } = await supabase
+        .from("cuentas_bancarias")
+        .select("id, cliente_id, banco, alias")
+        .eq("id", data.cuenta_id)
+        .maybeSingle();
+      if (ctaErr || !cta) throw new Error("Cuenta bancaria no encontrada");
+      if (cta.cliente_id !== data.cliente_id) {
+        throw new Error(
+          `La cuenta seleccionada (${cta.banco} · ${cta.alias ?? ""}) pertenece a otro expediente. Para no mezclar contabilidades, la carga fue rechazada.`,
+        );
+      }
       cuentaId = data.cuenta_id;
     } else {
       if (!data.banco) throw new Error("Indica una cuenta existente o un banco para crearla.");
@@ -88,6 +112,7 @@ export const uploadMovimientos = createServerFn({ method: "POST" })
         mask: data.mask,
       });
     }
+
 
     let inserted = 0, duplicates = 0;
     const rows = [];
