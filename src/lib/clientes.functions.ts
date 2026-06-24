@@ -169,20 +169,22 @@ export const createCliente = createServerFn({ method: "POST" })
       }
     }
 
-    const { data: row, error } = await supabase
+    const clienteId = crypto.randomUUID();
+    const row = {
+      id: clienteId,
+      user_id: userId,
+      despacho_id: despachoId,
+      rfc: data.rfc,
+      razon_social: data.razon_social,
+      regimen_fiscal: data.regimen_fiscal || null,
+      email: data.email || null,
+      telefono: data.telefono || null,
+      notas: data.notas || null,
+    };
+
+    const { error } = await supabase
       .from("clientes")
-      .insert({
-        user_id: userId,
-        despacho_id: despachoId,
-        rfc: data.rfc,
-        razon_social: data.razon_social,
-        regimen_fiscal: data.regimen_fiscal || null,
-        email: data.email || null,
-        telefono: data.telefono || null,
-        notas: data.notas || null,
-      })
-      .select()
-      .single();
+      .insert(row);
     if (error) throw new Error(error.message);
     return row;
   });
@@ -262,28 +264,29 @@ export const upsertClienteFromCsf = createServerFn({ method: "POST" })
         const viejo = (existing as any)[k];
         if (nuevo && nuevo !== viejo) diffs.push(labelMap[k]);
       }
-      const { data: updated, error } = await supabase
+      const { error } = await supabase
         .from("clientes")
         .update(payload)
-        .eq("id", existing.id)
-        .select()
-        .single();
+        .eq("id", existing.id);
       if (error) throw new Error(error.message);
+      const updated = { ...existing, ...payload };
       return { accion: "actualizado" as const, cliente: updated, diferencias: diffs };
     }
 
-    const { data: inserted, error } = await supabase
+    const clienteId = crypto.randomUUID();
+    const inserted = {
+      id: clienteId,
+      user_id: userId,
+      despacho_id: despachoId,
+      rfc: data.rfc,
+      tipo_relacion: data.tipo_relacion,
+      cliente_padre_id: data.cliente_padre_id || null,
+      ...payload,
+    };
+
+    const { error } = await supabase
       .from("clientes")
-      .insert({
-        user_id: userId,
-        despacho_id: despachoId,
-        rfc: data.rfc,
-        tipo_relacion: data.tipo_relacion,
-        cliente_padre_id: data.cliente_padre_id || null,
-        ...payload,
-      })
-      .select()
-      .single();
+      .insert(inserted);
     if (error) throw new Error(error.message);
     return { accion: "creado" as const, cliente: inserted, diferencias: [] as string[] };
   });
