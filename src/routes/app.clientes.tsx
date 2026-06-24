@@ -31,6 +31,8 @@ function ClientesPage() {
     onSuccess: (row) => {
       toast.success("Expediente creado");
       qc.invalidateQueries({ queryKey: ["clientes"] });
+      qc.invalidateQueries({ queryKey: ["rfcs-vinculados"] });
+      qc.invalidateQueries({ queryKey: ["usage"] });
       setOpenForm(false);
       setCliente({ id: row.id, rfc: row.rfc, razon_social: row.razon_social, regimen_fiscal: row.regimen_fiscal });
     },
@@ -42,6 +44,8 @@ function ClientesPage() {
     onSuccess: (_v, id) => {
       toast.success("Expediente eliminado");
       qc.invalidateQueries({ queryKey: ["clientes"] });
+      qc.invalidateQueries({ queryKey: ["rfcs-vinculados"] });
+      qc.invalidateQueries({ queryKey: ["usage"] });
       if (active?.id === id) setCliente(null);
     },
   });
