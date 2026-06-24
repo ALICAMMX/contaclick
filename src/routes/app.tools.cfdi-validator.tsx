@@ -76,7 +76,7 @@ function CfdiValidator() {
     >
       <label className="block rounded-xl border-2 border-dashed border-border bg-card/30 p-10 text-center hover:border-primary/50 transition-colors cursor-pointer">
         <input type="file" accept=".xml,text/xml,application/xml" className="hidden"
-          onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])} />
+          onChange={async (e) => { const f = e.target.files?.[0]; if (f) await onFile(f); e.target.value = ""; }} />
         <div className="h-12 w-12 rounded-xl mx-auto flex items-center justify-center mb-3" style={{ background: "var(--gradient-primary)" }}>
           <Upload className="h-5 w-5 text-primary-foreground" />
         </div>
