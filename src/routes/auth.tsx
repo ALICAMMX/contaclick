@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Logo } from "@/components/Logo";
-import { ensureUserWorkspace } from "@/lib/auth-bootstrap.functions";
+import { ensureUserWorkspace, getEntryContext } from "@/lib/auth-bootstrap.functions";
 import { ensureDemoAccount } from "@/lib/demo/demo-account.functions";
 import { seedDemo } from "@/lib/demo/demo.functions";
 import { PlayCircle, ArrowLeft } from "lucide-react";
@@ -50,19 +50,14 @@ function AuthPage() {
   const [formMessage, setFormMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const navigate = useNavigate();
   const bootstrapWorkspace = useServerFn(ensureUserWorkspace);
+  const getEntry = useServerFn(getEntryContext);
   const ensureDemo = useServerFn(ensureDemoAccount);
   const seedDemoFn = useServerFn(seedDemo);
   const [demoLoading, setDemoLoading] = useState(false);
 
   const finishAuthenticatedEntry = async (payload: { fullName: string | null; despachoNombre: string | null }) => {
-    await bootstrapWorkspace({ data: payload });
-    const { data: clientRole } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("role", "cliente_final")
-      .limit(1)
-      .maybeSingle();
-    navigate({ to: clientRole ? "/portal" : "/app", replace: true });
+    const entry = await bootstrapWorkspace({ data: payload });
+    navigate({ to: entry.isClient ? "/portal" : "/app", replace: true });
   };
 
   const handleDemoLogin = async () => {
@@ -104,10 +99,12 @@ function AuthPage() {
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/app" });
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!data.session) return;
+      const entry = await getEntry();
+      navigate({ to: entry.isClient ? "/portal" : "/app", replace: true });
     });
-  }, [navigate]);
+  }, [getEntry, navigate]);
 
   const sendPasswordReset = async () => {
     if (!email.trim()) {
