@@ -138,6 +138,10 @@ export const adminListUsers = createServerFn({ method: "GET" })
         ia_calls_mes: iaCalls,
         ia_tokens_mes: iaTokens,
         ia_costo_usd_mes: Number(iaCosto.toFixed(4)),
+        rfc_activos: despacho ? (rfcsByDespacho.get(despacho.id) ?? 0) : 0,
+        rfc_limite: Number((plan as any)?.limites?.rfcs ?? 0),
+        ia_msgs_limite: Number((plan as any)?.limites?.ia_msgs ?? 0),
+        ia_tokens_limite: Number((plan as any)?.limites?.ia_tokens ?? 0),
       };
     });
 
