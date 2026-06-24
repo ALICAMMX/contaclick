@@ -18,6 +18,35 @@ function normalizeInvitedRole(role: string | null | undefined) {
   return "colaborador";
 }
 
+async function resolveClientEntry(supabaseAdmin: any, userId: string) {
+  const { data: clientRole } = await supabaseAdmin
+    .from("user_roles")
+    .select("despacho_id, cliente_id")
+    .eq("user_id", userId)
+    .eq("role", "cliente_final")
+    .not("cliente_id", "is", null)
+    .limit(1)
+    .maybeSingle();
+
+  if (!clientRole?.cliente_id) return null;
+
+  return {
+    ok: true as const,
+    isClient: true as const,
+    despachoId: clientRole.despacho_id as string,
+    clienteId: clientRole.cliente_id as string,
+  };
+}
+
+export const getEntryContext = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const clientEntry = await resolveClientEntry(supabaseAdmin, context.userId);
+    if (clientEntry) return clientEntry;
+    return { ok: true as const, isClient: false as const };
+  });
+
 export const ensureUserWorkspace = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => BootstrapSchema.parse(data))
@@ -119,6 +148,9 @@ export const ensureUserWorkspace = createServerFn({ method: "POST" })
       }
     }
 
+    const clientEntry = await resolveClientEntry(supabaseAdmin, userId);
+    if (clientEntry) return clientEntry;
+
     const { data: invitedMembership } = await supabaseAdmin
       .from("user_memberships")
       .select("despacho_id")
@@ -130,7 +162,7 @@ export const ensureUserWorkspace = createServerFn({ method: "POST" })
       .maybeSingle();
 
     if (invitedMembership?.despacho_id) {
-      return { ok: true, despachoId: invitedMembership.despacho_id };
+      return { ok: true, isClient: false as const, despachoId: invitedMembership.despacho_id };
     }
 
     const { data: membership } = await supabaseAdmin
@@ -194,7 +226,7 @@ export const ensureUserWorkspace = createServerFn({ method: "POST" })
     }
 
     if (!shouldEnsureAdminRole) {
-      return { ok: true, despachoId };
+      return { ok: true, isClient: false as const, despachoId };
     }
 
     const { data: existingRole } = await supabaseAdmin
@@ -215,5 +247,5 @@ export const ensureUserWorkspace = createServerFn({ method: "POST" })
       if (roleError) throw new Error(roleError.message);
     }
 
-    return { ok: true, despachoId };
+    return { ok: true, isClient: false as const, despachoId };
   });
