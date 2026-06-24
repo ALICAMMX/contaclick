@@ -19,8 +19,11 @@ export type CfdiParsed = {
   fechaTimbrado?: string;
   conceptos: Array<{ descripcion?: string; cantidad?: number; valorUnitario?: number; importe?: number; claveProdServ?: string }>;
   impuestos: { totalTrasladados?: number; totalRetenidos?: number };
+  /** UUIDs relacionados: DoctoRelacionado (Pago 2.0) o CfdiRelacionados. */
+  relacionados: Array<{ uuid: string; tipo: "pago" | "relacion"; tipoRelacion?: string }>;
   warnings: string[];
 };
+
 
 function attr(tag: string | undefined, name: string): string | undefined {
   if (!tag) return undefined;
