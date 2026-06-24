@@ -60,6 +60,8 @@ function DespachoPage() {
         </div>
       </div>
 
+      <UsageProfileCard />
+
       <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
         <Kpi label="Expedientes" value={t?.clientes ?? 0} />
         <Kpi label="Riesgo alto" value={t?.rojo ?? 0} tone="rojo" />
