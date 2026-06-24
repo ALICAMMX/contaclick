@@ -84,7 +84,7 @@ export const listTeam = createServerFn({ method: "GET" })
     // Invitations
     const { data: invs } = await supabase
       .from("invitaciones")
-      .select("id, token, role, created_at, expires_at, used_at, revoked_at")
+      .select("id, token, email, role, created_at, expires_at, used_at, revoked_at")
       .eq("despacho_id", despachoId)
       .order("created_at", { ascending: false });
 
@@ -102,7 +102,10 @@ export const listTeam = createServerFn({ method: "GET" })
 export const createInvitation = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) =>
-    z.object({ role: z.enum(["colaborador"]).default("colaborador") }).parse(d ?? {}),
+    z.object({
+      email: z.string().trim().toLowerCase().email("Correo inválido"),
+      role: z.enum(["colaborador"]).default("colaborador"),
+    }).parse(d ?? {}),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
@@ -130,14 +133,79 @@ export const createInvitation = createServerFn({ method: "POST" })
       }
     }
 
+    const email = data.email;
+
+    // Already a member?
+    const { data: existingProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("id, email, full_name")
+      .ilike("email", email)
+      .maybeSingle();
+
+    if (existingProfile?.id) {
+      const { data: alreadyMember } = await supabaseAdmin
+        .from("user_memberships")
+        .select("user_id")
+        .eq("despacho_id", despachoId)
+        .eq("user_id", existingProfile.id)
+        .eq("estado", "activo")
+        .maybeSingle();
+      if (alreadyMember) {
+        throw new Error(`${email} ya es miembro de este despacho.`);
+      }
+    }
+
+    // Reject duplicate pending for same email
+    const { data: pending } = await supabaseAdmin
+      .from("invitaciones")
+      .select("id")
+      .eq("despacho_id", despachoId)
+      .ilike("email", email)
+      .is("used_at", null)
+      .is("revoked_at", null)
+      .gt("expires_at", new Date().toISOString())
+      .maybeSingle();
+    if (pending) {
+      throw new Error(`Ya hay una invitación pendiente para ${email}.`);
+    }
+
     const token = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "").slice(0, 16);
     const { data: row, error } = await supabase
       .from("invitaciones")
-      .insert({ despacho_id: despachoId, token, role: data.role, created_by: userId })
+      .insert({ despacho_id: despachoId, token, email, role: data.role, created_by: userId })
       .select("id, token, expires_at")
       .single();
     if (error) throw new Error(error.message);
-    return { id: row.id as string, token: row.token as string, expires_at: row.expires_at as string };
+
+    // If the invitee already has an account, attach them now and consume the invitation.
+    if (existingProfile?.id) {
+      await supabaseAdmin
+        .from("user_memberships")
+        .insert({ user_id: existingProfile.id, despacho_id: despachoId, estado: "activo", invited_by: userId });
+      await supabaseAdmin
+        .from("user_roles")
+        .insert({ user_id: existingProfile.id, despacho_id: despachoId, role: data.role });
+      await supabaseAdmin
+        .from("invitaciones")
+        .update({ used_at: new Date().toISOString(), used_by: existingProfile.id })
+        .eq("id", row.id);
+      return {
+        id: row.id as string,
+        token: row.token as string,
+        expires_at: row.expires_at as string,
+        matched: true as const,
+        email,
+        full_name: existingProfile.full_name as string | null,
+      };
+    }
+
+    return {
+      id: row.id as string,
+      token: row.token as string,
+      expires_at: row.expires_at as string,
+      matched: false as const,
+      email,
+    };
   });
 
 export const revokeInvitation = createServerFn({ method: "POST" })

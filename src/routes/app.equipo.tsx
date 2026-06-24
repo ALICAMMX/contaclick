@@ -6,7 +6,8 @@ import { toast } from "sonner";
 import { listTeam, createInvitation, revokeInvitation, removeMember } from "@/lib/equipo/equipo.functions";
 import { getAccesoConfig, toggleAccesoRestringido, listAsignaciones, setAsignacion } from "@/lib/asignaciones/asignaciones.functions";
 import { Button } from "@/components/ui/button";
-import { Copy, Link2, Lock, Trash2, UserPlus, Users, X, ShieldCheck } from "lucide-react";
+import { Copy, Link2, Lock, Mail, Trash2, UserPlus, Users, X, ShieldCheck } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/app/equipo")({
   component: EquipoPage,
@@ -21,15 +22,20 @@ function EquipoPage() {
   const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({ queryKey: ["team"], queryFn: () => fetchTeam() });
-  const [lastLink, setLastLink] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [lastResult, setLastResult] = useState<{ matched: boolean; email: string; full_name?: string | null; link?: string } | null>(null);
 
   const createMut = useMutation({
-    mutationFn: () => createFn({ data: { role: "colaborador" } }),
-    onSuccess: (r) => {
-      const url = `${window.location.origin}/invitar/${r.token}`;
-      setLastLink(url);
-      navigator.clipboard?.writeText(url).catch(() => {});
-      toast.success("Invitación creada y copiada al portapapeles");
+    mutationFn: (em: string) => createFn({ data: { email: em, role: "colaborador" } }),
+    onSuccess: (r: any) => {
+      const link = `${window.location.origin}/invitar/${r.token}`;
+      setLastResult({ matched: !!r.matched, email: r.email, full_name: r.full_name, link });
+      setEmail("");
+      if (r.matched) {
+        toast.success(`${r.full_name || r.email} se agregó al despacho`);
+      } else {
+        toast.success(`Invitación creada para ${r.email}. Se vinculará automáticamente al registrarse.`);
+      }
       qc.invalidateQueries({ queryKey: ["team"] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Error al crear invitación"),
@@ -60,38 +66,85 @@ function EquipoPage() {
   const activeInvites = invitations.filter((i: any) => !i.used_at && !i.revoked_at && new Date(i.expires_at) > new Date());
   const total = members.length + activeInvites.length;
   const remaining = limit === null ? Infinity : Math.max(0, limit - total);
+  const canInvite = limit === null || remaining > 0;
+
+  const submitInvite = (e: React.FormEvent) => {
+    e.preventDefault();
+    const v = email.trim().toLowerCase();
+    if (!v || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) {
+      toast.error("Escribe un correo válido");
+      return;
+    }
+    createMut.mutate(v);
+  };
 
   return (
     <div className="space-y-8">
-      <header className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Equipo</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {limit === null ? "Miembros ilimitados" : `${total} de ${limit} miembros usados`}
-            {limit !== null && remaining > 0 && ` · ${remaining} disponibles`}
-          </p>
-        </div>
-        <Button
-          onClick={() => createMut.mutate()}
-          disabled={createMut.isPending || (limit !== null && remaining <= 0)}
-        >
-          <UserPlus className="h-4 w-4 mr-2" />
-          {createMut.isPending ? "Generando…" : "Generar link de invitación"}
-        </Button>
+      <header className="space-y-1">
+        <h1 className="text-2xl font-bold tracking-tight">Equipo</h1>
+        <p className="text-sm text-muted-foreground">
+          {limit === null ? "Miembros ilimitados" : `${total} de ${limit} miembros usados`}
+          {limit !== null && remaining > 0 && ` · ${remaining} disponibles`}
+        </p>
       </header>
 
-      {lastLink && (
+      <section className="rounded-xl border border-border bg-card/40 p-5 space-y-3">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <Mail className="h-4 w-4 text-primary" /> Invitar por correo
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Si tu colaborador ya tiene cuenta en ContaClick, se agrega al instante. Si no, en cuanto se registre con ese mismo correo entrará automáticamente a tu despacho.
+        </p>
+        <form onSubmit={submitInvite} className="flex flex-col sm:flex-row gap-2">
+          <Input
+            type="email"
+            placeholder="contador@correo.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={createMut.isPending || !canInvite}
+            className="flex-1"
+            autoComplete="off"
+          />
+          <Button type="submit" disabled={createMut.isPending || !canInvite || !email.trim()}>
+            <UserPlus className="h-4 w-4 mr-2" />
+            {createMut.isPending ? "Invitando…" : "Invitar"}
+          </Button>
+        </form>
+        {!canInvite && (
+          <p className="text-xs text-amber-500">Alcanzaste el límite de tu plan. Mejora tu plan para invitar a más miembros.</p>
+        )}
+      </section>
+
+      {lastResult && (
         <div className="rounded-lg border border-primary/40 bg-primary/5 p-4 space-y-2">
-          <div className="text-sm font-medium flex items-center gap-2"><Link2 className="h-4 w-4" /> Link copiado al portapapeles</div>
-          <div className="flex items-center gap-2">
-            <input readOnly value={lastLink} className="flex-1 bg-card/40 border border-border rounded px-2 py-1 text-xs font-mono" />
-            <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(lastLink); toast.success("Copiado"); }}>
-              <Copy className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground">Expira en 7 días. Compártelo por WhatsApp o como prefieras.</p>
+          {lastResult.matched ? (
+            <>
+              <div className="text-sm font-medium flex items-center gap-2">
+                <UserPlus className="h-4 w-4" /> {lastResult.full_name || lastResult.email} ya tenía cuenta y se agregó al despacho.
+              </div>
+              <p className="text-xs text-muted-foreground">Ya puede iniciar sesión y verá este despacho en su lista.</p>
+            </>
+          ) : (
+            <>
+              <div className="text-sm font-medium flex items-center gap-2">
+                <Mail className="h-4 w-4" /> Invitación pendiente para {lastResult.email}.
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Pídele que se registre en ContaClick con ese mismo correo — entrará a tu despacho automáticamente. Si prefieres, también puedes mandarle este link:
+              </p>
+              {lastResult.link && (
+                <div className="flex items-center gap-2">
+                  <input readOnly value={lastResult.link} className="flex-1 bg-card/40 border border-border rounded px-2 py-1 text-xs font-mono" />
+                  <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(lastResult.link!); toast.success("Copiado"); }}>
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
+
 
       <section>
         <h2 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Miembros activos ({members.length})</h2>
@@ -121,7 +174,7 @@ function EquipoPage() {
         <h2 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Invitaciones pendientes ({activeInvites.length})</h2>
         {activeInvites.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-            Sin invitaciones activas. Genera un link arriba para invitar a alguien.
+            Sin invitaciones activas. Invita a alguien por correo arriba.
           </div>
         ) : (
           <div className="rounded-lg border border-border divide-y divide-border/60">
@@ -130,13 +183,16 @@ function EquipoPage() {
               return (
                 <div key={inv.id} className="flex items-center justify-between p-4 gap-3">
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs font-mono truncate text-muted-foreground">{url}</div>
+                    <div className="text-sm font-medium truncate flex items-center gap-2">
+                      <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                      {inv.email || <span className="text-muted-foreground italic">Sin correo (link directo)</span>}
+                    </div>
                     <div className="text-xs text-muted-foreground mt-0.5">
-                      Expira {new Date(inv.expires_at).toLocaleDateString("es-MX")}
+                      Pendiente · Expira {new Date(inv.expires_at).toLocaleDateString("es-MX")}
                     </div>
                   </div>
-                  <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(url); toast.success("Copiado"); }}>
-                    <Copy className="h-3.5 w-3.5" />
+                  <Button size="sm" variant="outline" title="Copiar link de respaldo" onClick={() => { navigator.clipboard.writeText(url); toast.success("Link copiado"); }}>
+                    <Link2 className="h-3.5 w-3.5" />
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => revokeMut.mutate(inv.id)}>
                     <X className="h-3.5 w-3.5" />
@@ -145,6 +201,7 @@ function EquipoPage() {
               );
             })}
           </div>
+
         )}
       </section>
 
