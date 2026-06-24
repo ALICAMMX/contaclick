@@ -103,10 +103,10 @@ export async function assertWithinLimit(
   } else if (recurso === "rfcs") {
     limite = limites.rfcs;
     const { count } = await supabase
-      .from("rfcs")
+      .from("clientes")
       .select("id", { count: "exact", head: true })
       .eq("despacho_id", despachoId)
-      .eq("vigente", true);
+      .eq("tipo_relacion", "cliente");
     usado = count ?? 0;
   }
 
