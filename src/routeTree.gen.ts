@@ -14,13 +14,21 @@ import { Route as SeguridadRouteImport } from './routes/seguridad'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PrivacidadRouteImport } from './routes/privacidad'
 import { Route as PreciosRouteImport } from './routes/precios'
+import { Route as PortalRouteImport } from './routes/portal'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ContactoRouteImport } from './routes/contacto'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PortalIndexRouteImport } from './routes/portal.index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as PortalReportesRouteImport } from './routes/portal.reportes'
+import { Route as PortalMensajesRouteImport } from './routes/portal.mensajes'
+import { Route as PortalImpuestosRouteImport } from './routes/portal.impuestos'
+import { Route as PortalEstadoCuentaRouteImport } from './routes/portal.estado-cuenta'
+import { Route as PortalDocumentosRouteImport } from './routes/portal.documentos'
+import { Route as PortalCfdiRouteImport } from './routes/portal.cfdi'
 import { Route as InvitarTokenRouteImport } from './routes/invitar.$token'
 import { Route as DashboardReportesRouteImport } from './routes/dashboard.reportes'
 import { Route as DashboardConciliadorRouteImport } from './routes/dashboard.conciliador'
@@ -118,6 +126,11 @@ const PreciosRoute = PreciosRouteImport.update({
   path: '/precios',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PortalRoute = PortalRouteImport.update({
+  id: '/portal',
+  path: '/portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -143,6 +156,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PortalIndexRoute = PortalIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PortalRoute,
+} as any)
 const DashboardIndexRoute = DashboardIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -152,6 +170,36 @@ const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppRoute,
+} as any)
+const PortalReportesRoute = PortalReportesRouteImport.update({
+  id: '/reportes',
+  path: '/reportes',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalMensajesRoute = PortalMensajesRouteImport.update({
+  id: '/mensajes',
+  path: '/mensajes',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalImpuestosRoute = PortalImpuestosRouteImport.update({
+  id: '/impuestos',
+  path: '/impuestos',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalEstadoCuentaRoute = PortalEstadoCuentaRouteImport.update({
+  id: '/estado-cuenta',
+  path: '/estado-cuenta',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalDocumentosRoute = PortalDocumentosRouteImport.update({
+  id: '/documentos',
+  path: '/documentos',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalCfdiRoute = PortalCfdiRouteImport.update({
+  id: '/cfdi',
+  path: '/cfdi',
+  getParentRoute: () => PortalRoute,
 } as any)
 const InvitarTokenRoute = InvitarTokenRouteImport.update({
   id: '/invitar/$token',
@@ -522,6 +570,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/contacto': typeof ContactoRoute
   '/dashboard': typeof DashboardRouteWithChildren
+  '/portal': typeof PortalRouteWithChildren
   '/precios': typeof PreciosRoute
   '/privacidad': typeof PrivacidadRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -552,8 +601,15 @@ export interface FileRoutesByFullPath {
   '/dashboard/conciliador': typeof DashboardConciliadorRoute
   '/dashboard/reportes': typeof DashboardReportesRoute
   '/invitar/$token': typeof InvitarTokenRoute
+  '/portal/cfdi': typeof PortalCfdiRoute
+  '/portal/documentos': typeof PortalDocumentosRoute
+  '/portal/estado-cuenta': typeof PortalEstadoCuentaRoute
+  '/portal/impuestos': typeof PortalImpuestosRoute
+  '/portal/mensajes': typeof PortalMensajesRoute
+  '/portal/reportes': typeof PortalReportesRoute
   '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/portal/': typeof PortalIndexRoute
   '/app/admin/activos': typeof AppAdminActivosRoute
   '/app/admin/buzon': typeof AppAdminBuzonRoute
   '/app/admin/correspondencia': typeof AppAdminCorrespondenciaRoute
@@ -628,8 +684,15 @@ export interface FileRoutesByTo {
   '/dashboard/conciliador': typeof DashboardConciliadorRoute
   '/dashboard/reportes': typeof DashboardReportesRoute
   '/invitar/$token': typeof InvitarTokenRoute
+  '/portal/cfdi': typeof PortalCfdiRoute
+  '/portal/documentos': typeof PortalDocumentosRoute
+  '/portal/estado-cuenta': typeof PortalEstadoCuentaRoute
+  '/portal/impuestos': typeof PortalImpuestosRoute
+  '/portal/mensajes': typeof PortalMensajesRoute
+  '/portal/reportes': typeof PortalReportesRoute
   '/app': typeof AppIndexRoute
   '/dashboard': typeof DashboardIndexRoute
+  '/portal': typeof PortalIndexRoute
   '/app/admin/activos': typeof AppAdminActivosRoute
   '/app/admin/buzon': typeof AppAdminBuzonRoute
   '/app/admin/correspondencia': typeof AppAdminCorrespondenciaRoute
@@ -684,6 +747,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/contacto': typeof ContactoRoute
   '/dashboard': typeof DashboardRouteWithChildren
+  '/portal': typeof PortalRouteWithChildren
   '/precios': typeof PreciosRoute
   '/privacidad': typeof PrivacidadRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -714,8 +778,15 @@ export interface FileRoutesById {
   '/dashboard/conciliador': typeof DashboardConciliadorRoute
   '/dashboard/reportes': typeof DashboardReportesRoute
   '/invitar/$token': typeof InvitarTokenRoute
+  '/portal/cfdi': typeof PortalCfdiRoute
+  '/portal/documentos': typeof PortalDocumentosRoute
+  '/portal/estado-cuenta': typeof PortalEstadoCuentaRoute
+  '/portal/impuestos': typeof PortalImpuestosRoute
+  '/portal/mensajes': typeof PortalMensajesRoute
+  '/portal/reportes': typeof PortalReportesRoute
   '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/portal/': typeof PortalIndexRoute
   '/app/admin/activos': typeof AppAdminActivosRoute
   '/app/admin/buzon': typeof AppAdminBuzonRoute
   '/app/admin/correspondencia': typeof AppAdminCorrespondenciaRoute
@@ -771,6 +842,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/contacto'
     | '/dashboard'
+    | '/portal'
     | '/precios'
     | '/privacidad'
     | '/reset-password'
@@ -801,8 +873,15 @@ export interface FileRouteTypes {
     | '/dashboard/conciliador'
     | '/dashboard/reportes'
     | '/invitar/$token'
+    | '/portal/cfdi'
+    | '/portal/documentos'
+    | '/portal/estado-cuenta'
+    | '/portal/impuestos'
+    | '/portal/mensajes'
+    | '/portal/reportes'
     | '/app/'
     | '/dashboard/'
+    | '/portal/'
     | '/app/admin/activos'
     | '/app/admin/buzon'
     | '/app/admin/correspondencia'
@@ -877,8 +956,15 @@ export interface FileRouteTypes {
     | '/dashboard/conciliador'
     | '/dashboard/reportes'
     | '/invitar/$token'
+    | '/portal/cfdi'
+    | '/portal/documentos'
+    | '/portal/estado-cuenta'
+    | '/portal/impuestos'
+    | '/portal/mensajes'
+    | '/portal/reportes'
     | '/app'
     | '/dashboard'
+    | '/portal'
     | '/app/admin/activos'
     | '/app/admin/buzon'
     | '/app/admin/correspondencia'
@@ -932,6 +1018,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/contacto'
     | '/dashboard'
+    | '/portal'
     | '/precios'
     | '/privacidad'
     | '/reset-password'
@@ -962,8 +1049,15 @@ export interface FileRouteTypes {
     | '/dashboard/conciliador'
     | '/dashboard/reportes'
     | '/invitar/$token'
+    | '/portal/cfdi'
+    | '/portal/documentos'
+    | '/portal/estado-cuenta'
+    | '/portal/impuestos'
+    | '/portal/mensajes'
+    | '/portal/reportes'
     | '/app/'
     | '/dashboard/'
+    | '/portal/'
     | '/app/admin/activos'
     | '/app/admin/buzon'
     | '/app/admin/correspondencia'
@@ -1018,6 +1112,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ContactoRoute: typeof ContactoRoute
   DashboardRoute: typeof DashboardRouteWithChildren
+  PortalRoute: typeof PortalRouteWithChildren
   PreciosRoute: typeof PreciosRoute
   PrivacidadRoute: typeof PrivacidadRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -1063,6 +1158,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PreciosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/portal': {
+      id: '/portal'
+      path: '/portal'
+      fullPath: '/portal'
+      preLoaderRoute: typeof PortalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
@@ -1098,6 +1200,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/portal/': {
+      id: '/portal/'
+      path: '/'
+      fullPath: '/portal/'
+      preLoaderRoute: typeof PortalIndexRouteImport
+      parentRoute: typeof PortalRoute
+    }
     '/dashboard/': {
       id: '/dashboard/'
       path: '/'
@@ -1111,6 +1220,48 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/'
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/portal/reportes': {
+      id: '/portal/reportes'
+      path: '/reportes'
+      fullPath: '/portal/reportes'
+      preLoaderRoute: typeof PortalReportesRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/mensajes': {
+      id: '/portal/mensajes'
+      path: '/mensajes'
+      fullPath: '/portal/mensajes'
+      preLoaderRoute: typeof PortalMensajesRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/impuestos': {
+      id: '/portal/impuestos'
+      path: '/impuestos'
+      fullPath: '/portal/impuestos'
+      preLoaderRoute: typeof PortalImpuestosRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/estado-cuenta': {
+      id: '/portal/estado-cuenta'
+      path: '/estado-cuenta'
+      fullPath: '/portal/estado-cuenta'
+      preLoaderRoute: typeof PortalEstadoCuentaRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/documentos': {
+      id: '/portal/documentos'
+      path: '/documentos'
+      fullPath: '/portal/documentos'
+      preLoaderRoute: typeof PortalDocumentosRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/cfdi': {
+      id: '/portal/cfdi'
+      path: '/cfdi'
+      fullPath: '/portal/cfdi'
+      preLoaderRoute: typeof PortalCfdiRouteImport
+      parentRoute: typeof PortalRoute
     }
     '/invitar/$token': {
       id: '/invitar/$token'
@@ -1853,12 +2004,36 @@ const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
   DashboardRouteChildren,
 )
 
+interface PortalRouteChildren {
+  PortalCfdiRoute: typeof PortalCfdiRoute
+  PortalDocumentosRoute: typeof PortalDocumentosRoute
+  PortalEstadoCuentaRoute: typeof PortalEstadoCuentaRoute
+  PortalImpuestosRoute: typeof PortalImpuestosRoute
+  PortalMensajesRoute: typeof PortalMensajesRoute
+  PortalReportesRoute: typeof PortalReportesRoute
+  PortalIndexRoute: typeof PortalIndexRoute
+}
+
+const PortalRouteChildren: PortalRouteChildren = {
+  PortalCfdiRoute: PortalCfdiRoute,
+  PortalDocumentosRoute: PortalDocumentosRoute,
+  PortalEstadoCuentaRoute: PortalEstadoCuentaRoute,
+  PortalImpuestosRoute: PortalImpuestosRoute,
+  PortalMensajesRoute: PortalMensajesRoute,
+  PortalReportesRoute: PortalReportesRoute,
+  PortalIndexRoute: PortalIndexRoute,
+}
+
+const PortalRouteWithChildren =
+  PortalRoute._addFileChildren(PortalRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   AuthRoute: AuthRoute,
   ContactoRoute: ContactoRoute,
   DashboardRoute: DashboardRouteWithChildren,
+  PortalRoute: PortalRouteWithChildren,
   PreciosRoute: PreciosRoute,
   PrivacidadRoute: PrivacidadRoute,
   ResetPasswordRoute: ResetPasswordRoute,

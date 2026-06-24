@@ -11,6 +11,7 @@ import { getClienteHistorial } from "@/lib/clientes/historial.functions";
 import { listCuentas, createCuenta, deleteCuenta, BANCOS } from "@/lib/cuentas/cuentas.functions";
 import { Banknote, Plus, Trash2 } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
+import { PortalConfigSection } from "@/components/PortalConfigSection";
 
 
 export const Route = createFileRoute("/app/clientes/$id")({
@@ -112,6 +113,10 @@ function ClienteDetailPage() {
       </div>
 
       <DatosFiscalesSection cli={cli.data} />
+
+      <PortalConfigSection clienteId={id} />
+
+
 
 
       <section className="rounded-xl border border-border/60 bg-card/50 p-6 space-y-5">

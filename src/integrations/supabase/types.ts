@@ -370,6 +370,69 @@ export type Database = {
           },
         ]
       }
+      cliente_portal_config: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          despacho_id: string
+          puede_subir_docs: boolean
+          updated_at: string
+          ver_cfdi: boolean
+          ver_cxc: boolean
+          ver_cxp: boolean
+          ver_dashboard: boolean
+          ver_impuestos: boolean
+          ver_mensajes: boolean
+          ver_obligaciones: boolean
+          ver_reportes: boolean
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          despacho_id: string
+          puede_subir_docs?: boolean
+          updated_at?: string
+          ver_cfdi?: boolean
+          ver_cxc?: boolean
+          ver_cxp?: boolean
+          ver_dashboard?: boolean
+          ver_impuestos?: boolean
+          ver_mensajes?: boolean
+          ver_obligaciones?: boolean
+          ver_reportes?: boolean
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          despacho_id?: string
+          puede_subir_docs?: boolean
+          updated_at?: string
+          ver_cfdi?: boolean
+          ver_cxc?: boolean
+          ver_cxp?: boolean
+          ver_dashboard?: boolean
+          ver_impuestos?: boolean
+          ver_mensajes?: boolean
+          ver_obligaciones?: boolean
+          ver_reportes?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cliente_portal_config_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: true
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cliente_portal_config_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clientes: {
         Row: {
           cliente_padre_id: string | null
@@ -928,6 +991,7 @@ export type Database = {
       }
       invitaciones: {
         Row: {
+          cliente_id: string | null
           created_at: string
           created_by: string
           despacho_id: string
@@ -941,6 +1005,7 @@ export type Database = {
           used_by: string | null
         }
         Insert: {
+          cliente_id?: string | null
           created_at?: string
           created_by: string
           despacho_id: string
@@ -954,6 +1019,7 @@ export type Database = {
           used_by?: string | null
         }
         Update: {
+          cliente_id?: string | null
           created_at?: string
           created_by?: string
           despacho_id?: string
@@ -966,7 +1032,15 @@ export type Database = {
           used_at?: string | null
           used_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "invitaciones_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mensajes: {
         Row: {

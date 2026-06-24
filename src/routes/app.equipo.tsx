@@ -4,12 +4,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { listTeam, createInvitation, revokeInvitation, removeMember } from "@/lib/equipo/equipo.functions";
+import { listClientes } from "@/lib/clientes.functions";
 import { getAccesoConfig, toggleAccesoRestringido, listAsignaciones, setAsignacion } from "@/lib/asignaciones/asignaciones.functions";
 import { Button } from "@/components/ui/button";
-import { Copy, Link2, Lock, Mail, Trash2, UserPlus, Users, X, ShieldCheck, Info, Check } from "lucide-react";
+import { Copy, Link2, Lock, Mail, Trash2, UserPlus, Users, X, ShieldCheck, Info, Check, UserCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
-type TeamRole = "colaborador" | "contador" | "auxiliar";
+type TeamRole = "colaborador" | "contador" | "auxiliar" | "cliente_final";
 
 const TEAM_ROLES: {
   value: TeamRole;
@@ -61,6 +62,21 @@ const TEAM_ROLES: {
       "Cambiar configuración del despacho",
     ],
   },
+  {
+    value: "cliente_final",
+    label: "Cliente",
+    description: "El propio cliente del despacho. Entra a su Portal con vista de solo lectura.",
+    can: [
+      "Consultar su propio expediente (CFDI, CXC, CXP, impuestos, reportes)",
+      "Recibir mensajes y avisos del contador",
+      "Subir documentos que el contador le solicite",
+    ],
+    cant: [
+      "Ver expedientes de otros clientes del despacho",
+      "Editar información ni invitar a nadie más",
+      "Acceder al panel administrativo del despacho",
+    ],
+  },
 ];
 
 const roleLabel = (value?: string) => TEAM_ROLES.find((r) => r.value === value)?.label ?? "Colaborador";
@@ -75,19 +91,23 @@ function EquipoPage() {
   const createFn = useServerFn(createInvitation);
   const revokeFn = useServerFn(revokeInvitation);
   const removeFn = useServerFn(removeMember);
+  const clientesFn = useServerFn(listClientes);
   const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({ queryKey: ["team"], queryFn: () => fetchTeam() });
+  const { data: clientesData } = useQuery({ queryKey: ["clientes"], queryFn: () => clientesFn() });
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<TeamRole>("colaborador");
+  const [clienteId, setClienteId] = useState<string>("");
   const [lastResult, setLastResult] = useState<{ matched: boolean; email: string; role_label?: string; full_name?: string | null; link?: string } | null>(null);
 
   const createMut = useMutation({
-    mutationFn: (input: { email: string; role: TeamRole }) => createFn({ data: input }),
+    mutationFn: (input: { email: string; role: TeamRole; cliente_id?: string | null }) => createFn({ data: input }),
     onSuccess: (r: any) => {
       const link = `${window.location.origin}/invitar/${r.token}`;
       setLastResult({ matched: !!r.matched, email: r.email, role_label: r.role_label, full_name: r.full_name, link });
       setEmail("");
+      setClienteId("");
       if (r.matched) {
         toast.success(`${r.full_name || r.email} se agregó al despacho`);
       } else {
@@ -124,6 +144,7 @@ function EquipoPage() {
   const total = members.length + activeInvites.length;
   const remaining = limit === null ? Infinity : Math.max(0, limit - total);
   const canInvite = limit === null || remaining > 0;
+  const clientesList = clientesData?.clientes ?? [];
 
   const submitInvite = (e: React.FormEvent) => {
     e.preventDefault();
@@ -132,7 +153,11 @@ function EquipoPage() {
       toast.error("Escribe un correo válido");
       return;
     }
-    createMut.mutate({ email: v, role });
+    if (role === "cliente_final" && !clienteId) {
+      toast.error("Selecciona el expediente del cliente");
+      return;
+    }
+    createMut.mutate({ email: v, role, cliente_id: role === "cliente_final" ? clienteId : null });
   };
 
   return (
@@ -178,6 +203,23 @@ function EquipoPage() {
             {createMut.isPending ? "Invitando…" : "Invitar"}
           </Button>
         </form>
+        {role === "cliente_final" && (
+          <div className="flex items-center gap-2">
+            <UserCircle2 className="h-4 w-4 text-primary shrink-0" />
+            <select
+              value={clienteId}
+              onChange={(e) => setClienteId(e.target.value)}
+              disabled={createMut.isPending}
+              className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm flex-1"
+              aria-label="Expediente del cliente"
+            >
+              <option value="">Selecciona el expediente al que tendrá acceso…</option>
+              {clientesList.map((c: any) => (
+                <option key={c.id} value={c.id}>{c.razon_social} · {c.rfc}</option>
+              ))}
+            </select>
+          </div>
+        )}
         <p className="text-xs text-muted-foreground">
           {TEAM_ROLES.find((r) => r.value === role)?.description}
         </p>

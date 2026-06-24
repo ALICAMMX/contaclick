@@ -58,6 +58,25 @@ function AppRoot() {
     if (!loading && !user) navigate({ to: "/auth" });
   }, [loading, user, navigate]);
 
+  // Redirige a clientes finales al portal
+  useEffect(() => {
+    let cancelled = false;
+    async function check() {
+      if (!user) return;
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "cliente_final")
+        .limit(1)
+        .maybeSingle();
+      if (!cancelled && data) navigate({ to: "/portal", replace: true });
+    }
+    check();
+    return () => { cancelled = true; };
+  }, [user, navigate]);
+
   if (loading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
