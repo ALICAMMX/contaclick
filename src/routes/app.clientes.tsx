@@ -144,9 +144,7 @@ function ClientesPage() {
                           Herramientas
                         </Link>
                         <button
-                          onClick={() => {
-                            if (confirm(`¿Eliminar el expediente ${c.rfc}?`)) deleteMut.mutate(c.id);
-                          }}
+                          onClick={() => setToDelete({ id: c.id, rfc: c.rfc, razon: c.razon_social })}
                           className="text-xs px-2 py-1 rounded-md text-destructive hover:bg-destructive/10"
                         >
                           Eliminar
