@@ -164,6 +164,7 @@ function CfdiValidator() {
           )}
         </div>
       )}
+      <RejectModal report={report} onClose={() => setReport(null)} title="No se pudo validar el CFDI" />
     </ToolShell>
   );
 }
