@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
+import { resolveActiveDespachoId } from "@/lib/despacho/resolve";
 
 export type ClienteResumen = {
   id: string;
@@ -19,21 +20,15 @@ export const getDespachoDashboard = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
 
-    const { data: mem } = await supabase
-      .from("user_memberships")
-      .select("despacho_id")
-      .eq("user_id", userId)
-      .eq("estado", "activo")
-      .limit(1)
-      .maybeSingle();
-    if (!mem?.despacho_id) {
+    let despachoId: string;
+    try {
+      despachoId = await resolveActiveDespachoId(supabase, userId);
+    } catch {
       return {
         clientes: [] as ClienteResumen[],
         totales: { clientes: 0, rojo: 0, amarillo: 0, verde: 0, alertas: 0, vencidas: 0 },
       };
     }
-
-    const despachoId = mem.despacho_id as string;
 
     // Mes corriente
     const now = new Date();

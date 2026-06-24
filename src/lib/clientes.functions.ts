@@ -3,6 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 import { z } from "zod";
 import { assertWithinLimit, UsageLimitError } from "@/lib/usage/limits";
+import { resolveActiveDespachoId } from "@/lib/despacho/resolve";
 
 const RFC_REGEX = /^[A-ZÑ&]{3,4}\d{6}[A-Z\d]{3}$/i;
 
@@ -127,21 +128,8 @@ export const createCliente = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    // Resolve user's active despacho (membership first, fallback to owner)
     let despachoId: string | null = null;
-    const { data: mem } = await supabase
-      .from("user_memberships")
-      .select("despacho_id")
-      .eq("user_id", userId)
-      .eq("estado", "activo")
-      .limit(1)
-      .maybeSingle();
-    if (mem?.despacho_id) despachoId = mem.despacho_id as string;
-    if (!despachoId) {
-      const { data: own } = await supabase
-        .from("despachos").select("id").eq("owner_user_id", userId).limit(1).maybeSingle();
-      if (own?.id) despachoId = own.id as string;
-    }
+    try { despachoId = await resolveActiveDespachoId(supabase, userId); } catch { despachoId = null; }
 
     if (despachoId) {
       try { await assertWithinLimit(supabase, despachoId, "rfcs"); }
@@ -197,21 +185,8 @@ export const upsertClienteFromCsf = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    // Resolver despacho_id
     let despachoId: string | null = null;
-    const { data: mem } = await supabase
-      .from("user_memberships")
-      .select("despacho_id")
-      .eq("user_id", userId)
-      .eq("estado", "activo")
-      .limit(1)
-      .maybeSingle();
-    if (mem?.despacho_id) despachoId = mem.despacho_id as string;
-    if (!despachoId) {
-      const { data: own } = await supabase
-        .from("despachos").select("id").eq("owner_user_id", userId).limit(1).maybeSingle();
-      if (own?.id) despachoId = own.id as string;
-    }
+    try { despachoId = await resolveActiveDespachoId(supabase, userId); } catch { despachoId = null; }
 
     // Buscar existente por (despacho, rfc, tipo_relacion, padre)
     let query = supabase

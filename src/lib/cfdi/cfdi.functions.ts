@@ -5,6 +5,7 @@ import { z } from "zod";
 import { parseCfdi } from "@/lib/tools/cfdi-parser";
 import { analyzeCfdi, maxLevel } from "@/lib/cfdi/risk";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { resolveActiveDespachoId } from "@/lib/despacho/resolve";
 
 // ---------- helpers (server-side) ----------
 
@@ -15,13 +16,11 @@ async function sha256Hex(text: string): Promise<string> {
 }
 
 async function ensureDespacho(supabase: SupabaseClient, userId: string): Promise<string> {
-  const { data: m } = await supabase
-    .from("user_memberships")
-    .select("despacho_id")
-    .eq("user_id", userId)
-    .limit(1)
-    .maybeSingle();
-  if (m?.despacho_id) return m.despacho_id as string;
+  try {
+    return await resolveActiveDespachoId(supabase, userId);
+  } catch {
+    // Legacy fallback below creates a personal despacho only when the user has none.
+  }
 
   const { data: d, error: dErr } = await supabase
     .from("despachos")

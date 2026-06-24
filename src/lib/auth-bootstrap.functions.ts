@@ -39,6 +39,62 @@ export const ensureUserWorkspace = createServerFn({ method: "POST" })
     });
     if (profileError) throw new Error(profileError.message);
 
+    // Vinculación automática por invitación pendiente: si el correo fue invitado,
+    // primero lo unimos al despacho del administrador y NO lo promovemos a admin.
+    if (email) {
+      const { data: pendingInvites, error: inviteError } = await supabaseAdmin
+        .from("invitaciones")
+        .select("id, despacho_id, role, created_by")
+        .ilike("email", email)
+        .is("used_at", null)
+        .is("revoked_at", null)
+        .gt("expires_at", new Date().toISOString());
+      if (inviteError) throw new Error(inviteError.message);
+
+      for (const inv of pendingInvites ?? []) {
+        const { error: membershipError } = await supabaseAdmin.from("user_memberships").upsert(
+          {
+            user_id: userId,
+            despacho_id: inv.despacho_id,
+            estado: "activo",
+            invited_by: inv.created_by,
+          },
+          { onConflict: "user_id,despacho_id" },
+        );
+        if (membershipError) throw new Error(membershipError.message);
+
+        const { error: roleError } = await supabaseAdmin.from("user_roles").upsert(
+          {
+            user_id: userId,
+            despacho_id: inv.despacho_id,
+            role: inv.role ?? "colaborador",
+          },
+          { onConflict: "user_id,role,despacho_id,cliente_id" },
+        );
+        if (roleError) throw new Error(roleError.message);
+
+        const { error: usedError } = await supabaseAdmin
+          .from("invitaciones")
+          .update({ used_at: new Date().toISOString(), used_by: userId })
+          .eq("id", inv.id);
+        if (usedError) throw new Error(usedError.message);
+      }
+    }
+
+    const { data: invitedMembership } = await supabaseAdmin
+      .from("user_memberships")
+      .select("despacho_id")
+      .eq("user_id", userId)
+      .eq("estado", "activo")
+      .not("invited_by", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (invitedMembership?.despacho_id) {
+      return { ok: true, despachoId: invitedMembership.despacho_id };
+    }
+
     const { data: membership } = await supabaseAdmin
       .from("user_memberships")
       .select("despacho_id")
@@ -48,6 +104,7 @@ export const ensureUserWorkspace = createServerFn({ method: "POST" })
       .maybeSingle();
 
     let despachoId = membership?.despacho_id ?? null;
+    let shouldEnsureAdminRole = false;
 
     if (!despachoId) {
       const { data: owned } = await supabaseAdmin
@@ -58,6 +115,7 @@ export const ensureUserWorkspace = createServerFn({ method: "POST" })
         .maybeSingle();
 
       despachoId = owned?.id ?? null;
+      shouldEnsureAdminRole = !!despachoId;
     }
 
     if (!despachoId) {
@@ -74,6 +132,7 @@ export const ensureUserWorkspace = createServerFn({ method: "POST" })
 
       if (despachoError) throw new Error(despachoError.message);
       despachoId = despacho.id;
+      shouldEnsureAdminRole = true;
     }
 
     const { error: membershipError } = await supabaseAdmin.from("user_memberships").upsert(
@@ -85,6 +144,20 @@ export const ensureUserWorkspace = createServerFn({ method: "POST" })
       { onConflict: "user_id,despacho_id" },
     );
     if (membershipError) throw new Error(membershipError.message);
+
+    if (!shouldEnsureAdminRole) {
+      const { data: ownedCheck } = await supabaseAdmin
+        .from("despachos")
+        .select("id")
+        .eq("id", despachoId)
+        .eq("owner_user_id", userId)
+        .maybeSingle();
+      shouldEnsureAdminRole = !!ownedCheck;
+    }
+
+    if (!shouldEnsureAdminRole) {
+      return { ok: true, despachoId };
+    }
 
     const { data: existingRole } = await supabaseAdmin
       .from("user_roles")
