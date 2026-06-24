@@ -10,6 +10,29 @@ const ConnectSchema = z.object({
   password: z.string().min(1),
 });
 
+const RFC_REGEX = /\b([A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3})\b/g;
+
+/**
+ * Extrae los RFC presentes en el Subject del certificado .cer (DER en base64).
+ * El SAT incluye el RFC en el campo x500UniqueIdentifier (OID 2.5.4.45) en texto plano,
+ * por lo que basta con buscar patrones de RFC dentro de los bytes decodificados.
+ */
+function extraerRfcsDeCer(cer_b64: string): string[] {
+  try {
+    const limpio = cer_b64.replace(/-----[^-]+-----/g, "").replace(/\s+/g, "");
+    const bin = Buffer.from(limpio, "base64").toString("latin1");
+    const found = new Set<string>();
+    let m: RegExpExecArray | null;
+    const re = new RegExp(RFC_REGEX.source, "g");
+    while ((m = re.exec(bin))) found.add(m[1].toUpperCase());
+    return Array.from(found);
+  } catch {
+    return [];
+  }
+}
+
+
+
 async function obtainSwToken(args: { cer_b64: string; key_b64: string; password: string }) {
   const SW_USER = process.env.SW_USER;
   const SW_PASSWORD = process.env.SW_PASSWORD;
@@ -73,6 +96,22 @@ export const conectarSat = createServerFn({ method: "POST" })
       .maybeSingle();
     if (cliErr || !cli) throw new Error("Expediente no encontrado");
     if (!cli.despacho_id) throw new Error("Expediente sin despacho asignado");
+    if (!cli.rfc) throw new Error("El expediente no tiene RFC capturado");
+
+    // CANDADO: el .cer debe pertenecer al RFC del expediente activo.
+    const rfcsCer = extraerRfcsDeCer(data.cer_b64);
+    const rfcCliente = cli.rfc.toUpperCase();
+    if (rfcsCer.length === 0) {
+      throw new Error(
+        "No se pudo leer el RFC del certificado (.cer). Verifica que estés subiendo el archivo correcto de la e.firma.",
+      );
+    }
+    if (!rfcsCer.includes(rfcCliente)) {
+      throw new Error(
+        `La e.firma NO corresponde a este expediente. El certificado pertenece a ${rfcsCer.join(", ")} pero el expediente activo es ${rfcCliente}. Para evitar firmar declaraciones con la e.firma equivocada, la carga fue rechazada.`,
+      );
+    }
+
 
     let result: { token: string; simulated: boolean };
     try {
