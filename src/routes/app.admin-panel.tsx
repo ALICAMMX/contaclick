@@ -220,6 +220,7 @@ function Dashboard() {
               <TableHead>Usuario</TableHead>
               <TableHead>Despacho</TableHead>
               <TableHead>Plan</TableHead>
+              <TableHead>RFCs</TableHead>
               <TableHead>Pago</TableHead>
               <TableHead>IA (mes)</TableHead>
               <TableHead>Roles</TableHead>
