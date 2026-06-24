@@ -7,6 +7,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { RichMarkdown } from "@/components/RichMarkdown";
+import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { getCfdi, deleteCfdi, analyzeCfdiAI } from "@/lib/cfdi/cfdi.functions";
 import { analyzeCfdi as runRiskAnalysis, maxLevel } from "@/lib/cfdi/risk";
 import { parseCfdi } from "@/lib/tools/cfdi-parser";
