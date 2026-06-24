@@ -48,6 +48,24 @@ function findAllOpenTags(xml: string, localName: string): string[] {
   return xml.match(re) ?? [];
 }
 
+function extractRelacionados(xml: string): Array<{ uuid: string; tipo: "pago" | "relacion"; tipoRelacion?: string }> {
+  const out: Array<{ uuid: string; tipo: "pago" | "relacion"; tipoRelacion?: string }> = [];
+  // Pago 2.0: <pago20:DoctoRelacionado IdDocumento="UUID" .../>
+  for (const tag of findAllOpenTags(xml, "DoctoRelacionado")) {
+    const id = attr(tag, "IdDocumento");
+    if (id) out.push({ uuid: id.toLowerCase(), tipo: "pago" });
+  }
+  // CfdiRelacionados (egresos, sustituciones, etc.)
+  const rels = findOpenTag(xml, "CfdiRelacionados");
+  const tipoRel = attr(rels, "TipoRelacion");
+  for (const tag of findAllOpenTags(xml, "CfdiRelacionado")) {
+    const id = attr(tag, "UUID");
+    if (id) out.push({ uuid: id.toLowerCase(), tipo: "relacion", tipoRelacion: tipoRel });
+  }
+  return out;
+}
+
+
 export function parseCfdi(xml: string): CfdiParsed {
   const warnings: string[] = [];
   if (!/Comprobante\b/.test(xml)) warnings.push("No se detectó la etiqueta cfdi:Comprobante.");
