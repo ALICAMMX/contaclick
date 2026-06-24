@@ -16,9 +16,12 @@ function pctTone(pct: number) {
 function Tile({
   icon: Icon, label, usado, limite, unidad,
 }: { icon: any; label: string; usado: number; limite: number; unidad: string }) {
-  const pct = limite > 0 ? Math.min(100, (usado / limite) * 100) : 0;
-  const restante = Math.max(0, limite - usado);
-  const tone = pctTone(pct);
+  const ilimitado = limite < 0;
+  const pct = ilimitado ? 0 : limite > 0 ? Math.min(100, (usado / limite) * 100) : 0;
+  const restante = ilimitado ? Infinity : Math.max(0, limite - usado);
+  const tone = ilimitado
+    ? { bar: "bg-primary", ring: "ring-primary/20", txt: "text-primary", label: "Ilimitado" }
+    : pctTone(pct);
   return (
     <div className={`relative rounded-xl border border-border/60 bg-card/60 p-4 ring-1 ${tone.ring}`}>
       <div className="flex items-center justify-between">
@@ -30,16 +33,26 @@ function Tile({
         </span>
       </div>
       <div className="mt-3 flex items-baseline gap-1.5">
-        <span className="text-3xl font-semibold tabular-nums">{fmt(restante)}</span>
-        <span className="text-xs text-muted-foreground">disponibles</span>
+        <span className="text-3xl font-semibold tabular-nums">
+          {ilimitado ? "∞" : fmt(restante)}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          {ilimitado ? "sin límite" : "disponibles"}
+        </span>
       </div>
       <div className="text-[11px] text-muted-foreground mt-0.5 tabular-nums">
-        {fmt(usado)} usados de {fmt(limite)} {unidad}
+        {ilimitado
+          ? `${fmt(usado)} ${unidad} usados este mes`
+          : `${fmt(usado)} usados de ${fmt(limite)} ${unidad}`}
       </div>
-      <div className="h-1.5 rounded-full bg-muted/40 overflow-hidden mt-3">
-        <div className={`h-full ${tone.bar} transition-all`} style={{ width: `${pct}%` }} />
-      </div>
-      <div className={`mt-1 text-[10px] tabular-nums ${tone.txt}`}>{Math.round(pct)}% utilizado</div>
+      {!ilimitado && (
+        <>
+          <div className="h-1.5 rounded-full bg-muted/40 overflow-hidden mt-3">
+            <div className={`h-full ${tone.bar} transition-all`} style={{ width: `${pct}%` }} />
+          </div>
+          <div className={`mt-1 text-[10px] tabular-nums ${tone.txt}`}>{Math.round(pct)}% utilizado</div>
+        </>
+      )}
     </div>
   );
 }
