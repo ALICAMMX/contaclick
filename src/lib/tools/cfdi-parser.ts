@@ -98,8 +98,10 @@ export function parseCfdi(xml: string): CfdiParsed {
       totalTrasladados: num(attr(impuestosTag, "TotalImpuestosTrasladados")),
       totalRetenidos: num(attr(impuestosTag, "TotalImpuestosRetenidos")),
     },
+    relacionados: extractRelacionados(xml),
     warnings,
   };
+
 
   if (result.version && result.version !== "4.0") {
     warnings.push(`Versión CFDI ${result.version}. La normativa actual es 4.0.`);
