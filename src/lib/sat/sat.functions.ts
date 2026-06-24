@@ -10,6 +10,29 @@ const ConnectSchema = z.object({
   password: z.string().min(1),
 });
 
+const RFC_REGEX = /\b([A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3})\b/g;
+
+/**
+ * Extrae los RFC presentes en el Subject del certificado .cer (DER en base64).
+ * El SAT incluye el RFC en el campo x500UniqueIdentifier (OID 2.5.4.45) en texto plano,
+ * por lo que basta con buscar patrones de RFC dentro de los bytes decodificados.
+ */
+function extraerRfcsDeCer(cer_b64: string): string[] {
+  try {
+    const limpio = cer_b64.replace(/-----[^-]+-----/g, "").replace(/\s+/g, "");
+    const bin = Buffer.from(limpio, "base64").toString("latin1");
+    const found = new Set<string>();
+    let m: RegExpExecArray | null;
+    const re = new RegExp(RFC_REGEX.source, "g");
+    while ((m = re.exec(bin))) found.add(m[1].toUpperCase());
+    return Array.from(found);
+  } catch {
+    return [];
+  }
+}
+
+
+
 async function obtainSwToken(args: { cer_b64: string; key_b64: string; password: string }) {
   const SW_USER = process.env.SW_USER;
   const SW_PASSWORD = process.env.SW_PASSWORD;
