@@ -203,6 +203,23 @@ function EquipoPage() {
             {createMut.isPending ? "Invitando…" : "Invitar"}
           </Button>
         </form>
+        {role === "cliente_final" && (
+          <div className="flex items-center gap-2">
+            <UserCircle2 className="h-4 w-4 text-primary shrink-0" />
+            <select
+              value={clienteId}
+              onChange={(e) => setClienteId(e.target.value)}
+              disabled={createMut.isPending}
+              className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm flex-1"
+              aria-label="Expediente del cliente"
+            >
+              <option value="">Selecciona el expediente al que tendrá acceso…</option>
+              {clientesList.map((c: any) => (
+                <option key={c.id} value={c.id}>{c.razon_social} · {c.rfc}</option>
+              ))}
+            </select>
+          </div>
+        )}
         <p className="text-xs text-muted-foreground">
           {TEAM_ROLES.find((r) => r.value === role)?.description}
         </p>
