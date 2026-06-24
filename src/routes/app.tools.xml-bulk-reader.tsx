@@ -67,22 +67,10 @@ function rowFromXml(filename: string, xml: string): Row {
   };
 }
 
-type Rejection = { archivo: string; motivo: string; detalle?: string };
-type RejectReport = {
-  rfc: string;
-  aceptados: number;
-  rfcAjeno: Rejection[];
-  duplicadosLocal: Rejection[];
-  duplicadosExpediente: Rejection[];
-  sinUuid: Rejection[];
-  errores: Rejection[];
-};
+import { classifyXmls, reportTotalRejections, type RejectReport } from "@/lib/cfdi/dedup-xml";
+import { RejectModal } from "@/components/RejectModal";
 
-async function sha256Hex(text: string): Promise<string> {
-  const enc = new TextEncoder().encode(text);
-  const buf = await crypto.subtle.digest("SHA-256", enc);
-  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
-}
+
 
 function BulkReader() {
   const [rows, setRows] = useState<Row[]>([]);
