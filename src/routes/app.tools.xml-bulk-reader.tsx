@@ -146,13 +146,16 @@ function BulkReader() {
     let dbHashes = new Set<string>();
     try {
       const k = await fetchKeys({ data: { cliente_id: cliente.id } });
-      dbUuids = new Set(k.uuids);
-      dbHashes = new Set(k.hashes);
-    } catch {
-      /* sin conexión seguimos con dedup local */
+      dbUuids = new Set((k.uuids ?? []).map((u) => u.toUpperCase()));
+      dbHashes = new Set(k.hashes ?? []);
+      console.log(`[dedup] DB tiene ${dbUuids.size} UUIDs y ${dbHashes.size} hashes para ${rfcActivo}`);
+    } catch (e) {
+      console.error("[dedup] No se pudo consultar el expediente:", e);
+      toast.error("No se pudo verificar duplicados contra el expediente. Revisa tu conexión.");
     }
     // Llaves ya cargadas en esta sesión (en la tabla local)
     const localUuids = new Set(rows.map((r) => (r.uuid ?? "").toUpperCase()).filter(Boolean));
+    const localHashes = new Set<string>();
 
     const xmlFiles: { name: string; getText: () => Promise<string> }[] = [];
     for (const f of Array.from(files)) {
