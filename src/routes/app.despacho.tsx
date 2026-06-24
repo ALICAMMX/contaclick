@@ -6,6 +6,7 @@ import { Building2, AlertCircle, CalendarClock, FileText, ChevronRight, BellRing
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { getDespachoDashboard } from "@/lib/despacho/dashboard.functions";
+import { UsageProfileCard } from "@/components/UsageProfileCard";
 
 export const Route = createFileRoute("/app/despacho")({ component: DespachoPage });
 
@@ -58,6 +59,8 @@ function DespachoPage() {
           </p>
         </div>
       </div>
+
+      <UsageProfileCard />
 
       <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
         <Kpi label="Expedientes" value={t?.clientes ?? 0} />

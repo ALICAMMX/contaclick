@@ -9,7 +9,7 @@ import { useDespacho } from "@/lib/despacho/use-despacho";
 import { updateDespacho, createDespacho } from "@/lib/despacho/despacho.functions";
 import { seedDemo, clearDemo } from "@/lib/demo/demo.functions";
 import { Tour, resetTour } from "@/components/Tour";
-import { UsageMeters } from "@/components/UsageMeters";
+import { UsageProfileCard } from "@/components/UsageProfileCard";
 import { UsageHistoryPanel } from "@/components/UsageHistoryPanel";
 
 export const Route = createFileRoute("/app/configuracion")({
@@ -148,7 +148,7 @@ function ConfigPage() {
         <ChevronRight className="h-4 w-4 text-muted-foreground" />
       </Link>
 
-      <UsageMeters />
+      <UsageProfileCard />
       <UsageHistoryPanel />
 
       <div className="rounded-xl border border-primary/30 bg-primary/5 p-5 space-y-4">

@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Calculator, Briefcase, Scale, ArrowRight, FileText, ShieldAlert, Users, TrendingUp, Mail, Banknote, UserRound, Plus, X } from "lucide-react";
-import { UsageMeters } from "@/components/UsageMeters";
+import { UsageProfileCard } from "@/components/UsageProfileCard";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -59,8 +59,8 @@ function Hub() {
       </section>
 
       {/* Plan & uso */}
-      <section className="max-w-2xl mx-auto w-full">
-        <UsageMeters />
+      <section className="max-w-3xl mx-auto w-full">
+        <UsageProfileCard />
       </section>
 
       {/* Legal — secondary card */}
