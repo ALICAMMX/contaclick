@@ -4,13 +4,14 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 import { resolveActiveDespachoId } from "@/lib/despacho/resolve";
 
-const TeamRoleSchema = z.enum(["colaborador", "contador", "auxiliar"]);
+const TeamRoleSchema = z.enum(["colaborador", "contador", "auxiliar", "cliente_final"]);
 
 const ROLE_LABELS: Record<string, string> = {
   despacho: "Admin",
   contador: "Contador",
   auxiliar: "Auxiliar",
   colaborador: "Colaborador",
+  cliente_final: "Cliente",
 };
 
 async function resolveAdminDespacho(supabase: any, userId: string) {
@@ -137,6 +138,10 @@ export const createInvitation = createServerFn({ method: "POST" })
     z.object({
       email: z.string().trim().toLowerCase().email("Correo inválido"),
       role: TeamRoleSchema.default("colaborador"),
+      cliente_id: z.string().uuid().optional().nullable(),
+    }).refine((v) => v.role !== "cliente_final" || !!v.cliente_id, {
+      message: "Selecciona el expediente al que tendrá acceso el cliente",
+      path: ["cliente_id"],
     }).parse(d ?? {}),
   )
   .handler(async ({ data, context }) => {
@@ -202,10 +207,29 @@ export const createInvitation = createServerFn({ method: "POST" })
       throw new Error(`Ya hay una invitación pendiente para ${email}.`);
     }
 
+    // Cliente role: validate cliente belongs to despacho
+    if (data.role === "cliente_final") {
+      const { data: cli } = await supabaseAdmin
+        .from("clientes")
+        .select("id, despacho_id")
+        .eq("id", data.cliente_id!)
+        .maybeSingle();
+      if (!cli || cli.despacho_id !== despachoId) {
+        throw new Error("El expediente seleccionado no pertenece a tu despacho.");
+      }
+    }
+
     const token = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "").slice(0, 16);
     const { data: row, error } = await supabase
       .from("invitaciones")
-      .insert({ despacho_id: despachoId, token, email, role: data.role, created_by: userId })
+      .insert({
+        despacho_id: despachoId,
+        token,
+        email,
+        role: data.role,
+        created_by: userId,
+        cliente_id: data.role === "cliente_final" ? data.cliente_id! : null,
+      })
       .select("id, token, expires_at")
       .single();
     if (error) throw new Error(error.message);
@@ -217,7 +241,24 @@ export const createInvitation = createServerFn({ method: "POST" })
         .insert({ user_id: existingProfile.id, despacho_id: despachoId, estado: "activo", invited_by: userId });
       await supabaseAdmin
         .from("user_roles")
-        .insert({ user_id: existingProfile.id, despacho_id: despachoId, role: data.role });
+        .insert({
+          user_id: existingProfile.id,
+          despacho_id: despachoId,
+          role: data.role,
+          cliente_id: data.role === "cliente_final" ? data.cliente_id! : null,
+        });
+      if (data.role === "cliente_final" && data.cliente_id) {
+        await supabaseAdmin.from("cliente_asignaciones").insert({
+          despacho_id: despachoId,
+          cliente_id: data.cliente_id,
+          user_id: existingProfile.id,
+          created_by: userId,
+        });
+        await supabaseAdmin.from("cliente_portal_config").upsert(
+          { cliente_id: data.cliente_id, despacho_id: despachoId },
+          { onConflict: "cliente_id" },
+        );
+      }
       await supabaseAdmin
         .from("invitaciones")
         .update({ used_at: new Date().toISOString(), used_by: existingProfile.id })
@@ -232,6 +273,14 @@ export const createInvitation = createServerFn({ method: "POST" })
         role_label: ROLE_LABELS[data.role],
         full_name: existingProfile.full_name as string | null,
       };
+    }
+
+    // For cliente_final, preconfigure portal so admin can tweak modules before user signs up
+    if (data.role === "cliente_final" && data.cliente_id) {
+      await supabaseAdmin.from("cliente_portal_config").upsert(
+        { cliente_id: data.cliente_id, despacho_id: despachoId },
+        { onConflict: "cliente_id" },
+      );
     }
 
     return {
