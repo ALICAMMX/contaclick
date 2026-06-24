@@ -14,10 +14,10 @@ export const getUsageSummary = createServerFn({ method: "GET" })
       getPlanLimites(supabase, despachoId),
       getUsoPeriodo(supabase, despachoId, periodo),
       supabase
-        .from("rfcs")
+        .from("clientes")
         .select("id", { count: "exact", head: true })
         .eq("despacho_id", despachoId)
-        .eq("vigente", true),
+        .eq("tipo_relacion", "cliente"),
     ]);
 
     const next = new Date();
