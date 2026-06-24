@@ -1,12 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { FileStack, Upload, Download, FileSpreadsheet, AlertTriangle, CheckCircle2, Search } from "lucide-react";
+import { FileStack, Upload, Download, FileSpreadsheet, AlertTriangle, CheckCircle2, Search, Save, Loader2 } from "lucide-react";
 import JSZip from "jszip";
 import * as XLSX from "xlsx";
+import { useServerFn } from "@tanstack/react-start";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ToolShell } from "@/components/ToolShell";
 import { parseCfdi } from "@/lib/tools/cfdi-parser";
+import { useActiveCliente } from "@/lib/active-cliente";
+import { uploadCfdiBatch } from "@/lib/cfdi/cfdi.functions";
 
 export const Route = createFileRoute("/app/tools/xml-bulk-reader")({
   component: BulkReader,
@@ -14,6 +19,7 @@ export const Route = createFileRoute("/app/tools/xml-bulk-reader")({
 
 type Row = {
   archivo: string;
+  xml?: string;
   uuid?: string;
   fecha?: string;
   rfcEmisor?: string;
@@ -40,6 +46,7 @@ function rowFromXml(filename: string, xml: string): Row {
   const cancelado = /Estatus\s*=\s*"(0|Cancelado|cancelado)"/.test(xml) || /\bCancelado\b/i.test(xml.slice(0, 1000));
   return {
     archivo: filename,
+    xml,
     uuid: p.uuid,
     fecha: p.fecha,
     rfcEmisor: p.emisor.rfc,
@@ -66,6 +73,47 @@ function BulkReader() {
   const [filter, setFilter] = useState("");
   const [tipoFiltro, setTipoFiltro] = useState<string>("");
   const [estadoFiltro, setEstadoFiltro] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+  const { cliente } = useActiveCliente();
+  const uploadBatch = useServerFn(uploadCfdiBatch);
+  const qc = useQueryClient();
+
+  const guardarEnExpediente = async () => {
+    if (!cliente) {
+      toast.error("Selecciona un expediente activo en la barra superior antes de guardar.");
+      return;
+    }
+    const persistibles = rows.filter((r) => r.xml && r.uuid);
+    if (!persistibles.length) {
+      toast.error("No hay CFDIs válidos (con UUID) para guardar.");
+      return;
+    }
+    setSaving(true);
+    let inserted = 0, duplicates = 0, failed = 0;
+    try {
+      const CHUNK = 50;
+      for (let i = 0; i < persistibles.length; i += CHUNK) {
+        const slice = persistibles.slice(i, i + CHUNK);
+        const res = await uploadBatch({
+          data: {
+            cliente_id: cliente.id,
+            files: slice.map((r) => ({ filename: r.archivo, xml: r.xml! })),
+          },
+        });
+        inserted += res.summary.inserted;
+        duplicates += res.summary.duplicates;
+        failed += res.summary.failed;
+      }
+      await qc.invalidateQueries();
+      toast.success(`Expediente actualizado: ${inserted} guardados, ${duplicates} duplicados, ${failed} con error.`);
+    } catch (e) {
+      toast.error(`No se pudo guardar: ${e instanceof Error ? e.message : "error"}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+
 
   const handleFiles = async (files: FileList) => {
     setBusy(true);
@@ -261,6 +309,10 @@ function BulkReader() {
             </Button>
             <Button variant="glass" size="sm" onClick={exportXlsx}>
               <FileSpreadsheet className="h-3.5 w-3.5" /> Excel
+            </Button>
+            <Button variant="hero" size="sm" onClick={guardarEnExpediente} disabled={saving || !cliente}>
+              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              {cliente ? `Guardar en ${cliente.rfc}` : "Selecciona expediente"}
             </Button>
           </div>
 
