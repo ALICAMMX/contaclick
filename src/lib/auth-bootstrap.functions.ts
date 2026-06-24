@@ -8,7 +8,13 @@ const BootstrapSchema = z.object({
 });
 
 function normalizeInvitedRole(role: string | null | undefined) {
-  if (role === "contador" || role === "auxiliar" || role === "colaborador") return role;
+  if (
+    role === "contador" ||
+    role === "auxiliar" ||
+    role === "colaborador" ||
+    role === "cliente_final"
+  )
+    return role;
   return "colaborador";
 }
 
@@ -49,7 +55,7 @@ export const ensureUserWorkspace = createServerFn({ method: "POST" })
     if (email) {
       const { data: pendingInvites, error: inviteError } = await supabaseAdmin
         .from("invitaciones")
-        .select("id, despacho_id, role, created_by")
+        .select("id, despacho_id, role, created_by, cliente_id")
         .ilike("email", email)
         .is("used_at", null)
         .is("revoked_at", null)
@@ -68,15 +74,42 @@ export const ensureUserWorkspace = createServerFn({ method: "POST" })
         );
         if (membershipError) throw new Error(membershipError.message);
 
+        const normalizedRole = normalizeInvitedRole(inv.role);
+        const isClienteFinal = normalizedRole === "cliente_final";
+
         const { error: roleError } = await supabaseAdmin.from("user_roles").upsert(
           {
             user_id: userId,
             despacho_id: inv.despacho_id,
-              role: normalizeInvitedRole(inv.role),
+            role: normalizedRole,
+            cliente_id: isClienteFinal ? inv.cliente_id : null,
           },
           { onConflict: "user_id,role,despacho_id,cliente_id" },
         );
         if (roleError) throw new Error(roleError.message);
+
+        if (isClienteFinal && inv.cliente_id) {
+          const { error: asigError } = await supabaseAdmin
+            .from("cliente_asignaciones")
+            .upsert(
+              {
+                despacho_id: inv.despacho_id,
+                cliente_id: inv.cliente_id,
+                user_id: userId,
+                created_by: inv.created_by,
+              },
+              { onConflict: "cliente_id,user_id" },
+            );
+          if (asigError) throw new Error(asigError.message);
+
+          const { error: portalCfgError } = await supabaseAdmin
+            .from("cliente_portal_config")
+            .upsert(
+              { cliente_id: inv.cliente_id, despacho_id: inv.despacho_id },
+              { onConflict: "cliente_id" },
+            );
+          if (portalCfgError) throw new Error(portalCfgError.message);
+        }
 
         const { error: usedError } = await supabaseAdmin
           .from("invitaciones")
