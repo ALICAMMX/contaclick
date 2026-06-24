@@ -15,6 +15,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PrivacidadRouteImport } from './routes/privacidad'
 import { Route as PreciosRouteImport } from './routes/precios'
 import { Route as PortalRouteImport } from './routes/portal'
+import { Route as FolletoHerramientasRouteImport } from './routes/folleto-herramientas'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ContactoRouteImport } from './routes/contacto'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -129,6 +130,11 @@ const PreciosRoute = PreciosRouteImport.update({
 const PortalRoute = PortalRouteImport.update({
   id: '/portal',
   path: '/portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FolletoHerramientasRoute = FolletoHerramientasRouteImport.update({
+  id: '/folleto-herramientas',
+  path: '/folleto-herramientas',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -570,6 +576,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/contacto': typeof ContactoRoute
   '/dashboard': typeof DashboardRouteWithChildren
+  '/folleto-herramientas': typeof FolletoHerramientasRoute
   '/portal': typeof PortalRouteWithChildren
   '/precios': typeof PreciosRoute
   '/privacidad': typeof PrivacidadRoute
@@ -661,6 +668,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/contacto': typeof ContactoRoute
+  '/folleto-herramientas': typeof FolletoHerramientasRoute
   '/precios': typeof PreciosRoute
   '/privacidad': typeof PrivacidadRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -747,6 +755,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/contacto': typeof ContactoRoute
   '/dashboard': typeof DashboardRouteWithChildren
+  '/folleto-herramientas': typeof FolletoHerramientasRoute
   '/portal': typeof PortalRouteWithChildren
   '/precios': typeof PreciosRoute
   '/privacidad': typeof PrivacidadRoute
@@ -842,6 +851,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/contacto'
     | '/dashboard'
+    | '/folleto-herramientas'
     | '/portal'
     | '/precios'
     | '/privacidad'
@@ -933,6 +943,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/contacto'
+    | '/folleto-herramientas'
     | '/precios'
     | '/privacidad'
     | '/reset-password'
@@ -1018,6 +1029,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/contacto'
     | '/dashboard'
+    | '/folleto-herramientas'
     | '/portal'
     | '/precios'
     | '/privacidad'
@@ -1112,6 +1124,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ContactoRoute: typeof ContactoRoute
   DashboardRoute: typeof DashboardRouteWithChildren
+  FolletoHerramientasRoute: typeof FolletoHerramientasRoute
   PortalRoute: typeof PortalRouteWithChildren
   PreciosRoute: typeof PreciosRoute
   PrivacidadRoute: typeof PrivacidadRoute
@@ -1163,6 +1176,13 @@ declare module '@tanstack/react-router' {
       path: '/portal'
       fullPath: '/portal'
       preLoaderRoute: typeof PortalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/folleto-herramientas': {
+      id: '/folleto-herramientas'
+      path: '/folleto-herramientas'
+      fullPath: '/folleto-herramientas'
+      preLoaderRoute: typeof FolletoHerramientasRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -2033,6 +2053,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ContactoRoute: ContactoRoute,
   DashboardRoute: DashboardRouteWithChildren,
+  FolletoHerramientasRoute: FolletoHerramientasRoute,
   PortalRoute: PortalRouteWithChildren,
   PreciosRoute: PreciosRoute,
   PrivacidadRoute: PrivacidadRoute,
@@ -2044,13 +2065,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
