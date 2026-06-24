@@ -62,6 +62,21 @@ const TEAM_ROLES: {
       "Cambiar configuración del despacho",
     ],
   },
+  {
+    value: "cliente_final",
+    label: "Cliente",
+    description: "El propio cliente del despacho. Entra a su Portal con vista de solo lectura.",
+    can: [
+      "Consultar su propio expediente (CFDI, CXC, CXP, impuestos, reportes)",
+      "Recibir mensajes y avisos del contador",
+      "Subir documentos que el contador le solicite",
+    ],
+    cant: [
+      "Ver expedientes de otros clientes del despacho",
+      "Editar información ni invitar a nadie más",
+      "Acceder al panel administrativo del despacho",
+    ],
+  },
 ];
 
 const roleLabel = (value?: string) => TEAM_ROLES.find((r) => r.value === value)?.label ?? "Colaborador";
