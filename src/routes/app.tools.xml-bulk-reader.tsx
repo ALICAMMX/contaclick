@@ -67,6 +67,23 @@ function rowFromXml(filename: string, xml: string): Row {
   };
 }
 
+type Rejection = { archivo: string; motivo: string; detalle?: string };
+type RejectReport = {
+  rfc: string;
+  aceptados: number;
+  rfcAjeno: Rejection[];
+  duplicadosLocal: Rejection[];
+  duplicadosExpediente: Rejection[];
+  sinUuid: Rejection[];
+  errores: Rejection[];
+};
+
+async function sha256Hex(text: string): Promise<string> {
+  const enc = new TextEncoder().encode(text);
+  const buf = await crypto.subtle.digest("SHA-256", enc);
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 function BulkReader() {
   const [rows, setRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState(false);
@@ -75,8 +92,10 @@ function BulkReader() {
   const [tipoFiltro, setTipoFiltro] = useState<string>("");
   const [estadoFiltro, setEstadoFiltro] = useState<string>("");
   const [saving, setSaving] = useState(false);
+  const [report, setReport] = useState<RejectReport | null>(null);
   const { cliente } = useActiveCliente();
   const uploadBatch = useServerFn(uploadCfdiBatch);
+  const fetchKeys = useServerFn(getExistingCfdiKeys);
   const qc = useQueryClient();
 
   const guardarEnExpediente = async () => {
@@ -114,8 +133,6 @@ function BulkReader() {
     }
   };
 
-
-
   const handleFiles = async (files: FileList) => {
     if (!cliente) {
       toast.error("Selecciona primero un expediente (RFC) en la barra superior. La herramienta no puede leer XML sin un RFC activo para evitar mezclar contabilidades.");
@@ -123,9 +140,21 @@ function BulkReader() {
     }
     const rfcActivo = cliente.rfc.toUpperCase();
     setBusy(true);
-    const next: Row[] = [];
-    const xmlFiles: { name: string; getText: () => Promise<string> }[] = [];
 
+    // Llaves ya presentes en el expediente (DB)
+    let dbUuids = new Set<string>();
+    let dbHashes = new Set<string>();
+    try {
+      const k = await fetchKeys({ data: { cliente_id: cliente.id } });
+      dbUuids = new Set(k.uuids);
+      dbHashes = new Set(k.hashes);
+    } catch {
+      /* sin conexión seguimos con dedup local */
+    }
+    // Llaves ya cargadas en esta sesión (en la tabla local)
+    const localUuids = new Set(rows.map((r) => (r.uuid ?? "").toUpperCase()).filter(Boolean));
+
+    const xmlFiles: { name: string; getText: () => Promise<string> }[] = [];
     for (const f of Array.from(files)) {
       if (/\.zip$/i.test(f.name)) {
         try {
@@ -144,39 +173,58 @@ function BulkReader() {
     }
 
     setProgress({ done: 0, total: xmlFiles.length });
-    let rechazados = 0;
+    const next: Row[] = [];
+    const rep: RejectReport = {
+      rfc: rfcActivo,
+      aceptados: 0,
+      rfcAjeno: [],
+      duplicadosLocal: [],
+      duplicadosExpediente: [],
+      sinUuid: [],
+      errores: [],
+    };
+
     for (let i = 0; i < xmlFiles.length; i++) {
+      const name = xmlFiles[i].name;
       try {
         const txt = await xmlFiles[i].getText();
-        const row = rowFromXml(xmlFiles[i].name, txt);
+        const row = rowFromXml(name, txt);
         const emisor = (row.rfcEmisor ?? "").toUpperCase();
         const receptor = (row.rfcReceptor ?? "").toUpperCase();
+        const uuid = (row.uuid ?? "").toUpperCase();
+        const hash = await sha256Hex(txt);
+
         if (emisor !== rfcActivo && receptor !== rfcActivo) {
-          rechazados++;
-          // No se agrega a la tabla: no se "lee" para el expediente.
-          setProgress({ done: i + 1, total: xmlFiles.length });
-          continue;
+          rep.rfcAjeno.push({ archivo: name, motivo: "RFC ajeno", detalle: `Emisor ${emisor || "—"} · Receptor ${receptor || "—"}` });
+        } else if (!uuid) {
+          rep.sinUuid.push({ archivo: name, motivo: "Sin UUID (no timbrado)" });
+        } else if (localUuids.has(uuid)) {
+          rep.duplicadosLocal.push({ archivo: name, motivo: "Ya cargado en esta sesión", detalle: `UUID ${uuid}` });
+        } else if (dbUuids.has(uuid) || dbHashes.has(hash)) {
+          rep.duplicadosExpediente.push({ archivo: name, motivo: "Ya existe en el expediente", detalle: `UUID ${uuid}` });
+        } else {
+          next.push(row);
+          localUuids.add(uuid);
+          rep.aceptados++;
         }
-        next.push(row);
-      } catch {
-        next.push({
-          archivo: xmlFiles[i].name,
-          estado: "desconocido",
-          warnings: ["No se pudo leer el archivo."],
-        });
+      } catch (e) {
+        rep.errores.push({ archivo: name, motivo: "No se pudo leer el archivo", detalle: e instanceof Error ? e.message : "" });
       }
       setProgress({ done: i + 1, total: xmlFiles.length });
     }
+
     setRows((prev) => [...prev, ...next]);
     setBusy(false);
     setProgress(null);
-    if (rechazados > 0) {
-      toast.warning(`${rechazados} XML rechazado(s): no corresponden al RFC ${rfcActivo} del expediente activo.`);
-    }
-    if (next.length > 0) {
-      toast.success(`${next.length} CFDI(s) válidos para ${rfcActivo}.`);
+
+    const totalRechazos = rep.rfcAjeno.length + rep.duplicadosLocal.length + rep.duplicadosExpediente.length + rep.sinUuid.length + rep.errores.length;
+    if (totalRechazos > 0) {
+      setReport(rep);
+    } else if (rep.aceptados > 0) {
+      toast.success(`${rep.aceptados} CFDI(s) cargados para ${rfcActivo}.`);
     }
   };
+
 
 
   const filtered = useMemo(() => {
