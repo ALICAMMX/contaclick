@@ -490,3 +490,40 @@ function MatchBadge({ c }: { c?: { tipo_match: string; probabilidad: number | nu
 function fmtMxn(n: number) {
   return `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
+
+function BankRejectDialog({
+  info, cliente, onClose,
+}: {
+  info: { archivo: string; razon: string } | null;
+  cliente: { rfc: string; razon_social: string } | null;
+  onClose: () => void;
+}) {
+  return (
+    <Dialog open={!!info} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-destructive">
+            <ShieldAlert className="h-5 w-5" /> Estado de cuenta rechazado
+          </DialogTitle>
+          <DialogDescription>
+            No se cargó <strong className="font-mono">{info?.archivo}</strong> para evitar conciliar movimientos del contribuyente equivocado.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm space-y-2">
+          <div><strong>Motivo:</strong> {info?.razon}</div>
+          {cliente && (
+            <div>
+              <strong>Expediente activo:</strong> RFC <span className="font-mono">{cliente.rfc}</span> · {cliente.razon_social}
+            </div>
+          )}
+          <div className="text-xs text-muted-foreground">
+            Verifica que el archivo corresponda a la cuenta bancaria de este contribuyente antes de subirlo de nuevo.
+          </div>
+        </div>
+        <DialogFooter>
+          <Button onClick={onClose}>Entendido</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
