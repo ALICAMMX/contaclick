@@ -140,11 +140,15 @@ function EquipoPage() {
   );
 
   const { members, invitations, limit } = data;
-  const activeInvites = invitations.filter((i: any) => !i.used_at && !i.revoked_at && new Date(i.expires_at) > new Date());
+  const clientUsers = (data as any).clientUsers ?? [];
+  const activeInvitesAll = invitations.filter((i: any) => !i.used_at && !i.revoked_at && new Date(i.expires_at) > new Date());
+  const activeInvites = activeInvitesAll.filter((i: any) => i.role !== "cliente_final");
+  const activeClientInvites = activeInvitesAll.filter((i: any) => i.role === "cliente_final");
   const total = members.length + activeInvites.length;
   const remaining = limit === null ? Infinity : Math.max(0, limit - total);
-  const canInvite = limit === null || remaining > 0;
+  const canInvite = role === "cliente_final" || limit === null || remaining > 0;
   const clientesList = clientesData?.clientes ?? [];
+
 
   const submitInvite = (e: React.FormEvent) => {
     e.preventDefault();
