@@ -143,14 +143,16 @@ function RfcsVinculadosPage() {
                             Abrir expediente
                           </Link>
                         )}
-                        <button
-                          onClick={() => {
-                            if (confirm(`¿Eliminar el RFC ${r.rfc}?`)) deleteMut.mutate(r.id);
-                          }}
-                          className="text-xs px-2 py-1 rounded-md text-destructive hover:bg-destructive/10 inline-flex items-center gap-1"
-                        >
-                          <Trash2 className="h-3 w-3" /> Eliminar
-                        </button>
+                        {data?.canManageExpedientes && (
+                          <button
+                            onClick={() => {
+                              if (confirm(`¿Eliminar el RFC ${r.rfc}?`)) deleteMut.mutate(r.id);
+                            }}
+                            className="text-xs px-2 py-1 rounded-md text-destructive hover:bg-destructive/10 inline-flex items-center gap-1"
+                          >
+                            <Trash2 className="h-3 w-3" /> Eliminar
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
