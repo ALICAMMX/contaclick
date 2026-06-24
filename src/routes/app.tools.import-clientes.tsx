@@ -42,15 +42,26 @@ function ImportClientesPage() {
   const mut = useMutation({
     mutationFn: async (rows: Record<string, any>[]) => {
       const out: RowResult[] = [];
+      const seen = new Set<string>(); // RFCs ya vistos en este mismo CSV
       setProgress({ done: 0, total: rows.length });
       for (let i = 0; i < rows.length; i++) {
         const r = rows[i];
         const rfc = String(r.rfc ?? "").trim().toUpperCase();
         const razon = String(r.razon_social ?? "").trim();
         try {
-          if (!RFC_REGEX.test(rfc)) throw new Error("RFC inválido");
+          const check = validateRfc(rfc);
+          if (!check.valid) throw new Error(check.reason ?? "RFC inválido");
           if (razon.length < 2) throw new Error("Razón social requerida");
-          const tipoPersona = String(r.tipo_persona ?? "").toLowerCase().trim();
+          if (seen.has(rfc)) {
+            throw new Error("RFC duplicado en este archivo (fila anterior ya lo contenía)");
+          }
+          seen.add(rfc);
+          const tipoPersonaInput = String(r.tipo_persona ?? "").toLowerCase().trim();
+          // Si el usuario no especificó, usar el deducido del RFC
+          const tipoPersona =
+            tipoPersonaInput === "fisica" || tipoPersonaInput === "moral"
+              ? tipoPersonaInput
+              : check.tipo;
           const tipoRel = String(r.tipo_relacion ?? "cliente").toLowerCase().trim();
           const res = await upsert({
             data: {
@@ -58,11 +69,14 @@ function ImportClientesPage() {
               razon_social: razon,
               regimen_fiscal: r.regimen_fiscal ? String(r.regimen_fiscal) : null,
               codigo_postal: r.codigo_postal ? String(r.codigo_postal) : null,
-              tipo_persona: tipoPersona === "fisica" || tipoPersona === "moral" ? tipoPersona : null,
+              tipo_persona: tipoPersona,
               tipo_relacion: ["cliente", "proveedor", "acreedor"].includes(tipoRel) ? tipoRel : "cliente",
             } as any,
           });
-          out.push({ rfc, razon_social: razon, status: "ok", accion: res.accion });
+          const warn = check.homoclaveOk === false
+            ? "Importado, pero la homoclave no coincide con el algoritmo del SAT (verifica en la CSF)"
+            : undefined;
+          out.push({ rfc, razon_social: razon, status: "ok", accion: warn ?? res.accion });
         } catch (e: any) {
           out.push({ rfc, razon_social: razon, status: "error", message: e?.message ?? "Error desconocido" });
         }
