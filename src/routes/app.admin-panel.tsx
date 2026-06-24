@@ -443,3 +443,33 @@ function UserRow({
     </>
   );
 }
+
+function UsageMini({ usado, limite, label }: { usado: number; limite: number; label?: string }) {
+  const ilimitado = limite < 0;
+  const sinLimite = !ilimitado && limite === 0;
+  const pct = ilimitado || sinLimite ? 0 : Math.min(100, (usado / limite) * 100);
+  const tone =
+    ilimitado || sinLimite
+      ? "bg-muted-foreground/40"
+      : pct >= 100
+        ? "bg-destructive"
+        : pct >= 80
+          ? "bg-warning"
+          : pct >= 50
+            ? "bg-primary"
+            : "bg-emerald-500";
+  return (
+    <div className="min-w-[110px]">
+      <div className="text-sm tabular-nums">
+        {usado.toLocaleString("es-MX")}
+        {ilimitado ? " / ∞" : sinLimite ? "" : ` / ${limite.toLocaleString("es-MX")}`}
+        {label && <span className="text-[10px] text-muted-foreground ml-1">{label}</span>}
+      </div>
+      {!ilimitado && !sinLimite && (
+        <div className="h-1 rounded-full bg-muted/40 overflow-hidden mt-1">
+          <div className={`h-full ${tone}`} style={{ width: `${pct}%` }} />
+        </div>
+      )}
+    </div>
+  );
+}
