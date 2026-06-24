@@ -63,11 +63,13 @@ function RfcsVinculadosPage() {
             Depósito de todas las CSF que has cargado: clientes, proveedores y acreedores. Las herramientas que necesiten un RFC podrán invocarlos de aquí.
           </p>
         </div>
-        <Link to="/app/tools/csf-parser">
-          <Button variant="hero">
-            <Upload className="h-4 w-4" /> Cargar CSF
-          </Button>
-        </Link>
+        {data?.canManageExpedientes && (
+          <Link to="/app/tools/csf-parser">
+            <Button variant="hero">
+              <Upload className="h-4 w-4" /> Cargar CSF
+            </Button>
+          </Link>
+        )}
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
