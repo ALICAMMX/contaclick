@@ -1975,6 +1975,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      is_despacho_admin: { Args: { _despacho: string }; Returns: boolean }
       is_member_of: { Args: { _despacho: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
     }
