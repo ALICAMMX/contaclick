@@ -389,7 +389,7 @@ function UserRow({
       </TableRow>
       {open && (
         <TableRow>
-          <TableCell colSpan={8} className="bg-muted/30">
+          <TableCell colSpan={9} className="bg-muted/30">
             <div className="grid md:grid-cols-2 gap-4 p-3">
               <div>
                 <div className="text-xs font-semibold mb-2">Roles / privilegios</div>
