@@ -1,13 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import { FileBadge, Upload, Save, CheckCircle2, AlertTriangle, Eye, FolderOpen, UserPlus, Truck, Receipt, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ToolShell } from "@/components/ToolShell";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { saveToolRun } from "@/lib/tool-runs.functions";
-import { upsertClienteFromCsf } from "@/lib/clientes.functions";
+import { listRfcsVinculados, upsertClienteFromCsf } from "@/lib/clientes.functions";
 
 
 export const Route = createFileRoute("/app/tools/csf-parser")({
@@ -231,6 +232,9 @@ function CsfParser() {
   const [acting, setActing] = useState<null | "cliente" | "proveedor" | "acreedor">(null);
   const save = useServerFn(saveToolRun);
   const upsert = useServerFn(upsertClienteFromCsf);
+  const listRfcs = useServerFn(listRfcsVinculados);
+  const permisos = useQuery({ queryKey: ["rfcs-vinculados", "permisos"], queryFn: () => listRfcs(), staleTime: 60_000 });
+  const canManageExpedientes = !!permisos.data?.canManageExpedientes;
 
   const onFile = async (file: File) => {
     setFileName(file.name);
@@ -323,24 +327,30 @@ function CsfParser() {
 
           {/* Acciones sobre el expediente */}
           <div className="rounded-xl border border-border/60 bg-card/40 p-4 space-y-3">
-            <div className="text-sm font-medium">Guardar en RFC vinculados como:</div>
-            <div className="grid sm:grid-cols-3 gap-2">
-              <Button variant="hero" disabled={!!acting} onClick={() => onUpsert("cliente")}>
-                <UserPlus className="h-4 w-4" />
-                {acting === "cliente" ? "Guardando…" : "Cliente"}
-              </Button>
-              <Button variant="outline" disabled={!!acting} onClick={() => onUpsert("proveedor")}>
-                <Truck className="h-4 w-4" />
-                {acting === "proveedor" ? "Guardando…" : "Proveedor"}
-              </Button>
-              <Button variant="outline" disabled={!!acting} onClick={() => onUpsert("acreedor")}>
-                <Receipt className="h-4 w-4" />
-                {acting === "acreedor" ? "Guardando…" : "Acreedor"}
-              </Button>
-            </div>
-            <div className="text-xs text-muted-foreground">
-              Todos los RFC se depositan en <strong>RFC vinculados</strong>. Solo los que marques como <strong>Cliente</strong> aparecen además en <strong>Expedientes</strong> con sus herramientas completas. Los proveedores y acreedores se invocarán automáticamente cuando una herramienta los necesite.
-            </div>
+            {canManageExpedientes ? (
+              <>
+                <div className="text-sm font-medium">Guardar en RFC vinculados como:</div>
+                <div className="grid sm:grid-cols-3 gap-2">
+                  <Button variant="hero" disabled={!!acting} onClick={() => onUpsert("cliente")}>
+                    <UserPlus className="h-4 w-4" />
+                    {acting === "cliente" ? "Guardando…" : "Cliente"}
+                  </Button>
+                  <Button variant="outline" disabled={!!acting} onClick={() => onUpsert("proveedor")}>
+                    <Truck className="h-4 w-4" />
+                    {acting === "proveedor" ? "Guardando…" : "Proveedor"}
+                  </Button>
+                  <Button variant="outline" disabled={!!acting} onClick={() => onUpsert("acreedor")}>
+                    <Receipt className="h-4 w-4" />
+                    {acting === "acreedor" ? "Guardando…" : "Acreedor"}
+                  </Button>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Todos los RFC se depositan en <strong>RFC vinculados</strong>. Solo los que marques como <strong>Cliente</strong> aparecen además en <strong>Expedientes</strong> con sus herramientas completas. Los proveedores y acreedores se invocarán automáticamente cuando una herramienta los necesite.
+                </div>
+              </>
+            ) : (
+              <div className="text-sm text-muted-foreground">Tu rol permite consultar y trabajar sólo con los RFC asignados; no puede crear nuevos expedientes.</div>
+            )}
             <div className="pt-1">
               <Button variant="ghost" size="sm" onClick={onSaveSolo}>
                 <Save className="h-3.5 w-3.5" /> Solo guardar en historial (sin crear registro)
