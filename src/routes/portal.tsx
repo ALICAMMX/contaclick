@@ -61,7 +61,7 @@ function PortalLayout() {
       <header className="border-b border-border bg-card/60 backdrop-blur sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Logo className="h-7 w-auto" />
+            <Logo size="sm" />
             <div className="hidden sm:block border-l border-border pl-3">
               <div className="text-xs text-muted-foreground">Portal de cliente</div>
               <div className="text-sm font-semibold truncate max-w-[260px]">{cliente.razon_social}</div>
