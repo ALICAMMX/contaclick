@@ -326,7 +326,61 @@ function EquipoPage() {
         )}
       </section>
 
+      <section>
+        <h2 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide flex items-center gap-2">
+          <UserCircle2 className="h-3.5 w-3.5" /> Clientes con acceso al portal ({clientUsers.length + activeClientInvites.length})
+        </h2>
+        <p className="text-xs text-muted-foreground mb-3">
+          Los clientes finales entran a su propio Portal de solo lectura y <strong>no ocupan asiento</strong> de tu plan de equipo.
+        </p>
+        {clientUsers.length === 0 && activeClientInvites.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+            Aún no has invitado a ningún cliente. Selecciona el rol "Cliente" arriba para darles acceso a su expediente.
+          </div>
+        ) : (
+          <div className="rounded-lg border border-border divide-y divide-border/60">
+            {clientUsers.map((m: any) => (
+              <div key={m.user_id} className="flex items-center justify-between p-4">
+                <div>
+                  <div className="font-medium text-sm">{m.full_name || m.email || m.user_id.slice(0, 8)}</div>
+                  <div className="text-xs text-muted-foreground">{m.email}</div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">Cliente</span>
+                  <Button size="sm" variant="ghost" onClick={() => { if (confirm("¿Quitar el acceso de este cliente al portal?")) removeMut.mutate(m.user_id); }}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+            {activeClientInvites.map((inv: any) => {
+              const url = `${typeof window !== "undefined" ? window.location.origin : ""}/invitar/${inv.token}`;
+              return (
+                <div key={inv.id} className="flex items-center justify-between p-4 gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate flex items-center gap-2">
+                      <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                      {inv.email}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Cliente · pendiente · Expira {new Date(inv.expires_at).toLocaleDateString("es-MX")}
+                    </div>
+                  </div>
+                  <Button size="sm" variant="outline" title="Copiar link" onClick={() => { navigator.clipboard.writeText(url); toast.success("Link copiado"); }}>
+                    <Link2 className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => revokeMut.mutate(inv.id)}>
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
       <AccesoExpedientesSection />
+
 
       <div className="text-xs text-muted-foreground">
         <Link to="/app/configuracion" className="hover:underline">← Configuración del despacho</Link>
