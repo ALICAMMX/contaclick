@@ -164,58 +164,38 @@ function BulkReader() {
     }
 
     setProgress({ done: 0, total: xmlFiles.length });
-    const next: Row[] = [];
-    const rep: RejectReport = {
-      rfc: rfcActivo,
-      aceptados: 0,
-      rfcAjeno: [],
-      duplicadosLocal: [],
-      duplicadosExpediente: [],
-      sinUuid: [],
-      errores: [],
-    };
-
+    // Cargar textos primero para mostrar progreso (lectura), luego clasificar
+    const filesText: Array<{ filename: string; xml: string }> = [];
     for (let i = 0; i < xmlFiles.length; i++) {
-      const name = xmlFiles[i].name;
       try {
         const txt = await xmlFiles[i].getText();
-        const row = rowFromXml(name, txt);
-        const emisor = (row.rfcEmisor ?? "").toUpperCase();
-        const receptor = (row.rfcReceptor ?? "").toUpperCase();
-        const uuid = (row.uuid ?? "").toUpperCase();
-        const hash = await sha256Hex(txt);
-
-        if (emisor !== rfcActivo && receptor !== rfcActivo) {
-          rep.rfcAjeno.push({ archivo: name, motivo: "RFC ajeno", detalle: `Emisor ${emisor || "—"} · Receptor ${receptor || "—"}` });
-        } else if (!uuid) {
-          rep.sinUuid.push({ archivo: name, motivo: "Sin UUID (no timbrado)" });
-        } else if (localUuids.has(uuid) || localHashes.has(hash)) {
-          rep.duplicadosLocal.push({ archivo: name, motivo: "Ya cargado en esta sesión", detalle: `UUID ${uuid}` });
-        } else if (dbUuids.has(uuid) || dbHashes.has(hash)) {
-          rep.duplicadosExpediente.push({ archivo: name, motivo: "Ya existe en el expediente", detalle: `UUID ${uuid}` });
-        } else {
-          next.push(row);
-          localUuids.add(uuid);
-          localHashes.add(hash);
-          rep.aceptados++;
-        }
-      } catch (e) {
-        rep.errores.push({ archivo: name, motivo: "No se pudo leer el archivo", detalle: e instanceof Error ? e.message : "" });
+        filesText.push({ filename: xmlFiles[i].name, xml: txt });
+      } catch {
+        filesText.push({ filename: xmlFiles[i].name, xml: "" });
       }
       setProgress({ done: i + 1, total: xmlFiles.length });
     }
 
+    const { accepted, report: rep } = await classifyXmls({
+      rfcActivo,
+      files: filesText,
+      dbUuids,
+      dbHashes,
+      seenUuids: new Set(rows.map((r) => (r.uuid ?? "").toUpperCase()).filter(Boolean)),
+    });
+
+    const next: Row[] = accepted.map((a) => rowFromXml(a.filename, a.xml));
     setRows((prev) => [...prev, ...next]);
     setBusy(false);
     setProgress(null);
 
-    const totalRechazos = rep.rfcAjeno.length + rep.duplicadosLocal.length + rep.duplicadosExpediente.length + rep.sinUuid.length + rep.errores.length;
-    if (totalRechazos > 0) {
+    if (reportTotalRejections(rep) > 0) {
       setReport(rep);
     } else if (rep.aceptados > 0) {
       toast.success(`${rep.aceptados} CFDI(s) cargados para ${rfcActivo}.`);
     }
   };
+
 
 
 
