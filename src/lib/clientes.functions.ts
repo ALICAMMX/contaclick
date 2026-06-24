@@ -18,15 +18,55 @@ const CreateSchema = z.object({
 export const listClientes = createServerFn({ method: "GET" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const { data, error } = await supabase
       .from("clientes")
-      .select("id, rfc, razon_social, regimen_fiscal, semaforo, estado_mes, email, telefono, created_at")
+      .select("id, rfc, razon_social, regimen_fiscal, semaforo, estado_mes, email, telefono, created_at, despacho_id")
       .eq("tipo_relacion", "cliente")
       .is("cliente_padre_id", null)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
-    return { clientes: data ?? [] };
+    const rows = data ?? [];
+
+    // Candado #10: filtro por permisos por expediente (acceso restringido).
+    // Si el despacho activa acceso_restringido, los colaboradores sólo ven
+    // los expedientes que les fueron asignados. Owner y rol "despacho" ven todo.
+    const despachoIds = Array.from(new Set(rows.map((r: any) => r.despacho_id).filter(Boolean)));
+    if (despachoIds.length === 0) return { clientes: rows.map(({ despacho_id: _d, ...r }: any) => r) };
+
+    const { data: desps } = await supabase
+      .from("despachos").select("id, owner_user_id, acceso_restringido").in("id", despachoIds);
+    const dMap = new Map((desps ?? []).map((d: any) => [d.id, d]));
+
+    const { data: roles } = await supabase
+      .from("user_roles").select("despacho_id, role").eq("user_id", userId).eq("role", "despacho");
+    const adminOf = new Set((roles ?? []).map((r: any) => r.despacho_id));
+
+    const restrictedDespachos = despachoIds.filter((id) => {
+      const d: any = dMap.get(id);
+      if (!d?.acceso_restringido) return false;
+      if (d.owner_user_id === userId) return false;
+      if (adminOf.has(id)) return false;
+      return true;
+    });
+
+    let allowedSet: Set<string> | null = null;
+    if (restrictedDespachos.length) {
+      const restrictedClienteIds = rows
+        .filter((r: any) => restrictedDespachos.includes(r.despacho_id))
+        .map((r: any) => r.id);
+      const { data: asig } = await supabase
+        .from("cliente_asignaciones").select("cliente_id")
+        .eq("user_id", userId).in("cliente_id", restrictedClienteIds);
+      allowedSet = new Set((asig ?? []).map((a: any) => a.cliente_id));
+    }
+
+    const visible = rows.filter((r: any) => {
+      if (!restrictedDespachos.includes(r.despacho_id)) return true;
+      return allowedSet?.has(r.id);
+    }).map(({ despacho_id: _d, ...r }: any) => r);
+
+    return { clientes: visible };
   });
 
 export const getCliente = createServerFn({ method: "GET" })

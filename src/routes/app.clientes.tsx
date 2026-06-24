@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { listClientes, createCliente, deleteCliente } from "@/lib/clientes.functions";
 import { useActiveCliente } from "@/lib/active-cliente";
+import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 
 export const Route = createFileRoute("/app/clientes")({
   component: ClientesPage,
@@ -20,6 +21,7 @@ function ClientesPage() {
   const { cliente: active, setCliente } = useActiveCliente();
   const [openForm, setOpenForm] = useState(false);
   const [q, setQ] = useState("");
+  const [toDelete, setToDelete] = useState<{ id: string; rfc: string; razon: string } | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["clientes"],
@@ -142,9 +144,7 @@ function ClientesPage() {
                           Herramientas
                         </Link>
                         <button
-                          onClick={() => {
-                            if (confirm(`¿Eliminar el expediente ${c.rfc}?`)) deleteMut.mutate(c.id);
-                          }}
+                          onClick={() => setToDelete({ id: c.id, rfc: c.rfc, razon: c.razon_social })}
                           className="text-xs px-2 py-1 rounded-md text-destructive hover:bg-destructive/10"
                         >
                           Eliminar
@@ -158,6 +158,25 @@ function ClientesPage() {
           </table>
         )}
       </div>
+
+      <ConfirmDeleteDialog
+        open={!!toDelete}
+        onClose={() => setToDelete(null)}
+        loading={deleteMut.isPending}
+        title="Eliminar expediente"
+        expected={toDelete?.rfc ?? ""}
+        warning="Se eliminarán también los CFDI, movimientos y demás datos asociados a este expediente. Esta acción no se puede deshacer."
+        description={
+          <>
+            Estás a punto de eliminar el expediente{" "}
+            <span className="font-semibold">{toDelete?.razon}</span> (RFC{" "}
+            <span className="font-mono">{toDelete?.rfc}</span>).
+          </>
+        }
+        onConfirm={() => {
+          if (toDelete) deleteMut.mutate(toDelete.id, { onSuccess: () => setToDelete(null) });
+        }}
+      />
     </div>
   );
 }

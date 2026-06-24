@@ -328,6 +328,48 @@ export type Database = {
           },
         ]
       }
+      cliente_asignaciones: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          created_by: string | null
+          despacho_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          created_by?: string | null
+          despacho_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          created_by?: string | null
+          despacho_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cliente_asignaciones_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cliente_asignaciones_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clientes: {
         Row: {
           cliente_padre_id: string | null
@@ -769,6 +811,7 @@ export type Database = {
       }
       despachos: {
         Row: {
+          acceso_restringido: boolean
           created_at: string
           estado: string
           id: string
@@ -780,6 +823,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          acceso_restringido?: boolean
           created_at?: string
           estado?: string
           id?: string
@@ -791,6 +835,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          acceso_restringido?: boolean
           created_at?: string
           estado?: string
           id?: string
@@ -1821,6 +1866,7 @@ export type Database = {
     }
     Functions: {
       accept_invitation: { Args: { _token: string }; Returns: string }
+      has_cliente_access: { Args: { _cliente: string }; Returns: boolean }
       has_role: {
         Args: {
           _cliente?: string
