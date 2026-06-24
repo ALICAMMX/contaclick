@@ -19,6 +19,7 @@ export const Route = createFileRoute("/app/tools/xml-bulk-reader")({
 
 type Row = {
   archivo: string;
+  xml?: string;
   uuid?: string;
   fecha?: string;
   rfcEmisor?: string;
