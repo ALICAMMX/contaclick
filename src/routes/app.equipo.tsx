@@ -91,19 +91,23 @@ function EquipoPage() {
   const createFn = useServerFn(createInvitation);
   const revokeFn = useServerFn(revokeInvitation);
   const removeFn = useServerFn(removeMember);
+  const clientesFn = useServerFn(listClientes);
   const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({ queryKey: ["team"], queryFn: () => fetchTeam() });
+  const { data: clientesData } = useQuery({ queryKey: ["clientes"], queryFn: () => clientesFn() });
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<TeamRole>("colaborador");
+  const [clienteId, setClienteId] = useState<string>("");
   const [lastResult, setLastResult] = useState<{ matched: boolean; email: string; role_label?: string; full_name?: string | null; link?: string } | null>(null);
 
   const createMut = useMutation({
-    mutationFn: (input: { email: string; role: TeamRole }) => createFn({ data: input }),
+    mutationFn: (input: { email: string; role: TeamRole; cliente_id?: string | null }) => createFn({ data: input }),
     onSuccess: (r: any) => {
       const link = `${window.location.origin}/invitar/${r.token}`;
       setLastResult({ matched: !!r.matched, email: r.email, role_label: r.role_label, full_name: r.full_name, link });
       setEmail("");
+      setClienteId("");
       if (r.matched) {
         toast.success(`${r.full_name || r.email} se agregó al despacho`);
       } else {
@@ -140,6 +144,7 @@ function EquipoPage() {
   const total = members.length + activeInvites.length;
   const remaining = limit === null ? Infinity : Math.max(0, limit - total);
   const canInvite = limit === null || remaining > 0;
+  const clientesList = clientesData?.clientes ?? [];
 
   const submitInvite = (e: React.FormEvent) => {
     e.preventDefault();
@@ -148,7 +153,11 @@ function EquipoPage() {
       toast.error("Escribe un correo válido");
       return;
     }
-    createMut.mutate({ email: v, role });
+    if (role === "cliente_final" && !clienteId) {
+      toast.error("Selecciona el expediente del cliente");
+      return;
+    }
+    createMut.mutate({ email: v, role, cliente_id: role === "cliente_final" ? clienteId : null });
   };
 
   return (
