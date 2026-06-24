@@ -39,6 +39,10 @@ export type AdminUserRow = {
   ia_calls_mes: number;
   ia_tokens_mes: number;
   ia_costo_usd_mes: number;
+  rfc_activos: number;
+  rfc_limite: number;
+  ia_msgs_limite: number;
+  ia_tokens_limite: number;
 };
 
 /** Lista todos los usuarios con su despacho, plan, pagos y consumo IA del mes. */
