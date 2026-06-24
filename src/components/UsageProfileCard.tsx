@@ -1,0 +1,122 @@
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { Link } from "@tanstack/react-router";
+import { Users, Sparkles, Cpu, ArrowUpRight, Gauge, CalendarClock } from "lucide-react";
+import { getUsageSummary } from "@/lib/usage/usage.functions";
+
+function fmt(n: number) { return n.toLocaleString("es-MX"); }
+
+function pctTone(pct: number) {
+  if (pct >= 95) return { bar: "bg-destructive", ring: "ring-destructive/30", txt: "text-destructive", label: "Límite alcanzado" };
+  if (pct >= 80) return { bar: "bg-warning", ring: "ring-warning/30", txt: "text-warning", label: "Cerca del límite" };
+  if (pct >= 50) return { bar: "bg-primary", ring: "ring-primary/20", txt: "text-primary", label: "En uso" };
+  return { bar: "bg-success", ring: "ring-success/20", txt: "text-success", label: "Disponible" };
+}
+
+function Tile({
+  icon: Icon, label, usado, limite, unidad,
+}: { icon: any; label: string; usado: number; limite: number; unidad: string }) {
+  const pct = limite > 0 ? Math.min(100, (usado / limite) * 100) : 0;
+  const restante = Math.max(0, limite - usado);
+  const tone = pctTone(pct);
+  return (
+    <div className={`relative rounded-xl border border-border/60 bg-card/60 p-4 ring-1 ${tone.ring}`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Icon className="h-3.5 w-3.5" /> {label}
+        </div>
+        <span className={`text-[10px] uppercase tracking-wider font-medium ${tone.txt}`}>
+          {tone.label}
+        </span>
+      </div>
+      <div className="mt-3 flex items-baseline gap-1.5">
+        <span className="text-3xl font-semibold tabular-nums">{fmt(restante)}</span>
+        <span className="text-xs text-muted-foreground">disponibles</span>
+      </div>
+      <div className="text-[11px] text-muted-foreground mt-0.5 tabular-nums">
+        {fmt(usado)} usados de {fmt(limite)} {unidad}
+      </div>
+      <div className="h-1.5 rounded-full bg-muted/40 overflow-hidden mt-3">
+        <div className={`h-full ${tone.bar} transition-all`} style={{ width: `${pct}%` }} />
+      </div>
+      <div className={`mt-1 text-[10px] tabular-nums ${tone.txt}`}>{Math.round(pct)}% utilizado</div>
+    </div>
+  );
+}
+
+export function UsageProfileCard() {
+  const fn = useServerFn(getUsageSummary);
+  const q = useQuery({
+    queryKey: ["usage", "summary"],
+    queryFn: () => fn(),
+    staleTime: 60_000,
+    refetchInterval: 120_000,
+  });
+  const d = q.data;
+  if (!d) {
+    return (
+      <div className="rounded-2xl border border-border/60 bg-card/50 p-5 text-xs text-muted-foreground">
+        Cargando uso de tu plan…
+      </div>
+    );
+  }
+
+  const resetDate = new Date(d.reset_at);
+  const resetLabel = resetDate.toLocaleDateString("es-MX", { day: "numeric", month: "long" });
+  const hasTokens = d.plan.ia_tokens > 0;
+
+  return (
+    <div className="rounded-2xl border border-border/60 bg-gradient-to-br from-card/80 to-card/40 p-5 space-y-4">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-lg bg-primary/15 text-primary grid place-items-center">
+            <Gauge className="h-4 w-4" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-sm">Tu plan y consumo</h2>
+            <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
+              <CalendarClock className="h-3 w-3" /> Se reinicia el {resetLabel}
+            </p>
+          </div>
+        </div>
+        <Link
+          to="/precios"
+          className="text-xs text-primary hover:underline inline-flex items-center gap-1 font-medium"
+        >
+          Mejorar plan <ArrowUpRight className="h-3 w-3" />
+        </Link>
+      </div>
+
+      <div className={`grid gap-3 ${hasTokens ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+        <Tile
+          icon={Users}
+          label="RFCs activos"
+          usado={d.uso.rfc_activos}
+          limite={d.plan.rfcs}
+          unidad="RFCs"
+        />
+        <Tile
+          icon={Sparkles}
+          label="Solicitudes IA del mes"
+          usado={d.uso.ia_requests}
+          limite={d.plan.ia_msgs}
+          unidad="solicitudes"
+        />
+        {hasTokens && (
+          <Tile
+            icon={Cpu}
+            label="Tokens IA del mes"
+            usado={d.uso.ia_tokens}
+            limite={d.plan.ia_tokens}
+            unidad="tokens"
+          />
+        )}
+      </div>
+
+      <p className="text-[11px] text-muted-foreground border-t border-border/40 pt-3">
+        Te avisaremos automáticamente al 80% y al 100% en tu campana de notificaciones.
+        Los RFCs activos son los que cuentan contra tu plan — puedes archivar expedientes que ya no atiendes para liberar espacio.
+      </p>
+    </div>
+  );
+}
