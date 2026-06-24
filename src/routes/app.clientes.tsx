@@ -148,12 +148,14 @@ function ClientesPage() {
                         <Link to="/app/tools" className="text-xs px-2 py-1 rounded-md border border-border hover:bg-accent/40">
                           Herramientas
                         </Link>
-                        <button
-                          onClick={() => setToDelete({ id: c.id, rfc: c.rfc, razon: c.razon_social })}
-                          className="text-xs px-2 py-1 rounded-md text-destructive hover:bg-destructive/10"
-                        >
-                          Eliminar
-                        </button>
+                        {canManageExpedientes && (
+                          <button
+                            onClick={() => setToDelete({ id: c.id, rfc: c.rfc, razon: c.razon_social })}
+                            className="text-xs px-2 py-1 rounded-md text-destructive hover:bg-destructive/10"
+                          >
+                            Eliminar
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
