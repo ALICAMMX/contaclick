@@ -60,7 +60,7 @@ function Hub() {
 
       {/* Plan & uso */}
       <section className="max-w-2xl mx-auto w-full">
-        <UsageMeters />
+        <UsageProfileCard />
       </section>
 
       {/* Legal — secondary card */}
