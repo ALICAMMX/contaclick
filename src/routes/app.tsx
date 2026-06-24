@@ -6,6 +6,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { ActiveClienteProvider } from "@/lib/active-cliente";
 import { useAuth } from "@/lib/auth";
 import { getEntryContext } from "@/lib/auth-bootstrap.functions";
+import { supabase } from "@/integrations/supabase/client";
 import { Sparkles, Home, Wrench, FolderOpen, ArrowLeft } from "lucide-react";
 
 function AppNotFound() {
@@ -57,9 +58,37 @@ function AppRoot() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const fetchEntryContext = useServerFn(getEntryContext);
+  const resolveClientFallback = async () => {
+    if (!user?.id) return null;
+    const { data } = await supabase
+      .from("user_roles")
+      .select("despacho_id, cliente_id")
+      .eq("user_id", user.id)
+      .eq("role", "cliente_final")
+      .not("cliente_id", "is", null)
+      .limit(1)
+      .maybeSingle();
+
+    if (!data?.cliente_id) return null;
+    return {
+      ok: true as const,
+      isClient: true as const,
+      despachoId: data.despacho_id,
+      clienteId: data.cliente_id,
+    };
+  };
+
   const entryContext = useQuery({
     queryKey: ["entry-context", "app-guard", user?.id],
-    queryFn: () => fetchEntryContext(),
+    queryFn: async () => {
+      try {
+        const entry = await fetchEntryContext();
+        if (entry.isClient) return entry;
+        return (await resolveClientFallback()) ?? entry;
+      } catch {
+        return (await resolveClientFallback()) ?? { ok: true as const, isClient: false as const };
+      }
+    },
     enabled: !!user,
     retry: 1,
   });

@@ -41,8 +41,7 @@ async function resolveClientEntry(supabaseAdmin: any, userId: string) {
 export const getEntryContext = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const clientEntry = await resolveClientEntry(supabaseAdmin, context.userId);
+    const clientEntry = await resolveClientEntry(context.supabase, context.userId);
     if (clientEntry) return clientEntry;
     return { ok: true as const, isClient: false as const };
   });
