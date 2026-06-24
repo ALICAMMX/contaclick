@@ -101,23 +101,28 @@ export const listTeam = createServerFn({ method: "GET" })
     const profileMap = new Map((profiles ?? []).map((p: any) => [p.id, p]));
     const roleMap = new Map((roles ?? []).map((r: any) => [r.user_id, r.role]));
 
-    const members = (mems ?? []).map((m) => {
+    const allMembers = (mems ?? []).map((m) => {
       const p = profileMap.get(m.user_id) as any;
+      const role = (roleMap.get(m.user_id) as string) ?? "colaborador";
       return {
         user_id: m.user_id as string,
         email: p?.email ?? null,
         full_name: p?.full_name ?? null,
-        role: (roleMap.get(m.user_id) as string) ?? "colaborador",
-        role_label: ROLE_LABELS[(roleMap.get(m.user_id) as string) ?? "colaborador"] ?? "Colaborador",
+        role,
+        role_label: ROLE_LABELS[role] ?? "Colaborador",
         created_at: m.created_at as string,
         is_self: m.user_id === userId,
       };
     });
 
+    // Los cliente_final NO ocupan asiento del equipo. Se muestran aparte.
+    const members = allMembers.filter((m) => m.role !== "cliente_final");
+    const clientUsers = allMembers.filter((m) => m.role === "cliente_final");
+
     // Invitations
     const { data: invs } = await supabase
       .from("invitaciones")
-      .select("id, token, email, role, created_at, expires_at, used_at, revoked_at")
+      .select("id, token, email, role, created_at, expires_at, used_at, revoked_at, cliente_id")
       .eq("despacho_id", despachoId)
       .order("created_at", { ascending: false });
 
@@ -125,12 +130,14 @@ export const listTeam = createServerFn({ method: "GET" })
 
     return {
       members,
+      clientUsers,
       invitations: (invs ?? []) as any[],
       limit,
       despachoId,
       isAdmin: true,
     };
   });
+
 
 export const createInvitation = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
