@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import {
   Outlet,
   Link,
@@ -7,12 +7,14 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import { useEffect } from "react";
 
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth";
 import { ThemeProvider } from "@/lib/theme";
 import { Toaster } from "@/components/ui/sonner";
 import { WhatsAppFloat } from "@/components/WhatsAppFloat";
+import { supabase } from "@/integrations/supabase/client";
 
 function NotFoundComponent() {
   return (
@@ -133,6 +135,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
+          <AuthCacheSync />
           <Outlet />
           <WhatsAppFloat />
           <Toaster richColors position="top-right" />
@@ -140,4 +143,25 @@ function RootComponent() {
       </ThemeProvider>
     </QueryClientProvider>
   );
+}
+
+// Limpia la caché de React Query cuando cambia la identidad del usuario,
+// para que resultados como `isSuperAdmin` o `getUsageSummary` no se "peguen"
+// entre cuentas tras un sign-in / sign-out.
+function AuthCacheSync() {
+  const qc = useQueryClient();
+  const router = useRouter();
+  useEffect(() => {
+    let lastUserId: string | null | undefined;
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+      const nextUserId = session?.user?.id ?? null;
+      if (nextUserId === lastUserId) return;
+      lastUserId = nextUserId;
+      qc.clear();
+      router.invalidate();
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [qc, router]);
+  return null;
 }
