@@ -6,7 +6,8 @@ import { toast } from "sonner";
 import { listTeam, createInvitation, revokeInvitation, removeMember } from "@/lib/equipo/equipo.functions";
 import { getAccesoConfig, toggleAccesoRestringido, listAsignaciones, setAsignacion } from "@/lib/asignaciones/asignaciones.functions";
 import { Button } from "@/components/ui/button";
-import { Copy, Link2, Lock, Trash2, UserPlus, Users, X, ShieldCheck } from "lucide-react";
+import { Copy, Link2, Lock, Mail, Trash2, UserPlus, Users, X, ShieldCheck } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/app/equipo")({
   component: EquipoPage,
