@@ -146,13 +146,16 @@ function BulkReader() {
     let dbHashes = new Set<string>();
     try {
       const k = await fetchKeys({ data: { cliente_id: cliente.id } });
-      dbUuids = new Set(k.uuids);
-      dbHashes = new Set(k.hashes);
-    } catch {
-      /* sin conexión seguimos con dedup local */
+      dbUuids = new Set((k.uuids ?? []).map((u) => u.toUpperCase()));
+      dbHashes = new Set(k.hashes ?? []);
+      console.log(`[dedup] DB tiene ${dbUuids.size} UUIDs y ${dbHashes.size} hashes para ${rfcActivo}`);
+    } catch (e) {
+      console.error("[dedup] No se pudo consultar el expediente:", e);
+      toast.error("No se pudo verificar duplicados contra el expediente. Revisa tu conexión.");
     }
     // Llaves ya cargadas en esta sesión (en la tabla local)
     const localUuids = new Set(rows.map((r) => (r.uuid ?? "").toUpperCase()).filter(Boolean));
+    const localHashes = new Set<string>();
 
     const xmlFiles: { name: string; getText: () => Promise<string> }[] = [];
     for (const f of Array.from(files)) {
@@ -198,13 +201,14 @@ function BulkReader() {
           rep.rfcAjeno.push({ archivo: name, motivo: "RFC ajeno", detalle: `Emisor ${emisor || "—"} · Receptor ${receptor || "—"}` });
         } else if (!uuid) {
           rep.sinUuid.push({ archivo: name, motivo: "Sin UUID (no timbrado)" });
-        } else if (localUuids.has(uuid)) {
+        } else if (localUuids.has(uuid) || localHashes.has(hash)) {
           rep.duplicadosLocal.push({ archivo: name, motivo: "Ya cargado en esta sesión", detalle: `UUID ${uuid}` });
         } else if (dbUuids.has(uuid) || dbHashes.has(hash)) {
           rep.duplicadosExpediente.push({ archivo: name, motivo: "Ya existe en el expediente", detalle: `UUID ${uuid}` });
         } else {
           next.push(row);
           localUuids.add(uuid);
+          localHashes.add(hash);
           rep.aceptados++;
         }
       } catch (e) {
@@ -315,7 +319,11 @@ function BulkReader() {
           accept=".xml,.zip,text/xml,application/xml,application/zip"
           multiple
           className="hidden"
-          onChange={(e) => e.target.files && handleFiles(e.target.files)}
+          onChange={async (e) => {
+            const fl = e.target.files;
+            if (fl && fl.length) await handleFiles(fl);
+            e.target.value = ""; // permite re-seleccionar el mismo archivo y disparar el evento
+          }}
         />
         <div
           className="h-12 w-12 rounded-xl mx-auto flex items-center justify-center mb-3"
