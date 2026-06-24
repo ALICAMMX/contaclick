@@ -124,11 +124,41 @@ function CfdiDashboard() {
       toast.error("No se encontraron archivos XML válidos.");
       return;
     }
+
+    // CANDADO: validar RFC + duplicados ANTES de subir al expediente
+    let dbUuids = new Set<string>();
+    let dbHashes = new Set<string>();
+    try {
+      const k = await fetchKeys({ data: { cliente_id: cliente.id } });
+      dbUuids = new Set((k.uuids ?? []).map((u) => u.toUpperCase()));
+      dbHashes = new Set(k.hashes ?? []);
+    } catch (e) {
+      console.error("[cfdi dedup] No se pudo consultar el expediente:", e);
+      toast.error("No se pudo verificar duplicados contra el expediente. Inténtalo de nuevo.");
+      return;
+    }
+
+    const { accepted, report: rep } = await classifyXmls({
+      rfcActivo: cliente.rfc,
+      files: payload,
+      dbUuids,
+      dbHashes,
+    });
+
+    if (reportTotalRejections(rep) > 0) {
+      setReport(rep);
+    }
+    if (!accepted.length) {
+      return; // nada que subir
+    }
+
     // Procesar en lotes de 50 para no saturar
-    const chunks = [];
-    for (let i = 0; i < payload.length; i += 50) chunks.push(payload.slice(i, i + 50));
+    const chunks: Array<Array<{ filename: string; xml: string }>> = [];
+    for (let i = 0; i < accepted.length; i += 50) {
+      chunks.push(accepted.slice(i, i + 50).map((a) => ({ filename: a.filename, xml: a.xml })));
+    }
     for (const c of chunks) await uploadM.mutateAsync(c);
-  }, [cliente, uploadM]);
+  }, [cliente, uploadM, fetchKeys]);
 
   if (!cliente || isDemo) {
     return (
