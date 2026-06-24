@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
+import { resolveActiveDespachoId } from "@/lib/despacho/resolve";
 
 const TeamRoleSchema = z.enum(["colaborador", "contador", "auxiliar"]);
 
@@ -13,6 +14,27 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 async function resolveAdminDespacho(supabase: any, userId: string) {
+  let activeDespachoId: string | null = null;
+  try { activeDespachoId = await resolveActiveDespachoId(supabase, userId); } catch { activeDespachoId = null; }
+
+  if (activeDespachoId) {
+    const { data: despacho } = await supabase
+      .from("despachos")
+      .select("owner_user_id")
+      .eq("id", activeDespachoId)
+      .maybeSingle();
+    if (despacho?.owner_user_id === userId) return activeDespachoId;
+
+    const { data: role } = await supabase
+      .from("user_roles")
+      .select("despacho_id")
+      .eq("user_id", userId)
+      .eq("despacho_id", activeDespachoId)
+      .eq("role", "despacho")
+      .maybeSingle();
+    return (role?.despacho_id as string | undefined) ?? null;
+  }
+
   const { data: role } = await supabase
     .from("user_roles")
     .select("despacho_id")
