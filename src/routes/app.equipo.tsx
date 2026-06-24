@@ -11,10 +11,56 @@ import { Input } from "@/components/ui/input";
 
 type TeamRole = "colaborador" | "contador" | "auxiliar";
 
-const TEAM_ROLES: { value: TeamRole; label: string; description: string }[] = [
-  { value: "colaborador", label: "Colaborador", description: "Sólo ve los RFC asignados cuando el acceso está restringido." },
-  { value: "contador", label: "Contador", description: "Puede trabajar expedientes asignados, sin permisos de administración." },
-  { value: "auxiliar", label: "Auxiliar", description: "Acceso operativo limitado a los RFC asignados." },
+const TEAM_ROLES: {
+  value: TeamRole;
+  label: string;
+  description: string;
+  can: string[];
+  cant: string[];
+}[] = [
+  {
+    value: "contador",
+    label: "Contador",
+    description: "Profesional que lleva la contabilidad de los expedientes asignados.",
+    can: [
+      "Ver y editar expedientes asignados (CFDI, conciliaciones, obligaciones, trámites)",
+      "Cargar XML, generar reportes y registrar pagos de los RFC asignados",
+      "Usar las herramientas de IA y SAT en sus expedientes",
+    ],
+    cant: [
+      "Crear o eliminar expedientes nuevos",
+      "Invitar o remover miembros del equipo",
+      "Cambiar configuración del despacho o el plan",
+    ],
+  },
+  {
+    value: "auxiliar",
+    label: "Auxiliar",
+    description: "Apoyo operativo (captura, descarga, organización de documentos).",
+    can: [
+      "Ver expedientes asignados y subir documentos / XML",
+      "Capturar movimientos y consultar reportes existentes",
+    ],
+    cant: [
+      "Crear o eliminar expedientes",
+      "Modificar configuración fiscal o credenciales SAT sensibles",
+      "Invitar miembros ni gestionar el equipo",
+    ],
+  },
+  {
+    value: "colaborador",
+    label: "Colaborador",
+    description: "Acceso básico de consulta; ideal para socios o clientes invitados.",
+    can: [
+      "Consultar los expedientes asignados",
+      "Descargar reportes y CFDI compartidos",
+    ],
+    cant: [
+      "Editar o eliminar información",
+      "Crear expedientes o invitar usuarios",
+      "Cambiar configuración del despacho",
+    ],
+  },
 ];
 
 const roleLabel = (value?: string) => TEAM_ROLES.find((r) => r.value === value)?.label ?? "Colaborador";
