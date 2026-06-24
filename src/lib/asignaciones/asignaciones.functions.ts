@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 /**
  * Candado #10 — Permisos por expediente.
@@ -25,6 +24,7 @@ export const getAccesoConfig = createServerFn({ method: "GET" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const despachoId = await resolveAdminDespacho(supabase, userId);
     if (!despachoId) return { despachoId: null, accesoRestringido: false, isAdmin: false };
     const { data } = await supabase.from("despachos").select("acceso_restringido").eq("id", despachoId).maybeSingle();
