@@ -144,24 +144,38 @@ function ConciliacionPage() {
     return map;
   }, [cuentas.data, list.data]);
 
+  const [bankReject, setBankReject] = useState<{ archivo: string; razon: string } | null>(null);
+
   async function onPickFiles(files: FileList | null) {
     if (!files?.length) return;
+    if (!cliente) {
+      toast.error("Selecciona un expediente (RFC) en la barra superior antes de cargar estados de cuenta.");
+      return;
+    }
     setParsingErr(null);
     const all: ParsedMovimiento[] = [];
     try {
       for (const f of Array.from(files)) {
+        // CANDADO: verificar que el estado de cuenta sea del contribuyente activo
+        const text = await extractBankFileText(f);
+        const check = bankFileMatchesContribuyente(text, { rfc: cliente.rfc, razon_social: cliente.razon_social });
+        if (!check.match) {
+          setBankReject({ archivo: f.name, razon: check.reason ?? "El archivo no coincide con el contribuyente del expediente." });
+          return; // no procesamos NINGÚN archivo del lote para evitar conciliaciones cruzadas
+        }
         const rows = await parseBankFile(f);
         all.push(...rows);
       }
       if (!all.length) throw new Error("No se detectaron movimientos. Verifica que el archivo tenga columnas Fecha, Descripción y Cargo/Abono o Monto.");
       setParsed(all);
-      toast.success(`${all.length} movimientos detectados`);
+      toast.success(`${all.length} movimientos detectados para ${cliente.rfc}`);
     } catch (e) {
       const msg = (e as Error).message;
       setParsingErr(msg);
       toast.error(msg);
     }
   }
+
 
   function exportCsv() {
     if (!list.data) return;
