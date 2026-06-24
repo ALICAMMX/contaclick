@@ -41,7 +41,9 @@ export function periodoActual(d: Date = new Date()): string {
   return `${y}-${m}`;
 }
 
-const DEFAULT_LIMITS: Limites = { rfcs: 5, ia_msgs: 50, ia_tokens: 100_000 };
+// Default = plan Profesional (lo que se otorga durante el trial de 14 días,
+// alineado con la página /precios).
+const DEFAULT_LIMITS: Limites = { rfcs: 25, ia_msgs: 1500, ia_tokens: 5_000_000 };
 
 export async function getPlanLimites(
   supabase: SupabaseClient,
