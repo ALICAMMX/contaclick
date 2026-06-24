@@ -6,6 +6,7 @@ import { Building2, AlertCircle, CalendarClock, FileText, ChevronRight, BellRing
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { getDespachoDashboard } from "@/lib/despacho/dashboard.functions";
+import { UsageProfileCard } from "@/components/UsageProfileCard";
 
 export const Route = createFileRoute("/app/despacho")({ component: DespachoPage });
 
