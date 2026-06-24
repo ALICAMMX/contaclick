@@ -135,6 +135,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
+          <AuthCacheSync />
           <Outlet />
           <WhatsAppFloat />
           <Toaster richColors position="top-right" />
@@ -142,4 +143,25 @@ function RootComponent() {
       </ThemeProvider>
     </QueryClientProvider>
   );
+}
+
+// Limpia la caché de React Query cuando cambia la identidad del usuario,
+// para que resultados como `isSuperAdmin` o `getUsageSummary` no se "peguen"
+// entre cuentas tras un sign-in / sign-out.
+function AuthCacheSync() {
+  const qc = useQueryClient();
+  const router = useRouter();
+  useEffect(() => {
+    let lastUserId: string | null | undefined;
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+      const nextUserId = session?.user?.id ?? null;
+      if (nextUserId === lastUserId) return;
+      lastUserId = nextUserId;
+      qc.clear();
+      router.invalidate();
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [qc, router]);
+  return null;
 }
