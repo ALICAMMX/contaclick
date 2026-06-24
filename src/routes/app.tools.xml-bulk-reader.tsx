@@ -319,7 +319,11 @@ function BulkReader() {
           accept=".xml,.zip,text/xml,application/xml,application/zip"
           multiple
           className="hidden"
-          onChange={(e) => e.target.files && handleFiles(e.target.files)}
+          onChange={async (e) => {
+            const fl = e.target.files;
+            if (fl && fl.length) await handleFiles(fl);
+            e.target.value = ""; // permite re-seleccionar el mismo archivo y disparar el evento
+          }}
         />
         <div
           className="h-12 w-12 rounded-xl mx-auto flex items-center justify-center mb-3"
