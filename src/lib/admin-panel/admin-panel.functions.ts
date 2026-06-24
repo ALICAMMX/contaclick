@@ -75,11 +75,18 @@ export const adminListUsers = createServerFn({ method: "GET" })
     const memberships = membRes.data ?? [];
     const planes = planesRes.data ?? [];
     const authUsers = authRes.data?.users ?? [];
+    const clientes = clientesRes.data ?? [];
 
     const planById = new Map(planes.map((p) => [p.id, p]));
     const despachoById = new Map(despachos.map((d) => [d.id, d]));
     const subByDespacho = new Map<string, any>();
     for (const s of subs) if (!subByDespacho.has(s.despacho_id)) subByDespacho.set(s.despacho_id, s);
+
+    const rfcsByDespacho = new Map<string, number>();
+    for (const c of clientes as any[]) {
+      if (!c.despacho_id || c.tipo_relacion !== "cliente") continue;
+      rfcsByDespacho.set(c.despacho_id, (rfcsByDespacho.get(c.despacho_id) ?? 0) + 1);
+    }
 
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
