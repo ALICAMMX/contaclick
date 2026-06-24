@@ -325,6 +325,7 @@ function CuentasBancariasSection({ clienteId }: { clienteId: string }) {
   const [alias, setAlias] = useState("Principal");
   const [mask, setMask] = useState("");
   const [adding, setAdding] = useState(false);
+  const [toDelete, setToDelete] = useState<{ id: string; banco: string; alias: string; mask: string | null } | null>(null);
 
   const create = useMutation({
     mutationFn: () => fnCreate({ data: {
