@@ -148,9 +148,124 @@ function EquipoPage() {
         )}
       </section>
 
+      <AccesoExpedientesSection />
+
       <div className="text-xs text-muted-foreground">
         <Link to="/app/configuracion" className="hover:underline">← Configuración del despacho</Link>
       </div>
     </div>
+  );
+}
+
+function AccesoExpedientesSection() {
+  const qc = useQueryClient();
+  const cfgFn = useServerFn(getAccesoConfig);
+  const toggleFn = useServerFn(toggleAccesoRestringido);
+  const listFn = useServerFn(listAsignaciones);
+  const setFn = useServerFn(setAsignacion);
+
+  const cfg = useQuery({ queryKey: ["acceso-config"], queryFn: () => cfgFn() });
+  const data = useQuery({ queryKey: ["asignaciones"], queryFn: () => listFn() });
+
+  const toggleM = useMutation({
+    mutationFn: (enabled: boolean) => toggleFn({ data: { enabled } }),
+    onSuccess: () => { toast.success("Configuración actualizada"); qc.invalidateQueries({ queryKey: ["acceso-config"] }); qc.invalidateQueries({ queryKey: ["clientes"] }); },
+    onError: (e: any) => toast.error(e?.message ?? "Error"),
+  });
+  const setM = useMutation({
+    mutationFn: (v: { user_id: string; cliente_id: string; assigned: boolean }) => setFn({ data: v }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["asignaciones"] }); qc.invalidateQueries({ queryKey: ["clientes"] }); },
+    onError: (e: any) => toast.error(e?.message ?? "Error"),
+  });
+
+  const restringido = !!cfg.data?.accesoRestringido;
+  const miembros = (data.data?.miembros ?? []).filter((m) => m.role !== "despacho");
+  const clientes = data.data?.clientes ?? [];
+  const asignados = new Set((data.data?.asignaciones ?? []).map((a) => `${a.user_id}|${a.cliente_id}`));
+
+  return (
+    <section className="rounded-xl border border-border bg-card/40 p-5 space-y-4">
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-base font-semibold flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-primary" /> Permisos por expediente
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
+            Por defecto, todos los miembros del despacho ven todos los expedientes. Activa el acceso restringido
+            si quieres que cada contador sólo vea los RFC que tú le asignes.
+          </p>
+        </div>
+        <label className="inline-flex items-center gap-2 cursor-pointer">
+          <span className="text-xs text-muted-foreground">{restringido ? "Restringido" : "Abierto"}</span>
+          <input
+            type="checkbox"
+            checked={restringido}
+            disabled={cfg.isLoading || toggleM.isPending}
+            onChange={(e) => toggleM.mutate(e.target.checked)}
+            className="h-5 w-9 appearance-none rounded-full bg-muted relative cursor-pointer
+              checked:bg-primary transition
+              before:content-[''] before:absolute before:top-0.5 before:left-0.5 before:h-4 before:w-4 before:rounded-full before:bg-background before:transition
+              checked:before:translate-x-4"
+          />
+        </label>
+      </header>
+
+      {restringido && (
+        miembros.length === 0 ? (
+          <div className="text-sm text-muted-foreground rounded-md border border-dashed border-border p-4">
+            Aún no tienes colaboradores. Genera una invitación arriba y luego asígnale expedientes.
+          </div>
+        ) : clientes.length === 0 ? (
+          <div className="text-sm text-muted-foreground rounded-md border border-dashed border-border p-4">
+            No hay expedientes en este despacho.
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-md border border-border">
+            <table className="w-full text-sm">
+              <thead className="text-xs uppercase text-muted-foreground bg-muted/30">
+                <tr>
+                  <th className="text-left px-3 py-2 sticky left-0 bg-muted/30">Expediente</th>
+                  {miembros.map((m) => (
+                    <th key={m.user_id} className="px-3 py-2 text-center font-medium">
+                      <div className="truncate max-w-[140px]">{m.full_name || m.email || m.user_id.slice(0, 6)}</div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {clientes.map((c) => (
+                  <tr key={c.id} className="border-t border-border/40">
+                    <td className="px-3 py-2 sticky left-0 bg-card">
+                      <div className="font-medium">{c.razon_social}</div>
+                      <div className="text-xs font-mono text-muted-foreground">{c.rfc}</div>
+                    </td>
+                    {miembros.map((m) => {
+                      const checked = asignados.has(`${m.user_id}|${c.id}`);
+                      return (
+                        <td key={m.user_id} className="px-3 py-2 text-center">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            disabled={setM.isPending}
+                            onChange={(e) => setM.mutate({ user_id: m.user_id, cliente_id: c.id, assigned: e.target.checked })}
+                            className="h-4 w-4 accent-primary cursor-pointer"
+                          />
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      )}
+
+      {!restringido && (
+        <div className="text-xs text-muted-foreground inline-flex items-center gap-1">
+          <Lock className="h-3 w-3" /> Modo abierto: cualquier miembro ve cualquier expediente del despacho.
+        </div>
+      )}
+    </section>
   );
 }
