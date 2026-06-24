@@ -332,6 +332,9 @@ function UserRow({
           )}
         </TableCell>
         <TableCell>
+          <UsageMini usado={row.rfc_activos} limite={row.rfc_limite} />
+        </TableCell>
+        <TableCell>
           {row.ultimo_pago_at ? (
             <>
               <div className="text-sm tabular-nums">
@@ -349,8 +352,8 @@ function UserRow({
           </div>
         </TableCell>
         <TableCell>
-          <div className="text-sm tabular-nums">{row.ia_calls_mes} usos</div>
-          <div className="text-xs text-muted-foreground tabular-nums">
+          <UsageMini usado={row.ia_calls_mes} limite={row.ia_msgs_limite} label="msgs" />
+          <div className="text-[10px] text-muted-foreground tabular-nums mt-0.5">
             ${row.ia_costo_usd_mes.toFixed(3)} USD · {row.ia_tokens_mes.toLocaleString()} tok
           </div>
         </TableCell>
