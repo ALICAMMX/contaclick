@@ -169,9 +169,11 @@ function EquipoPage() {
       <header className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">Equipo</h1>
         <p className="text-sm text-muted-foreground">
-          {limit === null ? "Miembros ilimitados" : `${total} de ${limit} miembros usados`}
+          {limit === null ? "Miembros ilimitados" : `${total} de ${limit} miembros del equipo usados`}
           {limit !== null && remaining > 0 && ` · ${remaining} disponibles`}
+          {(clientUsers.length > 0 || activeClientInvites.length > 0) && ` · ${clientUsers.length + activeClientInvites.length} cliente${clientUsers.length + activeClientInvites.length === 1 ? "" : "s"} (no cuentan al asiento)`}
         </p>
+
       </header>
 
       <section className="rounded-xl border border-border bg-card/40 p-5 space-y-3">
