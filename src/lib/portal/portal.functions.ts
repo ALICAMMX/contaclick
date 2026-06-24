@@ -28,7 +28,8 @@ const DEFAULT_CONFIG: PortalConfig = {
 };
 
 async function resolveClienteFinalContext(supabase: any, userId: string) {
-  const { data: role } = await supabase
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: role } = await supabaseAdmin
     .from("user_roles")
     .select("despacho_id, cliente_id")
     .eq("user_id", userId)
@@ -38,20 +39,20 @@ async function resolveClienteFinalContext(supabase: any, userId: string) {
     .maybeSingle();
   if (!role?.cliente_id) return null;
 
-  const { data: cli } = await supabase
+  const { data: cli } = await supabaseAdmin
     .from("clientes")
     .select("id, rfc, razon_social, regimen_fiscal, tipo_persona, despacho_id, semaforo, estado_mes")
     .eq("id", role.cliente_id)
     .maybeSingle();
   if (!cli) return null;
 
-  const { data: des } = await supabase
+  const { data: des } = await supabaseAdmin
     .from("despachos")
     .select("id, nombre")
     .eq("id", cli.despacho_id)
     .maybeSingle();
 
-  const { data: cfg } = await supabase
+  const { data: cfg } = await supabaseAdmin
     .from("cliente_portal_config")
     .select("ver_dashboard, ver_cfdi, ver_cxc, ver_cxp, ver_impuestos, ver_obligaciones, ver_reportes, ver_mensajes, puede_subir_docs")
     .eq("cliente_id", cli.id)
@@ -79,7 +80,7 @@ export const getPortalDashboard = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const ctx = await resolveClienteFinalContext(context.supabase, context.userId);
     if (!ctx) throw new Error("Acceso no autorizado");
-    const { supabase } = context;
+    const { supabaseAdmin: supabase } = await import("@/integrations/supabase/client.server");
     const clienteId = ctx.cliente.id;
     const now = new Date();
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
@@ -139,8 +140,9 @@ export const getPortalCFDI = createServerFn({ method: "GET" })
     const ctx = await resolveClienteFinalContext(context.supabase, context.userId);
     if (!ctx) throw new Error("Acceso no autorizado");
     if (!ctx.config.ver_cfdi) throw new Error("Tu contador deshabilitó este módulo");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    let q = context.supabase.from("cfdi_xml")
+    let q = supabaseAdmin.from("cfdi_xml")
       .select("id, uuid, serie, folio, fecha, tipo_comprobante, total, subtotal, moneda, emisor_rfc, emisor_nombre, receptor_rfc, receptor_nombre, estatus_sat")
       .eq("cliente_id", ctx.cliente.id)
       .order("fecha", { ascending: false })
@@ -166,7 +168,7 @@ export const getPortalEstadoCuenta = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const ctx = await resolveClienteFinalContext(context.supabase, context.userId);
     if (!ctx) throw new Error("Acceso no autorizado");
-    const { supabase } = context;
+    const { supabaseAdmin: supabase } = await import("@/integrations/supabase/client.server");
     const [cxcRes, cxpRes] = await Promise.all([
       ctx.config.ver_cxc
         ? supabase.from("cxc").select("id, contraparte, concepto, monto, moneda, fecha_emision, fecha_vencimiento, estado")
@@ -191,7 +193,7 @@ export const getPortalImpuestos = createServerFn({ method: "GET" })
     const ctx = await resolveClienteFinalContext(context.supabase, context.userId);
     if (!ctx) throw new Error("Acceso no autorizado");
     if (!ctx.config.ver_impuestos && !ctx.config.ver_obligaciones) throw new Error("Tu contador deshabilitó este módulo");
-    const { supabase } = context;
+    const { supabaseAdmin: supabase } = await import("@/integrations/supabase/client.server");
     const { data: rfcs } = await supabase.from("rfcs").select("id, rfc").eq("cliente_id", ctx.cliente.id);
     const rfcIds = (rfcs ?? []).map((r: any) => r.id as string);
     if (rfcIds.length === 0) return { cliente: ctx.cliente, config: ctx.config, obligaciones: [] as any[] };
@@ -209,7 +211,8 @@ export const getPortalReportes = createServerFn({ method: "GET" })
     const ctx = await resolveClienteFinalContext(context.supabase, context.userId);
     if (!ctx) throw new Error("Acceso no autorizado");
     if (!ctx.config.ver_reportes) throw new Error("Tu contador deshabilitó este módulo");
-    const { data: reps } = await context.supabase
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: reps } = await supabaseAdmin
       .from("reportes")
       .select("id, tipo, created_at, archivo_path")
       .eq("cliente_id", ctx.cliente.id)
@@ -224,7 +227,8 @@ export const getPortalMensajes = createServerFn({ method: "GET" })
     const ctx = await resolveClienteFinalContext(context.supabase, context.userId);
     if (!ctx) throw new Error("Acceso no autorizado");
     if (!ctx.config.ver_mensajes) throw new Error("Tu contador deshabilitó este módulo");
-    const { data: msgs } = await context.supabase
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: msgs } = await supabaseAdmin
       .from("mensajes")
       .select("id, asunto, cuerpo, canal, estatus, created_at, enviado_at")
       .eq("cliente_id", ctx.cliente.id)

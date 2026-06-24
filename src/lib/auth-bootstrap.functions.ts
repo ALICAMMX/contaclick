@@ -41,7 +41,12 @@ async function resolveClientEntry(supabaseAdmin: any, userId: string) {
 export const getEntryContext = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const clientEntry = await resolveClientEntry(context.supabase, context.userId);
+    // Use the trusted server client for the entry decision. This endpoint is
+    // already protected by the user's bearer token; relying on client/RLS reads
+    // here made cliente_final accounts fall through to the despacho UI when the
+    // browser-side role query returned empty.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const clientEntry = await resolveClientEntry(supabaseAdmin, context.userId);
     if (clientEntry) return clientEntry;
     return { ok: true as const, isClient: false as const };
   });
