@@ -120,6 +120,9 @@ function ContabilidadAutoPage() {
           <TabsTrigger value="confirmadas">
             Confirmadas {confirmadas.data ? `(${confirmadas.data.length})` : ""}
           </TabsTrigger>
+          <TabsTrigger value="catalogo">Catálogo</TabsTrigger>
+          <TabsTrigger value="reglas">Reglas</TabsTrigger>
+          <TabsTrigger value="exportar">Exportar</TabsTrigger>
         </TabsList>
 
         {/* --- Pendientes --- */}
