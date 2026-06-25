@@ -54,6 +54,7 @@ import { Route as AppEquipoRouteImport } from './routes/app.equipo'
 import { Route as AppDespachoRouteImport } from './routes/app.despacho'
 import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
 import { Route as AppContableRouteImport } from './routes/app.contable'
+import { Route as AppContabilidadAutoRouteImport } from './routes/app.contabilidad-auto'
 import { Route as AppConfiguracionRouteImport } from './routes/app.configuracion'
 import { Route as AppConciliacionIntegralRouteImport } from './routes/app.conciliacion-integral'
 import { Route as AppConciliacionRouteImport } from './routes/app.conciliacion'
@@ -337,6 +338,11 @@ const AppDashboardRoute = AppDashboardRouteImport.update({
 const AppContableRoute = AppContableRouteImport.update({
   id: '/contable',
   path: '/contable',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppContabilidadAutoRoute = AppContabilidadAutoRouteImport.update({
+  id: '/contabilidad-auto',
+  path: '/contabilidad-auto',
   getParentRoute: () => AppRoute,
 } as any)
 const AppConfiguracionRoute = AppConfiguracionRouteImport.update({
@@ -666,6 +672,7 @@ export interface FileRoutesByFullPath {
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
   '/app/conciliacion-integral': typeof AppConciliacionIntegralRoute
   '/app/configuracion': typeof AppConfiguracionRoute
+  '/app/contabilidad-auto': typeof AppContabilidadAutoRoute
   '/app/contable': typeof AppContableRouteWithChildren
   '/app/dashboard': typeof AppDashboardRoute
   '/app/despacho': typeof AppDespachoRoute
@@ -766,6 +773,7 @@ export interface FileRoutesByTo {
   '/app/calendario': typeof AppCalendarioRoute
   '/app/conciliacion-integral': typeof AppConciliacionIntegralRoute
   '/app/configuracion': typeof AppConfiguracionRoute
+  '/app/contabilidad-auto': typeof AppContabilidadAutoRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/despacho': typeof AppDespachoRoute
   '/app/equipo': typeof AppEquipoRoute
@@ -869,6 +877,7 @@ export interface FileRoutesById {
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
   '/app/conciliacion-integral': typeof AppConciliacionIntegralRoute
   '/app/configuracion': typeof AppConfiguracionRoute
+  '/app/contabilidad-auto': typeof AppContabilidadAutoRoute
   '/app/contable': typeof AppContableRouteWithChildren
   '/app/dashboard': typeof AppDashboardRoute
   '/app/despacho': typeof AppDespachoRoute
@@ -977,6 +986,7 @@ export interface FileRouteTypes {
     | '/app/conciliacion'
     | '/app/conciliacion-integral'
     | '/app/configuracion'
+    | '/app/contabilidad-auto'
     | '/app/contable'
     | '/app/dashboard'
     | '/app/despacho'
@@ -1077,6 +1087,7 @@ export interface FileRouteTypes {
     | '/app/calendario'
     | '/app/conciliacion-integral'
     | '/app/configuracion'
+    | '/app/contabilidad-auto'
     | '/app/dashboard'
     | '/app/despacho'
     | '/app/equipo'
@@ -1179,6 +1190,7 @@ export interface FileRouteTypes {
     | '/app/conciliacion'
     | '/app/conciliacion-integral'
     | '/app/configuracion'
+    | '/app/contabilidad-auto'
     | '/app/contable'
     | '/app/dashboard'
     | '/app/despacho'
@@ -1596,6 +1608,13 @@ declare module '@tanstack/react-router' {
       path: '/contable'
       fullPath: '/app/contable'
       preLoaderRoute: typeof AppContableRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/contabilidad-auto': {
+      id: '/app/contabilidad-auto'
+      path: '/contabilidad-auto'
+      fullPath: '/app/contabilidad-auto'
+      preLoaderRoute: typeof AppContabilidadAutoRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/configuracion': {
@@ -2148,6 +2167,7 @@ interface AppRouteChildren {
   AppConciliacionRoute: typeof AppConciliacionRouteWithChildren
   AppConciliacionIntegralRoute: typeof AppConciliacionIntegralRoute
   AppConfiguracionRoute: typeof AppConfiguracionRoute
+  AppContabilidadAutoRoute: typeof AppContabilidadAutoRoute
   AppContableRoute: typeof AppContableRouteWithChildren
   AppDashboardRoute: typeof AppDashboardRoute
   AppDespachoRoute: typeof AppDespachoRoute
@@ -2198,6 +2218,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppConciliacionRoute: AppConciliacionRouteWithChildren,
   AppConciliacionIntegralRoute: AppConciliacionIntegralRoute,
   AppConfiguracionRoute: AppConfiguracionRoute,
+  AppContabilidadAutoRoute: AppContabilidadAutoRoute,
   AppContableRoute: AppContableRouteWithChildren,
   AppDashboardRoute: AppDashboardRoute,
   AppDespachoRoute: AppDespachoRoute,
