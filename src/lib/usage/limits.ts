@@ -116,7 +116,14 @@ export async function assertWithinLimit(
       .eq("despacho_id", despachoId)
       .eq("tipo_relacion", "cliente");
     usado = count ?? 0;
+  } else if (recurso === "sat_solicitudes") {
+    limite = limites.sat_solicitudes_mes ?? 0;
+    if (limite < 0) return; // -1 = ilimitado (Enterprise)
+    if (limite === 0) return;
+    const uso = await getUsoPeriodo(supabase, despachoId, periodo);
+    usado = uso.sat_solicitudes;
   }
+
 
   if (limite <= 0) return;
 
