@@ -149,11 +149,12 @@ export const actualizarEstatus = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const upd: Record<string, unknown> = { estatus: data.estatus };
-    if (data.estatus === "resuelta" || data.estatus === "falso_positivo") {
-      upd.resuelta_at = new Date().toISOString();
-      upd.resuelta_por = userId;
-    }
+    const upd = {
+      estatus: data.estatus,
+      ...(data.estatus === "resuelta" || data.estatus === "falso_positivo"
+        ? { resuelta_at: new Date().toISOString(), resuelta_por: userId }
+        : {}),
+    };
     const { error } = await supabase.from("conciliacion_incidencias").update(upd).eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
