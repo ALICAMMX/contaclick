@@ -29,6 +29,7 @@ const plans = [
     anual: 4990, // 2 meses gratis
     rfc: "Hasta 5 RFC activos",
     ia: { solicitudes: "200 / mes", tokens: "1M tokens" },
+    sat: "200 descargas SAT / mes · sincronización semanal",
     storage: "5 GB de almacenamiento",
     highlight: false,
     features: [
