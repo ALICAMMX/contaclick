@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { FileBarChart, Calculator, ArrowRight, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { getResumenFiscalMes } from "@/lib/fiscal/resumen.functions";
 
@@ -92,6 +93,7 @@ function ResumenFiscalPage() {
               className="h-9 px-3 rounded-md bg-input/50 border border-border text-sm focus:outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
+          <HerramientaHelp slug="resumen-fiscal" />
           <Button asChild variant="secondary" className="gap-2">
             <Link to={calcUrl}>
               <Calculator className="h-4 w-4" />

@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { RichMarkdown } from "@/components/RichMarkdown";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Info } from "lucide-react";
 import { fmtFechaMx } from "@/lib/utils";
@@ -275,6 +276,7 @@ function ConciliacionPage() {
           </div>
         </div>
         <div className="flex gap-2">
+          <HerramientaHelp slug="conciliacion-bancaria" />
           <Button variant="glass" onClick={exportCsv} disabled={!list.data?.movimientos.length}><Download className="h-4 w-4" /> CSV</Button>
           <Button variant="glass" onClick={exportExcel} disabled={!list.data?.movimientos.length}><Download className="h-4 w-4" /> Excel</Button>
           <Button variant="glass" onClick={() => ai.mutate()} disabled={ai.isPending || !s?.total_movimientos}>

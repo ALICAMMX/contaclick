@@ -6,6 +6,7 @@ import { Calendar, CheckCircle2, AlertTriangle, ChevronRight, ArrowLeft, ArrowRi
 import { useActiveCliente } from "@/lib/active-cliente";
 import { getMonthlyHistorial, type MonthRow } from "@/lib/conciliacion/historial.functions";
 import { Button } from "@/components/ui/button";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 
 export const Route = createFileRoute("/app/conciliacion/historial")({
   component: HistorialPage,
@@ -52,6 +53,7 @@ function HistorialPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <HerramientaHelp slug="conciliacion-historial" />
           <Button variant="glass" size="sm" onClick={() => setYear((y) => y - 1)}><ArrowLeft className="h-4 w-4" /></Button>
           <div className="text-lg font-semibold tabular-nums px-3">{year}</div>
           <Button variant="glass" size="sm" onClick={() => setYear((y) => y + 1)}><ArrowRight className="h-4 w-4" /></Button>

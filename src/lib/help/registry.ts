@@ -1402,6 +1402,424 @@ export const HELP_REGISTRY: Record<string, HelpContent> = {
       datosMinimos: ["Catálogo de SKU con costo inicial", "Movimientos de entrada y salida"],
     },
   },
+
+  // ============================================================
+  // CALENDARIO FISCAL
+  // ============================================================
+  "calendario-fiscal": {
+    slug: "calendario-fiscal",
+    title: "Calendario Fiscal",
+    queHace:
+      "Calendario de obligaciones fiscales por expediente: pagos provisionales, definitivos, DIOT, declaración anual, retenciones, ISN, etc. Autogenera el calendario a partir del régimen y obligaciones del cliente (CSF) y permite editar, marcar cumplidas, posponer y configurar alertas.",
+    cuandoUsar:
+      "Al dar de alta un cliente nuevo (autogenerar) y de forma diaria/semanal para revisar próximas obligaciones y evitar recargos.",
+    tutorial: [
+      { n: 1, titulo: "Selecciona expediente", detalle: "Elige el RFC en el selector superior. El calendario es por cliente." },
+      { n: 2, titulo: "Autogenera obligaciones", detalle: "Pulsa \"Autogenerar\" para que el sistema cree todas las obligaciones del año con base en el régimen y obligaciones de la CSF.", tip: "Si la CSF aún no está cargada, súbela primero en el expediente; sin ella la autogeneración usa solo el régimen." },
+      { n: 3, titulo: "Filtra y navega", detalle: "Usa los botones de mes/año y el buscador para ubicar la obligación." },
+      { n: 4, titulo: "Marca el estatus", detalle: "Sobre cada obligación: \"Cumplida\", \"Posponer\" (con fecha nueva), o editar título/fecha/responsable." },
+      { n: 5, titulo: "Configura alertas", detalle: "En \"Alertas\" define a cuántos días recordar y por qué canal (correo / WhatsApp / portal)." },
+    ],
+    resultados: [
+      { campo: "Pendiente / Cumplida / Vencida", significado: "Estatus de cada obligación. Vencida = fecha pasada sin marcar cumplida.", rango: "verde = cumplida · ámbar = próxima · rojo = vencida" },
+      { campo: "Próximas (7d)", significado: "Obligaciones que vencen en los siguientes 7 días — base para crear tareas." },
+      { campo: "Responsable", significado: "Colaborador asignado a esa obligación; alimenta la carga por persona en Centro de Tareas." },
+    ],
+    dependencias: {
+      necesita: [
+        { tool: "Constancia de Situación Fiscal", ruta: "/app/tools/csf-parser", motivo: "Régimen y obligaciones precisas para que la autogeneración sea correcta." },
+      ],
+      alimenta: [
+        { tool: "Centro de Tareas", ruta: "/app/tareas", motivo: "Las obligaciones próximas se convierten en tareas asignables al equipo." },
+        { tool: "Workflows", ruta: "/app/workflows", motivo: "Triggers de calendario disparan recordatorios y acciones automáticas." },
+      ],
+      datosMinimos: ["RFC con régimen registrado", "Obligaciones de la CSF (opcional pero recomendado)"],
+    },
+  },
+
+  // ============================================================
+  // CENTRO DE TAREAS
+  // ============================================================
+  "centro-tareas": {
+    slug: "centro-tareas",
+    title: "Centro de Tareas",
+    queHace:
+      "Kanban + lista + dashboard de todo el trabajo operativo del despacho: declaraciones, conciliaciones, trámites SAT, requerimientos, nómina, etc. Las tareas pueden crearse manualmente o generarse automáticamente desde Calendario Fiscal, Buzón SAT, Riesgo SAT, CFDI o Auditor.",
+    cuandoUsar:
+      "Diario, como pizarra operativa del despacho. Es el panel principal del responsable / socio para repartir trabajo y vigilar atrasos.",
+    tutorial: [
+      { n: 1, titulo: "Revisa el Dashboard", detalle: "KPIs (total, pendientes, vencidas, sin asignar) + próximas a vencer + carga por colaborador." },
+      { n: 2, titulo: "Genera desde calendario", detalle: "Con un expediente activo, pulsa \"Generar desde calendario\" para convertir obligaciones próximas en tareas asignables." },
+      { n: 3, titulo: "Crea tarea manual", detalle: "\"Nueva tarea\": título, tipo, cliente, responsable, prioridad, fecha límite." },
+      { n: 4, titulo: "Mueve en el Kanban", detalle: "Cambia estado: Pendiente → En proceso → Esperando cliente → En revisión → Finalizado.", tip: "\"Esperando cliente\" detiene el conteo de productividad — úsalo cuando depende de información externa." },
+      { n: 5, titulo: "Registra tiempo y comentarios", detalle: "Abre el detalle de la tarea para sumar tiempo trabajado y agregar comentarios visibles al equipo." },
+    ],
+    resultados: [
+      { campo: "KPIs", significado: "Total, pendientes, en proceso, vencidas, sin asignar, finalizadas — del despacho completo." },
+      { campo: "Carga por colaborador", significado: "Activas, vencidas y tasa de cumplimiento por persona del equipo." },
+      { campo: "Prioridad", significado: "Color del badge: gris=baja · azul=media · ámbar=alta · rojo=crítica." },
+    ],
+    dependencias: {
+      necesita: [
+        { tool: "Calendario Fiscal", ruta: "/app/calendario", motivo: "Origen recomendado de tareas recurrentes." },
+        { tool: "Equipo", ruta: "/app/equipo", motivo: "Para poder asignar responsables." },
+      ],
+      alimenta: [
+        { tool: "Workflows", ruta: "/app/workflows", motivo: "Workflows pueden crear / mover tareas automáticamente." },
+        { tool: "Portal del cliente", motivo: "Tareas marcadas \"Esperando cliente\" se exponen al portal para recolectar información." },
+      ],
+      datosMinimos: ["Al menos un expediente y un miembro del equipo"],
+    },
+  },
+
+  // ============================================================
+  // WORKFLOWS
+  // ============================================================
+  "workflows": {
+    slug: "workflows",
+    title: "Workflow Automático",
+    queHace:
+      "Motor de automatizaciones del despacho: une triggers (CFDI nuevo, obligación próxima, riesgo SAT, mensaje del cliente, cron) con acciones (crear tarea, enviar mensaje, marcar obligación, generar reporte). Incluye templates listos y sugerencias IA basadas en patrones detectados.",
+    cuandoUsar:
+      "Cuando detectes trabajo repetitivo (ej. recordar pago provisional, avisar al cliente cuando llega CFDI, abrir tarea cuando hay buzón sin leer). Se configura una vez y trabaja solo.",
+    tutorial: [
+      { n: 1, titulo: "Empieza por template", detalle: "Pestaña \"Templates\": aplica uno de los flujos pre-armados (recordatorio mensual, alerta de buzón, etc.)." },
+      { n: 2, titulo: "Builder personalizado", detalle: "\"Nuevo workflow\": define trigger, condiciones y acciones encadenadas." },
+      { n: 3, titulo: "Activa", detalle: "Cambia el estatus a \"Activo\" — recién entonces se ejecuta. Pausa cuando lo necesites." },
+      { n: 4, titulo: "Vigila Historial y Errores", detalle: "Pestañas \"Historial\" (runs exitosos) y \"Errores\" (fallidos) para depurar.", tip: "Si un workflow falla 3 veces seguidas se pausa automáticamente." },
+      { n: 5, titulo: "Sugerencias IA", detalle: "La pestaña \"IA\" propone automatizaciones nuevas analizando tu operación reciente." },
+    ],
+    resultados: [
+      { campo: "Activos / Ejecutados hoy / Exitosos / Fallidos", significado: "KPIs operativos del motor — ojo a \"Fallidos\" para corregir flujos." },
+      { campo: "Minutos ahorrados", significado: "Estimación acumulada de tiempo manual evitado." },
+    ],
+    dependencias: {
+      necesita: [
+        { tool: "Calendario / CFDI / Buzón / Tareas", motivo: "Fuentes de los triggers." },
+      ],
+      alimenta: [
+        { tool: "Centro de Tareas", ruta: "/app/tareas", motivo: "Crea o mueve tareas." },
+        { tool: "Mensajería IA", ruta: "/app/mensajes", motivo: "Envía recordatorios al cliente." },
+      ],
+      datosMinimos: ["Al menos un trigger y una acción configurados"],
+    },
+  },
+
+  // ============================================================
+  // CFDI – EXPEDIENTES (módulo principal)
+  // ============================================================
+  "cfdi-expedientes": {
+    slug: "cfdi-expedientes",
+    title: "CFDI · Comprobantes fiscales",
+    queHace:
+      "Repositorio central de CFDI del expediente: emitidos, recibidos, nómina y pagos. Permite cargar ZIP/XML, ver totales, filtrar por tipo y exportar. Es la base sobre la que operan Conciliación, Salud Fiscal, Contabilidad Automática, Reporte Ejecutivo, Resumen Fiscal y los Agentes IA.",
+    cuandoUsar:
+      "Al inicio de cada mes (subir lote del periodo) y siempre que descargues XML nuevos del SAT con Descarga Masiva.",
+    tutorial: [
+      { n: 1, titulo: "Selecciona expediente", detalle: "El módulo opera sobre un RFC a la vez." },
+      { n: 2, titulo: "Carga XML / ZIP", detalle: "Arrastra el ZIP descargado del SAT o XML sueltos. El sistema detecta duplicados y los rechaza con motivo." },
+      { n: 3, titulo: "Revisa KPIs", detalle: "Comprobantes, ingresos, egresos e IVA del rango cargado." },
+      { n: 4, titulo: "Filtra y selecciona", detalle: "Por tipo (I/E/N/P), fechas y emisor/receptor. Selecciona filas para exportar el subconjunto." },
+      { n: 5, titulo: "Exporta", detalle: "\"Exportar\" descarga Excel del listado actual o de la selección." },
+    ],
+    resultados: [
+      { campo: "Tipo CFDI", significado: "I = Ingreso · E = Egreso (nota de crédito) · N = Nómina · P = Pago (REP) · T = Traslado." },
+      { campo: "Estatus SAT", significado: "Vigente / Cancelado según última consulta al webservice." },
+      { campo: "Tiene CRP", significado: "Para CFDI tipo I PPD: indica si ya existe el REP (complemento de pago) asociado." },
+    ],
+    dependencias: {
+      necesita: [
+        { tool: "Descarga Masiva SAT", ruta: "/app/sat-sync", motivo: "Fuente automática de XML." },
+      ],
+      alimenta: [
+        { tool: "Conciliación bancaria", ruta: "/app/conciliacion", motivo: "Cruza CFDI vs movimientos del banco." },
+        { tool: "Contabilidad Automática", ruta: "/app/contabilidad-auto", motivo: "Genera pólizas a partir de cada CFDI." },
+        { tool: "Salud Fiscal", ruta: "/app/salud-fiscal", motivo: "Métricas y score se calculan de aquí." },
+        { tool: "Resumen Fiscal del mes", ruta: "/app/reportes/resumen-fiscal", motivo: "ISR/IVA del periodo se obtienen de estos CFDI." },
+      ],
+      datosMinimos: ["RFC del expediente", "Al menos 1 XML cargado o sincronizado"],
+    },
+  },
+
+  // ============================================================
+  // CONCILIACIÓN BANCARIA (índice)
+  // ============================================================
+  "conciliacion-bancaria": {
+    slug: "conciliacion-bancaria",
+    title: "Conciliación bancaria IA",
+    queHace:
+      "Carga estados de cuenta del cliente (PDF/Excel/CSV) y los cruza contra CFDI emitidos y recibidos para detectar diferencias: movimientos sin CFDI (posibles ingresos omitidos), CFDI sin pago y montos discrepantes. Incluye análisis IA del resultado.",
+    cuandoUsar:
+      "Mensual, después de cargar los CFDI del periodo y al recibir el estado de cuenta del banco.",
+    tutorial: [
+      { n: 1, titulo: "Da de alta la cuenta", detalle: "Selecciona banco y alias (ej. \"BBVA Principal\"). Captura los últimos 4 dígitos para validar." },
+      { n: 2, titulo: "Sube el estado de cuenta", detalle: "Arrastra el archivo. El parser valida que el RFC coincida con el contribuyente; si no, lo rechaza con motivo." },
+      { n: 3, titulo: "Ejecuta conciliación", detalle: "\"Ejecutar conciliación\" cruza movimientos vs CFDI con ventana de ±3 días y tolerancia de monto." },
+      { n: 4, titulo: "Analiza resultado", detalle: "Revisa KPIs y la tabla; usa \"Analizar con IA\" para una interpretación cualitativa con focos rojos." },
+      { n: 5, titulo: "Exporta y archiva", detalle: "Descarga CSV o Excel para papel de trabajo. El resultado queda en el historial mensual." },
+    ],
+    resultados: [
+      { campo: "Tasa de conciliación", significado: "% de movimientos bancarios cruzados con CFDI.", rango: "≥90% sano · 70-90% revisar · <70% riesgo" },
+      { campo: "Sin CFDI", significado: "Depósitos bancarios sin comprobante emitido — posible ingreso omitido (riesgo SAT alto)." },
+      { campo: "CFDI sin pago", significado: "CFDI emitidos PPD sin movimiento bancario que los respalde." },
+    ],
+    dependencias: {
+      necesita: [
+        { tool: "CFDI", ruta: "/app/cfdi", motivo: "Sin CFDI no hay con qué cruzar." },
+      ],
+      alimenta: [
+        { tool: "Historial de conciliación", ruta: "/app/conciliacion/historial", motivo: "Cada corrida queda como mes cerrado." },
+        { tool: "Agente Conciliación", ruta: "/app/contable/agente-conciliacion", motivo: "Vigila la tasa y alerta caídas." },
+        { tool: "Conciliación Integral", ruta: "/app/conciliacion-integral", motivo: "Suma una tercera vía: pólizas contables." },
+      ],
+      datosMinimos: ["1 cuenta bancaria registrada", "Estado de cuenta del periodo", "CFDI del periodo cargados"],
+    },
+    costos: "El análisis IA consume créditos de Lovable AI (1 corrida ≈ 1 crédito chico).",
+  },
+
+  // ============================================================
+  // CONCILIACIÓN — HISTORIAL
+  // ============================================================
+  "conciliacion-historial": {
+    slug: "conciliacion-historial",
+    title: "Historial de conciliación",
+    queHace:
+      "Vista anual y mensual de todas las conciliaciones cerradas del expediente. Compara ingresos/egresos CFDI vs banco mes a mes y calcula la diferencia acumulada del año.",
+    cuandoUsar:
+      "Al cierre mensual para revisar evolución y al cierre anual para preparar la declaración.",
+    tutorial: [
+      { n: 1, titulo: "Elige el año", detalle: "Botones < y > navegan entre ejercicios." },
+      { n: 2, titulo: "Lee el resumen anual", detalle: "Ingresos CFDI, egresos CFDI, ingresos bancarios y diferencia anual." },
+      { n: 3, titulo: "Abre un mes", detalle: "Clic en cualquier card mensual para ver detalle: matches, sin CFDI, CFDI sin pago." },
+      { n: 4, titulo: "Vuelve al conciliador", detalle: "\"Ir al conciliador\" para volver a correr o ajustar un mes." },
+    ],
+    resultados: [
+      { campo: "Diferencia mensual", significado: "Ingresos bancarios − Ingresos CFDI del mes. Si |diferencia| > 1 se marca en ámbar." },
+      { campo: "Diferencia anual", significado: "Sumatoria — útil para detectar tendencia de ingresos no facturados." },
+    ],
+    dependencias: {
+      necesita: [
+        { tool: "Conciliación bancaria", ruta: "/app/conciliacion", motivo: "Origina los meses cerrados que aparecen aquí." },
+      ],
+      alimenta: [
+        { tool: "Reporte Ejecutivo", ruta: "/app/reporte-ejecutivo", motivo: "La evolución mensual entra al reporte." },
+      ],
+      datosMinimos: ["Al menos un mes conciliado en el año seleccionado"],
+    },
+  },
+
+  // ============================================================
+  // MENSAJERÍA IA
+  // ============================================================
+  "mensajes": {
+    slug: "mensajes",
+    title: "Mensajería IA",
+    queHace:
+      "Generador de mensajes para clientes con plantillas y redacción IA: recordatorios de pago, avisos de obligación, requerimientos de documentación, felicitaciones. Envía por WhatsApp, correo o copia al portapapeles.",
+    cuandoUsar:
+      "Cada vez que necesites comunicarte con un cliente — sustituye redactar manualmente desde cero.",
+    tutorial: [
+      { n: 1, titulo: "Elige plantilla", detalle: "Selecciona el tipo (recordatorio, requerimiento, felicitación, etc.) y pulsa \"Cargar plantilla\"." },
+      { n: 2, titulo: "Llena variables", detalle: "Captura los datos que la plantilla pide (monto, fecha, RFC, periodo)." },
+      { n: 3, titulo: "Personaliza con IA", detalle: "Edita el tono o pide a la IA que reformule. Revisa el resultado antes de enviar." },
+      { n: 4, titulo: "Envía", detalle: "WhatsApp abre el chat con el texto listo; correo manda directo desde el sistema." },
+    ],
+    resultados: [
+      { campo: "Mensaje final", significado: "Texto listo para enviar. Queda en historial del cliente." },
+    ],
+    dependencias: {
+      necesita: [
+        { tool: "Expediente con contacto", ruta: "/app/clientes", motivo: "Teléfono y correo del cliente para el envío directo." },
+      ],
+      alimenta: [
+        { tool: "Workflows", ruta: "/app/workflows", motivo: "Se pueden disparar mensajes automáticos al cumplir condiciones." },
+      ],
+      datosMinimos: ["Cliente con teléfono / correo"],
+    },
+    costos: "Cada generación con IA consume créditos chicos de Lovable AI.",
+  },
+
+  // ============================================================
+  // RESUMEN FISCAL DEL MES
+  // ============================================================
+  "resumen-fiscal": {
+    slug: "resumen-fiscal",
+    title: "Resumen fiscal del mes",
+    queHace:
+      "Cálculo automático de ISR e IVA del periodo a partir de los CFDI cargados del expediente. Sirve como pre-cálculo rápido antes de ir a la calculadora detallada según régimen.",
+    cuandoUsar:
+      "Después del día 5 del mes (ya con CFDI cerrados del mes anterior) para visualizar la carga fiscal estimada.",
+    tutorial: [
+      { n: 1, titulo: "Selecciona expediente y periodo", detalle: "Usa el selector de mes (input \"month\")." },
+      { n: 2, titulo: "Revisa el resumen", detalle: "Ingresos, egresos, IVA trasladado, IVA acreditable, ISR estimado." },
+      { n: 3, titulo: "Ir a la calculadora", detalle: "Botón \"Ir a la calculadora\" abre la herramienta detallada (PF/PM/RESICO según régimen)." },
+    ],
+    resultados: [
+      { campo: "ISR estimado", significado: "Pre-cálculo grueso. La cifra final sale de la calculadora del régimen." },
+      { campo: "IVA por pagar / a favor", significado: "Trasladado − Acreditable del mes." },
+    ],
+    dependencias: {
+      necesita: [
+        { tool: "CFDI", ruta: "/app/cfdi", motivo: "Base de cálculo." },
+      ],
+      alimenta: [
+        { tool: "Calculadora ISR/IVA", motivo: "Como semilla para la calculadora detallada." },
+      ],
+      datosMinimos: ["CFDI del mes cargados", "Régimen del cliente registrado"],
+    },
+  },
+
+  // ============================================================
+  // EXPEDIENTES
+  // ============================================================
+  "expedientes": {
+    slug: "expedientes",
+    title: "Expedientes (Clientes)",
+    queHace:
+      "Listado central de RFC del despacho. Cada expediente es la unidad sobre la que operan TODAS las herramientas. Aquí se da de alta, importa desde Excel, asocia RFC vinculados y se accede al detalle del cliente (CSF, credenciales, contactos, historial).",
+    cuandoUsar:
+      "Al onboarding del despacho (importación masiva) y cada vez que se incorpora un cliente nuevo.",
+    tutorial: [
+      { n: 1, titulo: "Importar Excel", detalle: "\"Importar Excel\" abre el asistente: hasta 500 RFC por carga, sin duplicados." },
+      { n: 2, titulo: "Nuevo expediente", detalle: "\"Nuevo expediente\": RFC, razón social, régimen. Lo demás se completa con la CSF." },
+      { n: 3, titulo: "Abrir detalle", detalle: "Clic en una fila para entrar al cliente: CSF, credenciales SAT, equipo asignado, historial." },
+      { n: 4, titulo: "RFC vinculados", detalle: "\"RFC vinculados\" gestiona RFC adicionales (por ejemplo socios o relacionados)." },
+    ],
+    resultados: [
+      { campo: "Total de expedientes", significado: "Cuenta consumida vs el plan contratado." },
+      { campo: "Régimen / Estatus", significado: "Régimen fiscal y si el RFC está activo / suspendido en SAT." },
+    ],
+    dependencias: {
+      necesita: [],
+      alimenta: [
+        { tool: "Todas las herramientas", motivo: "Operan por expediente. Sin RFC no hay sobre qué trabajar." },
+      ],
+      datosMinimos: ["RFC válido"],
+    },
+  },
+
+  // ============================================================
+  // AGENTES IA
+  // ============================================================
+  "agente-auditor": {
+    slug: "agente-auditor",
+    title: "Agente Auditor IA",
+    queHace:
+      "Agente autónomo que audita el expediente buscando hallazgos preventivos de cierre: deducciones débiles, gastos no deducibles, inconsistencias documentales, exposición fiscal estimada. Corre automáticamente cada 90 s mientras esté activo.",
+    cuandoUsar:
+      "Durante todo el mes en modo activo para detectar problemas antes del cierre, y obligatoriamente antes de presentar declaración mensual/anual.",
+    tutorial: [
+      { n: 1, titulo: "Selecciona expediente", detalle: "El agente opera por RFC." },
+      { n: 2, titulo: "Activar", detalle: "Botón \"Activar\" pone al agente en modo continuo (refresh 90 s)." },
+      { n: 3, titulo: "Ejecutar ahora", detalle: "Fuerza una corrida inmediata sin esperar al ciclo." },
+      { n: 4, titulo: "Revisa hallazgos", detalle: "Lista priorizada por severidad: alta (atender ya), media, baja." },
+    ],
+    resultados: [
+      { campo: "Severidad", significado: "Alta = riesgo fiscal inmediato · Media = revisar · Baja = informativo." },
+      { campo: "Exposición estimada", significado: "Monto MXN flagged como potencialmente cuestionable por SAT." },
+    ],
+    dependencias: {
+      necesita: [
+        { tool: "CFDI", ruta: "/app/cfdi", motivo: "Base de la auditoría." },
+      ],
+      alimenta: [
+        { tool: "Centro de Tareas", ruta: "/app/tareas", motivo: "Hallazgos altos generan tarea." },
+        { tool: "Reporte Ejecutivo", ruta: "/app/reporte-ejecutivo", motivo: "Hallazgos se integran al reporte mensual." },
+      ],
+      datosMinimos: ["CFDI del periodo cargados"],
+    },
+    costos: "Cada corrida consume créditos IA. Activarlo 24/7 puede gastar créditos rápido — úsalo en horarios laborales o ajusta el intervalo.",
+  },
+
+  "agente-cfdi": {
+    slug: "agente-cfdi",
+    title: "Agente CFDI IA",
+    queHace:
+      "Agente que vigila los CFDI del expediente en tiempo real: detecta cancelaciones, faltantes de REP en PPD, duplicados, emisores en lista negra (EFOS), montos atípicos y consistencia con régimen.",
+    cuandoUsar:
+      "En modo activo durante la operación diaria de captura/descarga de CFDI.",
+    tutorial: [
+      { n: 1, titulo: "Activa", detalle: "Botón \"Activar\" — refresh automático cada 60 s." },
+      { n: 2, titulo: "Revisa bitácora", detalle: "Lista de eventos detectados desde la última corrida." },
+      { n: 3, titulo: "Acciona", detalle: "Cada hallazgo permite \"Crear tarea\" o \"Marcar revisado\"." },
+    ],
+    resultados: [
+      { campo: "Eventos críticos", significado: "Requieren acción inmediata (EFOS, cancelaciones)." },
+      { campo: "Advertencias", significado: "Posibles errores u omisiones (REP faltante, duplicados)." },
+    ],
+    dependencias: {
+      necesita: [
+        { tool: "CFDI", ruta: "/app/cfdi", motivo: "Origen de los eventos." },
+        { tool: "EFOS 69-B", ruta: "/app/tools/efos-validator", motivo: "Lista negra que consulta." },
+      ],
+      alimenta: [
+        { tool: "Centro de Tareas", ruta: "/app/tareas", motivo: "Eventos accionables se convierten en tareas." },
+      ],
+      datosMinimos: ["CFDI cargados al expediente"],
+    },
+    costos: "Créditos IA por corrida.",
+  },
+
+  "agente-cierre": {
+    slug: "agente-cierre",
+    title: "Agente Cierre IA",
+    queHace:
+      "Agente que ejecuta el pre-cierre mensual del expediente: provisión de ISR e IVA del periodo, papel de trabajo, validación de deducibilidad y detección de partidas faltantes. Sirve como checklist automático antes de la declaración.",
+    cuandoUsar:
+      "Del día 1 al 16 del mes para preparar la declaración del mes anterior.",
+    tutorial: [
+      { n: 1, titulo: "Elige periodo", detalle: "Input mes/año en la barra de acciones." },
+      { n: 2, titulo: "Activar / Ejecutar ahora", detalle: "Auto-refresh cada 120 s o corrida manual." },
+      { n: 3, titulo: "Revisa KPIs", detalle: "Ingresos, deducciones, utilidad, ISR provisional, IVA del periodo." },
+      { n: 4, titulo: "Confirma cierre", detalle: "Cuando los números cuadran, marca el periodo como cerrado para que no se modifique." },
+    ],
+    resultados: [
+      { campo: "Utilidad", significado: "Ingresos − Deducciones del mes." },
+      { campo: "ISR provisional / IVA por pagar", significado: "Pre-cálculo del agente; verifica contra la calculadora del régimen antes de declarar." },
+    ],
+    dependencias: {
+      necesita: [
+        { tool: "CFDI del mes", ruta: "/app/cfdi", motivo: "Materia prima del cierre." },
+        { tool: "Conciliación bancaria", ruta: "/app/conciliacion", motivo: "Validar ingresos cobrados (flujo)." },
+      ],
+      alimenta: [
+        { tool: "Resumen Fiscal", ruta: "/app/reportes/resumen-fiscal", motivo: "Cifras consolidadas del mes." },
+        { tool: "Reporte Ejecutivo", ruta: "/app/reporte-ejecutivo", motivo: "Cierre alimenta el reporte mensual al cliente." },
+      ],
+      datosMinimos: ["CFDI y banco del periodo"],
+    },
+    costos: "Créditos IA por corrida.",
+  },
+
+  "agente-conciliacion": {
+    slug: "agente-conciliacion",
+    title: "Agente Conciliación IA",
+    queHace:
+      "Agente que cruza continuamente movimientos bancarios contra CFDI del expediente y reporta la tasa de conciliación, ingresos sin CFDI (riesgo de omisión) y CFDI PPD sin pago bancario.",
+    cuandoUsar:
+      "Activo durante el mes para detectar desviaciones tempranamente, no al cierre.",
+    tutorial: [
+      { n: 1, titulo: "Activa", detalle: "Auto-refresh cada 60 s." },
+      { n: 2, titulo: "Lee la tasa", detalle: "Verde ≥90%, ámbar 70-90%, rojo <70%." },
+      { n: 3, titulo: "Bitácora", detalle: "Lista cronológica de matches y discrepancias detectadas." },
+    ],
+    resultados: [
+      { campo: "Tasa de conciliación", significado: "% de movimientos cruzados con CFDI." },
+      { campo: "Movs sin CFDI", significado: "Posibles ingresos no facturados — riesgo fiscal alto." },
+      { campo: "CFDI sin pago", significado: "PPD pendientes de cobro o REP no emitido." },
+    ],
+    dependencias: {
+      necesita: [
+        { tool: "Conciliación bancaria", ruta: "/app/conciliacion", motivo: "Cuentas y estados de cuenta cargados." },
+        { tool: "CFDI", ruta: "/app/cfdi", motivo: "Universo a cruzar." },
+      ],
+      alimenta: [
+        { tool: "Centro de Tareas", ruta: "/app/tareas", motivo: "Discrepancias relevantes abren tarea." },
+      ],
+      datosMinimos: ["1 cuenta bancaria con movimientos", "CFDI del periodo"],
+    },
+    costos: "Créditos IA por corrida.",
+  },
 };
 
 export function getHelp(slug: string): HelpContent | null {

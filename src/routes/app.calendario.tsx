@@ -158,6 +158,7 @@ function CalendarioFiscal() {
       description="Visualiza y gestiona todas las obligaciones fiscales del expediente en un solo lugar."
       icon={<CalendarDays className="h-5 w-5 text-primary-foreground" />}
       requireCliente={true}
+      helpSlug="calendario-fiscal"
     >
       {/* Barra de filtros y acciones */}
       <div className="rounded-xl border border-border/60 bg-card/40 p-4 flex flex-wrap items-end gap-3">

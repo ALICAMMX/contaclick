@@ -25,6 +25,7 @@ import {
   Bot,
 } from "lucide-react";
 import { ToolShell } from "@/components/ToolShell";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -195,6 +196,7 @@ function CentroTareas() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <HerramientaHelp slug="centro-tareas" />
           {cliente?.id && (
             <Button variant="outline" size="sm" onClick={() => generar.mutate()} disabled={generar.isPending}>
               <Sparkles className="h-4 w-4 mr-1.5" />

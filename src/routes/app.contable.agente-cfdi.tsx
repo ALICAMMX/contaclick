@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { FileText, Play, Pause, RefreshCw, ShieldCheck, ScanSearch, FolderOpen, AlertTriangle, CheckCircle2, Clock, ArrowLeft, Sparkles } from "lucide-react";
 import { ModuleScaffold, KpiTile, DemoCard } from "@/components/ModuleScaffold";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { getCfdiStats, listCfdi } from "@/lib/cfdi/cfdi.functions";
 import { runExpressAudit, type AuditFinding } from "@/lib/auditor/auditor.functions";
@@ -102,6 +103,7 @@ function AgenteCfdiPage() {
       badge={activo ? "Activo · Auto-refresh cada 60s" : "Pausado"}
       actions={
         <>
+          <HerramientaHelp slug="agente-cfdi" />
           <Link
             to="/app/contable/agentes"
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-border/60 bg-card/60 hover:bg-card text-xs text-muted-foreground hover:text-foreground transition-colors"

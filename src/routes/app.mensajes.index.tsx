@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { MessageCircle, Sparkles, Send, Loader2, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { getCliente } from "@/lib/clientes.functions";
 import { renderPlantilla, redactarMensajeAI, saveMensaje, listMensajes, type PlantillaKey } from "@/lib/mensajes/mensajes.functions";
@@ -118,9 +119,12 @@ function MensajesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Mensajería IA</h1>
-        <p className="text-muted-foreground text-sm mt-1">Redacta recordatorios, avisos y comunicados para tus clientes con IA. Envía por WhatsApp o correo.</p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">Mensajería IA</h1>
+          <p className="text-muted-foreground text-sm mt-1">Redacta recordatorios, avisos y comunicados para tus clientes con IA. Envía por WhatsApp o correo.</p>
+        </div>
+        <HerramientaHelp slug="mensajes" />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-5">

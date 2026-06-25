@@ -23,6 +23,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -146,6 +147,7 @@ function WorkflowsPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <HerramientaHelp slug="workflows" />
           <Button variant="outline" size="sm" onClick={() => { setEditingId(null); setTab("builder"); }}>
             <Plus className="h-4 w-4 mr-1.5" /> Nuevo workflow
           </Button>

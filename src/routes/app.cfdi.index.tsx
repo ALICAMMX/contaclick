@@ -20,6 +20,7 @@ import {
 } from "@/lib/cfdi/cfdi.functions";
 import { classifyXmls, reportTotalRejections, type RejectReport } from "@/lib/cfdi/dedup-xml";
 import { RejectModal } from "@/components/RejectModal";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { safeFilename, triggerFileDownload } from "@/lib/download";
 
 export const Route = createFileRoute("/app/cfdi/")({
@@ -208,7 +209,10 @@ function CfdiDashboard() {
             Expediente activo: <span className="font-mono text-foreground">{cliente.rfc}</span> · {cliente.razon_social}
           </p>
         </div>
-        <ExportButton rows={rows} selectedIds={selectedIds} />
+        <div className="flex items-center gap-2">
+          <HerramientaHelp slug="cfdi-expedientes" />
+          <ExportButton rows={rows} selectedIds={selectedIds} />
+        </div>
       </div>
 
       {selectedIds.size > 0 && (

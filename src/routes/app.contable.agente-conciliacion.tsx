@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { Banknote, Play, Pause, RefreshCw, ArrowLeft, FolderOpen, CheckCircle2, AlertTriangle, Sparkles, Upload, ScanSearch, Clock } from "lucide-react";
 import { ModuleScaffold, KpiTile, DemoCard } from "@/components/ModuleScaffold";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { getReconciliationStats } from "@/lib/conciliacion/conciliacion.functions";
 
@@ -70,6 +71,7 @@ function AgenteConciliacionPage() {
       badge={activo ? "Activo · Auto-refresh 60s" : "Pausado"}
       actions={
         <>
+          <HerramientaHelp slug="agente-conciliacion" />
           <Link to="/app/contable/agentes" className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-border/60 bg-card/60 hover:bg-card text-xs text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-3.5 w-3.5" /> Agentes
           </Link>
