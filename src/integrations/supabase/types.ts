@@ -1659,49 +1659,211 @@ export type Database = {
           },
         ]
       }
+      tarea_adjuntos: {
+        Row: {
+          created_at: string
+          despacho_id: string
+          id: string
+          mime: string | null
+          nombre: string
+          tamano_bytes: number | null
+          tarea_id: string
+          url: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          despacho_id: string
+          id?: string
+          mime?: string | null
+          nombre: string
+          tamano_bytes?: number | null
+          tarea_id: string
+          url: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          despacho_id?: string
+          id?: string
+          mime?: string | null
+          nombre?: string
+          tamano_bytes?: number | null
+          tarea_id?: string
+          url?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tarea_adjuntos_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tarea_adjuntos_tarea_id_fkey"
+            columns: ["tarea_id"]
+            isOneToOne: false
+            referencedRelation: "tareas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tarea_bitacora: {
+        Row: {
+          created_at: string
+          despacho_id: string
+          detalle: Json | null
+          evento: string
+          id: string
+          tarea_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          despacho_id: string
+          detalle?: Json | null
+          evento: string
+          id?: string
+          tarea_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          despacho_id?: string
+          detalle?: Json | null
+          evento?: string
+          id?: string
+          tarea_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tarea_bitacora_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tarea_bitacora_tarea_id_fkey"
+            columns: ["tarea_id"]
+            isOneToOne: false
+            referencedRelation: "tareas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tarea_comentarios: {
+        Row: {
+          contenido: string
+          created_at: string
+          despacho_id: string
+          id: string
+          tarea_id: string
+          user_id: string
+        }
+        Insert: {
+          contenido: string
+          created_at?: string
+          despacho_id: string
+          id?: string
+          tarea_id: string
+          user_id: string
+        }
+        Update: {
+          contenido?: string
+          created_at?: string
+          despacho_id?: string
+          id?: string
+          tarea_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tarea_comentarios_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tarea_comentarios_tarea_id_fkey"
+            columns: ["tarea_id"]
+            isOneToOne: false
+            referencedRelation: "tareas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tareas: {
         Row: {
           asignado_a: string | null
           cliente_id: string | null
+          completada_at: string | null
+          completada_by: string | null
           created_at: string
+          created_by: string | null
           descripcion: string | null
           despacho_id: string
           due_date: string | null
           estatus: string
+          evidencia_url: string | null
           id: string
+          kanban_estado: string
           origen: string | null
           origen_id: string | null
           prioridad: string
+          requires_evidence: boolean
+          tiempo_invertido_min: number
+          tipo: string | null
           titulo: string
           updated_at: string
         }
         Insert: {
           asignado_a?: string | null
           cliente_id?: string | null
+          completada_at?: string | null
+          completada_by?: string | null
           created_at?: string
+          created_by?: string | null
           descripcion?: string | null
           despacho_id: string
           due_date?: string | null
           estatus?: string
+          evidencia_url?: string | null
           id?: string
+          kanban_estado?: string
           origen?: string | null
           origen_id?: string | null
           prioridad?: string
+          requires_evidence?: boolean
+          tiempo_invertido_min?: number
+          tipo?: string | null
           titulo: string
           updated_at?: string
         }
         Update: {
           asignado_a?: string | null
           cliente_id?: string | null
+          completada_at?: string | null
+          completada_by?: string | null
           created_at?: string
+          created_by?: string | null
           descripcion?: string | null
           despacho_id?: string
           due_date?: string | null
           estatus?: string
+          evidencia_url?: string | null
           id?: string
+          kanban_estado?: string
           origen?: string | null
           origen_id?: string | null
           prioridad?: string
+          requires_evidence?: boolean
+          tiempo_invertido_min?: number
+          tipo?: string | null
           titulo?: string
           updated_at?: string
         }
