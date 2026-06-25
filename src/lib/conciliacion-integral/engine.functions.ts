@@ -484,7 +484,7 @@ export const runConciliacionIntegral = createServerFn({ method: "POST" })
         poliza_id: i.poliza_id ?? null,
         movimiento_id: i.movimiento_id ?? null,
         ref_hash: i.ref_hash,
-        detalle: i.detalle,
+        detalle: i.detalle as any,
         recomendacion: i.recomendacion,
         impacto_isr: i.impacto_isr,
         impacto_iva: i.impacto_iva,
