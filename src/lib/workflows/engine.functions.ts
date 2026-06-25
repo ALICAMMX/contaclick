@@ -293,6 +293,45 @@ async function runWorkflowInternal(
   return { runId, status: finalStatus };
 }
 
+
+// Núcleo reutilizable: procesa un trigger contra los workflows activos del despacho.
+// Lo usan tanto la server fn emitTrigger como otros módulos (CFDI, Buzón, Riesgo).
+export async function processTrigger(
+  supabase: any,
+  despachoId: string,
+  triggerType: string,
+  clienteId: string | null,
+  payload: any,
+  userId: string | null,
+): Promise<{ ejecutados: { workflow_id: string; run_id: string; status: string }[] }> {
+  await supabase.from("workflow_events").insert({
+    despacho_id: despachoId,
+    cliente_id: clienteId,
+    trigger_type: triggerType,
+    payload: payload ?? {},
+    procesado: false,
+  });
+  const { data: wfs } = await supabase
+    .from("workflows")
+    .select("id, despacho_id, cliente_id, nombre, status, trigger_type, trigger_config, nodes, edges, total_runs, total_success, total_failed")
+    .eq("despacho_id", despachoId)
+    .eq("status", "activo")
+    .eq("trigger_type", triggerType);
+  const matches = ((wfs ?? []) as unknown as WorkflowRow[]).filter(
+    (wf) => !wf.cliente_id || wf.cliente_id === clienteId,
+  );
+  const ejecutados: { workflow_id: string; run_id: string; status: string }[] = [];
+  for (const wf of matches) {
+    const r = await runWorkflowInternal(supabase, wf, { ...(payload ?? {}), cliente_id: clienteId }, userId);
+    ejecutados.push({ workflow_id: wf.id, run_id: r.runId, status: r.status });
+  }
+  await supabase.from("workflow_events").update({ procesado: true, procesado_at: new Date().toISOString() })
+    .eq("despacho_id", despachoId)
+    .eq("trigger_type", triggerType)
+    .eq("procesado", false);
+  return { ejecutados };
+}
+
 // -------- Server functions --------
 
 export const emitTrigger = createServerFn({ method: "POST" })
