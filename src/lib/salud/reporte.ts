@@ -65,6 +65,7 @@ export function descargarReporteSalud(salud: SaludFiscal) {
   y = (doc as any).lastAutoTable.finalY + 24;
 
   // Comparativo
+  if (y > 620) { doc.addPage(); y = 60; }
   doc.setTextColor(15, 23, 42);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
@@ -89,6 +90,7 @@ export function descargarReporteSalud(salud: SaludFiscal) {
   y = (doc as any).lastAutoTable.finalY + 20;
 
   if (salud.alertas.length) {
+    if (y > 660) { doc.addPage(); y = 60; }
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     doc.text("Alertas e incidencias", 40, y);
