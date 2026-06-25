@@ -53,6 +53,7 @@ import { Route as AppDespachoRouteImport } from './routes/app.despacho'
 import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
 import { Route as AppContableRouteImport } from './routes/app.contable'
 import { Route as AppConfiguracionRouteImport } from './routes/app.configuracion'
+import { Route as AppConciliacionIntegralRouteImport } from './routes/app.conciliacion-integral'
 import { Route as AppConciliacionRouteImport } from './routes/app.conciliacion'
 import { Route as AppCfdiRouteImport } from './routes/app.cfdi'
 import { Route as AppCalendarioRouteImport } from './routes/app.calendario'
@@ -329,6 +330,11 @@ const AppContableRoute = AppContableRouteImport.update({
 const AppConfiguracionRoute = AppConfiguracionRouteImport.update({
   id: '/configuracion',
   path: '/configuracion',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppConciliacionIntegralRoute = AppConciliacionIntegralRouteImport.update({
+  id: '/conciliacion-integral',
+  path: '/conciliacion-integral',
   getParentRoute: () => AppRoute,
 } as any)
 const AppConciliacionRoute = AppConciliacionRouteImport.update({
@@ -646,6 +652,7 @@ export interface FileRoutesByFullPath {
   '/app/calendario': typeof AppCalendarioRoute
   '/app/cfdi': typeof AppCfdiRouteWithChildren
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
+  '/app/conciliacion-integral': typeof AppConciliacionIntegralRoute
   '/app/configuracion': typeof AppConfiguracionRoute
   '/app/contable': typeof AppContableRouteWithChildren
   '/app/dashboard': typeof AppDashboardRoute
@@ -743,6 +750,7 @@ export interface FileRoutesByTo {
   '/app/administrativo': typeof AppAdministrativoRoute
   '/app/buzon': typeof AppBuzonRoute
   '/app/calendario': typeof AppCalendarioRoute
+  '/app/conciliacion-integral': typeof AppConciliacionIntegralRoute
   '/app/configuracion': typeof AppConfiguracionRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/despacho': typeof AppDespachoRoute
@@ -843,6 +851,7 @@ export interface FileRoutesById {
   '/app/calendario': typeof AppCalendarioRoute
   '/app/cfdi': typeof AppCfdiRouteWithChildren
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
+  '/app/conciliacion-integral': typeof AppConciliacionIntegralRoute
   '/app/configuracion': typeof AppConfiguracionRoute
   '/app/contable': typeof AppContableRouteWithChildren
   '/app/dashboard': typeof AppDashboardRoute
@@ -948,6 +957,7 @@ export interface FileRouteTypes {
     | '/app/calendario'
     | '/app/cfdi'
     | '/app/conciliacion'
+    | '/app/conciliacion-integral'
     | '/app/configuracion'
     | '/app/contable'
     | '/app/dashboard'
@@ -1045,6 +1055,7 @@ export interface FileRouteTypes {
     | '/app/administrativo'
     | '/app/buzon'
     | '/app/calendario'
+    | '/app/conciliacion-integral'
     | '/app/configuracion'
     | '/app/dashboard'
     | '/app/despacho'
@@ -1144,6 +1155,7 @@ export interface FileRouteTypes {
     | '/app/calendario'
     | '/app/cfdi'
     | '/app/conciliacion'
+    | '/app/conciliacion-integral'
     | '/app/configuracion'
     | '/app/contable'
     | '/app/dashboard'
@@ -1553,6 +1565,13 @@ declare module '@tanstack/react-router' {
       path: '/configuracion'
       fullPath: '/app/configuracion'
       preLoaderRoute: typeof AppConfiguracionRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/conciliacion-integral': {
+      id: '/app/conciliacion-integral'
+      path: '/conciliacion-integral'
+      fullPath: '/app/conciliacion-integral'
+      preLoaderRoute: typeof AppConciliacionIntegralRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/conciliacion': {
@@ -2089,6 +2108,7 @@ interface AppRouteChildren {
   AppCalendarioRoute: typeof AppCalendarioRoute
   AppCfdiRoute: typeof AppCfdiRouteWithChildren
   AppConciliacionRoute: typeof AppConciliacionRouteWithChildren
+  AppConciliacionIntegralRoute: typeof AppConciliacionIntegralRoute
   AppConfiguracionRoute: typeof AppConfiguracionRoute
   AppContableRoute: typeof AppContableRouteWithChildren
   AppDashboardRoute: typeof AppDashboardRoute
@@ -2136,6 +2156,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCalendarioRoute: AppCalendarioRoute,
   AppCfdiRoute: AppCfdiRouteWithChildren,
   AppConciliacionRoute: AppConciliacionRouteWithChildren,
+  AppConciliacionIntegralRoute: AppConciliacionIntegralRoute,
   AppConfiguracionRoute: AppConfiguracionRoute,
   AppContableRoute: AppContableRouteWithChildren,
   AppDashboardRoute: AppDashboardRoute,

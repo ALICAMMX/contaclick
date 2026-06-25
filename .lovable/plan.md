@@ -1,135 +1,84 @@
-# Plan: Candados de costo PAC (SW Sapien) — reutilizando el patrón de límites de IA
+# Conciliación SAT vs Contabilidad
 
-## Objetivo
-
-Evitar que el costo del PAC se desborde a mitad de año. Antes de cada solicitud al PAC debemos saber: (1) cuánto lleva consumido el despacho en el periodo, (2) cuál es su cuota según su plan, (3) cuánto saldo global tenemos en la cuenta maestra SW. Si algo está fuera de rango, se bloquea con un mensaje claro — exactamente como ya hacemos con `ia_requests` / `ia_tokens`.
-
-No movemos lógica de descarga ni el flujo de conexión SAT. Sólo añadimos las barreras y la telemetría.
+Módulo nuevo que cruza **CFDI SAT ↔ Contabilidad (pólizas) ↔ Banco** para detectar inconsistencias fiscales y operativas. Se integra con todo lo que ya existe (SAT Sync, Conciliación Bancaria, Tareas, Salud Fiscal, Workflows, Riesgo SAT).
 
 ---
 
 ## 1. Modelo de datos (migración)
 
-### 1.1 Ampliar `uso_periodo`
-- Agregar columnas `sat_solicitudes integer NOT NULL DEFAULT 0` y `sat_costo_centavos bigint NOT NULL DEFAULT 0` (centavos MXN).
-- Una sola fila por (`despacho_id`, `periodo`) — sigue el patrón existente.
+Hoy tenemos `cfdi_xml`, `movimientos_bancarios`, `conciliaciones` (banco↔CFDI). **No existe capa contable**, así que la creamos mínima y suficiente:
 
-### 1.2 Ampliar `planes.limites` (datos, no esquema)
-Agregar dos llaves nuevas al JSON `limites` de cada plan:
+- **`polizas`** — registro contable por cliente: `tipo` (ingreso/egreso/diario), `fecha`, `concepto`, `monto`, `cuenta`, `referencia`, `uuid_cfdi` (opcional), `movimiento_bancario_id` (opcional), `origen` (manual/import/workflow).
+- **`conciliacion_integral_runs`** — corridas del motor por cliente+periodo, con KPIs cacheados y `score_consistencia`.
+- **`conciliacion_incidencias`** — una fila por hallazgo:
+  - `tipo`: `ingreso_sat_sin_poliza`, `gasto_sat_sin_poliza`, `pago_banco_sin_cfdi`, `cfdi_sin_movimiento`, `diferencia_monto`, `cfdi_duplicado`, `cfdi_cancelado_no_ajustado`
+  - `gravedad`: `critica|media|baja`
+  - `monto`, `fecha`, refs a `cfdi_id`, `poliza_id`, `movimiento_id`
+  - `estatus`: `abierta|revisada|escalada|resuelta|falso_positivo`
+  - `explicacion_ia` (text), `impacto_isr`, `impacto_iva`, `recomendacion`
+  - hash único `(cliente_id, tipo, ref_hash)` para no duplicar
+- **`conciliacion_score_historico`** — snapshots para timeline.
 
-| Plan | `sat_solicitudes_mes` | `sat_frecuencia_max` |
-|---|---|---|
-| Starter (5 RFC) | 600 | `semanal` |
-| Profesional (25 RFC) | 3,500 | `diaria` |
-| Despacho (100 RFC) | 15,000 | `diaria` |
-| Enterprise | -1 (ilimitado) | `diaria` |
+RLS por `cliente_id` reusando `has_cliente_access`. GRANTs estándar.
 
-Cálculo: ~RFCs × 120 sol/mes (frecuencia diaria, 4 tipos × 30 días) × factor de optimización 0.5 + colchón 20%. Starter queda forzado a frecuencia semanal para mantener margen sano.
+## 2. Motor de conciliación (`src/lib/conciliacion-integral/engine.functions.ts`)
 
-### 1.3 Nueva tabla `sat_pac_saldo` (singleton global, solo super-admin)
-Columnas: `id` (uuid PK), `proveedor` (text default `sw_sapien`), `saldo_solicitudes integer`, `costo_unitario_centavos integer`, `umbral_aviso integer` (default 1000), `actualizado_at`, `actualizado_por`.
-Una sola fila. RLS: SELECT/UPDATE solo para `is_super_admin()`. GRANT sólo a `authenticated` + `service_role`.
+`runConciliacionIntegral({ cliente_id, desde, hasta })` — server fn protegida:
 
-### 1.4 Nuevo tipo de alerta
-Reutilizamos `alertas.tipo='uso_limite'` con `evidencia.recurso='sat_solicitudes'`. No requiere migración.
+1. Carga CFDI emitidos/recibidos del periodo (ya existe en `cfdi_xml`).
+2. Carga pólizas y movimientos bancarios.
+3. Pasadas de matching (en este orden, marcando lo usado):
+   - **UUID exacto** CFDI↔póliza
+   - **Monto + fecha (±3d) + RFC** CFDI↔póliza
+   - **Monto + referencia** póliza↔movimiento
+   - **Conciliaciones banco↔CFDI ya existentes** se respetan
+4. Genera incidencias por residuos + reglas de duplicado/cancelado.
+5. Calcula **impacto fiscal**: ISR estimado = ingreso omitido × tasa efectiva del cliente; IVA = monto × 0.16 según tipo.
+6. Calcula **score 0-100**: `100 − pesos(criticas*8 + medias*3 + bajas*1) − %diferencia_montos`.
+7. Upsert idempotente (hash) → no duplica entre corridas.
+8. Inserta snapshot en `conciliacion_score_historico` y registra `uso_eventos`.
 
----
+Hooks de recálculo:
+- al terminar `runSyncNow` (SAT)
+- al guardar conciliación bancaria
+- al crear/editar póliza
+Implementados como llamadas async no bloqueantes desde esas server fns existentes.
 
-## 2. Capa de límites (código)
+## 3. UI — `src/routes/app.conciliacion-integral.tsx`
 
-### 2.1 `src/lib/usage/limits.ts`
-- Añadir `"sat_solicitudes"` al union `Recurso`.
-- `labelRecurso` → "Descargas SAT".
-- Extender `getUsoPeriodo` para devolver `sat_solicitudes`.
-- `assertWithinLimit('sat_solicitudes', n)` valida contra `limites.sat_solicitudes_mes` y dispara avisos 80% / 100% igual que IA.
+Layout con tabs:
 
-### 2.2 Nuevo helper `src/lib/usage/sat-quota.ts`
-- `contarSolicitudesPrevistas(config)` → calcula cuántas solicitudes va a generar una corrida según `emitidos/recibidos/nomina/pagos/retenciones` activos × meses en `[fecha_desde, fecha_hasta]`.
-- `assertFrecuenciaPermitida(plan, frecuencia)` → bloquea si el plan no permite la frecuencia elegida (ej. Starter pidiendo "diaria").
-- `assertSaldoPacDisponible(supabaseAdmin, previstas)` → lee `sat_pac_saldo`, bloquea si `saldo - previstas < umbral_aviso` y emite alerta global.
-- `registrarConsumoSat(supabase, despacho, n)` → INCREMENT atómico vía RPC (nueva función `incrementar_uso_sat` espejo de `incrementar_uso_ia`); también descuenta de `sat_pac_saldo` con `supabaseAdmin`.
+- **Dashboard**: KPIs (movs conciliados, diferencias, ingresos omitidos, gastos sin registrar, CFDI sin pago, pagos sin CFDI, monto observado, score), gráfica de tendencia del score, top clientes con diferencias.
+- **Incidencias**: tabla con filtros (cliente, periodo, tipo, gravedad, estatus), semáforo 🔴🟠🟡, acciones rápidas (crear tarea → reusa `tareas.functions`, marcar revisado, escalar, solicitar documento → reusa `mensajes`, generar observación).
+- **Comparador detallado** (drawer al click): 3 columnas SAT | Contabilidad | Banco lado a lado con diffs resaltados + panel IA con explicación en lenguaje simple (Lovable AI `google/gemini-3-flash-preview`, server-side, gated por `check_rate_limit` y `incrementar_uso_ia`).
+- **Timeline**: histórico de corridas e incidencias del cliente.
 
-### 2.3 Integración en `sat-sync.functions.ts` (`runSyncNow`)
-Orden estricto antes de tocar el PAC:
-1. `assertFrecuenciaPermitida` con la config del expediente.
-2. `previstas = contarSolicitudesPrevistas(config)`.
-3. `assertWithinLimit('sat_solicitudes', previstas)` (cuota del despacho).
-4. `assertSaldoPacDisponible(previstas)` (cuenta maestra SW).
-5. Ejecutar corrida.
-6. En `finally` exitoso: `registrarConsumoSat(real_descargadas)` con el número real, no el previsto.
-7. En error con créditos ya consumidos por SW: registrar igual (el PAC ya cobró).
+## 4. Integración con Expediente
 
-### 2.4 Integración en `conectarSat`
-Al conectar un RFC nuevo, la carga histórica de 12 meses son ~48 solicitudes. Validar con `assertWithinLimit('sat_solicitudes', 48)` y `assertFrecuenciaPermitida` antes de crear el `sat_sync_config`.
+Nueva pestaña **"Conciliación Integral"** en `src/routes/app.clientes.$id.tsx`: resumen, score con tendencia, lista compacta de incidencias abiertas, botón "Correr ahora".
 
----
+## 5. Pólizas — carga mínima
 
-## 3. UI
+Para que el motor tenga insumo contable sin pedir un ERP completo:
+- Importador CSV/XLSX de pólizas en la pestaña del expediente (columnas: fecha, tipo, concepto, monto, cuenta, referencia, uuid opcional).
+- Captura manual rápida.
+- Endpoint para que workflows generen pólizas automáticamente desde CFDI conciliados (opcional, fase 2).
 
-### 3.1 Medidor en el panel del despacho (junto a IA y RFCs)
-- `src/components/UsageMeters.tsx`: añadir tarjeta "Descargas SAT" con barra (usado / cuota), color verde/ámbar/rojo según 0-79 / 80-99 / 100%.
-- Texto secundario: "Frecuencia permitida por tu plan: diaria/semanal".
+## 6. Navegación, cuotas, seguridad
 
-### 3.2 En `/app/sat-sync` (panel principal)
-- Banner superior cuando el despacho está al 80% o más con CTA "Ver planes".
-- En la pestaña de configuración del expediente: si el plan no permite "diaria", deshabilitar el radio y mostrar tooltip "Disponible en plan Profesional o superior".
-
-### 3.3 Panel super-admin nuevo: `/app/admin/sat-saldo`
-Ruta bajo `_authenticated/`, gateada por `is_super_admin()`. Muestra:
-- Saldo actual SW, costo unitario, umbral de aviso.
-- Tabla de top-10 despachos por consumo del mes.
-- Botón "Registrar recarga" (form: solicitudes compradas + costo total) que actualiza `sat_pac_saldo` y deja registro en `audit_logs`.
-- Estimación de días restantes al ritmo actual de consumo.
+- Item de menú en `AppLayout` → `/app/conciliacion-integral`.
+- Cuota: cuenta como 1 evento IA por explicación generada; el motor mismo no consume IA (solo SQL/JS).
+- RLS estricta; server fns con `requireSupabaseAuth`; nada de service role en client-reachable code.
 
 ---
 
-## 4. Alertas y observabilidad
+## Detalles técnicos
 
-- Reutilizar `alertas` con `tipo='uso_limite'`, `evidencia.recurso='sat_solicitudes'` para 80% y 100% del despacho (índice único parcial existente evita duplicados por periodo+umbral).
-- Alerta global nueva `tipo='sat_saldo_bajo'` cuando la cuenta maestra cruza `umbral_aviso`. Visible sólo para super-admin.
-- Registrar en `audit_logs` cada `rate_limit_exceeded` SAT y cada recarga manual del saldo.
+- Server fns en `src/lib/conciliacion-integral/*.functions.ts` (client-safe path).
+- IA en `*.server.ts` helper, llamada solo desde handler.
+- React Query con `ensureQueryData` en loader del `_authenticated`.
+- Reuso de tokens de diseño existentes (semáforo, tablas, cards) — sin colores hardcoded.
+- Migración única con CREATE TABLE + GRANT + RLS + POLICY por tabla nueva.
+- Bitácora en `mem://fixes/log.md` al cierre.
 
----
-
-## 5. Detalles técnicos
-
-```text
-runSyncNow(expediente)
-        │
-        ├── assertFrecuenciaPermitida(plan, config.frecuencia)
-        ├── previstas = contarSolicitudesPrevistas(config)
-        ├── assertWithinLimit('sat_solicitudes', previstas)  ← cuota despacho
-        ├── assertSaldoPacDisponible(previstas)              ← cuenta SW global
-        │
-        ├── llamada al PAC (SW Sapien)
-        │
-        └── registrarConsumoSat(reales)
-                │
-                ├── RPC incrementar_uso_sat → uso_periodo
-                └── UPDATE sat_pac_saldo (admin)
-```
-
-- `incrementar_uso_sat(_despacho, _periodo, _solicitudes, _costo_centavos)` security-definer, valida `is_member_of`, hace UPSERT atómico — copia exacta de `incrementar_uso_ia`.
-- El descuento de `sat_pac_saldo` corre con `supabaseAdmin` cargado dinámicamente dentro del handler (regla del import-graph).
-- Si SW devuelve "saldo insuficiente" antes que nosotros lo detectemos, capturarlo, marcar `sat_pac_saldo.saldo_solicitudes = 0` y emitir alerta global inmediata.
-- El cron horario que ya existe respeta los mismos candados porque entra por `runSyncNow`.
-- Modo demo (`SW_USER`/`SW_PASSWORD` ausentes) sigue funcionando: cuenta las solicitudes "simuladas" para que puedas ver el medidor llenarse, pero NO descuenta de `sat_pac_saldo`.
-
----
-
-## 6. Qué NO incluye este plan
-
-- Auto-recarga del saldo SW (manual por ahora; se evalúa cuando haya más volumen).
-- Cobro al cliente final por solicitudes extra (add-on); requiere Stripe/Paddle y lo veremos cuando el módulo de suscripciones esté listo.
-- Cambio de PAC / failover a Facturama: queda en backlog.
-
----
-
-## 7. Orden de implementación
-
-1. Migración: columnas en `uso_periodo`, tabla `sat_pac_saldo`, RPC `incrementar_uso_sat`, UPDATE de `planes.limites`.
-2. `src/lib/usage/limits.ts` y nuevo `sat-quota.ts`.
-3. Integrar en `runSyncNow` y `conectarSat`.
-4. UI: medidor + banner + bloqueo de frecuencia.
-5. Panel super-admin `/app/admin/sat-saldo`.
-6. Probar end-to-end en modo demo (sin SW real) con un despacho Starter forzando el 100%.
+¿Avanzo con la migración y el motor en esta primera entrega, dejando el importador de pólizas y la pestaña del expediente para una segunda iteración del mismo plan?
