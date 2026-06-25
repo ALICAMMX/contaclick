@@ -4,7 +4,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export type Recurso = "ia_requests" | "ia_tokens" | "rfcs";
+export type Recurso = "ia_requests" | "ia_tokens" | "rfcs" | "sat_solicitudes";
 
 export interface Limites {
   rfcs: number;
@@ -12,7 +12,10 @@ export interface Limites {
   ia_tokens?: number;
   xml_mes?: number;
   clientes?: number;
+  sat_solicitudes_mes?: number;
+  sat_frecuencia_max?: "manual" | "mensual" | "semanal" | "diaria";
 }
+
 
 export class UsageLimitError extends Error {
   recurso: Recurso;
