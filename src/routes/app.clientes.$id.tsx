@@ -58,9 +58,14 @@ function ClienteDetailPage() {
       return conectar({ data: { cliente_id: id, cer_b64, key_b64, password: pwd } });
     },
     onSuccess: (r) => {
-      toast.success(r.simulated ? "Conectado en modo demo (PAC no configurado)" : "Conectado al SAT vía PAC");
+      toast.success(
+        r.simulated
+          ? "Conectado en modo demo. Descarga automática activada (diaria)."
+          : "Conectado al SAT vía PAC. Descarga automática activada (diaria).",
+      );
       setCer(null); setKey(null); setPwd("");
       qc.invalidateQueries({ queryKey: ["sat", id] });
+      qc.invalidateQueries({ queryKey: ["sat-sync"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
