@@ -103,6 +103,7 @@ import { Route as AppAdminCumplimientoRouteImport } from './routes/app.admin.cum
 import { Route as AppAdminCorrespondenciaRouteImport } from './routes/app.admin.correspondencia'
 import { Route as AppAdminBuzonRouteImport } from './routes/app.admin.buzon'
 import { Route as AppAdminActivosRouteImport } from './routes/app.admin.activos'
+import { Route as ApiPublicHooksWorkflowCronRouteImport } from './routes/api/public/hooks/workflow-cron'
 
 const TerminosRoute = TerminosRouteImport.update({
   id: '/terminos',
@@ -581,6 +582,12 @@ const AppAdminActivosRoute = AppAdminActivosRouteImport.update({
   path: '/activos',
   getParentRoute: () => AppAdminRoute,
 } as any)
+const ApiPublicHooksWorkflowCronRoute =
+  ApiPublicHooksWorkflowCronRouteImport.update({
+    id: '/api/public/hooks/workflow-cron',
+    path: '/api/public/hooks/workflow-cron',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -677,6 +684,7 @@ export interface FileRoutesByFullPath {
   '/app/mensajes/': typeof AppMensajesIndexRoute
   '/app/reportes/': typeof AppReportesIndexRoute
   '/app/tools/': typeof AppToolsIndexRoute
+  '/api/public/hooks/workflow-cron': typeof ApiPublicHooksWorkflowCronRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -763,6 +771,7 @@ export interface FileRoutesByTo {
   '/app/mensajes': typeof AppMensajesIndexRoute
   '/app/reportes': typeof AppReportesIndexRoute
   '/app/tools': typeof AppToolsIndexRoute
+  '/api/public/hooks/workflow-cron': typeof ApiPublicHooksWorkflowCronRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -860,6 +869,7 @@ export interface FileRoutesById {
   '/app/mensajes/': typeof AppMensajesIndexRoute
   '/app/reportes/': typeof AppReportesIndexRoute
   '/app/tools/': typeof AppToolsIndexRoute
+  '/api/public/hooks/workflow-cron': typeof ApiPublicHooksWorkflowCronRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -958,6 +968,7 @@ export interface FileRouteTypes {
     | '/app/mensajes/'
     | '/app/reportes/'
     | '/app/tools/'
+    | '/api/public/hooks/workflow-cron'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -1044,6 +1055,7 @@ export interface FileRouteTypes {
     | '/app/mensajes'
     | '/app/reportes'
     | '/app/tools'
+    | '/api/public/hooks/workflow-cron'
   id:
     | '__root__'
     | '/'
@@ -1140,6 +1152,7 @@ export interface FileRouteTypes {
     | '/app/mensajes/'
     | '/app/reportes/'
     | '/app/tools/'
+    | '/api/public/hooks/workflow-cron'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1156,6 +1169,7 @@ export interface RootRouteChildren {
   SeguridadRoute: typeof SeguridadRoute
   TerminosRoute: typeof TerminosRoute
   InvitarTokenRoute: typeof InvitarTokenRoute
+  ApiPublicHooksWorkflowCronRoute: typeof ApiPublicHooksWorkflowCronRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1818,6 +1832,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminActivosRouteImport
       parentRoute: typeof AppAdminRoute
     }
+    '/api/public/hooks/workflow-cron': {
+      id: '/api/public/hooks/workflow-cron'
+      path: '/api/public/hooks/workflow-cron'
+      fullPath: '/api/public/hooks/workflow-cron'
+      preLoaderRoute: typeof ApiPublicHooksWorkflowCronRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -2103,6 +2124,7 @@ const rootRouteChildren: RootRouteChildren = {
   SeguridadRoute: SeguridadRoute,
   TerminosRoute: TerminosRoute,
   InvitarTokenRoute: InvitarTokenRoute,
+  ApiPublicHooksWorkflowCronRoute: ApiPublicHooksWorkflowCronRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
