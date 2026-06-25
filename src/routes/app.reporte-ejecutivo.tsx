@@ -555,6 +555,7 @@ function Bloque({ titulo, datos }: { titulo: string; datos: Record<string, unkno
 
 function ExportButtons({ data }: { data: { reporte: any; recomendaciones: any[] } }) {
   const exportandoRef = useRef(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   const downloadJSON = () => {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -564,6 +565,7 @@ function ExportButtons({ data }: { data: { reporte: any; recomendaciones: any[] 
   const downloadPDF = () => {
     if (exportandoRef.current) return;
     exportandoRef.current = true;
+    setPdfLoading(true);
     try {
       const r = data.reporte;
       const doc = new jsPDF({ unit: "pt", format: "a4" });
@@ -668,6 +670,7 @@ function ExportButtons({ data }: { data: { reporte: any; recomendaciones: any[] 
       toast.error(e?.message ?? "Error al generar PDF");
     } finally {
       exportandoRef.current = false;
+      setPdfLoading(false);
     }
   };
 
@@ -676,8 +679,8 @@ function ExportButtons({ data }: { data: { reporte: any; recomendaciones: any[] 
       <Button size="sm" variant="outline" onClick={downloadJSON}>
         <Download className="h-3 w-3 mr-1" />JSON
       </Button>
-      <Button size="sm" onClick={downloadPDF}>
-        <Download className="h-3 w-3 mr-1" />PDF
+      <Button size="sm" onClick={downloadPDF} disabled={pdfLoading}>
+        <Download className="h-3 w-3 mr-1" />{pdfLoading ? "Generando..." : "PDF"}
       </Button>
     </div>
   );
