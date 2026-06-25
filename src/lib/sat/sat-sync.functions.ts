@@ -266,10 +266,9 @@ export const runSyncNow = createServerFn({ method: "POST" })
       }
       try {
         if (errores.length > 0) {
-          // ya hay un error de cuota: no llamamos al PAC
+          // hubo error de cuota: no llamamos al PAC
         } else if (isMock) {
 
-        if (isMock) {
           // Simulación realista: insertar entre 0-4 CFDI "descubiertos" como eventos.
           descargados = Math.floor(Math.random() * 5);
           nuevos = descargados;
