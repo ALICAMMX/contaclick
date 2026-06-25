@@ -548,3 +548,139 @@ function Bloque({ titulo, datos }: { titulo: string; datos: Record<string, unkno
     </div>
   );
 }
+
+function ExportButtons({ data }: { data: { reporte: any; recomendaciones: any[] } }) {
+  const exportandoRef = useRef(false);
+
+  const downloadJSON = () => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `reporte-${data.reporte.clientes?.rfc ?? data.reporte.id}-${data.reporte.periodo}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadPDF = async () => {
+    if (exportandoRef.current) return;
+    exportandoRef.current = true;
+    try {
+      const { jsPDF } = await import("jspdf");
+      const r = data.reporte;
+      const doc = new jsPDF({ unit: "pt", format: "a4" });
+      const W = doc.internal.pageSize.getWidth();
+      const H = doc.internal.pageSize.getHeight();
+      const M = 40;
+      let y = M;
+
+      const ensure = (h: number) => {
+        if (y + h > H - M) { doc.addPage(); y = M; }
+      };
+      const text = (s: string, size = 10, bold = false, color: [number, number, number] = [30, 30, 30]) => {
+        doc.setFont("helvetica", bold ? "bold" : "normal");
+        doc.setFontSize(size);
+        doc.setTextColor(...color);
+        const lines = doc.splitTextToSize(s ?? "", W - M * 2);
+        for (const ln of lines) {
+          ensure(size + 4);
+          doc.text(ln, M, y);
+          y += size + 4;
+        }
+      };
+      const heading = (s: string) => {
+        ensure(30);
+        y += 8;
+        text(s, 13, true, [20, 20, 60]);
+        doc.setDrawColor(220);
+        doc.line(M, y, W - M, y);
+        y += 8;
+      };
+      const kv = (obj: Record<string, unknown>) => {
+        Object.entries(obj ?? {}).forEach(([k, v]) => {
+          if (typeof v !== "number" && typeof v !== "string") return;
+          const label = k.replaceAll("_", " ");
+          const val = typeof v === "number" && /ingres|gasto|isr|iva|saldo|utilidad|impacto|monto/i.test(k)
+            ? fmtPesos(v)
+            : typeof v === "number" && k === "margen" ? `${(v * 100).toFixed(1)}%`
+            : typeof v === "number" ? v.toLocaleString("es-MX") : String(v);
+          text(`• ${label}: ${val}`, 10);
+        });
+      };
+
+      // Encabezado
+      text("ContaClick · Reporte Ejecutivo", 16, true, [10, 10, 80]);
+      text(`${r.clientes?.razon_social ?? r.clientes?.rfc ?? "Cliente"} · ${r.clientes?.rfc ?? ""}`, 11, true);
+      text(`Periodo ${r.periodo} · ${r.tipo} · Estado: ${r.estado}`, 10, false, [110, 110, 110]);
+      y += 6;
+
+      if (r.resumen_ejecutivo) {
+        heading("Resumen ejecutivo");
+        text(r.resumen_ejecutivo, 11);
+      }
+      heading("Resumen financiero");
+      kv(r.resumen_financiero ?? {});
+      heading("Resumen fiscal");
+      kv(r.resumen_fiscal ?? {});
+      heading("Conciliación");
+      kv(r.conciliacion ?? {});
+      heading("Salud fiscal");
+      kv(r.salud?.subscores ?? r.salud ?? {});
+
+      if ((r.hallazgos ?? []).length) {
+        heading("Hallazgos");
+        (r.hallazgos as any[]).forEach((h, i) => {
+          text(`${i + 1}. ${h.titulo}${h.severidad ? ` [${h.severidad}]` : ""}`, 11, true);
+          if (h.detalle) text(h.detalle, 10, false, [80, 80, 80]);
+          y += 2;
+        });
+      }
+      if ((r.oportunidades ?? []).length) {
+        heading("Oportunidades");
+        (r.oportunidades as any[]).forEach((o, i) => {
+          text(`${i + 1}. ${o.titulo}${o.impacto ? ` (+${fmtPesos(o.impacto)})` : ""}`, 11, true);
+          if (o.detalle) text(o.detalle, 10, false, [80, 80, 80]);
+          y += 2;
+        });
+      }
+      if (data.recomendaciones.length) {
+        heading("Recomendaciones IA");
+        data.recomendaciones.forEach((rec, i) => {
+          text(`${i + 1}. ${rec.titulo} [${rec.prioridad}]`, 11, true);
+          if (rec.descripcion) text(rec.descripcion, 10, false, [80, 80, 80]);
+          if (rec.accion_sugerida) text(`→ ${rec.accion_sugerida}`, 10, false, [40, 80, 40]);
+          if (rec.impacto_estimado_centavos > 0) text(`Impacto estimado: ${fmtMxn(rec.impacto_estimado_centavos)}`, 10, false, [40, 100, 40]);
+          y += 2;
+        });
+      }
+
+      // Pie
+      const pages = doc.getNumberOfPages();
+      for (let i = 1; i <= pages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(`ContaClick · Generado ${new Date().toLocaleString("es-MX")} · Página ${i}/${pages}`, M, H - 20);
+      }
+
+      doc.save(`reporte-${r.clientes?.rfc ?? r.id}-${r.periodo}.pdf`);
+      toast.success("PDF descargado");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error al generar PDF");
+    } finally {
+      exportandoRef.current = false;
+    }
+  };
+
+  return (
+    <div className="flex gap-2 shrink-0">
+      <Button size="sm" variant="outline" onClick={downloadJSON}>
+        <Download className="h-3 w-3 mr-1" />JSON
+      </Button>
+      <Button size="sm" onClick={downloadPDF}>
+        <Download className="h-3 w-3 mr-1" />PDF
+      </Button>
+    </div>
+  );
+}
+
