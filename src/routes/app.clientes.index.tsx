@@ -9,7 +9,7 @@ import { listClientes, createCliente, deleteCliente } from "@/lib/clientes.funct
 import { useActiveCliente } from "@/lib/active-cliente";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 
-export const Route = createFileRoute("/app/clientes")({
+export const Route = createFileRoute("/app/clientes/")({
   component: ClientesPage,
 });
 

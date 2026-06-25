@@ -54,7 +54,6 @@ import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
 import { Route as AppContableRouteImport } from './routes/app.contable'
 import { Route as AppConfiguracionRouteImport } from './routes/app.configuracion'
 import { Route as AppConciliacionRouteImport } from './routes/app.conciliacion'
-import { Route as AppClientesRouteImport } from './routes/app.clientes'
 import { Route as AppCfdiRouteImport } from './routes/app.cfdi'
 import { Route as AppCalendarioRouteImport } from './routes/app.calendario'
 import { Route as AppBuzonRouteImport } from './routes/app.buzon'
@@ -67,6 +66,7 @@ import { Route as AppMensajesIndexRouteImport } from './routes/app.mensajes.inde
 import { Route as AppLegalIndexRouteImport } from './routes/app.legal.index'
 import { Route as AppContableIndexRouteImport } from './routes/app.contable.index'
 import { Route as AppConciliacionIndexRouteImport } from './routes/app.conciliacion.index'
+import { Route as AppClientesIndexRouteImport } from './routes/app.clientes.index'
 import { Route as AppCfdiIndexRouteImport } from './routes/app.cfdi.index'
 import { Route as AppAdminIndexRouteImport } from './routes/app.admin.index'
 import { Route as AppToolsXmlBulkReaderRouteImport } from './routes/app.tools.xml-bulk-reader'
@@ -335,11 +335,6 @@ const AppConciliacionRoute = AppConciliacionRouteImport.update({
   path: '/conciliacion',
   getParentRoute: () => AppRoute,
 } as any)
-const AppClientesRoute = AppClientesRouteImport.update({
-  id: '/clientes',
-  path: '/clientes',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppCfdiRoute = AppCfdiRouteImport.update({
   id: '/cfdi',
   path: '/cfdi',
@@ -399,6 +394,11 @@ const AppConciliacionIndexRoute = AppConciliacionIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppConciliacionRoute,
+} as any)
+const AppClientesIndexRoute = AppClientesIndexRouteImport.update({
+  id: '/clientes/',
+  path: '/clientes/',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppCfdiIndexRoute = AppCfdiIndexRouteImport.update({
   id: '/',
@@ -558,9 +558,9 @@ const AppConciliacionHistorialRoute =
     getParentRoute: () => AppConciliacionRoute,
   } as any)
 const AppClientesIdRoute = AppClientesIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AppClientesRoute,
+  id: '/clientes/$id',
+  path: '/clientes/$id',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppCfdiIdRoute = AppCfdiIdRouteImport.update({
   id: '/$id',
@@ -638,7 +638,6 @@ export interface FileRoutesByFullPath {
   '/app/buzon': typeof AppBuzonRoute
   '/app/calendario': typeof AppCalendarioRoute
   '/app/cfdi': typeof AppCfdiRouteWithChildren
-  '/app/clientes': typeof AppClientesRouteWithChildren
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
   '/app/configuracion': typeof AppConfiguracionRoute
   '/app/contable': typeof AppContableRouteWithChildren
@@ -712,6 +711,7 @@ export interface FileRoutesByFullPath {
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
   '/app/admin/': typeof AppAdminIndexRoute
   '/app/cfdi/': typeof AppCfdiIndexRoute
+  '/app/clientes/': typeof AppClientesIndexRoute
   '/app/conciliacion/': typeof AppConciliacionIndexRoute
   '/app/contable/': typeof AppContableIndexRoute
   '/app/legal/': typeof AppLegalIndexRoute
@@ -735,7 +735,6 @@ export interface FileRoutesByTo {
   '/app/administrativo': typeof AppAdministrativoRoute
   '/app/buzon': typeof AppBuzonRoute
   '/app/calendario': typeof AppCalendarioRoute
-  '/app/clientes': typeof AppClientesRouteWithChildren
   '/app/configuracion': typeof AppConfiguracionRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/despacho': typeof AppDespachoRoute
@@ -804,6 +803,7 @@ export interface FileRoutesByTo {
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
   '/app/admin': typeof AppAdminIndexRoute
   '/app/cfdi': typeof AppCfdiIndexRoute
+  '/app/clientes': typeof AppClientesIndexRoute
   '/app/conciliacion': typeof AppConciliacionIndexRoute
   '/app/contable': typeof AppContableIndexRoute
   '/app/legal': typeof AppLegalIndexRoute
@@ -833,7 +833,6 @@ export interface FileRoutesById {
   '/app/buzon': typeof AppBuzonRoute
   '/app/calendario': typeof AppCalendarioRoute
   '/app/cfdi': typeof AppCfdiRouteWithChildren
-  '/app/clientes': typeof AppClientesRouteWithChildren
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
   '/app/configuracion': typeof AppConfiguracionRoute
   '/app/contable': typeof AppContableRouteWithChildren
@@ -907,6 +906,7 @@ export interface FileRoutesById {
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
   '/app/admin/': typeof AppAdminIndexRoute
   '/app/cfdi/': typeof AppCfdiIndexRoute
+  '/app/clientes/': typeof AppClientesIndexRoute
   '/app/conciliacion/': typeof AppConciliacionIndexRoute
   '/app/contable/': typeof AppContableIndexRoute
   '/app/legal/': typeof AppLegalIndexRoute
@@ -937,7 +937,6 @@ export interface FileRouteTypes {
     | '/app/buzon'
     | '/app/calendario'
     | '/app/cfdi'
-    | '/app/clientes'
     | '/app/conciliacion'
     | '/app/configuracion'
     | '/app/contable'
@@ -1011,6 +1010,7 @@ export interface FileRouteTypes {
     | '/app/tools/xml-bulk-reader'
     | '/app/admin/'
     | '/app/cfdi/'
+    | '/app/clientes/'
     | '/app/conciliacion/'
     | '/app/contable/'
     | '/app/legal/'
@@ -1034,7 +1034,6 @@ export interface FileRouteTypes {
     | '/app/administrativo'
     | '/app/buzon'
     | '/app/calendario'
-    | '/app/clientes'
     | '/app/configuracion'
     | '/app/dashboard'
     | '/app/despacho'
@@ -1103,6 +1102,7 @@ export interface FileRouteTypes {
     | '/app/tools/xml-bulk-reader'
     | '/app/admin'
     | '/app/cfdi'
+    | '/app/clientes'
     | '/app/conciliacion'
     | '/app/contable'
     | '/app/legal'
@@ -1131,7 +1131,6 @@ export interface FileRouteTypes {
     | '/app/buzon'
     | '/app/calendario'
     | '/app/cfdi'
-    | '/app/clientes'
     | '/app/conciliacion'
     | '/app/configuracion'
     | '/app/contable'
@@ -1205,6 +1204,7 @@ export interface FileRouteTypes {
     | '/app/tools/xml-bulk-reader'
     | '/app/admin/'
     | '/app/cfdi/'
+    | '/app/clientes/'
     | '/app/conciliacion/'
     | '/app/contable/'
     | '/app/legal/'
@@ -1550,13 +1550,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppConciliacionRouteImport
       parentRoute: typeof AppRoute
     }
-    '/app/clientes': {
-      id: '/app/clientes'
-      path: '/clientes'
-      fullPath: '/app/clientes'
-      preLoaderRoute: typeof AppClientesRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/app/cfdi': {
       id: '/app/cfdi'
       path: '/cfdi'
@@ -1640,6 +1633,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/conciliacion/'
       preLoaderRoute: typeof AppConciliacionIndexRouteImport
       parentRoute: typeof AppConciliacionRoute
+    }
+    '/app/clientes/': {
+      id: '/app/clientes/'
+      path: '/clientes'
+      fullPath: '/app/clientes/'
+      preLoaderRoute: typeof AppClientesIndexRouteImport
+      parentRoute: typeof AppRoute
     }
     '/app/cfdi/': {
       id: '/app/cfdi/'
@@ -1853,10 +1853,10 @@ declare module '@tanstack/react-router' {
     }
     '/app/clientes/$id': {
       id: '/app/clientes/$id'
-      path: '/$id'
+      path: '/clientes/$id'
       fullPath: '/app/clientes/$id'
       preLoaderRoute: typeof AppClientesIdRouteImport
-      parentRoute: typeof AppClientesRoute
+      parentRoute: typeof AppRoute
     }
     '/app/cfdi/$id': {
       id: '/app/cfdi/$id'
@@ -1979,18 +1979,6 @@ const AppCfdiRouteChildren: AppCfdiRouteChildren = {
 const AppCfdiRouteWithChildren =
   AppCfdiRoute._addFileChildren(AppCfdiRouteChildren)
 
-interface AppClientesRouteChildren {
-  AppClientesIdRoute: typeof AppClientesIdRoute
-}
-
-const AppClientesRouteChildren: AppClientesRouteChildren = {
-  AppClientesIdRoute: AppClientesIdRoute,
-}
-
-const AppClientesRouteWithChildren = AppClientesRoute._addFileChildren(
-  AppClientesRouteChildren,
-)
-
 interface AppConciliacionRouteChildren {
   AppConciliacionHistorialRoute: typeof AppConciliacionHistorialRoute
   AppConciliacionIndexRoute: typeof AppConciliacionIndexRoute
@@ -2080,7 +2068,6 @@ interface AppRouteChildren {
   AppBuzonRoute: typeof AppBuzonRoute
   AppCalendarioRoute: typeof AppCalendarioRoute
   AppCfdiRoute: typeof AppCfdiRouteWithChildren
-  AppClientesRoute: typeof AppClientesRouteWithChildren
   AppConciliacionRoute: typeof AppConciliacionRouteWithChildren
   AppConfiguracionRoute: typeof AppConfiguracionRoute
   AppContableRoute: typeof AppContableRouteWithChildren
@@ -2098,6 +2085,7 @@ interface AppRouteChildren {
   AppTareasRoute: typeof AppTareasRoute
   AppWorkflowsRoute: typeof AppWorkflowsRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppClientesIdRoute: typeof AppClientesIdRoute
   AppToolsBankReconcilerRoute: typeof AppToolsBankReconcilerRoute
   AppToolsCfdiValidatorRoute: typeof AppToolsCfdiValidatorRoute
   AppToolsCfdiVerifierRoute: typeof AppToolsCfdiVerifierRoute
@@ -2115,6 +2103,7 @@ interface AppRouteChildren {
   AppToolsSatRiskRoute: typeof AppToolsSatRiskRoute
   AppToolsShadowPayrollRoute: typeof AppToolsShadowPayrollRoute
   AppToolsXmlBulkReaderRoute: typeof AppToolsXmlBulkReaderRoute
+  AppClientesIndexRoute: typeof AppClientesIndexRoute
   AppToolsIndexRoute: typeof AppToolsIndexRoute
 }
 
@@ -2125,7 +2114,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppBuzonRoute: AppBuzonRoute,
   AppCalendarioRoute: AppCalendarioRoute,
   AppCfdiRoute: AppCfdiRouteWithChildren,
-  AppClientesRoute: AppClientesRouteWithChildren,
   AppConciliacionRoute: AppConciliacionRouteWithChildren,
   AppConfiguracionRoute: AppConfiguracionRoute,
   AppContableRoute: AppContableRouteWithChildren,
@@ -2143,6 +2131,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppTareasRoute: AppTareasRoute,
   AppWorkflowsRoute: AppWorkflowsRoute,
   AppIndexRoute: AppIndexRoute,
+  AppClientesIdRoute: AppClientesIdRoute,
   AppToolsBankReconcilerRoute: AppToolsBankReconcilerRoute,
   AppToolsCfdiValidatorRoute: AppToolsCfdiValidatorRoute,
   AppToolsCfdiVerifierRoute: AppToolsCfdiVerifierRoute,
@@ -2160,6 +2149,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppToolsSatRiskRoute: AppToolsSatRiskRoute,
   AppToolsShadowPayrollRoute: AppToolsShadowPayrollRoute,
   AppToolsXmlBulkReaderRoute: AppToolsXmlBulkReaderRoute,
+  AppClientesIndexRoute: AppClientesIndexRoute,
   AppToolsIndexRoute: AppToolsIndexRoute,
 }
 
