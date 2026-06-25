@@ -3,6 +3,15 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 
+function extractJsonObject(raw: string) {
+  const text = String(raw ?? "").trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+  try { return JSON.parse(text); } catch { /* try extracting below */ }
+  const first = text.indexOf("{");
+  const last = text.lastIndexOf("}");
+  if (first >= 0 && last > first) return JSON.parse(text.slice(first, last + 1));
+  return {};
+}
+
 const RunInput = z.object({
   cliente_id: z.string().uuid(),
   desde: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
@@ -557,8 +566,10 @@ Responde SOLO JSON: {"explicacion":"...", "accion":"..."}`;
       if (res.status === 402) return { error: "Créditos IA agotados. Recarga en Plan & Consumo.", explicacion: "" };
       if (!res.ok) return { error: `IA ${res.status}`, explicacion: "" };
       const json = await res.json() as any;
+      const finishReason = json.choices?.[0]?.finish_reason ?? json.choices?.[0]?.finishReason;
+      if (finishReason && !["stop", "STOP"].includes(String(finishReason))) return { error: `IA incompleta (${finishReason})`, explicacion: "" };
       const content = json.choices?.[0]?.message?.content ?? "{}";
-      const parsed = JSON.parse(content);
+      const parsed = extractJsonObject(content);
       const explicacion = String(parsed.explicacion ?? "");
       const accion = String(parsed.accion ?? "");
       const full = accion ? `${explicacion}\n\nAcción sugerida: ${accion}` : explicacion;
