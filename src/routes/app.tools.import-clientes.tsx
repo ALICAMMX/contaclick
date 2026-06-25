@@ -99,12 +99,15 @@ function ImportClientesPage() {
 
   return (
     <div className="space-y-6 max-w-5xl">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Importar cartera de clientes</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Migra tu cartera completa desde Excel o CSV. Cada fila se valida y se guarda en RFC vinculados;
-          los marcados como <b>cliente</b> aparecen también en Expedientes.
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">Importar cartera de clientes</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Migra tu cartera completa desde Excel o CSV. Cada fila se valida y se guarda en RFC vinculados;
+            los marcados como <b>cliente</b> aparecen también en Expedientes.
+          </p>
+        </div>
+        <HerramientaHelp slug="import-clientes" />
       </div>
 
       <div className="rounded-xl border border-border/60 bg-card/50 p-6 space-y-4">
