@@ -77,6 +77,12 @@ export function UsageProfileCard() {
   const resetDate = new Date(d.reset_at);
   const resetLabel = resetDate.toLocaleDateString("es-MX", { day: "numeric", month: "long" });
   const hasTokens = d.plan.ia_tokens > 0;
+  const hasSat = d.plan.sat_solicitudes_mes !== 0;
+  const tilesCount = 2 + (hasTokens ? 1 : 0) + (hasSat ? 1 : 0);
+  const gridCols =
+    tilesCount >= 4 ? "sm:grid-cols-2 lg:grid-cols-4"
+    : tilesCount === 3 ? "sm:grid-cols-3"
+    : "sm:grid-cols-2";
 
   return (
     <div className="rounded-2xl border border-border/60 bg-gradient-to-br from-card/80 to-card/40 p-5 space-y-4">
@@ -100,7 +106,7 @@ export function UsageProfileCard() {
         </Link>
       </div>
 
-      <div className={`grid gap-3 ${hasTokens ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+      <div className={`grid gap-3 ${gridCols}`}>
         <Tile
           icon={Users}
           label="RFCs activos"
@@ -124,12 +130,32 @@ export function UsageProfileCard() {
             unidad="tokens"
           />
         )}
+        {hasSat && (
+          <Tile
+            icon={Download}
+            label="Descargas SAT del mes"
+            usado={d.uso.sat_solicitudes}
+            limite={d.plan.sat_solicitudes_mes}
+            unidad="solicitudes"
+          />
+        )}
       </div>
+
+      {hasSat && (
+        <div className="rounded-lg bg-muted/30 border border-border/40 px-3 py-2 flex items-center justify-between text-[11px]">
+          <span className="text-muted-foreground flex items-center gap-1.5">
+            <Download className="h-3 w-3" /> Frecuencia máxima de sincronización SAT en tu plan
+          </span>
+          <span className="font-medium capitalize">{d.plan.sat_frecuencia_max}</span>
+        </div>
+      )}
 
       <p className="text-[11px] text-muted-foreground border-t border-border/40 pt-3">
         Te avisaremos automáticamente al 80% y al 100% en tu campana de notificaciones.
         Los RFCs activos son los que cuentan contra tu plan — puedes archivar expedientes que ya no atiendes para liberar espacio.
+        Las descargas SAT consumen saldo del PAC: si llegas al tope del mes la sincronización se pausa hasta el siguiente periodo o hasta que subas de plan.
       </p>
     </div>
   );
 }
+
