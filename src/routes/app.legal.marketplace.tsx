@@ -19,9 +19,8 @@ function MarketPage() {
     <ModuleScaffold
       title="Marketplace Legal"
       subtitle="Cuando un caso supera tu especialidad, conecta con despachos verificados que validan y firman tu estrategia. La IA prepara el expediente, ellos defienden."
-      icon={<Store className="h-5 w-5" /
+      icon={<Store className="h-5 w-5" />}
       actions={<HerramientaHelp slug="legal-marketplace" />}
-    >}
     >
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {DESPACHOS.map((d, i) => (

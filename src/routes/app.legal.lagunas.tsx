@@ -86,9 +86,8 @@ function LagunasPage() {
     <ModuleScaffold
       title="Mapa de Lagunas Legales"
       subtitle="Detecta huecos normativos y conflictos entre LISR, LIVA y CFF. Activa defensas para tu expediente y da seguimiento."
-      icon={<Gavel className="h-5 w-5" /
+      icon={<Gavel className="h-5 w-5" />}
       actions={<HerramientaHelp slug="legal-lagunas" />}
-    >}
       badge={null}
     >
       {!cliente ? (
