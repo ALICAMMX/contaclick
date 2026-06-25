@@ -2,8 +2,9 @@ import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, ShieldCheck, ShieldAlert, ShieldOff, Upload, Unlink, RefreshCw, CheckCircle2, History, Wrench, FileText, MapPin, Truck, Receipt, Users, ListChecks, Workflow as WorkflowIcon } from "lucide-react";
+import { ArrowLeft, ShieldCheck, ShieldAlert, ShieldOff, Upload, Unlink, RefreshCw, CheckCircle2, History, Wrench, FileText, MapPin, Truck, Receipt, Users, ListChecks, Activity, Workflow as WorkflowIcon } from "lucide-react";
 import { listWorkflows, listRuns } from "@/lib/workflows/workflows.functions";
+import { computeSaludFiscal } from "@/lib/salud/salud.functions";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { getCliente, listTerceros } from "@/lib/clientes.functions";
@@ -306,6 +307,8 @@ function ClienteDetailPage() {
         </p>
       </section>
 
+      <SaludFiscalExpediente clienteId={id} />
+
       <AutomatizacionesExpediente clienteId={id} />
     </div>
   );
@@ -354,6 +357,53 @@ function AutomatizacionesExpediente({ clienteId }: { clienteId: string }) {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function SaludFiscalExpediente({ clienteId }: { clienteId: string }) {
+  const _compute = useServerFn(computeSaludFiscal);
+  const { data, isLoading } = useQuery({
+    queryKey: ["salud-expediente", clienteId],
+    queryFn: async () => {
+      const r = await _compute({ data: { cliente_id: clienteId, persist: false } });
+      return "notFound" in r && r.notFound ? null : (r as any);
+    },
+  });
+  const semColor: Record<string, string> = {
+    verde: "text-emerald-400 border-emerald-500/40 bg-emerald-500/10",
+    amarillo: "text-amber-400 border-amber-500/40 bg-amber-500/10",
+    naranja: "text-orange-400 border-orange-500/40 bg-orange-500/10",
+    rojo: "text-red-400 border-red-500/40 bg-red-500/10",
+  };
+  return (
+    <section className="rounded-xl border border-border/60 bg-card/50 p-6">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Activity className="h-4 w-4 text-primary" />
+          <h2 className="text-lg font-semibold">Salud Fiscal</h2>
+        </div>
+        <Link to="/app/salud-fiscal" className="text-xs inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border hover:bg-muted/40">
+          Abrir dashboard
+        </Link>
+      </div>
+      {isLoading && <p className="text-xs text-muted-foreground mt-3">Calculando score…</p>}
+      {data && (
+        <div className="mt-4 grid sm:grid-cols-[auto_1fr] gap-4 items-center">
+          <div className={`rounded-xl border px-5 py-4 text-center ${semColor[data.semaforo]}`}>
+            <div className="text-3xl font-bold">{data.score}<span className="text-sm opacity-60">/100</span></div>
+            <div className="text-[10px] uppercase mt-1">{data.semaforo}</div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {data.subscores.map((s: any) => (
+              <div key={s.key} className="text-xs">
+                <div className="text-muted-foreground">{s.label}</div>
+                <div className="font-semibold tabular-nums">{s.score}/100</div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </section>

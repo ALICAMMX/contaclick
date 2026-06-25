@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { getPortalContext } from "@/lib/portal/portal.functions";
-import { Sparkles, Home, FileText, Wallet, Receipt, BarChart3, MessageSquare, Upload, LogOut, Building2 } from "lucide-react";
+import { Sparkles, Home, FileText, Wallet, Receipt, BarChart3, MessageSquare, Upload, LogOut, Building2, Activity } from "lucide-react";
 import { Logo } from "@/components/Logo";
 
 export const Route = createFileRoute("/portal")({
@@ -48,6 +48,7 @@ function PortalLayout() {
 
   const nav: { to: string; label: string; icon: any; show: boolean }[] = [
     { to: "/portal", label: "Inicio", icon: Home, show: config.ver_dashboard },
+    { to: "/portal/salud-fiscal", label: "Salud Fiscal", icon: Activity, show: (config as any).ver_salud_fiscal !== false },
     { to: "/portal/cfdi", label: "Mis CFDI", icon: FileText, show: config.ver_cfdi },
     { to: "/portal/estado-cuenta", label: "Estado de cuenta", icon: Wallet, show: config.ver_cxc || config.ver_cxp },
     { to: "/portal/impuestos", label: "Impuestos", icon: Receipt, show: config.ver_impuestos || config.ver_obligaciones },

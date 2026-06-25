@@ -385,6 +385,7 @@ export type Database = {
           ver_mensajes: boolean
           ver_obligaciones: boolean
           ver_reportes: boolean
+          ver_salud_fiscal: boolean
         }
         Insert: {
           cliente_id: string
@@ -400,6 +401,7 @@ export type Database = {
           ver_mensajes?: boolean
           ver_obligaciones?: boolean
           ver_reportes?: boolean
+          ver_salud_fiscal?: boolean
         }
         Update: {
           cliente_id?: string
@@ -415,6 +417,7 @@ export type Database = {
           ver_mensajes?: boolean
           ver_obligaciones?: boolean
           ver_reportes?: boolean
+          ver_salud_fiscal?: boolean
         }
         Relationships: [
           {
@@ -1517,6 +1520,75 @@ export type Database = {
           },
           {
             foreignKeyName: "rfcs_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      salud_fiscal_snapshots: {
+        Row: {
+          ai_resumen: string | null
+          alertas: Json
+          cliente_id: string
+          comparativo: Json
+          computed_by: string | null
+          created_at: string
+          despacho_id: string
+          hallazgos: Json
+          id: string
+          periodo: string
+          recomendaciones: Json
+          score: number
+          semaforo: string
+          subscores: Json
+          updated_at: string
+        }
+        Insert: {
+          ai_resumen?: string | null
+          alertas?: Json
+          cliente_id: string
+          comparativo?: Json
+          computed_by?: string | null
+          created_at?: string
+          despacho_id: string
+          hallazgos?: Json
+          id?: string
+          periodo: string
+          recomendaciones?: Json
+          score: number
+          semaforo: string
+          subscores?: Json
+          updated_at?: string
+        }
+        Update: {
+          ai_resumen?: string | null
+          alertas?: Json
+          cliente_id?: string
+          comparativo?: Json
+          computed_by?: string | null
+          created_at?: string
+          despacho_id?: string
+          hallazgos?: Json
+          id?: string
+          periodo?: string
+          recomendaciones?: Json
+          score?: number
+          semaforo?: string
+          subscores?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salud_fiscal_snapshots_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salud_fiscal_snapshots_despacho_id_fkey"
             columns: ["despacho_id"]
             isOneToOne: false
             referencedRelation: "despachos"
