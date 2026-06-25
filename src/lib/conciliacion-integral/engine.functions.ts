@@ -549,6 +549,8 @@ Responde SOLO JSON: {"explicacion":"...", "accion":"..."}`;
           model: "google/gemini-2.5-flash",
           messages: [{ role: "user", content: prompt }],
           response_format: { type: "json_object" },
+          max_tokens: 4000,
+          maxOutputTokens: 4000,
         }),
       });
       if (res.status === 429) return { error: "Límite IA alcanzado, intenta en unos minutos.", explicacion: "" };

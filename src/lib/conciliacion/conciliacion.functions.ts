@@ -395,6 +395,8 @@ Responde en español, formato markdown, conciso.`;
             { role: "system", content: "Eres ContaClick IA, contador fiscalista mexicano experto en conciliaciones bancarias y SAT." },
             { role: "user", content: prompt },
           ],
+          max_tokens: 5000,
+          maxOutputTokens: 5000,
         }),
       });
       if (res.status === 429) return { error: "Demasiadas solicitudes.", content: "" };

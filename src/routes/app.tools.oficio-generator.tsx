@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ToolShell } from "@/components/ToolShell";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { saveToolRun } from "@/lib/tool-runs.functions";
+import { safeFilename, triggerFileDownload } from "@/lib/download";
 
 export const Route = createFileRoute("/app/tools/oficio-generator")({
   component: OficioGenerator,
@@ -165,12 +166,7 @@ function OficioGenerator() {
 
   const onDownloadTxt = () => {
     const blob = new Blob([plainText], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${tpl.key}-${vars.rfc || "oficio"}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    triggerFileDownload(blob, safeFilename(`${tpl.key}-${vars.rfc || "oficio"}.txt`, "oficio.txt"));
   };
 
   const onDownloadPDF = () => {
@@ -515,7 +511,7 @@ function generarOficioPDF(sections: Section[], tpl: Plantilla, v: Vars) {
   }
 
   drawFooter(doc, v);
-  doc.save(`${tpl.key}-${v.rfc || "oficio"}.pdf`);
+  triggerFileDownload(doc.output("blob"), safeFilename(`${tpl.key}-${v.rfc || "oficio"}.pdf`, "oficio.pdf"));
 }
 
 function drawFooter(doc: jsPDF, _v: Vars) {

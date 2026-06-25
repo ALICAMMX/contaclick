@@ -337,6 +337,8 @@ Responde en español, formato markdown, máximo 220 palabras.`;
             { role: "system", content: "Eres ContaClick IA, traductor de tecnicismos fiscales a lenguaje claro." },
             { role: "user", content: prompt },
           ],
+          max_tokens: 6000,
+          maxOutputTokens: 6000,
         }),
       });
       if (res.status === 429) return { error: "Demasiadas solicitudes.", content: "" };

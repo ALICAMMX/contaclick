@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { safeFilename, triggerFileDownload } from "@/lib/download";
 
 const fmt = (n: number) => Number(Number(n ?? 0).toFixed(2));
 
@@ -55,7 +56,8 @@ export function downloadReporteExcel(args: { tipo: string; payload: any }) {
   if (tipo === "diot") addSheet("DIOT", payload.detalle ?? []);
 
   const fname = `${tipo}_${cli.rfc ?? "cliente"}_${periodo.desde ?? ""}_${periodo.hasta ?? ""}.xlsx`;
-  XLSX.writeFile(wb, fname);
+  const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  triggerFileDownload(new Blob([out], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), safeFilename(fname, "reporte.xlsx"));
 }
 
 export function downloadReporteCSV(args: { tipo: string; payload: any }) {
@@ -70,22 +72,13 @@ export function downloadReporteCSV(args: { tipo: string; payload: any }) {
     const blob = new Blob([
       Object.entries(r).map(([k, v]) => `${k},${v}`).join("\n"),
     ], { type: "text/csv;charset=utf-8;" });
-    triggerDownload(blob, `${tipo}_resumen.csv`);
+    triggerFileDownload(blob, safeFilename(`${tipo}_resumen.csv`, "reporte.csv"));
     return;
   }
   const ws = XLSX.utils.json_to_sheet(rows);
   const csv = XLSX.utils.sheet_to_csv(ws);
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  triggerDownload(blob, `${tipo}_${cli.rfc ?? ""}_${periodo.desde ?? ""}.csv`);
-}
-
-function triggerDownload(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  triggerFileDownload(blob, safeFilename(`${tipo}_${cli.rfc ?? ""}_${periodo.desde ?? ""}.csv`, "reporte.csv"));
 }
 
 // DIOT — formato batch SAT (campos separados por |). Versión simplificada nacionales.
@@ -115,6 +108,6 @@ export function downloadDIOTtxt(args: { payload: any }) {
   });
   const content = lines.join("\r\n");
   const blob = new Blob([content], { type: "text/plain;charset=utf-8;" });
-  triggerDownload(blob, `DIOT_${cli.rfc ?? ""}_${periodo.desde ?? ""}_${periodo.hasta ?? ""}.txt`);
+  triggerFileDownload(blob, safeFilename(`DIOT_${cli.rfc ?? ""}_${periodo.desde ?? ""}_${periodo.hasta ?? ""}.txt`, "diot.txt"));
 }
 

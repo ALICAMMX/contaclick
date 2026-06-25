@@ -23,6 +23,7 @@ import { ToolShell } from "@/components/ToolShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { safeFilename, triggerFileDownload } from "@/lib/download";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -148,12 +149,7 @@ function CalendarioFiscal() {
       ),
     ].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `calendario-${cliente?.rfc ?? "expediente"}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    triggerFileDownload(blob, safeFilename(`calendario-${cliente?.rfc ?? "expediente"}.csv`, "calendario.csv"));
   };
 
   return (

@@ -12,6 +12,7 @@ import { ToolShell } from "@/components/ToolShell";
 import { parseCfdi } from "@/lib/tools/cfdi-parser";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { uploadCfdiBatch, getExistingCfdiKeys } from "@/lib/cfdi/cfdi.functions";
+import { safeFilename, triggerFileDownload } from "@/lib/download";
 
 export const Route = createFileRoute("/app/tools/xml-bulk-reader")({
   component: BulkReader,
@@ -262,14 +263,15 @@ function BulkReader() {
       ),
     ].join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-    triggerDownload(blob, `cfdi-${Date.now()}.csv`);
+    triggerFileDownload(blob, safeFilename(`cfdi-${Date.now()}.csv`, "cfdi.csv"));
   };
 
   const exportXlsx = () => {
     const ws = XLSX.utils.json_to_sheet(exportRows());
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "CFDIs");
-    XLSX.writeFile(wb, `cfdi-${Date.now()}.xlsx`);
+    const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    triggerFileDownload(new Blob([out], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), safeFilename(`cfdi-${Date.now()}.xlsx`, "cfdi.xlsx"));
   };
 
   return (
@@ -445,15 +447,6 @@ function BulkReader() {
 
 function fmt(n?: number) {
   return n != null ? `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })}` : "—";
-}
-
-function triggerDownload(blob: Blob, name: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = name;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 function Th({ children, align }: { children: React.ReactNode; align?: "right" }) {

@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { safeFilename, triggerFileDownload } from "@/lib/download";
 
 const fmtMXN = (n: number) =>
   new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 2 }).format(Number(n) || 0);
@@ -122,7 +123,7 @@ export function downloadReportePDF(args: {
   }
 
   const fname = `${tipo}_${cli.rfc ?? "cliente"}_${periodo.desde ?? ""}_${periodo.hasta ?? ""}.pdf`;
-  doc.save(fname);
+  triggerFileDownload(doc.output("blob"), safeFilename(fname, "reporte.pdf"));
 }
 
 function buildKpis(tipo: string, r: any): Array<{ label: string; value: string }> {

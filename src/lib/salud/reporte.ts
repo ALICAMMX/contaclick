@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import type { SaludFiscal } from "./salud.functions";
+import { safeFilename, triggerFileDownload } from "@/lib/download";
 
 const fmtMXN = (n: number) =>
   new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(Number(n) || 0);
@@ -135,5 +136,5 @@ export function descargarReporteSalud(salud: SaludFiscal) {
     });
   }
 
-  doc.save(`salud-fiscal-${salud.cliente.rfc}-${salud.periodo}.pdf`);
+  triggerFileDownload(doc.output("blob"), safeFilename(`salud-fiscal-${salud.cliente.rfc}-${salud.periodo}.pdf`, "salud-fiscal.pdf"));
 }

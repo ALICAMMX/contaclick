@@ -20,6 +20,7 @@ import {
 } from "@/lib/cfdi/cfdi.functions";
 import { classifyXmls, reportTotalRejections, type RejectReport } from "@/lib/cfdi/dedup-xml";
 import { RejectModal } from "@/components/RejectModal";
+import { safeFilename, triggerFileDownload } from "@/lib/download";
 
 export const Route = createFileRoute("/app/cfdi/")({
   component: CfdiDashboard,
@@ -500,11 +501,8 @@ function ExportButton({ rows, selectedIds }: { rows: CfdiRow[]; selectedIds: Set
 
   const download = () => {
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
     const tag = selectedIds.size > 0 ? `-sel${selectedIds.size}` : "";
-    a.href = url; a.download = `cfdi${tag}-${new Date().toISOString().slice(0,10)}.csv`;
-    a.click(); URL.revokeObjectURL(url);
+    triggerFileDownload(blob, safeFilename(`cfdi${tag}-${new Date().toISOString().slice(0,10)}.csv`, "cfdi.csv"));
   };
   const label = selectedIds.size > 0 ? `Exportar ${selectedIds.size}` : "Exportar CSV";
   return (

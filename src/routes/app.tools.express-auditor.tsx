@@ -11,6 +11,7 @@ import { runExpressAudit, type AuditFinding } from "@/lib/auditor/auditor.functi
 import { exportXlsx, buildFilename } from "@/lib/export/xlsx";
 import { FindingExplain, LegalFooter } from "@/components/FindingExplain";
 import { metaForAudit, severidadToLevel } from "@/lib/legal/referencias";
+import { safeFilename, triggerFileDownload } from "@/lib/download";
 
 export const Route = createFileRoute("/app/tools/express-auditor")({
   component: ExpressAuditor,
@@ -150,7 +151,7 @@ function ExpressAuditor() {
       doc.text("Sin hallazgos en este periodo.", 40, y);
     }
 
-    doc.save(`auditoria-${cliente!.rfc}-${year}.pdf`);
+    triggerFileDownload(doc.output("blob"), safeFilename(`auditoria-${cliente!.rfc}-${year}.pdf`, "auditoria.pdf"));
   }
 
   return (
