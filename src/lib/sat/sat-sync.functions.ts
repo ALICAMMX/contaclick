@@ -230,11 +230,45 @@ export const runSyncNow = createServerFn({ method: "POST" })
     const errores: { fase: string; mensaje: string }[] = [];
     let descargados = 0, nuevos = 0, cancelados = 0, duplicados = 0;
 
+    let solicitudesPrevistas = 0;
+    let esMockRun = false;
     if (!cred || cred.estatus !== "activo" || !cred.pac_token) {
       errores.push({ fase: "auth", mensaje: "Expediente no conectado al SAT (sin credencial activa)" });
     } else {
       const isMock = cred.pac_token.startsWith("mock_") || !process.env.SW_USER;
+      esMockRun = isMock;
+      // ===== Candados de costo PAC =====
       try {
+        solicitudesPrevistas = contarSolicitudesPrevistas({
+          emitidos: !!cfg?.emitidos,
+          recibidos: !!cfg?.recibidos,
+          nomina: !!cfg?.nomina,
+          pagos: !!cfg?.pagos,
+          retenciones: !!cfg?.retenciones,
+          fecha_desde: desde,
+          fecha_hasta: hasta,
+        });
+        if (solicitudesPrevistas === 0) solicitudesPrevistas = 1; // sin tipos: al menos 1
+        let supabaseAdmin: any = null;
+        if (!isMock) {
+          const mod = await import("@/integrations/supabase/client.server");
+          supabaseAdmin = mod.supabaseAdmin;
+        }
+        await assertSatRunPermitido({
+          supabase,
+          supabaseAdmin,
+          despachoId: cli.despacho_id,
+          frecuencia: (cfg?.frecuencia ?? "manual") as FrecuenciaSat,
+          previstas: solicitudesPrevistas,
+        });
+      } catch (e: any) {
+        errores.push({ fase: "cuota", mensaje: String(e?.message ?? e).slice(0, 300) });
+      }
+      try {
+        if (errores.length > 0) {
+          // ya hay un error de cuota: no llamamos al PAC
+        } else if (isMock) {
+
         if (isMock) {
           // Simulación realista: insertar entre 0-4 CFDI "descubiertos" como eventos.
           descargados = Math.floor(Math.random() * 5);
