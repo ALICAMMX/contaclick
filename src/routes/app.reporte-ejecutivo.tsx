@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   Sparkles, FileText, TrendingUp, AlertTriangle, Target, Send,
-  CheckCircle2, Clock, Lightbulb, Calculator, Plus, ListTodo, ArrowRight,
+  CheckCircle2, Clock, Lightbulb, Calculator, Plus, ListTodo, ArrowRight, Download,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
