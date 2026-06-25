@@ -256,6 +256,7 @@ function ContabilidadAutoPage() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="bancos"><BancosTab clienteId={cliente.id} /></TabsContent>
         <TabsContent value="catalogo"><CatalogoTab clienteId={cliente.id} /></TabsContent>
         <TabsContent value="reglas"><ReglasTab clienteId={cliente.id} /></TabsContent>
         <TabsContent value="exportar"><ExportarTab clienteId={cliente.id} /></TabsContent>
