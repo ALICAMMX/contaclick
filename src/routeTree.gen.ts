@@ -45,6 +45,7 @@ import { Route as AppSaludFiscalRouteImport } from './routes/app.salud-fiscal'
 import { Route as AppRiesgoRouteImport } from './routes/app.riesgo'
 import { Route as AppRfcsVinculadosRouteImport } from './routes/app.rfcs-vinculados'
 import { Route as AppReportesRouteImport } from './routes/app.reportes'
+import { Route as AppReporteEjecutivoRouteImport } from './routes/app.reporte-ejecutivo'
 import { Route as AppPolizasRouteImport } from './routes/app.polizas'
 import { Route as AppMensajesRouteImport } from './routes/app.mensajes'
 import { Route as AppLegalRouteImport } from './routes/app.legal'
@@ -291,6 +292,11 @@ const AppRfcsVinculadosRoute = AppRfcsVinculadosRouteImport.update({
 const AppReportesRoute = AppReportesRouteImport.update({
   id: '/reportes',
   path: '/reportes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReporteEjecutivoRoute = AppReporteEjecutivoRouteImport.update({
+  id: '/reporte-ejecutivo',
+  path: '/reporte-ejecutivo',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPolizasRoute = AppPolizasRouteImport.update({
@@ -668,6 +674,7 @@ export interface FileRoutesByFullPath {
   '/app/legal': typeof AppLegalRouteWithChildren
   '/app/mensajes': typeof AppMensajesRouteWithChildren
   '/app/polizas': typeof AppPolizasRoute
+  '/app/reporte-ejecutivo': typeof AppReporteEjecutivoRoute
   '/app/reportes': typeof AppReportesRouteWithChildren
   '/app/rfcs-vinculados': typeof AppRfcsVinculadosRoute
   '/app/riesgo': typeof AppRiesgoRoute
@@ -764,6 +771,7 @@ export interface FileRoutesByTo {
   '/app/equipo': typeof AppEquipoRoute
   '/app/expedientes': typeof AppExpedientesRoute
   '/app/polizas': typeof AppPolizasRoute
+  '/app/reporte-ejecutivo': typeof AppReporteEjecutivoRoute
   '/app/rfcs-vinculados': typeof AppRfcsVinculadosRoute
   '/app/riesgo': typeof AppRiesgoRoute
   '/app/salud-fiscal': typeof AppSaludFiscalRoute
@@ -869,6 +877,7 @@ export interface FileRoutesById {
   '/app/legal': typeof AppLegalRouteWithChildren
   '/app/mensajes': typeof AppMensajesRouteWithChildren
   '/app/polizas': typeof AppPolizasRoute
+  '/app/reporte-ejecutivo': typeof AppReporteEjecutivoRoute
   '/app/reportes': typeof AppReportesRouteWithChildren
   '/app/rfcs-vinculados': typeof AppRfcsVinculadosRoute
   '/app/riesgo': typeof AppRiesgoRoute
@@ -976,6 +985,7 @@ export interface FileRouteTypes {
     | '/app/legal'
     | '/app/mensajes'
     | '/app/polizas'
+    | '/app/reporte-ejecutivo'
     | '/app/reportes'
     | '/app/rfcs-vinculados'
     | '/app/riesgo'
@@ -1072,6 +1082,7 @@ export interface FileRouteTypes {
     | '/app/equipo'
     | '/app/expedientes'
     | '/app/polizas'
+    | '/app/reporte-ejecutivo'
     | '/app/rfcs-vinculados'
     | '/app/riesgo'
     | '/app/salud-fiscal'
@@ -1176,6 +1187,7 @@ export interface FileRouteTypes {
     | '/app/legal'
     | '/app/mensajes'
     | '/app/polizas'
+    | '/app/reporte-ejecutivo'
     | '/app/reportes'
     | '/app/rfcs-vinculados'
     | '/app/riesgo'
@@ -1521,6 +1533,13 @@ declare module '@tanstack/react-router' {
       path: '/reportes'
       fullPath: '/app/reportes'
       preLoaderRoute: typeof AppReportesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/reporte-ejecutivo': {
+      id: '/app/reporte-ejecutivo'
+      path: '/reporte-ejecutivo'
+      fullPath: '/app/reporte-ejecutivo'
+      preLoaderRoute: typeof AppReporteEjecutivoRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/polizas': {
@@ -2137,6 +2156,7 @@ interface AppRouteChildren {
   AppLegalRoute: typeof AppLegalRouteWithChildren
   AppMensajesRoute: typeof AppMensajesRouteWithChildren
   AppPolizasRoute: typeof AppPolizasRoute
+  AppReporteEjecutivoRoute: typeof AppReporteEjecutivoRoute
   AppReportesRoute: typeof AppReportesRouteWithChildren
   AppRfcsVinculadosRoute: typeof AppRfcsVinculadosRoute
   AppRiesgoRoute: typeof AppRiesgoRoute
@@ -2186,6 +2206,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppLegalRoute: AppLegalRouteWithChildren,
   AppMensajesRoute: AppMensajesRouteWithChildren,
   AppPolizasRoute: AppPolizasRoute,
+  AppReporteEjecutivoRoute: AppReporteEjecutivoRoute,
   AppReportesRoute: AppReportesRouteWithChildren,
   AppRfcsVinculadosRoute: AppRfcsVinculadosRoute,
   AppRiesgoRoute: AppRiesgoRoute,

@@ -1740,6 +1740,92 @@ export type Database = {
         }
         Relationships: []
       }
+      recomendaciones_ia: {
+        Row: {
+          accion_sugerida: string | null
+          categoria: string
+          cliente_id: string | null
+          created_at: string
+          created_by: string | null
+          descripcion: string
+          despacho_id: string
+          estado: string
+          id: string
+          impacto_estimado_centavos: number | null
+          implementada_at: string | null
+          prioridad: string
+          reporte_id: string | null
+          tarea_id: string | null
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          accion_sugerida?: string | null
+          categoria: string
+          cliente_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          descripcion: string
+          despacho_id: string
+          estado?: string
+          id?: string
+          impacto_estimado_centavos?: number | null
+          implementada_at?: string | null
+          prioridad?: string
+          reporte_id?: string | null
+          tarea_id?: string | null
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          accion_sugerida?: string | null
+          categoria?: string
+          cliente_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string
+          despacho_id?: string
+          estado?: string
+          id?: string
+          impacto_estimado_centavos?: number | null
+          implementada_at?: string | null
+          prioridad?: string
+          reporte_id?: string | null
+          tarea_id?: string | null
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recomendaciones_ia_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recomendaciones_ia_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recomendaciones_ia_reporte_id_fkey"
+            columns: ["reporte_id"]
+            isOneToOne: false
+            referencedRelation: "reportes_ejecutivos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recomendaciones_ia_tarea_id_fkey"
+            columns: ["tarea_id"]
+            isOneToOne: false
+            referencedRelation: "tareas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reportes: {
         Row: {
           archivo_path: string | null
@@ -1800,6 +1886,90 @@ export type Database = {
             columns: ["rfc_id"]
             isOneToOne: false
             referencedRelation: "rfcs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reportes_ejecutivos: {
+        Row: {
+          ahorro_estimado_centavos: number
+          cliente_id: string | null
+          conciliacion: Json
+          created_at: string
+          created_by: string | null
+          despacho_id: string
+          enviado_at: string | null
+          estado: string
+          hallazgos: Json
+          id: string
+          obligaciones: Json
+          oportunidades: Json
+          periodo: string
+          resumen_ejecutivo: string | null
+          resumen_financiero: Json
+          resumen_fiscal: Json
+          riesgos: Json
+          salud: Json
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          ahorro_estimado_centavos?: number
+          cliente_id?: string | null
+          conciliacion?: Json
+          created_at?: string
+          created_by?: string | null
+          despacho_id: string
+          enviado_at?: string | null
+          estado?: string
+          hallazgos?: Json
+          id?: string
+          obligaciones?: Json
+          oportunidades?: Json
+          periodo: string
+          resumen_ejecutivo?: string | null
+          resumen_financiero?: Json
+          resumen_fiscal?: Json
+          riesgos?: Json
+          salud?: Json
+          tipo?: string
+          updated_at?: string
+        }
+        Update: {
+          ahorro_estimado_centavos?: number
+          cliente_id?: string | null
+          conciliacion?: Json
+          created_at?: string
+          created_by?: string | null
+          despacho_id?: string
+          enviado_at?: string | null
+          estado?: string
+          hallazgos?: Json
+          id?: string
+          obligaciones?: Json
+          oportunidades?: Json
+          periodo?: string
+          resumen_ejecutivo?: string | null
+          resumen_financiero?: Json
+          resumen_fiscal?: Json
+          riesgos?: Json
+          salud?: Json
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reportes_ejecutivos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reportes_ejecutivos_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
             referencedColumns: ["id"]
           },
         ]
@@ -2263,6 +2433,57 @@ export type Database = {
             columns: ["rfc_id"]
             isOneToOne: false
             referencedRelation: "rfcs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      simulaciones_fiscales: {
+        Row: {
+          cliente_id: string | null
+          created_at: string
+          created_by: string | null
+          despacho_id: string
+          escenario: string
+          id: string
+          narrativa: string | null
+          parametros: Json
+          resultado: Json
+        }
+        Insert: {
+          cliente_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          despacho_id: string
+          escenario: string
+          id?: string
+          narrativa?: string | null
+          parametros?: Json
+          resultado?: Json
+        }
+        Update: {
+          cliente_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          despacho_id?: string
+          escenario?: string
+          id?: string
+          narrativa?: string | null
+          parametros?: Json
+          resultado?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "simulaciones_fiscales_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "simulaciones_fiscales_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
             referencedColumns: ["id"]
           },
         ]
