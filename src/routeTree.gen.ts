@@ -58,6 +58,7 @@ import { Route as AppCfdiRouteImport } from './routes/app.cfdi'
 import { Route as AppCalendarioRouteImport } from './routes/app.calendario'
 import { Route as AppBuzonRouteImport } from './routes/app.buzon'
 import { Route as AppAdministrativoRouteImport } from './routes/app.administrativo'
+import { Route as AppAdminSatSaldoRouteImport } from './routes/app.admin-sat-saldo'
 import { Route as AppAdminPanelRouteImport } from './routes/app.admin-panel'
 import { Route as AppAdminRouteImport } from './routes/app.admin'
 import { Route as AppToolsIndexRouteImport } from './routes/app.tools.index'
@@ -109,7 +110,6 @@ import { Route as AppAdminBuzonRouteImport } from './routes/app.admin.buzon'
 import { Route as AppAdminActivosRouteImport } from './routes/app.admin.activos'
 import { Route as ApiPublicHooksWorkflowCronRouteImport } from './routes/api/public/hooks/workflow-cron'
 import { Route as ApiPublicHooksSatSyncRouteImport } from './routes/api/public/hooks/sat-sync'
-import { Route as AuthenticatedAppAdminSatSaldoRouteImport } from './routes/_authenticated.app.admin.sat-saldo'
 
 const TerminosRoute = TerminosRouteImport.update({
   id: '/terminos',
@@ -354,6 +354,11 @@ const AppBuzonRoute = AppBuzonRouteImport.update({
 const AppAdministrativoRoute = AppAdministrativoRouteImport.update({
   id: '/administrativo',
   path: '/administrativo',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminSatSaldoRoute = AppAdminSatSaldoRouteImport.update({
+  id: '/admin-sat-saldo',
+  path: '/admin-sat-saldo',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAdminPanelRoute = AppAdminPanelRouteImport.update({
@@ -619,12 +624,6 @@ const ApiPublicHooksSatSyncRoute = ApiPublicHooksSatSyncRouteImport.update({
   path: '/api/public/hooks/sat-sync',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedAppAdminSatSaldoRoute =
-  AuthenticatedAppAdminSatSaldoRouteImport.update({
-    id: '/_authenticated/app/admin/sat-saldo',
-    path: '/app/admin/sat-saldo',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -641,6 +640,7 @@ export interface FileRoutesByFullPath {
   '/terminos': typeof TerminosRoute
   '/app/admin': typeof AppAdminRouteWithChildren
   '/app/admin-panel': typeof AppAdminPanelRoute
+  '/app/admin-sat-saldo': typeof AppAdminSatSaldoRoute
   '/app/administrativo': typeof AppAdministrativoRoute
   '/app/buzon': typeof AppBuzonRoute
   '/app/calendario': typeof AppCalendarioRoute
@@ -725,7 +725,6 @@ export interface FileRoutesByFullPath {
   '/app/mensajes/': typeof AppMensajesIndexRoute
   '/app/reportes/': typeof AppReportesIndexRoute
   '/app/tools/': typeof AppToolsIndexRoute
-  '/app/admin/sat-saldo': typeof AuthenticatedAppAdminSatSaldoRoute
   '/api/public/hooks/sat-sync': typeof ApiPublicHooksSatSyncRoute
   '/api/public/hooks/workflow-cron': typeof ApiPublicHooksWorkflowCronRoute
 }
@@ -740,6 +739,7 @@ export interface FileRoutesByTo {
   '/seguridad': typeof SeguridadRoute
   '/terminos': typeof TerminosRoute
   '/app/admin-panel': typeof AppAdminPanelRoute
+  '/app/admin-sat-saldo': typeof AppAdminSatSaldoRoute
   '/app/administrativo': typeof AppAdministrativoRoute
   '/app/buzon': typeof AppBuzonRoute
   '/app/calendario': typeof AppCalendarioRoute
@@ -818,7 +818,6 @@ export interface FileRoutesByTo {
   '/app/mensajes': typeof AppMensajesIndexRoute
   '/app/reportes': typeof AppReportesIndexRoute
   '/app/tools': typeof AppToolsIndexRoute
-  '/app/admin/sat-saldo': typeof AuthenticatedAppAdminSatSaldoRoute
   '/api/public/hooks/sat-sync': typeof ApiPublicHooksSatSyncRoute
   '/api/public/hooks/workflow-cron': typeof ApiPublicHooksWorkflowCronRoute
 }
@@ -838,6 +837,7 @@ export interface FileRoutesById {
   '/terminos': typeof TerminosRoute
   '/app/admin': typeof AppAdminRouteWithChildren
   '/app/admin-panel': typeof AppAdminPanelRoute
+  '/app/admin-sat-saldo': typeof AppAdminSatSaldoRoute
   '/app/administrativo': typeof AppAdministrativoRoute
   '/app/buzon': typeof AppBuzonRoute
   '/app/calendario': typeof AppCalendarioRoute
@@ -922,7 +922,6 @@ export interface FileRoutesById {
   '/app/mensajes/': typeof AppMensajesIndexRoute
   '/app/reportes/': typeof AppReportesIndexRoute
   '/app/tools/': typeof AppToolsIndexRoute
-  '/_authenticated/app/admin/sat-saldo': typeof AuthenticatedAppAdminSatSaldoRoute
   '/api/public/hooks/sat-sync': typeof ApiPublicHooksSatSyncRoute
   '/api/public/hooks/workflow-cron': typeof ApiPublicHooksWorkflowCronRoute
 }
@@ -943,6 +942,7 @@ export interface FileRouteTypes {
     | '/terminos'
     | '/app/admin'
     | '/app/admin-panel'
+    | '/app/admin-sat-saldo'
     | '/app/administrativo'
     | '/app/buzon'
     | '/app/calendario'
@@ -1027,7 +1027,6 @@ export interface FileRouteTypes {
     | '/app/mensajes/'
     | '/app/reportes/'
     | '/app/tools/'
-    | '/app/admin/sat-saldo'
     | '/api/public/hooks/sat-sync'
     | '/api/public/hooks/workflow-cron'
   fileRoutesByTo: FileRoutesByTo
@@ -1042,6 +1041,7 @@ export interface FileRouteTypes {
     | '/seguridad'
     | '/terminos'
     | '/app/admin-panel'
+    | '/app/admin-sat-saldo'
     | '/app/administrativo'
     | '/app/buzon'
     | '/app/calendario'
@@ -1120,7 +1120,6 @@ export interface FileRouteTypes {
     | '/app/mensajes'
     | '/app/reportes'
     | '/app/tools'
-    | '/app/admin/sat-saldo'
     | '/api/public/hooks/sat-sync'
     | '/api/public/hooks/workflow-cron'
   id:
@@ -1139,6 +1138,7 @@ export interface FileRouteTypes {
     | '/terminos'
     | '/app/admin'
     | '/app/admin-panel'
+    | '/app/admin-sat-saldo'
     | '/app/administrativo'
     | '/app/buzon'
     | '/app/calendario'
@@ -1223,7 +1223,6 @@ export interface FileRouteTypes {
     | '/app/mensajes/'
     | '/app/reportes/'
     | '/app/tools/'
-    | '/_authenticated/app/admin/sat-saldo'
     | '/api/public/hooks/sat-sync'
     | '/api/public/hooks/workflow-cron'
   fileRoutesById: FileRoutesById
@@ -1242,7 +1241,6 @@ export interface RootRouteChildren {
   SeguridadRoute: typeof SeguridadRoute
   TerminosRoute: typeof TerminosRoute
   InvitarTokenRoute: typeof InvitarTokenRoute
-  AuthenticatedAppAdminSatSaldoRoute: typeof AuthenticatedAppAdminSatSaldoRoute
   ApiPublicHooksSatSyncRoute: typeof ApiPublicHooksSatSyncRoute
   ApiPublicHooksWorkflowCronRoute: typeof ApiPublicHooksWorkflowCronRoute
 }
@@ -1590,6 +1588,13 @@ declare module '@tanstack/react-router' {
       path: '/administrativo'
       fullPath: '/app/administrativo'
       preLoaderRoute: typeof AppAdministrativoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/admin-sat-saldo': {
+      id: '/app/admin-sat-saldo'
+      path: '/admin-sat-saldo'
+      fullPath: '/app/admin-sat-saldo'
+      preLoaderRoute: typeof AppAdminSatSaldoRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/admin-panel': {
@@ -1949,13 +1954,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksSatSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/app/admin/sat-saldo': {
-      id: '/_authenticated/app/admin/sat-saldo'
-      path: '/app/admin/sat-saldo'
-      fullPath: '/app/admin/sat-saldo'
-      preLoaderRoute: typeof AuthenticatedAppAdminSatSaldoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -2085,6 +2083,7 @@ const AppReportesRouteWithChildren = AppReportesRoute._addFileChildren(
 interface AppRouteChildren {
   AppAdminRoute: typeof AppAdminRouteWithChildren
   AppAdminPanelRoute: typeof AppAdminPanelRoute
+  AppAdminSatSaldoRoute: typeof AppAdminSatSaldoRoute
   AppAdministrativoRoute: typeof AppAdministrativoRoute
   AppBuzonRoute: typeof AppBuzonRoute
   AppCalendarioRoute: typeof AppCalendarioRoute
@@ -2131,6 +2130,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAdminRoute: AppAdminRouteWithChildren,
   AppAdminPanelRoute: AppAdminPanelRoute,
+  AppAdminSatSaldoRoute: AppAdminSatSaldoRoute,
   AppAdministrativoRoute: AppAdministrativoRoute,
   AppBuzonRoute: AppBuzonRoute,
   AppCalendarioRoute: AppCalendarioRoute,
@@ -2239,7 +2239,6 @@ const rootRouteChildren: RootRouteChildren = {
   SeguridadRoute: SeguridadRoute,
   TerminosRoute: TerminosRoute,
   InvitarTokenRoute: InvitarTokenRoute,
-  AuthenticatedAppAdminSatSaldoRoute: AuthenticatedAppAdminSatSaldoRoute,
   ApiPublicHooksSatSyncRoute: ApiPublicHooksSatSyncRoute,
   ApiPublicHooksWorkflowCronRoute: ApiPublicHooksWorkflowCronRoute,
 }

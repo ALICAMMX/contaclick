@@ -14,7 +14,7 @@ import {
   getSatPacSaldo, recargarSatPac, ajustarSatPacConfig,
 } from "@/lib/admin-panel/sat-pac.functions";
 
-export const Route = createFileRoute("/_authenticated/app/admin/sat-saldo")({
+export const Route = createFileRoute("/app/admin-sat-saldo")({
   component: SatSaldoPage,
 });
 
