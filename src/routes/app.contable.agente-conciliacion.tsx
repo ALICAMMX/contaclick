@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { Banknote, Play, Pause, RefreshCw, ArrowLeft, FolderOpen, CheckCircle2, AlertTriangle, Sparkles, Upload, ScanSearch, Clock } from "lucide-react";
 import { ModuleScaffold, KpiTile, DemoCard } from "@/components/ModuleScaffold";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { getReconciliationStats } from "@/lib/conciliacion/conciliacion.functions";
 
