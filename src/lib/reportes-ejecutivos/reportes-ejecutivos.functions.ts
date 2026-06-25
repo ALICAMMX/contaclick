@@ -445,8 +445,8 @@ Responde SOLO JSON:
             model: "google/gemini-3-flash-preview",
             messages: [{ role: "user", content: prompt }],
             response_format: { type: "json_object" },
-            max_tokens: 6000,
-            maxOutputTokens: 6000,
+            max_tokens: 8000,
+            maxOutputTokens: 8000,
           }),
         });
         if (res.ok) {
