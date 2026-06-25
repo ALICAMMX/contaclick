@@ -6,6 +6,7 @@ import { Calendar, CheckCircle2, AlertTriangle, ChevronRight, ArrowLeft, ArrowRi
 import { useActiveCliente } from "@/lib/active-cliente";
 import { getMonthlyHistorial, type MonthRow } from "@/lib/conciliacion/historial.functions";
 import { Button } from "@/components/ui/button";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 
 export const Route = createFileRoute("/app/conciliacion/historial")({
   component: HistorialPage,
