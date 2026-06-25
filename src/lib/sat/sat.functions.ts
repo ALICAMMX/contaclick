@@ -149,6 +149,35 @@ export const conectarSat = createServerFn({ method: "POST" })
     );
     if (upErr) throw new Error(upErr.message);
 
+    // Auto-activar descarga automática para este expediente (idempotente).
+    // Si no existe configuración, se crea con defaults sensatos y queda lista
+    // para que el cron horario la procese de inmediato.
+    const { data: prevCfg } = await supabase
+      .from("sat_sync_config")
+      .select("cliente_id, activo")
+      .eq("cliente_id", cli.id)
+      .maybeSingle();
+    if (!prevCfg) {
+      await supabase.from("sat_sync_config").insert({
+        cliente_id: cli.id,
+        despacho_id: cli.despacho_id,
+        emitidos: true,
+        recibidos: true,
+        nomina: true,
+        pagos: true,
+        retenciones: false,
+        frecuencia: "diaria",
+        periodo: "mes_actual",
+        activo: true,
+        proxima_corrida_at: new Date().toISOString(), // disparar en el próximo tick del cron
+      });
+    } else if (!prevCfg.activo) {
+      await supabase
+        .from("sat_sync_config")
+        .update({ activo: true, proxima_corrida_at: new Date().toISOString() })
+        .eq("cliente_id", cli.id);
+    }
+
     // Audit log (best-effort)
     await supabase.from("audit_logs").insert({
       user_id: userId,
@@ -156,10 +185,10 @@ export const conectarSat = createServerFn({ method: "POST" })
       accion: "sat.conectar",
       entidad: "cliente",
       entidad_id: cli.id,
-      payload: { simulated: result.simulated, rfc: cli.rfc },
+      payload: { simulated: result.simulated, rfc: cli.rfc, auto_sync: true },
     });
 
-    return { ok: true, simulated: result.simulated };
+    return { ok: true, simulated: result.simulated, auto_sync_activado: true };
   });
 
 export const desconectarSat = createServerFn({ method: "POST" })
