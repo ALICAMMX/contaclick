@@ -68,6 +68,14 @@ export const generarPolizasDesdeCfdi = createServerFn({ method: "POST" })
       .in("id", data.cfdi_ids);
     if (error) throw new Error(error.message);
 
+    // Cargar reglas activas del cliente
+    const { data: reglasRows } = await supabase
+      .from("reglas_contables")
+      .select("id, nombre, prioridad, activa, cuenta_cargo, cuenta_abono, condicion")
+      .eq("cliente_id", data.cliente_id)
+      .eq("activa", true);
+    const reglas: ReglaContable[] = (reglasRows ?? []) as any;
+
     const rfcCliente = cli.rfc as string;
     const filas: any[] = [];
     let omitidos = 0;
