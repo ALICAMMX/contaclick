@@ -14,6 +14,15 @@ import { computeRiesgoSAT } from "@/lib/riesgo/riesgo.functions";
 import { runExpressAudit } from "@/lib/auditor/auditor.functions";
 import { scanClienteEfos } from "@/lib/efos/efos.functions";
 import { resolveActiveDespachoId } from "@/lib/despacho/resolve";
+import {
+  assertSatRunPermitido,
+  assertFrecuenciaPermitida,
+  contarSolicitudesPrevistas,
+  registrarConsumoSat,
+  type FrecuenciaSat,
+} from "@/lib/usage/sat-quota";
+import { getPlanLimites } from "@/lib/usage/limits";
+
 
 export type Frecuencia = "manual" | "diaria" | "semanal" | "mensual";
 export type Periodo = "30d" | "mes_actual" | "ejercicio" | "personalizado";
@@ -78,7 +87,11 @@ export const upsertSatSyncConfig = createServerFn({ method: "POST" })
     const { supabase } = context;
     const { data: cli } = await supabase.from("clientes").select("despacho_id").eq("id", data.cliente_id).maybeSingle();
     if (!cli?.despacho_id) throw new Error("Expediente no encontrado");
+    // Candado: la frecuencia debe estar permitida por el plan
+    const limites = await getPlanLimites(supabase, cli.despacho_id);
+    assertFrecuenciaPermitida(limites, data.frecuencia as FrecuenciaSat);
     const proxima = calcularProxima(data.frecuencia);
+
     const { error } = await supabase.from("sat_sync_config").upsert(
       {
         cliente_id: data.cliente_id,
@@ -217,12 +230,45 @@ export const runSyncNow = createServerFn({ method: "POST" })
     const errores: { fase: string; mensaje: string }[] = [];
     let descargados = 0, nuevos = 0, cancelados = 0, duplicados = 0;
 
+    let solicitudesPrevistas = 0;
+    let esMockRun = false;
     if (!cred || cred.estatus !== "activo" || !cred.pac_token) {
       errores.push({ fase: "auth", mensaje: "Expediente no conectado al SAT (sin credencial activa)" });
     } else {
       const isMock = cred.pac_token.startsWith("mock_") || !process.env.SW_USER;
+      esMockRun = isMock;
+      // ===== Candados de costo PAC =====
       try {
-        if (isMock) {
+        solicitudesPrevistas = contarSolicitudesPrevistas({
+          emitidos: !!cfg?.emitidos,
+          recibidos: !!cfg?.recibidos,
+          nomina: !!cfg?.nomina,
+          pagos: !!cfg?.pagos,
+          retenciones: !!cfg?.retenciones,
+          fecha_desde: desde,
+          fecha_hasta: hasta,
+        });
+        if (solicitudesPrevistas === 0) solicitudesPrevistas = 1; // sin tipos: al menos 1
+        let supabaseAdmin: any = null;
+        if (!isMock) {
+          const mod = await import("@/integrations/supabase/client.server");
+          supabaseAdmin = mod.supabaseAdmin;
+        }
+        await assertSatRunPermitido({
+          supabase,
+          supabaseAdmin,
+          despachoId: cli.despacho_id,
+          frecuencia: (cfg?.frecuencia ?? "manual") as FrecuenciaSat,
+          previstas: solicitudesPrevistas,
+        });
+      } catch (e: any) {
+        errores.push({ fase: "cuota", mensaje: String(e?.message ?? e).slice(0, 300) });
+      }
+      try {
+        if (errores.length > 0) {
+          // hubo error de cuota: no llamamos al PAC
+        } else if (isMock) {
+
           // Simulación realista: insertar entre 0-4 CFDI "descubiertos" como eventos.
           descargados = Math.floor(Math.random() * 5);
           nuevos = descargados;
@@ -288,6 +334,26 @@ export const runSyncNow = createServerFn({ method: "POST" })
       errores: errores as any,
       detalle: estatus === "error" ? "La corrida no pudo completarse" : `Descargados: ${descargados}, nuevos: ${nuevos}, cancelados: ${cancelados}`,
     }).eq("id", runId);
+
+    // Registro de consumo SAT (cuota despacho + saldo PAC si es real)
+    if (solicitudesPrevistas > 0 && estatus !== "error") {
+      try {
+        let supabaseAdmin: any = null;
+        if (!esMockRun) {
+          const mod = await import("@/integrations/supabase/client.server");
+          supabaseAdmin = mod.supabaseAdmin;
+        }
+        await registrarConsumoSat({
+          supabase, supabaseAdmin,
+          despachoId: cli.despacho_id,
+          solicitudes: solicitudesPrevistas,
+          esMock: esMockRun,
+        });
+      } catch (e: any) {
+        console.warn("[sat-sync] registrar consumo falló:", e?.message ?? e);
+      }
+    }
+
 
     if (cfg) {
       await supabase.from("sat_sync_config").update({

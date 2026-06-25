@@ -58,6 +58,7 @@ import { Route as AppCfdiRouteImport } from './routes/app.cfdi'
 import { Route as AppCalendarioRouteImport } from './routes/app.calendario'
 import { Route as AppBuzonRouteImport } from './routes/app.buzon'
 import { Route as AppAdministrativoRouteImport } from './routes/app.administrativo'
+import { Route as AppAdminSatSaldoRouteImport } from './routes/app.admin-sat-saldo'
 import { Route as AppAdminPanelRouteImport } from './routes/app.admin-panel'
 import { Route as AppAdminRouteImport } from './routes/app.admin'
 import { Route as AppToolsIndexRouteImport } from './routes/app.tools.index'
@@ -355,6 +356,11 @@ const AppAdministrativoRoute = AppAdministrativoRouteImport.update({
   path: '/administrativo',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminSatSaldoRoute = AppAdminSatSaldoRouteImport.update({
+  id: '/admin-sat-saldo',
+  path: '/admin-sat-saldo',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminPanelRoute = AppAdminPanelRouteImport.update({
   id: '/admin-panel',
   path: '/admin-panel',
@@ -634,6 +640,7 @@ export interface FileRoutesByFullPath {
   '/terminos': typeof TerminosRoute
   '/app/admin': typeof AppAdminRouteWithChildren
   '/app/admin-panel': typeof AppAdminPanelRoute
+  '/app/admin-sat-saldo': typeof AppAdminSatSaldoRoute
   '/app/administrativo': typeof AppAdministrativoRoute
   '/app/buzon': typeof AppBuzonRoute
   '/app/calendario': typeof AppCalendarioRoute
@@ -732,6 +739,7 @@ export interface FileRoutesByTo {
   '/seguridad': typeof SeguridadRoute
   '/terminos': typeof TerminosRoute
   '/app/admin-panel': typeof AppAdminPanelRoute
+  '/app/admin-sat-saldo': typeof AppAdminSatSaldoRoute
   '/app/administrativo': typeof AppAdministrativoRoute
   '/app/buzon': typeof AppBuzonRoute
   '/app/calendario': typeof AppCalendarioRoute
@@ -829,6 +837,7 @@ export interface FileRoutesById {
   '/terminos': typeof TerminosRoute
   '/app/admin': typeof AppAdminRouteWithChildren
   '/app/admin-panel': typeof AppAdminPanelRoute
+  '/app/admin-sat-saldo': typeof AppAdminSatSaldoRoute
   '/app/administrativo': typeof AppAdministrativoRoute
   '/app/buzon': typeof AppBuzonRoute
   '/app/calendario': typeof AppCalendarioRoute
@@ -933,6 +942,7 @@ export interface FileRouteTypes {
     | '/terminos'
     | '/app/admin'
     | '/app/admin-panel'
+    | '/app/admin-sat-saldo'
     | '/app/administrativo'
     | '/app/buzon'
     | '/app/calendario'
@@ -1031,6 +1041,7 @@ export interface FileRouteTypes {
     | '/seguridad'
     | '/terminos'
     | '/app/admin-panel'
+    | '/app/admin-sat-saldo'
     | '/app/administrativo'
     | '/app/buzon'
     | '/app/calendario'
@@ -1127,6 +1138,7 @@ export interface FileRouteTypes {
     | '/terminos'
     | '/app/admin'
     | '/app/admin-panel'
+    | '/app/admin-sat-saldo'
     | '/app/administrativo'
     | '/app/buzon'
     | '/app/calendario'
@@ -1576,6 +1588,13 @@ declare module '@tanstack/react-router' {
       path: '/administrativo'
       fullPath: '/app/administrativo'
       preLoaderRoute: typeof AppAdministrativoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/admin-sat-saldo': {
+      id: '/app/admin-sat-saldo'
+      path: '/admin-sat-saldo'
+      fullPath: '/app/admin-sat-saldo'
+      preLoaderRoute: typeof AppAdminSatSaldoRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/admin-panel': {
@@ -2064,6 +2083,7 @@ const AppReportesRouteWithChildren = AppReportesRoute._addFileChildren(
 interface AppRouteChildren {
   AppAdminRoute: typeof AppAdminRouteWithChildren
   AppAdminPanelRoute: typeof AppAdminPanelRoute
+  AppAdminSatSaldoRoute: typeof AppAdminSatSaldoRoute
   AppAdministrativoRoute: typeof AppAdministrativoRoute
   AppBuzonRoute: typeof AppBuzonRoute
   AppCalendarioRoute: typeof AppCalendarioRoute
@@ -2110,6 +2130,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAdminRoute: AppAdminRouteWithChildren,
   AppAdminPanelRoute: AppAdminPanelRoute,
+  AppAdminSatSaldoRoute: AppAdminSatSaldoRoute,
   AppAdministrativoRoute: AppAdministrativoRoute,
   AppBuzonRoute: AppBuzonRoute,
   AppCalendarioRoute: AppCalendarioRoute,

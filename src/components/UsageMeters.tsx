@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Link } from "@tanstack/react-router";
-import { Sparkles, Users, Gauge, ArrowUpRight } from "lucide-react";
+import { Sparkles, Users, Gauge, ArrowUpRight, Download } from "lucide-react";
 import { getUsageSummary } from "@/lib/usage/usage.functions";
 
 function pctColor(pct: number) {
@@ -65,10 +65,20 @@ export function UsageMeters({ compact = false }: { compact?: boolean }) {
         {d.plan.ia_tokens > 0 && (
           <Meter icon={Sparkles} label="Tokens IA / mes" usado={d.uso.ia_tokens} limite={d.plan.ia_tokens} />
         )}
+        {d.plan.sat_solicitudes_mes > 0 && (
+          <Meter icon={Download} label="Descargas SAT / mes" usado={d.uso.sat_solicitudes} limite={d.plan.sat_solicitudes_mes} />
+        )}
+        {d.plan.sat_solicitudes_mes < 0 && (
+          <div className="flex items-center justify-between text-xs">
+            <span className="flex items-center gap-1.5 text-muted-foreground"><Download className="h-3.5 w-3.5" /> Descargas SAT</span>
+            <span className="font-medium text-success">Ilimitadas</span>
+          </div>
+        )}
       </div>
       <p className="text-[11px] text-muted-foreground pt-1">
-        Se reinicia el {resetLabel}. Recibes aviso al 80% y al 100%.
+        Se reinicia el {resetLabel}. Frecuencia SAT máx: <span className="font-medium">{d.plan.sat_frecuencia_max}</span>. Avisos al 80% y 100%.
       </p>
+
     </div>
   );
 }

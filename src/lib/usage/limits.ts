@@ -4,7 +4,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export type Recurso = "ia_requests" | "ia_tokens" | "rfcs";
+export type Recurso = "ia_requests" | "ia_tokens" | "rfcs" | "sat_solicitudes";
 
 export interface Limites {
   rfcs: number;
@@ -12,7 +12,10 @@ export interface Limites {
   ia_tokens?: number;
   xml_mes?: number;
   clientes?: number;
+  sat_solicitudes_mes?: number;
+  sat_frecuencia_max?: "manual" | "mensual" | "semanal" | "diaria";
 }
+
 
 export class UsageLimitError extends Error {
   recurso: Recurso;
@@ -32,8 +35,10 @@ export class UsageLimitError extends Error {
 export function labelRecurso(r: Recurso): string {
   if (r === "ia_requests") return "Solicitudes IA";
   if (r === "ia_tokens") return "Tokens IA";
+  if (r === "sat_solicitudes") return "Descargas SAT";
   return "RFCs activos";
 }
+
 
 export function periodoActual(d: Date = new Date()): string {
   const y = d.getUTCFullYear();
@@ -43,7 +48,7 @@ export function periodoActual(d: Date = new Date()): string {
 
 // Default = plan Profesional (lo que se otorga durante el trial de 14 días,
 // alineado con la página /precios).
-const DEFAULT_LIMITS: Limites = { rfcs: 25, ia_msgs: 1500, ia_tokens: 5_000_000 };
+const DEFAULT_LIMITS: Limites = { rfcs: 25, ia_msgs: 1500, ia_tokens: 5_000_000, sat_solicitudes_mes: 3500, sat_frecuencia_max: "diaria" };
 
 export async function getPlanLimites(
   supabase: SupabaseClient,
@@ -65,7 +70,7 @@ export async function getUsoPeriodo(
 ) {
   const { data } = await supabase
     .from("uso_periodo")
-    .select("ia_requests, ia_tokens, rfc_activos")
+    .select("ia_requests, ia_tokens, rfc_activos, sat_solicitudes, sat_costo_centavos")
     .eq("despacho_id", despachoId)
     .eq("periodo", periodo)
     .maybeSingle();
@@ -73,8 +78,11 @@ export async function getUsoPeriodo(
     ia_requests: data?.ia_requests ?? 0,
     ia_tokens: Number(data?.ia_tokens ?? 0),
     rfc_activos: data?.rfc_activos ?? 0,
+    sat_solicitudes: (data as any)?.sat_solicitudes ?? 0,
+    sat_costo_centavos: Number((data as any)?.sat_costo_centavos ?? 0),
   };
 }
+
 
 /**
  * Verifica límite ANTES de ejecutar la operación.
@@ -108,7 +116,14 @@ export async function assertWithinLimit(
       .eq("despacho_id", despachoId)
       .eq("tipo_relacion", "cliente");
     usado = count ?? 0;
+  } else if (recurso === "sat_solicitudes") {
+    limite = limites.sat_solicitudes_mes ?? 0;
+    if (limite < 0) return; // -1 = ilimitado (Enterprise)
+    if (limite === 0) return;
+    const uso = await getUsoPeriodo(supabase, despachoId, periodo);
+    usado = uso.sat_solicitudes;
   }
+
 
   if (limite <= 0) return;
 

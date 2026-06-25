@@ -179,7 +179,11 @@ function Dashboard() {
           <p className="text-sm text-muted-foreground mt-1">
             Gestiona altas, membresías, pagos y consumo de IA de toda la plataforma.
           </p>
+          <a href="/app/admin-sat-saldo" className="text-xs text-primary hover:underline mt-2 inline-block">
+            → Saldo PAC SAT (descarga masiva)
+          </a>
         </div>
+
       </header>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">

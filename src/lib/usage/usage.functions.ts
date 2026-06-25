@@ -31,12 +31,17 @@ export const getUsageSummary = createServerFn({ method: "GET" })
         rfcs: limites.rfcs,
         ia_msgs: limites.ia_msgs,
         ia_tokens: limites.ia_tokens ?? 0,
+        sat_solicitudes_mes: limites.sat_solicitudes_mes ?? 0,
+        sat_frecuencia_max: limites.sat_frecuencia_max ?? "diaria",
       },
       uso: {
         rfc_activos: rfcs.count ?? 0,
         ia_requests: uso.ia_requests,
         ia_tokens: uso.ia_tokens,
+        sat_solicitudes: uso.sat_solicitudes,
+        sat_costo_centavos: uso.sat_costo_centavos,
       },
+
     };
   });
 
