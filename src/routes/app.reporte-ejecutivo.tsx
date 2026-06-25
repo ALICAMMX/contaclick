@@ -401,10 +401,17 @@ function ReporteEjecutivoPage() {
       <Dialog open={!!openReporte} onOpenChange={(v) => !v && setOpenReporte(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle>Reporte ejecutivo</DialogTitle>
-            <DialogDescription>
-              {repDetalle.data?.reporte?.clientes?.razon_social ?? repDetalle.data?.reporte?.clientes?.rfc} · Periodo {repDetalle.data?.reporte?.periodo}
-            </DialogDescription>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <DialogTitle>Reporte ejecutivo</DialogTitle>
+                <DialogDescription>
+                  {repDetalle.data?.reporte?.clientes?.razon_social ?? repDetalle.data?.reporte?.clientes?.rfc} · Periodo {repDetalle.data?.reporte?.periodo}
+                </DialogDescription>
+              </div>
+              {repDetalle.data && (
+                <ExportButtons data={repDetalle.data} />
+              )}
+            </div>
           </DialogHeader>
           <ScrollArea className="flex-1 pr-4">
             {repDetalle.isLoading && <Skeleton className="h-60" />}
@@ -414,6 +421,7 @@ function ReporteEjecutivoPage() {
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
 
       <p className="text-xs text-muted-foreground pt-4 border-t">
         Tip: enlazado desde <Link to="/app/contable" className="underline">Caja de herramientas</Link> → Auditoría y Conciliación.
