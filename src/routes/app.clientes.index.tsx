@@ -74,6 +74,7 @@ function ClientesPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <HerramientaHelp slug="expedientes" />
           {canManageExpedientes && (
             <Link to="/app/tools/import-clientes" className="inline-flex items-center gap-1.5 h-10 px-3 rounded-md border border-border bg-card hover:bg-accent text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               <Upload className="h-4 w-4" /> Importar Excel
