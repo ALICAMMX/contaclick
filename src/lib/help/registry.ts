@@ -637,6 +637,414 @@ export const HELP_REGISTRY: Record<string, HelpContent> = {
     costos:
       "Consumo PAC por cada CFDI descargado (se descuenta del saldo del despacho). Ver consumo y límites por plan en tu perfil o en /app/admin-sat-saldo.",
   },
+
+  // ============================================================
+  // LOTE 2 — Herramientas individuales (Contable / Fiscal / Defensa)
+  // ============================================================
+
+  "cfdi-validator": {
+    slug: "cfdi-validator",
+    title: "Validador CFDI 4.0",
+    queHace:
+      "Lee un XML CFDI individual, lo parsea conforme al estándar 4.0 y verifica estructura, sellos, UUID, conceptos, impuestos y totales. Devuelve un resumen visual del comprobante y permite guardarlo dentro del expediente activo para consulta posterior.",
+    cuandoUsar: "Cuando recibes un CFDI suelto y necesitas confirmar que es válido y se puede deducir/acreditar antes de archivarlo.",
+    tutorial: [
+      { n: 1, titulo: "Selecciona un expediente activo", detalle: "En la barra superior elige el RFC del cliente al que pertenecerá la validación." },
+      { n: 2, titulo: "Arrastra o sube el XML", detalle: "Usa la caja punteada al centro de la pantalla para arrastrar el archivo .xml del CFDI, o haz click para abrir el selector." },
+      { n: 3, titulo: "Revisa el resultado", detalle: "Verás tarjetas con datos del Comprobante (emisor, receptor, fecha, folio) y Totales (subtotal, IVA, total). Cualquier error de sello o estructura se marca en rojo." },
+      { n: 4, titulo: "Guarda en el expediente", detalle: "Botón 'Guardar en expediente' archiva la validación en el cliente activo para auditoría futura.", tip: "Si no seleccionaste expediente, te avisa antes de validar." },
+    ],
+    resultados: [
+      { campo: "Comprobante", significado: "Datos del CFDI: emisor, receptor, fecha de emisión y timbrado, folio fiscal." },
+      { campo: "Totales", significado: "Subtotal, descuentos, IVA trasladado/retenido, ISR retenido, total final." },
+      { campo: "Estatus del XML", significado: "Válido (verde) o con errores estructurales/sello (rojo)." },
+    ],
+    dependencias: {
+      necesita: [{ tool: "Expediente activo", ruta: "/app/clientes", motivo: "Para guardar la validación dentro del cliente correcto." }],
+      alimenta: [{ tool: "Expedientes", ruta: "/app/clientes", motivo: "La validación queda en el historial del cliente." }],
+      datosMinimos: ["Archivo XML CFDI 4.0"],
+    },
+  },
+
+  "cfdi-verifier": {
+    slug: "cfdi-verifier",
+    title: "Verificador CFDI ante SAT",
+    queHace:
+      "Consulta el estatus real del CFDI directamente en el SAT (vigente / cancelado / no encontrado). Soporta autollenado escaneando el QR del comprobante o capturando manualmente RFC emisor, RFC receptor, UUID y total.",
+    cuandoUsar: "Antes de pagar a un proveedor, antes de declarar una deducción importante, o cuando sospechas que un CFDI fue cancelado.",
+    tutorial: [
+      { n: 1, titulo: "Captura o escanea", detalle: "Pega el QR del CFDI para autollenado, o ingresa manualmente: RFC emisor, RFC receptor, UUID (folio fiscal) y total exacto." },
+      { n: 2, titulo: "Consulta al SAT", detalle: "El botón principal envía la consulta al servicio público del SAT. Tarda unos segundos." },
+      { n: 3, titulo: "Lee el estatus", detalle: "Verde = vigente; Rojo = cancelado; Gris = no encontrado en el SAT (revisa los datos)." },
+      { n: 4, titulo: "Guarda la verificación", detalle: "Botón 'Guardar' archiva el resultado en el expediente — útil como evidencia ante una revisión." },
+    ],
+    resultados: [
+      { campo: "Estatus SAT", significado: "Vigente / Cancelado / No encontrado.", rango: "Vigente = se puede deducir/acreditar · Cancelado = corregir contabilidad · No encontrado = datos incorrectos" },
+      { campo: "Fecha de cancelación", significado: "Si está cancelado, indica cuándo se canceló." },
+    ],
+    dependencias: {
+      necesita: [{ tool: "Expediente activo", ruta: "/app/clientes", motivo: "Para guardar la verificación en el cliente." }],
+      alimenta: [{ tool: "Conciliación Integral", ruta: "/app/conciliacion-integral", motivo: "Las verificaciones ayudan a clasificar incidencias de CFDI cancelados." }],
+      datosMinimos: ["RFC emisor, RFC receptor, UUID, total"],
+    },
+  },
+
+  "efos-validator": {
+    slug: "efos-validator",
+    title: "Validador 69-B / EFOS",
+    queHace:
+      "Verifica si un RFC aparece en las listas del SAT publicadas conforme al artículo 69-B del CFF: Presunto, Definitivo, Sentencia Favorable o Desvirtuado. Operar con un EFOS Definitivo invalida deducciones e implica riesgo penal.",
+    cuandoUsar: "Antes de dar de alta un proveedor nuevo, antes de deducir un CFDI de monto alto, y en auditorías periódicas a tu cartera de proveedores.",
+    tutorial: [
+      { n: 1, titulo: "Captura el RFC", detalle: "Ingresa el RFC del proveedor o emisor que quieres verificar (PF o PM)." },
+      { n: 2, titulo: "Ejecuta la consulta", detalle: "El sistema compara contra la lista vigente del SAT (actualizada periódicamente)." },
+      { n: 3, titulo: "Lee el dictamen", detalle: "Si el RFC aparece, verás la categoría (Presunto/Definitivo/Sentencia Favorable/Desvirtuado) y la fecha de publicación." },
+    ],
+    resultados: [
+      { campo: "Dictamen 69-B", significado: "Presunto = riesgo medio; Definitivo = NO deducir, alto riesgo penal; Desvirtuado/Sentencia Favorable = se restablece deducibilidad.", rango: "Definitivo = bloquear · Presunto = exigir defensa documental · Limpio = sin observación" },
+    ],
+    dependencias: {
+      necesita: [],
+      alimenta: [
+        { tool: "Validador de Deducibilidad", ruta: "/app/tools/deducibility-checker", motivo: "Un EFOS detectado bloquea automáticamente la deducción." },
+        { tool: "Riesgo SAT", ruta: "/app/riesgo", motivo: "Operar con EFOS sube el score de riesgo." },
+      ],
+      datosMinimos: ["RFC a verificar"],
+    },
+  },
+
+  "deducibility-checker": {
+    slug: "deducibility-checker",
+    title: "Validador de Deducibilidad IA",
+    queHace:
+      "Analiza todos los CFDI de gastos del cliente y los clasifica con IA en: deducibles, por revisar y no deducibles. Aplica reglas del CFF/LISR/RMF (forma de pago, método, uso CFDI, EFOS, tope de efectivo $2K, etc.) y calcula el monto en riesgo.",
+    cuandoUsar: "Antes del cierre mensual para limpiar deducciones improcedentes, y en la planeación anual para identificar partidas que el SAT puede rechazar.",
+    tutorial: [
+      { n: 1, titulo: "Configura el año fiscal", detalle: "Selector 'Año fiscal' arriba a la izquierda. Por defecto el año en curso." },
+      { n: 2, titulo: "Ejecuta o actualiza el análisis", detalle: "Botón principal 'Volver a analizar' (variant hero). Procesa todos los CFDI gastos del periodo. Tarda según volumen." },
+      { n: 3, titulo: "Filtra por nivel", detalle: "Tarjetas KPI clickeables: 'CFDI gastos' (todos), 'No deducibles' (alta), 'Por revisar' (media). Click filtra la lista de abajo." },
+      { n: 4, titulo: "Acciona cada CFDI", detalle: "En la tabla puedes ver el motivo (ej. 'Pagado en efectivo >$2K', 'Forma 99 no permitida', 'EFOS Definitivo') y abrir el detalle." },
+    ],
+    resultados: [
+      { campo: "CFDI gastos", significado: "Total de CFDI recibidos del periodo analizados." },
+      { campo: "No deducibles", significado: "CFDI que el SAT rechazaría con la regla aplicada. Acción: corregir o no incluir en la declaración." },
+      { campo: "Por revisar", significado: "CFDI con indicios pero que requieren juicio humano (uso CFDI dudoso, monto inusual)." },
+      { campo: "Monto en riesgo", significado: "Suma de los importes de los CFDI no deducibles + por revisar." },
+    ],
+    dependencias: {
+      necesita: [
+        { tool: "Descarga Masiva SAT", ruta: "/app/sat-sync", motivo: "Sin CFDI sincronizados no hay nada que analizar." },
+        { tool: "Validador EFOS", ruta: "/app/tools/efos-validator", motivo: "Cruzar lista negra es uno de los criterios de no deducibilidad." },
+      ],
+      alimenta: [
+        { tool: "Salud Fiscal", ruta: "/app/salud-fiscal", motivo: "El monto no deducible reduce el subscore de CFDI." },
+        { tool: "Reporte Ejecutivo", ruta: "/app/reporte-ejecutivo", motivo: "Hallazgos críticos sobre deducciones improcedentes." },
+      ],
+      datosMinimos: ["≥ 1 mes de CFDI gastos sincronizados"],
+    },
+    costos: "Análisis con IA: consume créditos proporcional al volumen de CFDI procesados.",
+  },
+
+  "isr-iva-calculator": {
+    slug: "isr-iva-calculator",
+    title: "Calculadora ISR / IVA — Persona Física",
+    queHace:
+      "Calcula pagos provisionales mensuales de ISR e IVA para personas físicas (actividad empresarial / profesional / RESICO PF). Permite importar automáticamente CFDI emitidos y recibidos del expediente para llenar ingresos y deducciones.",
+    cuandoUsar: "Cada mes antes del día 17 para preparar el pago provisional, y para simular el impacto fiscal de operaciones nuevas.",
+    tutorial: [
+      { n: 1, titulo: "Selecciona expediente y periodo", detalle: "RFC arriba (barra superior), mes/año en el panel de la calculadora." },
+      { n: 2, titulo: "Importa CFDI del expediente", detalle: "Botón 'Importar del expediente' trae ingresos y gastos del periodo. También puedes capturar manualmente." },
+      { n: 3, titulo: "Revisa subtotales", detalle: "Verás ingresos gravados, deducciones autorizadas, base gravable, ISR causado y retenciones." },
+      { n: 4, titulo: "Lee los resultados", detalle: "Tarjetas finales con ISR e IVA a pagar (o saldo a favor) del periodo." },
+    ],
+    resultados: [
+      { campo: "ISR del periodo", significado: "Importe a pagar (rojo) o saldo a favor (verde) de ISR del mes calculado." },
+      { campo: "IVA del periodo", significado: "IVA trasladado − IVA acreditable − retenciones = a cargo o a favor." },
+      { campo: "Base gravable", significado: "Ingresos − deducciones autorizadas, antes de aplicar tarifa." },
+    ],
+    dependencias: {
+      necesita: [{ tool: "Descarga Masiva SAT", ruta: "/app/sat-sync", motivo: "Para autocompletar ingresos y deducciones desde CFDI." }],
+      alimenta: [{ tool: "Salud Fiscal", ruta: "/app/salud-fiscal", motivo: "ISR estimado entra en KPIs fiscales mensuales." }],
+      datosMinimos: ["RFC + ingresos del periodo (manual o por CFDI)"],
+    },
+  },
+
+  "isr-iva-pm": {
+    slug: "isr-iva-pm",
+    title: "Calculadora ISR / IVA — Persona Moral",
+    queHace:
+      "Calcula pagos provisionales mensuales de ISR e IVA para personas morales del régimen general (601) o RESICO PM (626). Aplica coeficiente de utilidad, amortiza pérdidas fiscales y descuenta pagos provisionales anteriores.",
+    cuandoUsar: "Cada mes para el pago provisional y para simular el efecto de operaciones extraordinarias en el cálculo acumulado.",
+    tutorial: [
+      { n: 1, titulo: "Selecciona expediente y periodo", detalle: "RFC en barra superior, periodo (mes/año) en el panel." },
+      { n: 2, titulo: "Importa del expediente (opcional)", detalle: "Botón 'Importar del expediente' trae los CFDI del periodo para sembrar ingresos." },
+      { n: 3, titulo: "Captura los parámetros clave", detalle: "Ingresos nominales del mes y acumulados, coeficiente de utilidad (de la declaración anual previa), pérdidas fiscales pendientes, pagos provisionales anteriores y retenciones ISR." },
+      { n: 4, titulo: "Revisa el resultado", detalle: "Cálculo del ISR provisional y del IVA del mes según las cifras capturadas." },
+    ],
+    resultados: [
+      { campo: "Base gravable estimada", significado: "Ingresos acumulados × coeficiente − pérdidas." },
+      { campo: "ISR provisional a pagar", significado: "ISR causado − pagos provisionales anteriores − retenciones." },
+      { campo: "IVA del mes", significado: "IVA trasladado − acreditable − retenciones." },
+    ],
+    dependencias: {
+      necesita: [{ tool: "Descarga Masiva SAT", ruta: "/app/sat-sync", motivo: "CFDI emitidos = ingresos nominales del mes." }],
+      alimenta: [{ tool: "Salud Fiscal", ruta: "/app/salud-fiscal", motivo: "El ISR estimado alimenta el comparativo mensual." }],
+      datosMinimos: ["Coeficiente de utilidad de la última declaración anual", "Ingresos del mes (manual o por CFDI)"],
+    },
+  },
+
+  "resico-calculator": {
+    slug: "resico-calculator",
+    title: "Calculadora RESICO Persona Física",
+    queHace:
+      "Calcula la tasa efectiva del Régimen Simplificado de Confianza para PF según los ingresos mensuales: 1.00% hasta $25K, 1.10% hasta $50K, 1.50% hasta $83.33K, 2.00% hasta $208.33K, 2.50% hasta $3.5M.",
+    cuandoUsar: "Para decidir si conviene cambiar a RESICO, para calcular pago mensual y para proyectar ingreso máximo antes de cambiar de tramo.",
+    tutorial: [
+      { n: 1, titulo: "Captura ingresos del mes", detalle: "Solo necesitas el monto de ingresos cobrados (efectivamente percibidos) en el mes." },
+      { n: 2, titulo: "Revisa la tasa aplicable", detalle: "La calculadora identifica automáticamente el tramo y muestra el porcentaje aplicado." },
+      { n: 3, titulo: "Lee el ISR a pagar", detalle: "Importe que se entera al SAT a más tardar el día 17 del mes siguiente." },
+    ],
+    resultados: [
+      { campo: "Tasa efectiva", significado: "Porcentaje aplicado según el tramo de ingresos.", rango: "1.00% · 1.10% · 1.50% · 2.00% · 2.50%" },
+      { campo: "ISR mensual", significado: "Ingresos del mes × tasa." },
+    ],
+    dependencias: { necesita: [], alimenta: [], datosMinimos: ["Ingresos cobrados del mes"] },
+  },
+
+  "express-auditor": {
+    slug: "express-auditor",
+    title: "Auditor Express",
+    queHace:
+      "Hace una pre-auditoría rápida de un expediente: cruza CFDI vs declaraciones esperadas, detecta omisiones, observaciones documentales y riesgos comunes. Entrega un PDF ejecutivo con hallazgos priorizados.",
+    cuandoUsar: "Al recibir un cliente nuevo para diagnóstico inicial, o cada trimestre como salud checkup ligero.",
+    tutorial: [
+      { n: 1, titulo: "Selecciona el expediente", detalle: "RFC en barra superior. El auditor lee CFDI y datos del cliente." },
+      { n: 2, titulo: "Carga los datos", detalle: "Botón principal — procesa el cruce y construye los hallazgos." },
+      { n: 3, titulo: "Exporta el PDF", detalle: "Botón 'Exportar PDF' (requiere que los datos estén cargados, si no muestra error)." },
+    ],
+    resultados: [
+      { campo: "Hallazgos", significado: "Lista priorizada de observaciones (alta/media/baja)." },
+      { campo: "PDF ejecutivo", significado: "Documento listo para enviar al cliente con el diagnóstico." },
+    ],
+    dependencias: {
+      necesita: [{ tool: "Descarga Masiva SAT", ruta: "/app/sat-sync", motivo: "Requiere CFDI sincronizados para encontrar omisiones." }],
+      alimenta: [{ tool: "Reporte Ejecutivo", ruta: "/app/reporte-ejecutivo", motivo: "Los hallazgos pueden documentarse en el reporte mensual." }],
+      datosMinimos: ["Expediente con CFDI cargados"],
+    },
+  },
+
+  "sat-risk": {
+    slug: "sat-risk",
+    title: "Calculadora Riesgo SAT",
+    queHace:
+      "Versión rápida del análisis de Riesgo SAT 2026 — calcula un score puntual sin necesidad de cargar todo el módulo completo. Útil para revisiones puntuales.",
+    cuandoUsar: "Cuando quieres una estimación rápida sin abrir el módulo completo de Riesgo SAT.",
+    tutorial: [
+      { n: 1, titulo: "Selecciona el expediente", detalle: "RFC en barra superior." },
+      { n: 2, titulo: "Lee el score", detalle: "Resultado numérico 0-100 con semáforo (mientras más alto, peor)." },
+    ],
+    resultados: [
+      { campo: "Score Riesgo SAT", significado: "0-30 verde · 31-70 amarillo · 71-100 rojo." },
+    ],
+    dependencias: {
+      necesita: [{ tool: "Descarga Masiva SAT", ruta: "/app/sat-sync", motivo: "Base de CFDI para evaluar criterios." }],
+      alimenta: [{ tool: "Riesgo SAT 2026", ruta: "/app/riesgo", motivo: "El módulo completo da el desglose por los 12 criterios." }],
+      datosMinimos: ["CFDI sincronizados"],
+    },
+  },
+
+  "csf-parser": {
+    slug: "csf-parser",
+    title: "Lector de Constancia de Situación Fiscal",
+    queHace:
+      "Lee un PDF de Constancia de Situación Fiscal del SAT y extrae automáticamente RFC, razón social, régimen fiscal, código postal, domicilio y obligaciones. Ahorra captura manual al dar de alta clientes.",
+    cuandoUsar: "Al dar de alta un cliente nuevo cuando te envía su CSF, o para verificar que los datos del expediente coinciden con la versión vigente del SAT.",
+    tutorial: [
+      { n: 1, titulo: "Sube el PDF de la CSF", detalle: "Arrastra el archivo o usa el selector. Acepta solo PDFs originales del SAT (no escaneos)." },
+      { n: 2, titulo: "Revisa los datos extraídos", detalle: "Se muestran RFC, razón social, régimen, CP y obligaciones detectadas." },
+      { n: 3, titulo: "Usa los datos para alta", detalle: "Copia los datos al alta de cliente en Expedientes." },
+    ],
+    resultados: [
+      { campo: "Datos del contribuyente", significado: "RFC, razón social, régimen fiscal vigente, CP, domicilio." },
+      { campo: "Obligaciones", significado: "Lista de declaraciones a las que está obligado el RFC según el SAT." },
+    ],
+    dependencias: {
+      necesita: [],
+      alimenta: [{ tool: "Expedientes / Clientes", ruta: "/app/clientes", motivo: "Datos para alta o actualización del expediente." }],
+      datosMinimos: ["PDF original de CSF del SAT"],
+    },
+  },
+
+  "xml-bulk-reader": {
+    slug: "xml-bulk-reader",
+    title: "Lector masivo de XML CFDI",
+    queHace:
+      "Carga decenas o cientos de XML CFDI en una sola pasada, los parsea y los guarda en el expediente activo. Ideal cuando el cliente te entrega un ZIP/carpeta con XML históricos.",
+    cuandoUsar: "Al onboarding de un cliente nuevo que aún no tiene credenciales de Descarga Masiva configuradas, o para cargar XML que no provienen del SAT (de PAC propio del cliente).",
+    tutorial: [
+      { n: 1, titulo: "Selecciona expediente activo", detalle: "RFC en barra superior — todos los CFDI se guardan ahí." },
+      { n: 2, titulo: "Sube los XML", detalle: "Selecciona múltiples archivos .xml. El sistema valida UUID y descarta inválidos." },
+      { n: 3, titulo: "Guarda en lote", detalle: "Botón 'Guardar' inserta los válidos. Si algún XML no tiene UUID se omite y te avisa." },
+    ],
+    resultados: [
+      { campo: "CFDI parseados", significado: "Cuántos archivos se leyeron correctamente." },
+      { campo: "CFDI guardados", significado: "Cuántos se insertaron en el expediente (los duplicados se omiten)." },
+    ],
+    dependencias: {
+      necesita: [{ tool: "Expediente activo", ruta: "/app/clientes", motivo: "Los XML se asocian al cliente seleccionado." }],
+      alimenta: [
+        { tool: "Conciliación Integral", ruta: "/app/conciliacion-integral", motivo: "CFDI cargados entran al cruce contra contabilidad y bancos." },
+        { tool: "Contabilidad Automática", ruta: "/app/contabilidad-auto", motivo: "Insumo para generar pólizas borrador." },
+      ],
+      datosMinimos: ["Archivos .xml CFDI con UUID válido"],
+    },
+  },
+
+  "bank-reconciler": {
+    slug: "bank-reconciler",
+    title: "Conciliador Bancario",
+    queHace:
+      "Importa el estado de cuenta del banco (CSV / TXT / XLS según formato), normaliza los movimientos y los cruza contra CFDI y pólizas para detectar conciliados, pendientes y discrepancias.",
+    cuandoUsar: "Cada vez que cierras un mes contable, antes de declarar, y como evidencia de control interno.",
+    tutorial: [
+      { n: 1, titulo: "Selecciona el expediente", detalle: "RFC en barra superior." },
+      { n: 2, titulo: "Sube el estado de cuenta", detalle: "Acepta formatos comunes de bancos mexicanos (BBVA, Banorte, Santander, HSBC, etc.). Se parsea automáticamente." },
+      { n: 3, titulo: "Revisa el cruce", detalle: "Tabla con movimientos: matched (verde), pendientes (amarillo), discrepancias (rojo)." },
+    ],
+    resultados: [
+      { campo: "Movimientos conciliados", significado: "Tienen CFDI y póliza asociados con monto y fecha coincidentes." },
+      { campo: "Pendientes", significado: "Sin CFDI o sin póliza — requieren acción." },
+    ],
+    dependencias: {
+      necesita: [
+        { tool: "Descarga Masiva SAT", ruta: "/app/sat-sync", motivo: "Para cruzar contra CFDI." },
+        { tool: "Pólizas", ruta: "/app/polizas", motivo: "Para cruzar contra registros contables." },
+      ],
+      alimenta: [
+        { tool: "Conciliación Integral", ruta: "/app/conciliacion-integral", motivo: "Lado bancario del cruce triple." },
+        { tool: "Contabilidad Automática", ruta: "/app/contabilidad-auto", motivo: "Pestaña Bancos genera pólizas desde movimientos no conciliados." },
+      ],
+      datosMinimos: ["Estado de cuenta del banco en formato compatible"],
+    },
+  },
+
+  "shadow-payroll": {
+    slug: "shadow-payroll",
+    title: "Detector de Nómina Oculta",
+    queHace:
+      "Analiza movimientos bancarios buscando patrones recurrentes (mismo monto + misma frecuencia + mismo beneficiario) que sugieran nómina pagada fuera del recibo CFDI — práctica de alto riesgo ante SAT e IMSS.",
+    cuandoUsar: "En auditorías internas y antes de presentar el dictamen fiscal, para que el cliente regularice antes que el SAT lo detecte.",
+    tutorial: [
+      { n: 1, titulo: "Configura año y monto mínimo", detalle: "'Año fiscal' y 'Monto mínimo' (filtra pagos chicos)." },
+      { n: 2, titulo: "Ejecuta análisis", detalle: "Botón 'Volver a analizar' (hero). Procesa cargos del periodo." },
+      { n: 3, titulo: "Lee KPIs", detalle: "Cargos analizados · Patrones recurrentes · Sospechosos críticos · Monto sin respaldo." },
+      { n: 4, titulo: "Revisa los patrones", detalle: "Lista de transferencias recurrentes con mismo beneficiario sin CFDI nómina asociado." },
+    ],
+    resultados: [
+      { campo: "Patrones recurrentes", significado: "Transferencias periódicas a un mismo destinatario." },
+      { campo: "Sospechosos críticos", significado: "Patrones de alta confianza de ser nómina oculta." },
+      { campo: "Monto sin respaldo", significado: "Suma de transferencias sin CFDI de nómina." },
+    ],
+    dependencias: {
+      necesita: [
+        { tool: "Conciliador Bancario", ruta: "/app/tools/bank-reconciler", motivo: "Necesita movimientos bancarios importados." },
+        { tool: "Descarga Masiva SAT", ruta: "/app/sat-sync", motivo: "Para verificar CFDI nómina existentes." },
+      ],
+      alimenta: [
+        { tool: "Salud Fiscal", ruta: "/app/salud-fiscal", motivo: "Reduce subscore laboral." },
+        { tool: "Reporte Ejecutivo", ruta: "/app/reporte-ejecutivo", motivo: "Hallazgos críticos para el cliente." },
+      ],
+      datosMinimos: ["Estado de cuenta del año", "CFDI nómina sincronizados (para descartar legítimos)"],
+    },
+  },
+
+  "import-prices": {
+    slug: "import-prices",
+    title: "Validador de Precios de Importación",
+    queHace:
+      "Detecta CFDI con precios atípicos (muy por encima o por debajo del promedio del SKU/concepto), patrón asociado a sub-valuación aduanera o triangulación. Configurable por umbral de desviación.",
+    cuandoUsar: "Para clientes con operaciones de comercio exterior, antes del dictamen y en revisiones aduaneras.",
+    tutorial: [
+      { n: 1, titulo: "Configura año y umbral", detalle: "'Año fiscal' y 'Umbral desviación' (ej. 30 = marca todo lo que se aleje >30% del promedio)." },
+      { n: 2, titulo: "Ejecuta análisis", detalle: "Botón 'Volver a analizar'. Agrupa CFDI por concepto y calcula desviaciones." },
+      { n: 3, titulo: "Revisa anomalías", detalle: "Lista de CFDI con precio fuera del rango — revisa cada uno." },
+    ],
+    resultados: [
+      { campo: "CFDI atípicos", significado: "Comprobantes con precio fuera del umbral configurado." },
+    ],
+    dependencias: {
+      necesita: [{ tool: "Descarga Masiva SAT", ruta: "/app/sat-sync", motivo: "CFDI sincronizados con detalle de conceptos." }],
+      alimenta: [{ tool: "Reporte Ejecutivo", ruta: "/app/reporte-ejecutivo", motivo: "Hallazgos de comercio exterior." }],
+      datosMinimos: ["CFDI con conceptos repetidos a lo largo del año"],
+    },
+  },
+
+  "import-clientes": {
+    slug: "import-clientes",
+    title: "Importar cartera de clientes",
+    queHace:
+      "Da de alta masiva expedientes desde un CSV. Acepta clientes, proveedores y acreedores. Permite mapear columnas y previsualiza errores antes de insertar.",
+    cuandoUsar: "Al onboarding de un despacho que ya tiene cartera, para migrar desde Excel u otro sistema sin captura manual.",
+    tutorial: [
+      { n: 1, titulo: "Descarga la plantilla", detalle: "Botón con la estructura: rfc, razón social, tipo persona, régimen fiscal, CP, email, teléfono, tipo (cliente/proveedor/acreedor)." },
+      { n: 2, titulo: "Llena tu CSV", detalle: "RFC es obligatorio (13 caracteres PF / 12 PM). Razón social obligatoria. Resto opcional." },
+      { n: 3, titulo: "Sube y revisa preview", detalle: "El sistema valida filas y te muestra errores antes de insertar." },
+      { n: 4, titulo: "Confirma importación", detalle: "Toast indica cuántos se importaron OK y cuántos con error." },
+    ],
+    resultados: [
+      { campo: "Registros importados", significado: "Filas insertadas correctamente." },
+      { campo: "Errores", significado: "Filas rechazadas (RFC inválido, duplicado, datos faltantes)." },
+    ],
+    dependencias: {
+      necesita: [],
+      alimenta: [{ tool: "Expedientes", ruta: "/app/clientes", motivo: "Los RFC importados ya están listos para conectar a herramientas." }],
+      datosMinimos: ["CSV con columnas rfc y razón social"],
+    },
+  },
+
+  "oficio-generator": {
+    slug: "oficio-generator",
+    title: "Generador de Oficios",
+    queHace:
+      "Genera oficios y escritos fiscales personalizados al cliente y al asunto: respuestas a invitaciones SAT, aclaraciones, promociones, recursos de revocación. Usa IA para redactar con tono jurídico y completar datos del expediente.",
+    cuandoUsar: "Al responder un requerimiento SAT, solicitar una aclaración, o presentar un escrito promocional.",
+    tutorial: [
+      { n: 1, titulo: "Selecciona el tipo de oficio", detalle: "Catálogo con plantillas: respuesta a invitación, aclaración, promoción, etc." },
+      { n: 2, titulo: "Captura los datos del asunto", detalle: "Número de oficio del SAT, fecha, dependencia, hechos. La IA enriquece el cuerpo." },
+      { n: 3, titulo: "Genera y descarga", detalle: "El resultado se previsualiza editable. Descarga como PDF o Word." },
+    ],
+    resultados: [
+      { campo: "Borrador generado", significado: "Texto del oficio listo para revisión y firma." },
+    ],
+    dependencias: {
+      necesita: [{ tool: "Expediente activo", ruta: "/app/clientes", motivo: "Datos del contribuyente para encabezado y representación." }],
+      alimenta: [{ tool: "Buzón / Correspondencia", ruta: "/app/admin/correspondencia", motivo: "El oficio se archiva como salida del despacho." }],
+      datosMinimos: ["Datos del oficio SAT recibido (si aplica)", "Expediente activo"],
+    },
+    costos: "Generación con IA: consume créditos por oficio.",
+  },
+
+  "fiscal-assistant": {
+    slug: "fiscal-assistant",
+    title: "Asistente Fiscal IA",
+    queHace:
+      "Chat especializado en materia fiscal mexicana (CFF, LISR, LIVA, RMF). Resuelve dudas técnicas, explica artículos, propone interpretaciones y cita fundamentos. NO sustituye opinión legal — es apoyo para el contador.",
+    cuandoUsar: "Cuando tienes una duda puntual de criterio fiscal, necesitas redactar una postura técnica, o quieres entender una reforma reciente.",
+    tutorial: [
+      { n: 1, titulo: "Escribe tu pregunta", detalle: "Caja de chat: 'Pregunta sobre CFDI, ISR, IVA, RESICO...'. Sé específico (incluye RFC tipo persona, supuesto, monto)." },
+      { n: 2, titulo: "Envía", detalle: "Botón hero envía. La IA responde con explicación y fundamentos legales cuando aplica." },
+      { n: 3, titulo: "Continúa la conversación", detalle: "El chat mantiene contexto — puedes refinar la pregunta sin repetir el supuesto." },
+    ],
+    resultados: [
+      { campo: "Respuesta IA", significado: "Explicación técnica con referencias a artículos cuando aplica." },
+    ],
+    dependencias: {
+      necesita: [],
+      alimenta: [],
+      datosMinimos: ["Pregunta clara con contexto suficiente"],
+    },
+    costos: "Cada pregunta consume créditos IA. Las preguntas largas / con varias iteraciones consumen más.",
+  },
 };
 
 export function getHelp(slug: string): HelpContent | null {
