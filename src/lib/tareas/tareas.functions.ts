@@ -101,12 +101,14 @@ async function enrichTareas(supabase: any, rows: any[]): Promise<TareaRow[]> {
     ) {
       estatus = "vencida";
     }
+    const cc = c as any;
+    const pp = p as any;
     return {
       ...r,
       estatus,
-      cliente_nombre: c?.razon_social ?? null,
-      cliente_rfc: c?.rfc ?? null,
-      asignado_nombre: p?.full_name ?? p?.email ?? null,
+      cliente_nombre: cc?.razon_social ?? null,
+      cliente_rfc: cc?.rfc ?? null,
+      asignado_nombre: pp?.full_name ?? pp?.email ?? null,
     } as TareaRow;
   });
 }
