@@ -22,6 +22,7 @@ import {
   cambiarEstadoPoliza,
   editarAsientosPoliza,
 } from "@/lib/contabilidad-auto/contabilizar.functions";
+import { CatalogoTab, ReglasTab, ExportarTab } from "@/components/contabilidad-auto/ConfigTabs";
 
 export const Route = createFileRoute("/app/contabilidad-auto")({
   component: ContabilidadAutoPage,
