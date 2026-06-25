@@ -35,8 +35,10 @@ export class UsageLimitError extends Error {
 export function labelRecurso(r: Recurso): string {
   if (r === "ia_requests") return "Solicitudes IA";
   if (r === "ia_tokens") return "Tokens IA";
+  if (r === "sat_solicitudes") return "Descargas SAT";
   return "RFCs activos";
 }
+
 
 export function periodoActual(d: Date = new Date()): string {
   const y = d.getUTCFullYear();
