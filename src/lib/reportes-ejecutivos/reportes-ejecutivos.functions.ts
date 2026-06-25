@@ -303,7 +303,7 @@ export const obtenerReporte = createServerFn({ method: "POST" })
       .select("*")
       .eq("reporte_id", data.id)
       .order("prioridad");
-    return { reporte: rep as ReporteEjecutivo, recomendaciones: (recs ?? []) as RecomendacionIA[] };
+    return { reporte: rep as any, recomendaciones: (recs ?? []) as any[] };
   });
 
 // ============ Marcar enviado ============
