@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Calculator, FileText, FileStack, Coins, Banknote, FileBadge, FileSignature, ShieldCheck, ScanSearch, Bot, AlertTriangle, Users, Globe, Network, Mail, Bell, ShieldAlert, ChevronDown, Check, Calendar, Clock, ListChecks, Activity, Workflow as WorkflowIcon } from "lucide-react";
+import { Calculator, FileText, FileStack, Coins, Banknote, FileBadge, FileSignature, ShieldCheck, ScanSearch, Bot, AlertTriangle, Users, Globe, Network, Mail, Bell, ShieldAlert, ChevronDown, Check, Calendar, Clock, ListChecks, Activity, Workflow as WorkflowIcon, RefreshCw } from "lucide-react";
 import type { ComponentType } from "react";
 import { useState } from "react";
 import { useActiveCliente } from "@/lib/active-cliente";
@@ -27,6 +27,7 @@ const TOOLS: Tool[] = [
   { name: "Validador CFDI 4.0", desc: "Estructura, RFC, totales, UUID al instante.", icon: FileText, href: "/app/tools/cfdi-validator", status: "live", group: "2 · Ingesta de CFDI" },
   { name: "Verificador de UUID", desc: "Consulta webservice del SAT.", icon: ShieldCheck, href: "/app/tools/cfdi-verifier", status: "live", group: "2 · Ingesta de CFDI" },
   { name: "CFDI del expediente", desc: "Bandeja unificada del cliente activo.", icon: FileText, href: "/app/cfdi", status: "live", group: "2 · Ingesta de CFDI" },
+  { name: "Descarga Masiva SAT", desc: "Sincronización automática con SAT: descarga CFDI, detecta novedades y dispara cascada de análisis.", icon: RefreshCw, href: "/app/sat-sync", status: "live", group: "2 · Ingesta de CFDI" },
 
   // 3. Auditoría y conciliación
   { name: "Auditor express", desc: "5 validaciones: duplicados, NC huérfanas, cancelados, PPD sin pago, fuera de periodo.", icon: ScanSearch, href: "/app/tools/express-auditor", status: "live", group: "3 · Auditoría y Conciliación" },
