@@ -67,11 +67,12 @@ export const importarPolizas = createServerFn({ method: "POST" })
       .eq("id", data.cliente_id)
       .maybeSingle();
     if (errCli || !cli) throw new Error("Cliente no encontrado");
+    if (!cli.despacho_id) throw new Error("Cliente sin despacho asignado");
 
     const rows = data.polizas.map((p) => ({
       id: crypto.randomUUID(),
       cliente_id: data.cliente_id,
-      despacho_id: cli.despacho_id,
+      despacho_id: cli.despacho_id as string,
       tipo: p.tipo,
       fecha: p.fecha,
       monto: p.monto,
