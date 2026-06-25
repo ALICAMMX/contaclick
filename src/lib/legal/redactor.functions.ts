@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 import { z } from "zod";
+import { checkRateLimit, rateLimitMessage } from "@/lib/security/rate-limit";
 
 export const TIPOS_ESCRITO = [
   { key: "recurso_revocacion", nombre: "Recurso de Revocación", fundamento: "Arts. 116, 117, 121 CFF", autoridad: "Administración Desconcentrada Jurídica del SAT" },
@@ -73,9 +74,13 @@ export type EscritoResult = {
 export const generarEscrito = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) => Schema.parse(d))
-  .handler(async ({ data }): Promise<EscritoResult> => {
+  .handler(async ({ data, context }): Promise<EscritoResult> => {
     const meta = TIPOS_ESCRITO.find((t) => t.key === data.tipo);
     if (!meta) return { content: "", error: "Tipo de escrito no válido.", tipo: data.tipo };
+
+    // Rate limit: 20 escritos / 10 min por usuario (operación cara, anti-abuso)
+    const rl = await checkRateLimit(context.supabase, "redactor_legal", 20, 600);
+    if (!rl.allowed) return { content: "", error: rateLimitMessage("redactor legal", rl.resetAt), tipo: data.tipo };
 
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) return { content: "", error: "El servicio de IA no está configurado.", tipo: data.tipo };
