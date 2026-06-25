@@ -359,7 +359,7 @@ export const runWorkflowAhora = createServerFn({ method: "POST" })
       .eq("id", data.workflowId)
       .single();
     if (error || !wf) throw new Error(error?.message ?? "Workflow no encontrado");
-    const r = await runWorkflowInternal(supabase, wf as WorkflowRow, data.payload ?? {}, userId);
+    const r = await runWorkflowInternal(supabase, wf as unknown as WorkflowRow, data.payload ?? {}, userId);
     return r;
   });
 
