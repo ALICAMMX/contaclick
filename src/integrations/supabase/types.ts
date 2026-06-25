@@ -529,6 +529,264 @@ export type Database = {
           },
         ]
       }
+      conciliacion_incidencias: {
+        Row: {
+          cfdi_id: string | null
+          cliente_id: string
+          created_at: string
+          despacho_id: string
+          detalle: Json
+          estatus: string
+          explicacion_ia: string | null
+          fecha: string | null
+          gravedad: string
+          id: string
+          impacto_isr: number
+          impacto_iva: number
+          monto: number
+          movimiento_id: string | null
+          poliza_id: string | null
+          recomendacion: string | null
+          ref_hash: string
+          resuelta_at: string | null
+          resuelta_por: string | null
+          run_id: string | null
+          tarea_id: string | null
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          cfdi_id?: string | null
+          cliente_id: string
+          created_at?: string
+          despacho_id: string
+          detalle?: Json
+          estatus?: string
+          explicacion_ia?: string | null
+          fecha?: string | null
+          gravedad?: string
+          id?: string
+          impacto_isr?: number
+          impacto_iva?: number
+          monto?: number
+          movimiento_id?: string | null
+          poliza_id?: string | null
+          recomendacion?: string | null
+          ref_hash: string
+          resuelta_at?: string | null
+          resuelta_por?: string | null
+          run_id?: string | null
+          tarea_id?: string | null
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          cfdi_id?: string | null
+          cliente_id?: string
+          created_at?: string
+          despacho_id?: string
+          detalle?: Json
+          estatus?: string
+          explicacion_ia?: string | null
+          fecha?: string | null
+          gravedad?: string
+          id?: string
+          impacto_isr?: number
+          impacto_iva?: number
+          monto?: number
+          movimiento_id?: string | null
+          poliza_id?: string | null
+          recomendacion?: string | null
+          ref_hash?: string
+          resuelta_at?: string | null
+          resuelta_por?: string | null
+          run_id?: string | null
+          tarea_id?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conciliacion_incidencias_cfdi_id_fkey"
+            columns: ["cfdi_id"]
+            isOneToOne: false
+            referencedRelation: "cfdi_xml"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conciliacion_incidencias_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conciliacion_incidencias_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conciliacion_incidencias_movimiento_id_fkey"
+            columns: ["movimiento_id"]
+            isOneToOne: false
+            referencedRelation: "movimientos_bancarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conciliacion_incidencias_poliza_id_fkey"
+            columns: ["poliza_id"]
+            isOneToOne: false
+            referencedRelation: "polizas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conciliacion_incidencias_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "conciliacion_integral_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conciliacion_incidencias_tarea_id_fkey"
+            columns: ["tarea_id"]
+            isOneToOne: false
+            referencedRelation: "tareas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conciliacion_integral_runs: {
+        Row: {
+          bajas: number
+          cliente_id: string
+          created_at: string
+          created_by: string | null
+          criticas: number
+          desde: string
+          despacho_id: string
+          hasta: string
+          id: string
+          kpis: Json
+          medias: number
+          monto_observado: number
+          score_consistencia: number
+          total_incidencias: number
+          trigger_origen: string
+        }
+        Insert: {
+          bajas?: number
+          cliente_id: string
+          created_at?: string
+          created_by?: string | null
+          criticas?: number
+          desde: string
+          despacho_id: string
+          hasta: string
+          id?: string
+          kpis?: Json
+          medias?: number
+          monto_observado?: number
+          score_consistencia?: number
+          total_incidencias?: number
+          trigger_origen?: string
+        }
+        Update: {
+          bajas?: number
+          cliente_id?: string
+          created_at?: string
+          created_by?: string | null
+          criticas?: number
+          desde?: string
+          despacho_id?: string
+          hasta?: string
+          id?: string
+          kpis?: Json
+          medias?: number
+          monto_observado?: number
+          score_consistencia?: number
+          total_incidencias?: number
+          trigger_origen?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conciliacion_integral_runs_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conciliacion_integral_runs_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conciliacion_score_historico: {
+        Row: {
+          bajas: number
+          cliente_id: string
+          created_at: string
+          criticas: number
+          despacho_id: string
+          id: string
+          medias: number
+          monto_observado: number
+          run_id: string | null
+          score: number
+        }
+        Insert: {
+          bajas?: number
+          cliente_id: string
+          created_at?: string
+          criticas?: number
+          despacho_id: string
+          id?: string
+          medias?: number
+          monto_observado?: number
+          run_id?: string | null
+          score: number
+        }
+        Update: {
+          bajas?: number
+          cliente_id?: string
+          created_at?: string
+          criticas?: number
+          despacho_id?: string
+          id?: string
+          medias?: number
+          monto_observado?: number
+          run_id?: string | null
+          score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conciliacion_score_historico_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conciliacion_score_historico_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conciliacion_score_historico_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "conciliacion_integral_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conciliaciones: {
         Row: {
           cfdi_id: string | null
@@ -1348,6 +1606,85 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      polizas: {
+        Row: {
+          cliente_id: string
+          concepto: string | null
+          created_at: string
+          created_by: string | null
+          cuenta: string | null
+          despacho_id: string
+          fecha: string
+          id: string
+          metadata: Json
+          monto: number
+          movimiento_bancario_id: string | null
+          origen: string
+          referencia: string | null
+          tipo: string
+          updated_at: string
+          uuid_cfdi: string | null
+        }
+        Insert: {
+          cliente_id: string
+          concepto?: string | null
+          created_at?: string
+          created_by?: string | null
+          cuenta?: string | null
+          despacho_id: string
+          fecha: string
+          id?: string
+          metadata?: Json
+          monto?: number
+          movimiento_bancario_id?: string | null
+          origen?: string
+          referencia?: string | null
+          tipo: string
+          updated_at?: string
+          uuid_cfdi?: string | null
+        }
+        Update: {
+          cliente_id?: string
+          concepto?: string | null
+          created_at?: string
+          created_by?: string | null
+          cuenta?: string | null
+          despacho_id?: string
+          fecha?: string
+          id?: string
+          metadata?: Json
+          monto?: number
+          movimiento_bancario_id?: string | null
+          origen?: string
+          referencia?: string | null
+          tipo?: string
+          updated_at?: string
+          uuid_cfdi?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "polizas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "polizas_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "polizas_movimiento_bancario_id_fkey"
+            columns: ["movimiento_bancario_id"]
+            isOneToOne: false
+            referencedRelation: "movimientos_bancarios"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
