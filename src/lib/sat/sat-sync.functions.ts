@@ -14,6 +14,15 @@ import { computeRiesgoSAT } from "@/lib/riesgo/riesgo.functions";
 import { runExpressAudit } from "@/lib/auditor/auditor.functions";
 import { scanClienteEfos } from "@/lib/efos/efos.functions";
 import { resolveActiveDespachoId } from "@/lib/despacho/resolve";
+import {
+  assertSatRunPermitido,
+  assertFrecuenciaPermitida,
+  contarSolicitudesPrevistas,
+  registrarConsumoSat,
+  type FrecuenciaSat,
+} from "@/lib/usage/sat-quota";
+import { getPlanLimites } from "@/lib/usage/limits";
+
 
 export type Frecuencia = "manual" | "diaria" | "semanal" | "mensual";
 export type Periodo = "30d" | "mes_actual" | "ejercicio" | "personalizado";
