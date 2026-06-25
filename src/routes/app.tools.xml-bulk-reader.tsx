@@ -275,7 +275,7 @@ function BulkReader() {
   };
 
   return (
-    <ToolShell
+    <ToolShell helpSlug="xml-bulk-reader"
       title="Lector masivo de XML"
       description="Sube un ZIP del SAT o varios XML. Obtén una tabla completa con todos los datos clave: emisor, receptor, total, método de pago y estado."
       icon={<FileStack className="h-5 w-5 text-primary-foreground" />}

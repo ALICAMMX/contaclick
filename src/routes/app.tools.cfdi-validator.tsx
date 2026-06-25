@@ -69,7 +69,7 @@ function CfdiValidator() {
   };
 
   return (
-    <ToolShell
+    <ToolShell helpSlug="cfdi-validator"
       title="Validador CFDI 4.0"
       description="Sube un XML, valida su estructura y revisa todos los datos relevantes."
       icon={<FileSearch className="h-5 w-5 text-primary-foreground" />}

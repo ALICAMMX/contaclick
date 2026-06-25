@@ -42,7 +42,7 @@ function ExpressAuditor() {
 
   if (!cliente) {
     return (
-      <ToolShell
+      <ToolShell helpSlug="express-auditor"
         title="Auditor express"
         description="Selecciona un expediente para auditar sus CFDIs."
         icon={<ScanSearch className="h-5 w-5 text-primary-foreground" />}

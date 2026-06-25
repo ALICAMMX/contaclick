@@ -66,7 +66,7 @@ function EfosValidator() {
   };
 
   return (
-    <ToolShell
+    <ToolShell helpSlug="efos-validator"
       title="Validador 69-B / EFOS"
       description="Detecta proveedores en lista negra del SAT antes de declarar. La corresponsabilidad por trabajar con un EFOS recae en el contribuyente y su contador."
       icon={<ShieldAlert className="h-5 w-5 text-primary-foreground" />}

@@ -173,7 +173,7 @@ function CfdiVerifier() {
   };
 
   return (
-    <ToolShell
+    <ToolShell helpSlug="cfdi-verifier"
       title="Verificador de UUID"
       description="Valida el formato del CFDI y abre la consulta oficial en el portal del SAT."
       icon={<ShieldCheck className="h-5 w-5 text-primary-foreground" />}

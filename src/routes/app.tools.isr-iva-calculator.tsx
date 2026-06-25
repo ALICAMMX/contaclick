@@ -160,7 +160,7 @@ function IsrIvaCalculator() {
   }
 
   return (
-    <ToolShell
+    <ToolShell helpSlug="isr-iva-calculator"
       title="Calculadora ISR / IVA mensual"
       description="Pago provisional estimado para PF con actividad empresarial. Verifica siempre las tarifas vigentes."
       icon={<Calculator className="h-5 w-5 text-primary-foreground" />}

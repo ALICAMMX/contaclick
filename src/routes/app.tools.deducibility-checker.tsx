@@ -37,7 +37,7 @@ function DeducibilityChecker() {
   const filtered = filter === "all" ? findings : findings.filter((f) => f.severidad === filter);
 
   return (
-    <ToolShell
+    <ToolShell helpSlug="deducibility-checker"
       title="Validador de Deducibilidad IA"
       description="Cruza tus CFDI recibidos contra las reglas del LISR (arts. 27, 28) para detectar gastos no deducibles antes de que el SAT lo haga."
       icon={<ShieldAlert className="h-5 w-5 text-primary-foreground" />}

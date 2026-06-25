@@ -300,7 +300,7 @@ function CsfParser() {
   };
 
   return (
-    <ToolShell
+    <ToolShell helpSlug="csf-parser"
       title="Lector de Constancia Fiscal"
       description="Sube la CSF en PDF y crea o actualiza expedientes a partir de los datos extraídos."
       icon={<FileBadge className="h-5 w-5 text-primary-foreground" />}

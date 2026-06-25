@@ -3,6 +3,7 @@ import { ArrowLeft, UserRound, AlertCircle } from "lucide-react";
 import type { ReactNode } from "react";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { Button } from "./ui/button";
+import { HerramientaHelp } from "./HerramientaHelp";
 
 export function ToolShell({
   title,
@@ -10,12 +11,15 @@ export function ToolShell({
   icon,
   children,
   requireCliente = true,
+  helpSlug,
 }: {
   title: string;
   description?: string;
   icon?: ReactNode;
   children: ReactNode;
   requireCliente?: boolean;
+  /** Slug en src/lib/help/registry.ts. Si se pasa, muestra el botón "Ayuda" en la cabecera. */
+  helpSlug?: string;
 }) {
   const { cliente } = useActiveCliente();
   const navigate = useNavigate();
@@ -26,16 +30,19 @@ export function ToolShell({
         <Link to="/app/contable" className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5">
           <ArrowLeft className="h-3.5 w-3.5" /> Volver a Contable y Fiscal
         </Link>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-card/50 border border-border text-xs">
-          <UserRound className="h-3.5 w-3.5 text-primary" />
-          {cliente ? (
-            <>
-              <span className="font-medium">{cliente.rfc}</span>
-              <span className="text-muted-foreground hidden sm:inline">· {cliente.razon_social}</span>
-            </>
-          ) : (
-            <span className="text-muted-foreground">Sin expediente activo</span>
-          )}
+        <div className="flex items-center gap-2">
+          {helpSlug && <HerramientaHelp slug={helpSlug} />}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-card/50 border border-border text-xs">
+            <UserRound className="h-3.5 w-3.5 text-primary" />
+            {cliente ? (
+              <>
+                <span className="font-medium">{cliente.rfc}</span>
+                <span className="text-muted-foreground hidden sm:inline">· {cliente.razon_social}</span>
+              </>
+            ) : (
+              <span className="text-muted-foreground">Sin expediente activo</span>
+            )}
+          </div>
         </div>
       </div>
 

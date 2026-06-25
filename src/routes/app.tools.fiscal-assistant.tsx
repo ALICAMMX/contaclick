@@ -52,7 +52,7 @@ function FiscalAssistant() {
   };
 
   return (
-    <ToolShell
+    <ToolShell helpSlug="fiscal-assistant"
       title="Asistente fiscal IA"
       description="Pregunta puntual de legislación fiscal mexicana. Responde con el contexto del expediente activo."
       icon={<Bot className="h-5 w-5 text-primary-foreground" />}

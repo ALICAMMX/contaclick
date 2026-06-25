@@ -36,7 +36,7 @@ function ShadowPayroll() {
   const stats = q.data?.stats;
 
   return (
-    <ToolShell
+    <ToolShell helpSlug="shadow-payroll"
       title="Detector de Nómina Oculta"
       description="Cruza movimientos bancarios contra CFDI de nómina y honorarios para detectar pagos recurrentes que el SAT puede reclasificar como salarios (LISR art. 94)."
       icon={<Users className="h-5 w-5 text-primary-foreground" />}

@@ -36,7 +36,7 @@ function ResicoCalculator() {
   const f = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
 
   return (
-    <ToolShell
+    <ToolShell helpSlug="resico-calculator"
       title="Calculadora RESICO Persona Física"
       description="ISR mensual conforme al Régimen Simplificado de Confianza (LISR Art. 113-E)."
       icon={<Coins className="h-5 w-5 text-primary-foreground" />}
