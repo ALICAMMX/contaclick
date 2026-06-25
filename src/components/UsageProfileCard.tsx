@@ -80,8 +80,8 @@ export function UsageProfileCard() {
   const hasSat = d.plan.sat_solicitudes_mes !== 0;
   const tilesCount = 2 + (hasTokens ? 1 : 0) + (hasSat ? 1 : 0);
   const gridCols =
-    tilesCount >= 4 ? "sm:grid-cols-2 lg:grid-cols-4"
-    : tilesCount === 3 ? "sm:grid-cols-3"
+    tilesCount >= 4 ? "sm:grid-cols-2 xl:grid-cols-4"
+    : tilesCount === 3 ? "sm:grid-cols-2 xl:grid-cols-3"
     : "sm:grid-cols-2";
 
   return (
