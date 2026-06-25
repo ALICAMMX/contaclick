@@ -109,6 +109,7 @@ import { Route as AppAdminCumplimientoRouteImport } from './routes/app.admin.cum
 import { Route as AppAdminCorrespondenciaRouteImport } from './routes/app.admin.correspondencia'
 import { Route as AppAdminBuzonRouteImport } from './routes/app.admin.buzon'
 import { Route as AppAdminActivosRouteImport } from './routes/app.admin.activos'
+import { Route as AuthenticatedAppPolizasRouteImport } from './routes/_authenticated.app.polizas'
 import { Route as ApiPublicHooksWorkflowCronRouteImport } from './routes/api/public/hooks/workflow-cron'
 import { Route as ApiPublicHooksSatSyncRouteImport } from './routes/api/public/hooks/sat-sync'
 
@@ -619,6 +620,11 @@ const AppAdminActivosRoute = AppAdminActivosRouteImport.update({
   path: '/activos',
   getParentRoute: () => AppAdminRoute,
 } as any)
+const AuthenticatedAppPolizasRoute = AuthenticatedAppPolizasRouteImport.update({
+  id: '/_authenticated/app/polizas',
+  path: '/app/polizas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksWorkflowCronRoute =
   ApiPublicHooksWorkflowCronRouteImport.update({
     id: '/api/public/hooks/workflow-cron',
@@ -685,6 +691,7 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/portal/': typeof PortalIndexRoute
+  '/app/polizas': typeof AuthenticatedAppPolizasRoute
   '/app/admin/activos': typeof AppAdminActivosRoute
   '/app/admin/buzon': typeof AppAdminBuzonRoute
   '/app/admin/correspondencia': typeof AppAdminCorrespondenciaRoute
@@ -779,6 +786,7 @@ export interface FileRoutesByTo {
   '/app': typeof AppIndexRoute
   '/dashboard': typeof DashboardIndexRoute
   '/portal': typeof PortalIndexRoute
+  '/app/polizas': typeof AuthenticatedAppPolizasRoute
   '/app/admin/activos': typeof AppAdminActivosRoute
   '/app/admin/buzon': typeof AppAdminBuzonRoute
   '/app/admin/correspondencia': typeof AppAdminCorrespondenciaRoute
@@ -884,6 +892,7 @@ export interface FileRoutesById {
   '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/portal/': typeof PortalIndexRoute
+  '/_authenticated/app/polizas': typeof AuthenticatedAppPolizasRoute
   '/app/admin/activos': typeof AppAdminActivosRoute
   '/app/admin/buzon': typeof AppAdminBuzonRoute
   '/app/admin/correspondencia': typeof AppAdminCorrespondenciaRoute
@@ -990,6 +999,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/dashboard/'
     | '/portal/'
+    | '/app/polizas'
     | '/app/admin/activos'
     | '/app/admin/buzon'
     | '/app/admin/correspondencia'
@@ -1084,6 +1094,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/dashboard'
     | '/portal'
+    | '/app/polizas'
     | '/app/admin/activos'
     | '/app/admin/buzon'
     | '/app/admin/correspondencia'
@@ -1188,6 +1199,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/dashboard/'
     | '/portal/'
+    | '/_authenticated/app/polizas'
     | '/app/admin/activos'
     | '/app/admin/buzon'
     | '/app/admin/correspondencia'
@@ -1253,6 +1265,7 @@ export interface RootRouteChildren {
   SeguridadRoute: typeof SeguridadRoute
   TerminosRoute: typeof TerminosRoute
   InvitarTokenRoute: typeof InvitarTokenRoute
+  AuthenticatedAppPolizasRoute: typeof AuthenticatedAppPolizasRoute
   ApiPublicHooksSatSyncRoute: typeof ApiPublicHooksSatSyncRoute
   ApiPublicHooksWorkflowCronRoute: typeof ApiPublicHooksWorkflowCronRoute
 }
@@ -1959,6 +1972,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminActivosRouteImport
       parentRoute: typeof AppAdminRoute
     }
+    '/_authenticated/app/polizas': {
+      id: '/_authenticated/app/polizas'
+      path: '/app/polizas'
+      fullPath: '/app/polizas'
+      preLoaderRoute: typeof AuthenticatedAppPolizasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/workflow-cron': {
       id: '/api/public/hooks/workflow-cron'
       path: '/api/public/hooks/workflow-cron'
@@ -2260,6 +2280,7 @@ const rootRouteChildren: RootRouteChildren = {
   SeguridadRoute: SeguridadRoute,
   TerminosRoute: TerminosRoute,
   InvitarTokenRoute: InvitarTokenRoute,
+  AuthenticatedAppPolizasRoute: AuthenticatedAppPolizasRoute,
   ApiPublicHooksSatSyncRoute: ApiPublicHooksSatSyncRoute,
   ApiPublicHooksWorkflowCronRoute: ApiPublicHooksWorkflowCronRoute,
 }
