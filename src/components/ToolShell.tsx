@@ -45,6 +45,9 @@ export function ToolShell({
           </div>
         </div>
       </div>
+
+      <div className="flex items-start gap-4">
+        {icon && (
           <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--gradient-primary)" }}>
             {icon}
           </div>
