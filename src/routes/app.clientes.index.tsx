@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { listClientes, createCliente, deleteCliente } from "@/lib/clientes.functions";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 
 export const Route = createFileRoute("/app/clientes/")({
   component: ClientesPage,
