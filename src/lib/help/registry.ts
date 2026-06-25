@@ -1376,7 +1376,6 @@ export const HELP_REGISTRY: Record<string, HelpContent> = {
   "admin-inventarios": {
     slug: "admin-inventarios",
     title: "Inventarios",
-    significadoExtra: undefined as any,
     queHace:
       "Control de inventarios del cliente con método PEPS o costo promedio: entradas, salidas, ajustes y existencia. Útil para clientes con régimen general que deducen costo de lo vendido y para evitar discrepancias en revisiones SAT.",
     cuandoUsar:
