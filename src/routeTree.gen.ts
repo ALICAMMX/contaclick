@@ -40,6 +40,7 @@ import { Route as DashboardAuditorRouteImport } from './routes/dashboard.auditor
 import { Route as DashboardAsistenteRouteImport } from './routes/dashboard.asistente'
 import { Route as AppWorkflowsRouteImport } from './routes/app.workflows'
 import { Route as AppTareasRouteImport } from './routes/app.tareas'
+import { Route as AppSatSyncRouteImport } from './routes/app.sat-sync'
 import { Route as AppSaludFiscalRouteImport } from './routes/app.salud-fiscal'
 import { Route as AppRiesgoRouteImport } from './routes/app.riesgo'
 import { Route as AppRfcsVinculadosRouteImport } from './routes/app.rfcs-vinculados'
@@ -262,6 +263,11 @@ const AppWorkflowsRoute = AppWorkflowsRouteImport.update({
 const AppTareasRoute = AppTareasRouteImport.update({
   id: '/tareas',
   path: '/tareas',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSatSyncRoute = AppSatSyncRouteImport.update({
+  id: '/sat-sync',
+  path: '/sat-sync',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSaludFiscalRoute = AppSaludFiscalRouteImport.update({
@@ -646,6 +652,7 @@ export interface FileRoutesByFullPath {
   '/app/rfcs-vinculados': typeof AppRfcsVinculadosRoute
   '/app/riesgo': typeof AppRiesgoRoute
   '/app/salud-fiscal': typeof AppSaludFiscalRoute
+  '/app/sat-sync': typeof AppSatSyncRoute
   '/app/tareas': typeof AppTareasRoute
   '/app/workflows': typeof AppWorkflowsRoute
   '/dashboard/asistente': typeof DashboardAsistenteRoute
@@ -737,6 +744,7 @@ export interface FileRoutesByTo {
   '/app/rfcs-vinculados': typeof AppRfcsVinculadosRoute
   '/app/riesgo': typeof AppRiesgoRoute
   '/app/salud-fiscal': typeof AppSaludFiscalRoute
+  '/app/sat-sync': typeof AppSatSyncRoute
   '/app/tareas': typeof AppTareasRoute
   '/app/workflows': typeof AppWorkflowsRoute
   '/dashboard/asistente': typeof DashboardAsistenteRoute
@@ -839,6 +847,7 @@ export interface FileRoutesById {
   '/app/rfcs-vinculados': typeof AppRfcsVinculadosRoute
   '/app/riesgo': typeof AppRiesgoRoute
   '/app/salud-fiscal': typeof AppSaludFiscalRoute
+  '/app/sat-sync': typeof AppSatSyncRoute
   '/app/tareas': typeof AppTareasRoute
   '/app/workflows': typeof AppWorkflowsRoute
   '/dashboard/asistente': typeof DashboardAsistenteRoute
@@ -942,6 +951,7 @@ export interface FileRouteTypes {
     | '/app/rfcs-vinculados'
     | '/app/riesgo'
     | '/app/salud-fiscal'
+    | '/app/sat-sync'
     | '/app/tareas'
     | '/app/workflows'
     | '/dashboard/asistente'
@@ -1033,6 +1043,7 @@ export interface FileRouteTypes {
     | '/app/rfcs-vinculados'
     | '/app/riesgo'
     | '/app/salud-fiscal'
+    | '/app/sat-sync'
     | '/app/tareas'
     | '/app/workflows'
     | '/dashboard/asistente'
@@ -1134,6 +1145,7 @@ export interface FileRouteTypes {
     | '/app/rfcs-vinculados'
     | '/app/riesgo'
     | '/app/salud-fiscal'
+    | '/app/sat-sync'
     | '/app/tareas'
     | '/app/workflows'
     | '/dashboard/asistente'
@@ -1438,6 +1450,13 @@ declare module '@tanstack/react-router' {
       path: '/tareas'
       fullPath: '/app/tareas'
       preLoaderRoute: typeof AppTareasRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/sat-sync': {
+      id: '/app/sat-sync'
+      path: '/sat-sync'
+      fullPath: '/app/sat-sync'
+      preLoaderRoute: typeof AppSatSyncRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/salud-fiscal': {
@@ -2075,6 +2094,7 @@ interface AppRouteChildren {
   AppRfcsVinculadosRoute: typeof AppRfcsVinculadosRoute
   AppRiesgoRoute: typeof AppRiesgoRoute
   AppSaludFiscalRoute: typeof AppSaludFiscalRoute
+  AppSatSyncRoute: typeof AppSatSyncRoute
   AppTareasRoute: typeof AppTareasRoute
   AppWorkflowsRoute: typeof AppWorkflowsRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -2119,6 +2139,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppRfcsVinculadosRoute: AppRfcsVinculadosRoute,
   AppRiesgoRoute: AppRiesgoRoute,
   AppSaludFiscalRoute: AppSaludFiscalRoute,
+  AppSatSyncRoute: AppSatSyncRoute,
   AppTareasRoute: AppTareasRoute,
   AppWorkflowsRoute: AppWorkflowsRoute,
   AppIndexRoute: AppIndexRoute,
