@@ -4,6 +4,7 @@ import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middlewa
 import { z } from "zod";
 import { resolveActiveDespachoId } from "@/lib/despacho/resolve";
 import { assertWithinLimit, recordIaUsage, UsageLimitError } from "@/lib/usage/limits";
+import { checkRateLimit, rateLimitMessage } from "@/lib/security/rate-limit";
 
 const Schema = z.object({
   messages: z.array(z.object({
@@ -24,6 +25,11 @@ export const sendChat = createServerFn({ method: "POST" })
     }
 
     const { supabase, userId } = context;
+
+    // Rate limit: 30 mensajes / 5 min por usuario (anti-abuso IA)
+    const rl = await checkRateLimit(supabase, "chat_ia", 30, 300);
+    if (!rl.allowed) return { error: rateLimitMessage("asistente IA", rl.resetAt), content: "" };
+
     let despachoId: string | null = null;
     try {
       despachoId = await resolveActiveDespachoId(supabase, userId);
