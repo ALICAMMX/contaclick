@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
-import { contabilizarCfdi, type CfdiParaContabilizar, type Asiento } from "./engine";
+import { contabilizarCfdi, type CfdiParaContabilizar, type Asiento, type ReglaContable } from "./engine";
 
 // ---------- Listar CFDI pendientes de contabilizar (sin póliza vinculada) ----------
 export const listarCfdiPendientes = createServerFn({ method: "POST" })
@@ -68,12 +68,20 @@ export const generarPolizasDesdeCfdi = createServerFn({ method: "POST" })
       .in("id", data.cfdi_ids);
     if (error) throw new Error(error.message);
 
+    // Cargar reglas activas del cliente
+    const { data: reglasRows } = await supabase
+      .from("reglas_contables")
+      .select("id, nombre, prioridad, activa, cuenta_cargo, cuenta_abono, condicion")
+      .eq("cliente_id", data.cliente_id)
+      .eq("activa", true);
+    const reglas: ReglaContable[] = (reglasRows ?? []) as any;
+
     const rfcCliente = cli.rfc as string;
     const filas: any[] = [];
     let omitidos = 0;
     for (const c of cfdis ?? []) {
       const input: CfdiParaContabilizar = { ...(c as any), rfc_cliente: rfcCliente };
-      const sug = contabilizarCfdi(input);
+      const sug = contabilizarCfdi(input, reglas);
       if (sug.asientos.length === 0) { omitidos++; continue; }
       filas.push({
         id: crypto.randomUUID(),

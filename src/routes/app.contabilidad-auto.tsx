@@ -22,6 +22,7 @@ import {
   cambiarEstadoPoliza,
   editarAsientosPoliza,
 } from "@/lib/contabilidad-auto/contabilizar.functions";
+import { CatalogoTab, ReglasTab, ExportarTab } from "@/components/contabilidad-auto/ConfigTabs";
 
 export const Route = createFileRoute("/app/contabilidad-auto")({
   component: ContabilidadAutoPage,
@@ -119,6 +120,9 @@ function ContabilidadAutoPage() {
           <TabsTrigger value="confirmadas">
             Confirmadas {confirmadas.data ? `(${confirmadas.data.length})` : ""}
           </TabsTrigger>
+          <TabsTrigger value="catalogo">Catálogo</TabsTrigger>
+          <TabsTrigger value="reglas">Reglas</TabsTrigger>
+          <TabsTrigger value="exportar">Exportar</TabsTrigger>
         </TabsList>
 
         {/* --- Pendientes --- */}
@@ -246,6 +250,10 @@ function ContabilidadAutoPage() {
             <ListaPolizas rows={confirmadas.data ?? []} />
           </Card>
         </TabsContent>
+
+        <TabsContent value="catalogo"><CatalogoTab clienteId={cliente.id} /></TabsContent>
+        <TabsContent value="reglas"><ReglasTab clienteId={cliente.id} /></TabsContent>
+        <TabsContent value="exportar"><ExportarTab clienteId={cliente.id} /></TabsContent>
       </Tabs>
 
       {editing && (
