@@ -435,6 +435,8 @@ export type Database = {
       }
       clientes: {
         Row: {
+          alert_channels_default: string[]
+          alert_days_default: number
           cliente_padre_id: string | null
           codigo_postal: string | null
           created_at: string
@@ -458,6 +460,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          alert_channels_default?: string[]
+          alert_days_default?: number
           cliente_padre_id?: string | null
           codigo_postal?: string | null
           created_at?: string
@@ -481,6 +485,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          alert_channels_default?: string[]
+          alert_days_default?: number
           cliente_padre_id?: string | null
           codigo_postal?: string | null
           created_at?: string
@@ -1174,39 +1180,69 @@ export type Database = {
       }
       obligaciones_fiscales: {
         Row: {
+          adjunto_path: string | null
+          alert_channels: string[]
+          alert_days_before: number
           clave: string
+          completada_at: string | null
+          completada_by: string | null
           created_at: string
           despacho_id: string
           estatus: string
           evidencia_path: string | null
           id: string
+          nombre: string | null
+          notas: string | null
           periodicidad: string
+          periodo: string | null
           proximo_vencimiento: string | null
+          responsable_user_id: string | null
           rfc_id: string
+          tipo: string | null
           updated_at: string
         }
         Insert: {
+          adjunto_path?: string | null
+          alert_channels?: string[]
+          alert_days_before?: number
           clave: string
+          completada_at?: string | null
+          completada_by?: string | null
           created_at?: string
           despacho_id: string
           estatus?: string
           evidencia_path?: string | null
           id?: string
+          nombre?: string | null
+          notas?: string | null
           periodicidad: string
+          periodo?: string | null
           proximo_vencimiento?: string | null
+          responsable_user_id?: string | null
           rfc_id: string
+          tipo?: string | null
           updated_at?: string
         }
         Update: {
+          adjunto_path?: string | null
+          alert_channels?: string[]
+          alert_days_before?: number
           clave?: string
+          completada_at?: string | null
+          completada_by?: string | null
           created_at?: string
           despacho_id?: string
           estatus?: string
           evidencia_path?: string | null
           id?: string
+          nombre?: string | null
+          notas?: string | null
           periodicidad?: string
+          periodo?: string | null
           proximo_vencimiento?: string | null
+          responsable_user_id?: string | null
           rfc_id?: string
+          tipo?: string | null
           updated_at?: string
         }
         Relationships: [
