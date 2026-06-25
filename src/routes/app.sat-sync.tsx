@@ -59,7 +59,7 @@ function SatSyncPage() {
           ["dashboard", "Dashboard"],
           ["actividad", "Actividad"],
           ["novedades", "Novedades"],
-          ["config", "Expediente activo"],
+          ["config", "Sincronización SAT"],
         ] as const).map(([k, l]) => (
           <button
             key={k}
