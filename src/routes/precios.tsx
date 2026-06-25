@@ -97,6 +97,7 @@ const plans = [
     anual: null,
     rfc: "RFC ilimitados",
     ia: { solicitudes: "Personalizado", tokens: "Personalizado" },
+    sat: "Descargas SAT ilimitadas · sincronización diaria",
     storage: "Almacenamiento personalizado",
     highlight: false,
     features: [
