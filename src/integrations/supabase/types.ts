@@ -1635,6 +1635,42 @@ export type Database = {
         }
         Relationships: []
       }
+      sat_pac_saldo: {
+        Row: {
+          actualizado_at: string
+          actualizado_por: string | null
+          consumido_total: number
+          costo_unitario_centavos: number
+          id: string
+          proveedor: string
+          recargado_total: number
+          saldo_solicitudes: number
+          umbral_aviso: number
+        }
+        Insert: {
+          actualizado_at?: string
+          actualizado_por?: string | null
+          consumido_total?: number
+          costo_unitario_centavos?: number
+          id?: string
+          proveedor?: string
+          recargado_total?: number
+          saldo_solicitudes?: number
+          umbral_aviso?: number
+        }
+        Update: {
+          actualizado_at?: string
+          actualizado_por?: string | null
+          consumido_total?: number
+          costo_unitario_centavos?: number
+          id?: string
+          proveedor?: string
+          recargado_total?: number
+          saldo_solicitudes?: number
+          umbral_aviso?: number
+        }
+        Relationships: []
+      }
       sat_sync_config: {
         Row: {
           activo: boolean
@@ -2412,6 +2448,8 @@ export type Database = {
           id: string
           periodo: string
           rfc_activos: number
+          sat_costo_centavos: number
+          sat_solicitudes: number
           updated_at: string
         }
         Insert: {
@@ -2421,6 +2459,8 @@ export type Database = {
           id?: string
           periodo: string
           rfc_activos?: number
+          sat_costo_centavos?: number
+          sat_solicitudes?: number
           updated_at?: string
         }
         Update: {
@@ -2430,6 +2470,8 @@ export type Database = {
           id?: string
           periodo?: string
           rfc_activos?: number
+          sat_costo_centavos?: number
+          sat_solicitudes?: number
           updated_at?: string
         }
         Relationships: [
@@ -2805,6 +2847,26 @@ export type Database = {
           reset_at: string
         }[]
       }
+      descontar_saldo_pac: {
+        Args: { _costo_centavos: number; _solicitudes: number }
+        Returns: {
+          actualizado_at: string
+          actualizado_por: string | null
+          consumido_total: number
+          costo_unitario_centavos: number
+          id: string
+          proveedor: string
+          recargado_total: number
+          saldo_solicitudes: number
+          umbral_aviso: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "sat_pac_saldo"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       has_cliente_access: { Args: { _cliente: string }; Returns: boolean }
       has_role: {
         Args: {
@@ -2828,6 +2890,33 @@ export type Database = {
           id: string
           periodo: string
           rfc_activos: number
+          sat_costo_centavos: number
+          sat_solicitudes: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "uso_periodo"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      incrementar_uso_sat: {
+        Args: {
+          _costo_centavos: number
+          _despacho: string
+          _periodo: string
+          _solicitudes: number
+        }
+        Returns: {
+          despacho_id: string
+          ia_requests: number
+          ia_tokens: number
+          id: string
+          periodo: string
+          rfc_activos: number
+          sat_costo_centavos: number
+          sat_solicitudes: number
           updated_at: string
         }
         SetofOptions: {
@@ -2840,6 +2929,26 @@ export type Database = {
       is_despacho_admin: { Args: { _despacho: string }; Returns: boolean }
       is_member_of: { Args: { _despacho: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
+      recargar_saldo_pac: {
+        Args: { _costo_total_centavos: number; _solicitudes: number }
+        Returns: {
+          actualizado_at: string
+          actualizado_por: string | null
+          consumido_total: number
+          costo_unitario_centavos: number
+          id: string
+          proveedor: string
+          recargado_total: number
+          saldo_solicitudes: number
+          umbral_aviso: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "sat_pac_saldo"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       app_role:
