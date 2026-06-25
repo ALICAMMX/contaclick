@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ModuleScaffold } from "@/components/ModuleScaffold";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { Gavel, TrendingUp, ShieldCheck, ShieldAlert, Archive, Trash2, UserRound, AlertCircle, Plus, CheckCircle2, Clock, XCircle, FileArchive, ChevronDown, ChevronUp, Save } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -85,7 +86,9 @@ function LagunasPage() {
     <ModuleScaffold
       title="Mapa de Lagunas Legales"
       subtitle="Detecta huecos normativos y conflictos entre LISR, LIVA y CFF. Activa defensas para tu expediente y da seguimiento."
-      icon={<Gavel className="h-5 w-5" />}
+      icon={<Gavel className="h-5 w-5" /
+      actions={<HerramientaHelp slug="legal-lagunas" />}
+    >}
       badge={null}
     >
       {!cliente ? (

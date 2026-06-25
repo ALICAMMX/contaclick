@@ -1045,6 +1045,363 @@ export const HELP_REGISTRY: Record<string, HelpContent> = {
     },
     costos: "Cada pregunta consume créditos IA. Las preguntas largas / con varias iteraciones consumen más.",
   },
+
+  // ============================================================
+  // LEGAL · REDACTOR DE ESCRITOS IA
+  // ============================================================
+  "legal-redactor": {
+    slug: "legal-redactor",
+    title: "Redactor de Escritos IA",
+    queHace:
+      "Genera escritos fiscales y de defensa (recurso de revocación, juicio contencioso TFJA, amparo, solicitud de devolución, respuesta a invitación SAT, etc.) con calidad de despacho boutique: proemio, hechos numerados, agravios con fundamento (CFF, LISR, LIVA, LFPCA, LA), jurisprudencia aplicable, pretensiones, pruebas y fórmula de protesta. Tres niveles de profundidad según urgencia y complejidad.",
+    cuandoUsar:
+      "Cuando recibes un oficio del SAT y tienes plazo legal corriendo, cuando preparas defensa de una determinación, o cuando necesitas un borrador estructurado para revisar con tu equipo antes de firmar.",
+    tutorial: [
+      { n: 1, titulo: "Elige el tipo de escrito", detalle: "En el panel izquierdo, selecciona en 'Tipo de escrito' la materia (recurso, juicio, amparo, etc.). Abajo verás el fundamento y la autoridad competente que la IA usará." },
+      { n: 2, titulo: "Selecciona profundidad", detalle: "Estándar (800-1.2K palabras, rápido), Robusto (1.5-2.5K, equilibrio) o Premium (3-4.5K, Gemini Pro). Premium consume más créditos pero da el máximo desarrollo argumentativo." },
+      { n: 3, titulo: "Captura datos del promovente", detalle: "Razón social, RFC y monto controvertido. Si tienes expediente activo, razón social y RFC se llenan solos. Agrega domicilio fiscal, representante legal y oficio referenciado para que el escrito quede listo para firma." },
+      { n: 4, titulo: "Describe el expediente", detalle: "En 'Hechos' captura la narrativa cronológica (mínimo 20 caracteres, recomendado 200+). En 'Agravios' tu tesis de defensa si ya la tienes — si no, la IA la propone. En 'Pretensiones' qué pides y en 'Pruebas' qué documentales tienes.", tip: "Entre más detalle en hechos y pruebas, mejor calidad. La IA no inventa hechos: trabaja con lo que le des." },
+      { n: 5, titulo: "Genera y revisa", detalle: "Pulsa 'Generar escrito con IA'. Tarda 15-45 segundos según nivel. El borrador aparece a la derecha en formato profesional. Usa 'Copiar' o 'Descargar .md' para llevarlo a Word.", tip: "Siempre revisa: la IA es asistente, no sustituye criterio jurídico. Verifica fechas, montos y vigencia de jurisprudencias citadas." },
+    ],
+    resultados: [
+      { campo: "Borrador del escrito", significado: "Texto formal con proemio, hechos, agravios, fundamentos, pretensiones, pruebas y protesta. Listo para revisar, ajustar y presentar." },
+      { campo: "Conteo de palabras", significado: "Aparece junto al título cuando termina. Te ayuda a verificar que el nivel produjo el desarrollo esperado." },
+      { campo: "Botones Copiar / .md", significado: "Copiar lleva el texto al portapapeles. Descargar genera un archivo Markdown que puedes abrir en Word." },
+    ],
+    dependencias: {
+      necesita: [
+        { tool: "Expediente del cliente", ruta: "/app/clientes", motivo: "Para auto-llenar razón social y RFC. Opcional pero recomendado." },
+        { tool: "Oficio o resolución", motivo: "Necesitas el número y fecha del acto que estás impugnando." },
+      ],
+      alimenta: [
+        { tool: "Lagunas Legales", ruta: "/app/legal/lagunas", motivo: "Una vez presentado el escrito, registra el caso para seguimiento." },
+        { tool: "Marketplace Legal", ruta: "/app/legal/marketplace", motivo: "Si el caso te rebasa, contacta un despacho que firme la estrategia." },
+      ],
+      datosMinimos: ["Tipo de escrito", "Razón social y RFC", "Hechos (mínimo 20 caracteres)"],
+    },
+    costos: "Consume créditos IA. Estándar y Robusto usan Gemini Flash (más barato). Premium usa Gemini 2.5 Pro (mayor costo, mejor argumentación).",
+  },
+
+  // ============================================================
+  // LEGAL · LAGUNAS / CASOS DE DEFENSA
+  // ============================================================
+  "legal-lagunas": {
+    slug: "legal-lagunas",
+    title: "Lagunas Legales y Casos de Defensa",
+    queHace:
+      "Catálogo de 8 lagunas jurídico-fiscales con mayor retorno histórico (materialidad 69-B, devolución IVA preoperativo, acreditamiento en gastos no esenciales, pagos al extranjero, pérdidas por reestructura, REPSE, gastos de representación, IVA de activos mixtos) más un gestor de casos activos: registra defensa, sigue estatus, mide recuperación y mantiene historial por cliente.",
+    cuandoUsar:
+      "Después de una auditoría de Salud Fiscal o Riesgo SAT que detecte exposición. Al iniciar la defensa de una determinación. Para evaluar potencial de devolución antes de cobrar honorarios contingentes.",
+    tutorial: [
+      { n: 1, titulo: "Selecciona expediente", detalle: "En la barra superior elige el cliente. La pantalla filtra automáticamente los casos de ese RFC." },
+      { n: 2, titulo: "Explora el catálogo", detalle: "Revisa las 8 lagunas con su conflicto normativo, rango de recuperación, % éxito histórico y estrategia recomendada." },
+      { n: 3, titulo: "Registra un caso", detalle: "Pulsa el botón '+' y captura: laguna aplicable, estatus (activa, en proceso, resuelta favorable/desfavorable, archivada), notas internas y monto estimado." },
+      { n: 4, titulo: "Actualiza estatus", detalle: "Conforme avanza el caso, edita el registro para reflejar cambios. El historial queda para reportes y honorarios." },
+      { n: 5, titulo: "Archiva o elimina", detalle: "Casos cerrados pásalos a 'archivada' para mantener limpia la vista. Eliminar es permanente; archivar conserva el historial." },
+    ],
+    resultados: [
+      { campo: "% Éxito histórico", significado: "Porcentaje de casos similares que resultaron favorables en TFJA / SCJN.", rango: "55%-87% según laguna" },
+      { campo: "Rango recuperación", significado: "Importe típico recuperado o multa evitada en casos similares." },
+      { campo: "Estatus del caso", significado: "Activa (en estrategia), En proceso (escrito presentado), Resuelta favorable/desfavorable, Archivada." },
+    ],
+    dependencias: {
+      necesita: [
+        { tool: "Riesgo SAT", ruta: "/app/riesgo", motivo: "Identifica exposiciones que pueden defenderse con estas lagunas." },
+        { tool: "Redactor IA", ruta: "/app/legal/redactor", motivo: "Para preparar el escrito de defensa una vez decidida la estrategia." },
+      ],
+      alimenta: [
+        { tool: "Reporte Ejecutivo", ruta: "/app/reporte-ejecutivo", motivo: "Casos y recuperaciones se reflejan en el reporte mensual del cliente." },
+      ],
+      datosMinimos: ["Expediente activo", "Laguna aplicable seleccionada"],
+    },
+  },
+
+  // ============================================================
+  // LEGAL · MARKETPLACE
+  // ============================================================
+  "legal-marketplace": {
+    slug: "legal-marketplace",
+    title: "Marketplace Legal",
+    queHace:
+      "Directorio de despachos verificados por especialidad (devoluciones IVA, materialidad 69-B, precios de transferencia, juicio contencioso, penal fiscal, aduanal). Pensado para cuando un caso supera tu especialidad: la IA prepara el expediente, el despacho firma y defiende.",
+    cuandoUsar:
+      "Cuando un caso requiere firma de abogado especialista (amparo, juicio TFJA, penal fiscal) y no tienes a la persona en casa. Cuando quieres una segunda opinión antes de presentar.",
+    tutorial: [
+      { n: 1, titulo: "Filtra por especialidad", detalle: "Revisa la lista de despachos. Cada tarjeta muestra especialidad, ciudad, rating, casos atendidos y rango de honorarios." },
+      { n: 2, titulo: "Solicita cotización", detalle: "Pulsa 'Solicitar cotización' en el despacho elegido. El expediente preparado en ContaClick (redactor, lagunas, salud fiscal) se comparte con el despacho seleccionado." },
+      { n: 3, titulo: "Acuerda alcance", detalle: "Negocia directamente con el despacho honorarios, plazos y entregables. ContaClick no es parte del contrato." },
+    ],
+    resultados: [
+      { campo: "Rating del despacho", significado: "Promedio de calificaciones de clientes anteriores en la plataforma." },
+      { campo: "Casos atendidos", significado: "Número total de casos verificados que ha llevado el despacho." },
+      { campo: "Rango de honorarios", significado: "Estimado típico — la cotización final depende de la complejidad." },
+    ],
+    dependencias: {
+      necesita: [
+        { tool: "Redactor IA", ruta: "/app/legal/redactor", motivo: "Para llegar al despacho con expediente y borrador preparado." },
+      ],
+      alimenta: [],
+      datosMinimos: ["Expediente del cliente listo para defensa"],
+    },
+  },
+
+  // ============================================================
+  // ADMIN · TESORERÍA
+  // ============================================================
+  "admin-tesoreria": {
+    slug: "admin-tesoreria",
+    title: "Tesorería y Flujo de Caja",
+    queHace:
+      "Maneja cuentas por cobrar (CXC) y por pagar (CXP) del despacho o del cliente. Calcula KPIs de 30 y 90 días, vencidos, flujo neto y dibuja la curva de proyección diaria a 30 días para anticipar faltantes de caja.",
+    cuandoUsar:
+      "Semanalmente para cobranza, antes de comprometer pagos grandes y al cierre mensual para validar liquidez vs obligaciones fiscales.",
+    tutorial: [
+      { n: 1, titulo: "Carga datos", detalle: "Usa '+ CXC' / '+ CXP' para alta manual, 'Importar CXC' / 'Importar CXP' para subir CSV/Excel (columnas: contraparte, concepto, monto, moneda, fecha_emision, fecha_vencimiento, estado), o 'Cargar demo' para probar." },
+      { n: 2, titulo: "Lee los KPIs", detalle: "Por cobrar 30d, Por pagar 30d, Flujo neto 90d y Vencidos por cobrar. Si Flujo neto es negativo en rojo: alerta de liquidez." },
+      { n: 3, titulo: "Revisa la proyección", detalle: "La curva muestra saldo acumulado neto día a día durante 30 días. Las caídas marcan días críticos donde sale más de lo que entra." },
+      { n: 4, titulo: "Marca pagados", detalle: "Cuando se cobre/pague, usa el botón check verde para marcar como cobrado/pagado. Los KPIs y la curva se recalculan automáticamente." },
+    ],
+    resultados: [
+      { campo: "Por cobrar 30d", significado: "Suma de CXC pendientes que vencen en los próximos 30 días naturales." },
+      { campo: "Flujo neto 90d", significado: "(CXC 90d) − (CXP 90d). Positivo = superávit; negativo = déficit proyectado.", rango: "Verde si ≥0, rojo si <0" },
+      { campo: "Vencidos por cobrar", significado: "CXC pendientes cuya fecha de vencimiento ya pasó. Cobranza prioritaria." },
+      { campo: "Proyección 30 días", significado: "Curva del saldo acumulado neto día a día. Bajadas pronunciadas = días de presión de caja." },
+    ],
+    dependencias: {
+      necesita: [],
+      alimenta: [
+        { tool: "Reporte Ejecutivo", ruta: "/app/reporte-ejecutivo", motivo: "Liquidez y antigüedad de saldos se integran al reporte mensual." },
+      ],
+      datosMinimos: ["Al menos un CXC o CXP con contraparte, monto y fecha de vencimiento"],
+    },
+  },
+
+  // ============================================================
+  // ADMIN · TRÁMITES
+  // ============================================================
+  "admin-tramites": {
+    slug: "admin-tramites",
+    title: "Trámites Administrativos",
+    queHace:
+      "Tablero de seguimiento de trámites ante SAT, IMSS, INFONAVIT, STPS y dependencias estatales: altas, bajas, modificaciones, opiniones de cumplimiento, devoluciones, avisos. Cada trámite lleva responsable, fecha límite, estatus y documentos asociados.",
+    cuandoUsar:
+      "Cada vez que abres un trámite nuevo, para no perder folios ni plazos. En juntas de equipo para repartir cargas. Al cierre de mes para reportar al cliente qué se gestionó.",
+    tutorial: [
+      { n: 1, titulo: "Da de alta el trámite", detalle: "Captura tipo (alta IMSS, opinión cumplimiento, devolución IVA, etc.), cliente, autoridad, folio, fecha de presentación y plazo legal." },
+      { n: 2, titulo: "Asigna responsable", detalle: "Selecciona miembro del equipo. La persona recibe el pendiente en su panel y notificaciones de vencimiento." },
+      { n: 3, titulo: "Actualiza estatus", detalle: "Conforme avanza: 'En proceso', 'Esperando autoridad', 'Concluido', 'Negado'. Adjunta acuses y resoluciones." },
+      { n: 4, titulo: "Cierra el trámite", detalle: "Al concluir, marca como 'Concluido' con resultado y observaciones. Queda en historial para auditoría." },
+    ],
+    resultados: [
+      { campo: "Estatus", significado: "En proceso, Esperando autoridad, Concluido, Negado o Vencido." },
+      { campo: "Días restantes", significado: "Cálculo automático del plazo legal vs hoy. En rojo si negativo (vencido)." },
+      { campo: "Responsable", significado: "Miembro del equipo encargado de empujar el trámite hasta cierre." },
+    ],
+    dependencias: {
+      necesita: [
+        { tool: "Equipo", ruta: "/app/equipo", motivo: "Para asignar responsables." },
+        { tool: "Expediente del cliente", ruta: "/app/clientes", motivo: "Cada trámite va ligado a un RFC." },
+      ],
+      alimenta: [
+        { tool: "Reporte Ejecutivo", ruta: "/app/reporte-ejecutivo", motivo: "Trámites concluidos y en curso aparecen en el reporte mensual del cliente." },
+      ],
+      datosMinimos: ["Tipo de trámite", "Cliente", "Autoridad", "Fecha presentación"],
+    },
+  },
+
+  // ============================================================
+  // ADMIN · BUZÓN TRIBUTARIO
+  // ============================================================
+  "admin-buzon": {
+    slug: "admin-buzon",
+    title: "Lector de Buzón Tributario",
+    queHace:
+      "Lee cada notificación recibida en el Buzón Tributario (SAT, IMSS, INFONAVIT), la interpreta con IA, identifica riesgo legal, calcula el plazo legal (días naturales o hábiles), propone acción recomendada y prepara borrador de respuesta. Evita perder oficios entre la bandeja del cliente.",
+    cuandoUsar:
+      "Diariamente como primera revisión del día. Inmediatamente al recibir notificación urgente (invitación, requerimiento, multa).",
+    tutorial: [
+      { n: 1, titulo: "Revisa la bandeja", detalle: "Las notificaciones aparecen ordenadas por fecha. Las marcadas con triángulo ámbar son urgentes." },
+      { n: 2, titulo: "Abre un mensaje", detalle: "Al seleccionar uno, a la derecha aparece el análisis IA: riesgo legal, plazo restante, acción recomendada y defensa alterna si aplica." },
+      { n: 3, titulo: "Genera respuesta", detalle: "Pulsa 'Generar respuesta con IA' para crear un borrador formal listo para revisar y firmar." },
+      { n: 4, titulo: "Da seguimiento", detalle: "Cuando presentes la respuesta, marca el mensaje como atendido y registra el folio en Trámites." },
+    ],
+    resultados: [
+      { campo: "Riesgo legal", significado: "Bajo (informativo), Medio (invitación previa), Alto (requerimiento/determinación)." },
+      { campo: "Plazo", significado: "Días restantes para responder según el tipo de acto (10, 15, 20 días según fundamento)." },
+      { campo: "Acción recomendada", significado: "Lo que la IA propone hacer y por qué. Siempre revisa con criterio profesional." },
+    ],
+    dependencias: {
+      necesita: [
+        { tool: "e.firma del cliente", motivo: "Para autenticar en Buzón Tributario y sincronizar mensajes." },
+      ],
+      alimenta: [
+        { tool: "Trámites", ruta: "/app/admin/tramites", motivo: "Cada respuesta presentada se registra como trámite con folio." },
+        { tool: "Redactor IA", ruta: "/app/legal/redactor", motivo: "Si la respuesta requiere escrito formal, el borrador se completa allí." },
+      ],
+      datosMinimos: ["Conexión activa al Buzón Tributario del cliente"],
+    },
+    costos: "Análisis IA y generación de respuestas consume créditos.",
+  },
+
+  // ============================================================
+  // ADMIN · CORRESPONDENCIA
+  // ============================================================
+  "admin-correspondencia": {
+    slug: "admin-correspondencia",
+    title: "Correspondencia y Minutas",
+    queHace:
+      "Generador asistido de oficios, minutas de reunión, cartas de aceptación de servicio, recordatorios de pago, actas de entrega y notificaciones de cambios normativos. Tono profesional, fundamento legal cuando aplica, exportable a Word y PDF.",
+    cuandoUsar:
+      "Después de cada reunión con cliente, al iniciar un servicio, al notificar reforma fiscal, o al gestionar cobranza.",
+    tutorial: [
+      { n: 1, titulo: "Elige plantilla", detalle: "Lista a la izquierda. Cada plantilla tiene tono y estructura predefinida según el caso de uso." },
+      { n: 2, titulo: "Captura los datos", detalle: "El editor inteligente carga campos clave (destinatario, asunto, fecha, puntos). La IA completa el cuerpo con fundamento si aplica." },
+      { n: 3, titulo: "Genera y exporta", detalle: "Pulsa 'Generar con IA'. Revisa el borrador y exporta a Word o PDF para enviar al cliente." },
+    ],
+    resultados: [
+      { campo: "Documento final", significado: "Texto formal listo para impresión o envío digital, con membrete del despacho." },
+    ],
+    dependencias: {
+      necesita: [],
+      alimenta: [
+        { tool: "Mensajes", ruta: "/app/mensajes", motivo: "Los documentos generados pueden enviarse al cliente desde el módulo de mensajes." },
+      ],
+      datosMinimos: ["Plantilla seleccionada", "Datos básicos del destinatario"],
+    },
+    costos: "Cada generación IA consume créditos según largo del documento.",
+  },
+
+  // ============================================================
+  // ADMIN · CUMPLIMIENTO LABORAL
+  // ============================================================
+  "admin-cumplimiento": {
+    slug: "admin-cumplimiento",
+    title: "Cumplimiento Laboral",
+    queHace:
+      "Checklist en tiempo real de obligaciones ante IMSS, INFONAVIT, SAT (laboral) y STPS: cuotas mensuales/bimestrales, SUA, declaración de riesgos, CFDI de nómina, DIM, NOM-035, Comisiones mixtas. Detecta cambios normativos y ajusta el calendario automáticamente.",
+    cuandoUsar:
+      "Diariamente como dashboard del área laboral. Antes del día 17 (corte IMSS) y antes de cierres bimestrales INFONAVIT.",
+    tutorial: [
+      { n: 1, titulo: "Lee el % de cumplimiento", detalle: "Indicador global de qué tan al día estás. Verde = todo OK, ámbar = pendientes próximos, rojo = vencidos." },
+      { n: 2, titulo: "Revisa por área", detalle: "Tarjetas separadas para IMSS, INFONAVIT, SAT y STPS con cada obligación, fecha de cumplimiento y estatus." },
+      { n: 3, titulo: "Atiende las alertas activas", detalle: "Los pendientes con plazo <7 días aparecen marcados con icono ámbar; los vencidos en rojo. Atiéndelos primero." },
+    ],
+    resultados: [
+      { campo: "% Cumplimiento", significado: "Obligaciones OK / total. Mide la salud del área laboral.", rango: "≥90% verde, 70-89% ámbar, <70% rojo" },
+      { campo: "Alertas activas", significado: "Obligaciones vencidas o por vencer en los próximos 7 días." },
+      { campo: "Próximas 30 días", significado: "Para planificar carga del equipo del mes." },
+    ],
+    dependencias: {
+      necesita: [
+        { tool: "Catálogo de empleados del cliente", motivo: "Para validar movimientos afiliatorios y SUA." },
+      ],
+      alimenta: [
+        { tool: "Calendario Fiscal", ruta: "/app/calendario", motivo: "Las obligaciones se reflejan en el calendario unificado." },
+      ],
+      datosMinimos: ["Cliente con régimen laboral activo"],
+    },
+  },
+
+  // ============================================================
+  // ADMIN · NÓMINA
+  // ============================================================
+  "admin-nomina": {
+    slug: "admin-nomina",
+    title: "Nómina y Recursos Humanos",
+    queHace:
+      "Vista operativa de la nómina del cliente: cálculo y timbrado de CFDI 4.0 de nómina, percepciones y deducciones, ISR retenido, subsidio al empleo, cuotas obrero-patronales, finiquitos y constancias. Integrado con IMSS para SUA y con Cumplimiento Laboral.",
+    cuandoUsar:
+      "En cada periodo de pago (semanal, quincenal, mensual) y cuando hay altas, bajas o modificaciones salariales.",
+    tutorial: [
+      { n: 1, titulo: "Carga el periodo", detalle: "Selecciona periodo de pago. El sistema trae empleados activos del cliente con su salario base." },
+      { n: 2, titulo: "Aplica percepciones y deducciones", detalle: "Captura horas extra, bonos, faltas, préstamos. El sistema recalcula ISR, IMSS e INFONAVIT." },
+      { n: 3, titulo: "Timbra los CFDI", detalle: "Genera y timbra los CFDI 4.0 de nómina con el PAC. Cada timbrado consume saldo PAC." },
+      { n: 4, titulo: "Genera SUA", detalle: "Al cierre de mes, descarga el pre-SUA listo para subir a IMSS." },
+    ],
+    resultados: [
+      { campo: "ISR retenido", significado: "Suma de retenciones del periodo. Se acumula para la declaración mensual del cliente." },
+      { campo: "Cuotas obrero-patronales", significado: "IMSS (patrón) + IMSS (trabajador) + INFONAVIT. Se integra a SUA." },
+      { campo: "Estatus CFDI", significado: "Pendiente, Timbrado, Cancelado. Solo los timbrados son fiscalmente válidos." },
+    ],
+    dependencias: {
+      necesita: [
+        { tool: "e.firma del cliente", motivo: "Para timbrar CFDI de nómina con el PAC." },
+        { tool: "Catálogo de empleados", motivo: "Con NSS, RFC y salario diario integrado." },
+      ],
+      alimenta: [
+        { tool: "Cumplimiento Laboral", ruta: "/app/admin/cumplimiento", motivo: "El timbrado correcto cierra la obligación CFDI-nómina del mes." },
+        { tool: "Conciliación Integral", ruta: "/app/conciliacion-integral", motivo: "Los CFDI de nómina entran al cruce SAT vs contabilidad." },
+      ],
+      datosMinimos: ["Empleados activos", "Periodo y conceptos del periodo"],
+    },
+    costos: "Cada CFDI timbrado consume saldo PAC del cliente.",
+  },
+
+  // ============================================================
+  // ADMIN · ACTIVOS FIJOS
+  // ============================================================
+  "admin-activos": {
+    slug: "admin-activos",
+    title: "Activos Fijos",
+    queHace:
+      "Registro y depreciación de activos fijos del cliente conforme a tasas LISR: inmuebles, mobiliario, equipo de cómputo, vehículos, maquinaria. Calcula depreciación contable y fiscal, valor en libros, y exporta la cédula para la declaración anual.",
+    cuandoUsar:
+      "Al adquirir o dar de baja un activo, mensualmente para depreciación, y obligatoriamente al cierre anual.",
+    tutorial: [
+      { n: 1, titulo: "Da de alta el activo", detalle: "Captura descripción, fecha de adquisición, MOI (Monto Original de la Inversión), tipo de activo y método de depreciación." },
+      { n: 2, titulo: "Aplica % LISR", detalle: "El sistema sugiere la tasa de depreciación según tipo (10% mobiliario, 25% autos, 30% cómputo, etc.). Puedes ajustar." },
+      { n: 3, titulo: "Cierra el mes", detalle: "Cada mes el sistema calcula la depreciación acumulada y el valor en libros." },
+      { n: 4, titulo: "Exporta cédula anual", detalle: "Para la declaración anual del cliente, descarga la cédula con MOI, depreciación del ejercicio y acumulada." },
+    ],
+    resultados: [
+      { campo: "MOI", significado: "Monto Original de la Inversión. Base de la depreciación fiscal." },
+      { campo: "Depreciación acumulada", significado: "Suma de la depreciación desde la adquisición hasta el periodo actual." },
+      { campo: "Valor en libros", significado: "MOI − Depreciación acumulada. Cuando llega a 0 el activo está totalmente depreciado." },
+    ],
+    dependencias: {
+      necesita: [
+        { tool: "CFDI de adquisición", motivo: "Para soportar el MOI." },
+      ],
+      alimenta: [
+        { tool: "Contabilidad Automática", ruta: "/app/contabilidad-auto", motivo: "La depreciación mensual genera póliza de provisión." },
+        { tool: "Reporte Ejecutivo", ruta: "/app/reporte-ejecutivo", motivo: "El valor en libros aparece en el balance del cliente." },
+      ],
+      datosMinimos: ["Descripción", "Fecha de adquisición", "MOI", "Tipo de activo"],
+    },
+  },
+
+  // ============================================================
+  // ADMIN · INVENTARIOS
+  // ============================================================
+  "admin-inventarios": {
+    slug: "admin-inventarios",
+    title: "Inventarios",
+    queHace:
+      "Control de inventarios del cliente con método PEPS o costo promedio: entradas, salidas, ajustes y existencia. Útil para clientes con régimen general que deducen costo de lo vendido y para evitar discrepancias en revisiones SAT.",
+    cuandoUsar:
+      "Cuando el cliente vende mercancías y necesita controlar costo de ventas. Al cierre mensual y obligatoriamente al cierre anual.",
+    tutorial: [
+      { n: 1, titulo: "Crea el catálogo", detalle: "Da de alta SKUs con código, descripción, unidad y costo inicial." },
+      { n: 2, titulo: "Registra movimientos", detalle: "Entradas (compras), salidas (ventas) y ajustes (mermas, conteos). El sistema actualiza existencia y costo promedio." },
+      { n: 3, titulo: "Concilia con CFDI", detalle: "Cruza salidas vs CFDI emitidos de venta para validar congruencia." },
+      { n: 4, titulo: "Cierra el periodo", detalle: "Al cierre mensual genera reporte de existencia valorada que alimenta el balance." },
+    ],
+    resultados: [
+      { campo: "Existencia", significado: "Unidades disponibles por SKU." },
+      { campo: "Costo promedio / PEPS", significado: "Valor unitario para calcular costo de ventas conforme al método elegido." },
+      { campo: "Existencia valorada", significado: "Existencia × costo. Se refleja en el balance como inventarios." },
+    ],
+    dependencias: {
+      necesita: [
+        { tool: "CFDI de compras", motivo: "Para alimentar entradas con costo unitario real." },
+      ],
+      alimenta: [
+        { tool: "Contabilidad Automática", ruta: "/app/contabilidad-auto", motivo: "Salidas generan póliza de costo de ventas." },
+        { tool: "Conciliación Integral", ruta: "/app/conciliacion-integral", motivo: "Salidas vs CFDI emitidos validan congruencia operación-fiscal." },
+      ],
+      datosMinimos: ["Catálogo de SKU con costo inicial", "Movimientos de entrada y salida"],
+    },
+  },
 };
 
 export function getHelp(slug: string): HelpContent | null {

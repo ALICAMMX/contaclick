@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ModuleScaffold, KpiTile, DemoCard } from "@/components/ModuleScaffold";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { Building } from "lucide-react";
 
 export const Route = createFileRoute("/app/admin/activos")({ component: ActivosPage });
@@ -19,7 +20,9 @@ function ActivosPage() {
     <ModuleScaffold
       title="Activos Fijos"
       subtitle="Depreciación fiscal y contable automática a partir de tus CFDI de compra. La IA clasifica cada activo y aplica el porcentaje correcto según la LISR."
-      icon={<Building className="h-5 w-5" />}
+      icon={<Building className="h-5 w-5" /
+      actions={<HerramientaHelp slug="admin-activos" />}
+    >}
     >
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiTile label="Activos registrados" value="47" accent="primary" />

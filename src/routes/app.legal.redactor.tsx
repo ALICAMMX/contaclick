@@ -15,6 +15,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { RichMarkdown } from "@/components/RichMarkdown";
 import { toast } from "sonner";
 import { safeFilename, triggerFileDownload } from "@/lib/download";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 
 export const Route = createFileRoute("/app/legal/redactor")({ component: RedactorPage });
 
@@ -116,6 +117,7 @@ function RedactorPage() {
       title="Redactor de Escritos IA"
       subtitle="Genera escritos fiscales y de defensa con calidad de despacho boutique. Captura el expediente, elige el tipo y obtén un borrador estructurado en segundos."
       icon={<FileSignature className="h-5 w-5" />}
+      actions={<HerramientaHelp slug="legal-redactor" />}
     >
       <div className="grid lg:grid-cols-[420px_1fr] gap-4">
         {/* Panel izquierdo: formulario */}

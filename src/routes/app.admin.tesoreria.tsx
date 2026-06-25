@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ModuleScaffold, KpiTile, DemoCard } from "@/components/ModuleScaffold";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { TrendingUp, Plus, Trash2, Check, X, Upload, Sparkles } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -128,6 +129,7 @@ function TesPage() {
       icon={<TrendingUp className="h-5 w-5" />}
       badge={null}
       actions={<>
+        <HerramientaHelp slug="admin-tesoreria" />
         <Button size="sm" variant="outline" onClick={() => setOpen("cxc")}><Plus className="h-3.5 w-3.5" /> CXC</Button>
         <Button size="sm" variant="outline" onClick={() => setOpen("cxp")}><Plus className="h-3.5 w-3.5" /> CXP</Button>
         <Button size="sm" variant="outline" onClick={() => setImportOpen("cxc")}><Upload className="h-3.5 w-3.5" /> Importar CXC</Button>
