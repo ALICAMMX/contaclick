@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { FileText, Play, Pause, RefreshCw, ShieldCheck, ScanSearch, FolderOpen, AlertTriangle, CheckCircle2, Clock, ArrowLeft, Sparkles } from "lucide-react";
 import { ModuleScaffold, KpiTile, DemoCard } from "@/components/ModuleScaffold";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { getCfdiStats, listCfdi } from "@/lib/cfdi/cfdi.functions";
 import { runExpressAudit, type AuditFinding } from "@/lib/auditor/auditor.functions";
