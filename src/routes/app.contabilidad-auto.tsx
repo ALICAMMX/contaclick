@@ -250,6 +250,10 @@ function ContabilidadAutoPage() {
             <ListaPolizas rows={confirmadas.data ?? []} />
           </Card>
         </TabsContent>
+
+        <TabsContent value="catalogo"><CatalogoTab clienteId={cliente.id} /></TabsContent>
+        <TabsContent value="reglas"><ReglasTab clienteId={cliente.id} /></TabsContent>
+        <TabsContent value="exportar"><ExportarTab clienteId={cliente.id} /></TabsContent>
       </Tabs>
 
       {editing && (
