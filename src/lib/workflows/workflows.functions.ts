@@ -135,7 +135,7 @@ export const listRuns = createServerFn({ method: "GET" })
       .limit(data?.limit ?? 50);
     if (data?.workflowId) q = q.eq("workflow_id", data.workflowId);
     if (data?.clienteId) q = q.eq("cliente_id", data.clienteId);
-    if (data?.status) q = q.eq("status", data.status);
+    if (data?.status) q = q.eq("status", data.status as any);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
     const ids = Array.from(new Set((rows ?? []).map((r: any) => r.workflow_id)));
