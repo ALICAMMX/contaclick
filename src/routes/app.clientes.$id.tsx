@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, ShieldCheck, ShieldAlert, ShieldOff, Upload, Unlink, RefreshCw, CheckCircle2, History, Wrench, FileText, MapPin, Truck, Receipt, Users, ListChecks, Activity, Workflow as WorkflowIcon } from "lucide-react";
 import { listWorkflows, listRuns } from "@/lib/workflows/workflows.functions";
 import { computeSaludFiscal } from "@/lib/salud/salud.functions";
+import { ConfigExpediente } from "./app.sat-sync";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { getCliente, listTerceros } from "@/lib/clientes.functions";
