@@ -320,7 +320,7 @@ function ClienteDetailPage() {
           Configura la descarga masiva automática para este expediente (CFDI emitidos, recibidos, nómina, pagos, retenciones).
           Tras cada corrida se ejecuta en cascada Salud Fiscal, Riesgo SAT, Auditor Express y EFOS.
         </p>
-        <ConfigExpediente clienteId={id} rfc={data?.rfc} />
+        <ConfigExpediente clienteId={id} rfc={cli.data?.rfc ?? undefined} />
       </section>
     </div>
   );
