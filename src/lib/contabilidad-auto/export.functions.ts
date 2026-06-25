@@ -39,7 +39,7 @@ export const exportarAnexo24Polizas = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase } = context;
-    const { data: cli } = await supabase.from("clientes").select("rfc, nombre").eq("id", data.cliente_id).maybeSingle();
+    const { data: cli } = await supabase.from("clientes").select("rfc").eq("id", data.cliente_id).maybeSingle();
     if (!cli?.rfc) throw new Error("Cliente sin RFC configurado");
 
     const polizas = await fetchPolizas(supabase, data.cliente_id, data.anio, data.mes);
