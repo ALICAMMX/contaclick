@@ -305,7 +305,7 @@ function ClienteDetailPage() {
         </p>
       </section>
 
-      <AutomatizacionesExpediente clienteId={c.id} />
+      <AutomatizacionesExpediente clienteId={id} />
     </div>
   );
 }
