@@ -514,7 +514,7 @@ function KanbanColumna({ estado, tareas, onCardClick, onChangeEstado }: {
       <div className="space-y-2">
         {tareas.map((t) => {
           const dr = diasRestantes(t.due_date);
-          const orig = ORIGEN_LABEL[t.origen ?? "manual"];
+          const orig = ORIGEN_LABEL[t.origen ?? "manual"] ?? ORIGEN_LABEL.manual;
           return (
             <div
               key={t.id}
