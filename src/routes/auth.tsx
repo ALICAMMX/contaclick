@@ -276,6 +276,55 @@ function AuthPage() {
             {mode === "login" ? "Ingresa para continuar con tus clientes." : "Empieza gratis. Sin tarjeta."}
           </p>
 
+          {mfa ? (
+            <div className="space-y-3 mt-6">
+              <div className="rounded-lg border border-primary/40 bg-primary/10 p-3 text-sm">
+                Ingresa el código de 6 dígitos de tu app autenticadora.
+              </div>
+              <input
+                value={mfaCode}
+                onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="123456"
+                inputMode="numeric"
+                autoFocus
+                className="w-full h-12 px-4 rounded-md bg-input/50 border border-border text-center text-lg font-mono tracking-[0.4em]"
+              />
+              <Button
+                type="button"
+                variant="hero"
+                className="w-full h-11"
+                disabled={mfaCode.length !== 6 || mfaLoading}
+                onClick={async () => {
+                  if (!mfa) return;
+                  setMfaLoading(true);
+                  try {
+                    const { data: ch, error: e1 } = await supabase.auth.mfa.challenge({ factorId: mfa.factorId });
+                    if (e1) throw e1;
+                    const { error: e2 } = await supabase.auth.mfa.verify({
+                      factorId: mfa.factorId, challengeId: ch.id, code: mfaCode.trim(),
+                    });
+                    if (e2) throw e2;
+                    setMfa(null);
+                    setMfaCode("");
+                    await finishAuthenticatedEntry({ fullName: null, despachoNombre: null });
+                  } catch (e) {
+                    toast.error((e as Error).message || "Código inválido");
+                  } finally {
+                    setMfaLoading(false);
+                  }
+                }}
+              >
+                {mfaLoading ? "Verificando…" : "Verificar e ingresar"}
+              </Button>
+              <button
+                type="button"
+                onClick={async () => { await supabase.auth.signOut(); setMfa(null); setMfaCode(""); }}
+                className="w-full text-center text-sm text-muted-foreground hover:text-foreground"
+              >
+                Cancelar
+              </button>
+            </div>
+          ) : (
           <form onSubmit={onSubmit} className="space-y-3 mt-6">
             {formMessage && (
               <div
