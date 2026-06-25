@@ -59,7 +59,10 @@ function ExpressAuditor() {
   const filtered = filter === "all" ? findings : findings.filter((f) => f.tipo === filter);
 
   function exportPdf() {
-    if (!stats) return;
+    if (!stats) {
+      toast.error("Carga primero los datos antes de exportar el PDF.");
+      return;
+    }
     const doc = new jsPDF({ unit: "pt", format: "letter" });
     const W = doc.internal.pageSize.getWidth();
     let y = 50;
