@@ -45,6 +45,7 @@ import { Route as AppSaludFiscalRouteImport } from './routes/app.salud-fiscal'
 import { Route as AppRiesgoRouteImport } from './routes/app.riesgo'
 import { Route as AppRfcsVinculadosRouteImport } from './routes/app.rfcs-vinculados'
 import { Route as AppReportesRouteImport } from './routes/app.reportes'
+import { Route as AppPolizasRouteImport } from './routes/app.polizas'
 import { Route as AppMensajesRouteImport } from './routes/app.mensajes'
 import { Route as AppLegalRouteImport } from './routes/app.legal'
 import { Route as AppExpedientesRouteImport } from './routes/app.expedientes'
@@ -109,7 +110,6 @@ import { Route as AppAdminCumplimientoRouteImport } from './routes/app.admin.cum
 import { Route as AppAdminCorrespondenciaRouteImport } from './routes/app.admin.correspondencia'
 import { Route as AppAdminBuzonRouteImport } from './routes/app.admin.buzon'
 import { Route as AppAdminActivosRouteImport } from './routes/app.admin.activos'
-import { Route as AuthenticatedAppPolizasRouteImport } from './routes/_authenticated.app.polizas'
 import { Route as ApiPublicHooksWorkflowCronRouteImport } from './routes/api/public/hooks/workflow-cron'
 import { Route as ApiPublicHooksSatSyncRouteImport } from './routes/api/public/hooks/sat-sync'
 
@@ -291,6 +291,11 @@ const AppRfcsVinculadosRoute = AppRfcsVinculadosRouteImport.update({
 const AppReportesRoute = AppReportesRouteImport.update({
   id: '/reportes',
   path: '/reportes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPolizasRoute = AppPolizasRouteImport.update({
+  id: '/polizas',
+  path: '/polizas',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMensajesRoute = AppMensajesRouteImport.update({
@@ -620,11 +625,6 @@ const AppAdminActivosRoute = AppAdminActivosRouteImport.update({
   path: '/activos',
   getParentRoute: () => AppAdminRoute,
 } as any)
-const AuthenticatedAppPolizasRoute = AuthenticatedAppPolizasRouteImport.update({
-  id: '/_authenticated/app/polizas',
-  path: '/app/polizas',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiPublicHooksWorkflowCronRoute =
   ApiPublicHooksWorkflowCronRouteImport.update({
     id: '/api/public/hooks/workflow-cron',
@@ -667,6 +667,7 @@ export interface FileRoutesByFullPath {
   '/app/expedientes': typeof AppExpedientesRoute
   '/app/legal': typeof AppLegalRouteWithChildren
   '/app/mensajes': typeof AppMensajesRouteWithChildren
+  '/app/polizas': typeof AppPolizasRoute
   '/app/reportes': typeof AppReportesRouteWithChildren
   '/app/rfcs-vinculados': typeof AppRfcsVinculadosRoute
   '/app/riesgo': typeof AppRiesgoRoute
@@ -691,7 +692,6 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/portal/': typeof PortalIndexRoute
-  '/app/polizas': typeof AuthenticatedAppPolizasRoute
   '/app/admin/activos': typeof AppAdminActivosRoute
   '/app/admin/buzon': typeof AppAdminBuzonRoute
   '/app/admin/correspondencia': typeof AppAdminCorrespondenciaRoute
@@ -763,6 +763,7 @@ export interface FileRoutesByTo {
   '/app/despacho': typeof AppDespachoRoute
   '/app/equipo': typeof AppEquipoRoute
   '/app/expedientes': typeof AppExpedientesRoute
+  '/app/polizas': typeof AppPolizasRoute
   '/app/rfcs-vinculados': typeof AppRfcsVinculadosRoute
   '/app/riesgo': typeof AppRiesgoRoute
   '/app/salud-fiscal': typeof AppSaludFiscalRoute
@@ -786,7 +787,6 @@ export interface FileRoutesByTo {
   '/app': typeof AppIndexRoute
   '/dashboard': typeof DashboardIndexRoute
   '/portal': typeof PortalIndexRoute
-  '/app/polizas': typeof AuthenticatedAppPolizasRoute
   '/app/admin/activos': typeof AppAdminActivosRoute
   '/app/admin/buzon': typeof AppAdminBuzonRoute
   '/app/admin/correspondencia': typeof AppAdminCorrespondenciaRoute
@@ -868,6 +868,7 @@ export interface FileRoutesById {
   '/app/expedientes': typeof AppExpedientesRoute
   '/app/legal': typeof AppLegalRouteWithChildren
   '/app/mensajes': typeof AppMensajesRouteWithChildren
+  '/app/polizas': typeof AppPolizasRoute
   '/app/reportes': typeof AppReportesRouteWithChildren
   '/app/rfcs-vinculados': typeof AppRfcsVinculadosRoute
   '/app/riesgo': typeof AppRiesgoRoute
@@ -892,7 +893,6 @@ export interface FileRoutesById {
   '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/portal/': typeof PortalIndexRoute
-  '/_authenticated/app/polizas': typeof AuthenticatedAppPolizasRoute
   '/app/admin/activos': typeof AppAdminActivosRoute
   '/app/admin/buzon': typeof AppAdminBuzonRoute
   '/app/admin/correspondencia': typeof AppAdminCorrespondenciaRoute
@@ -975,6 +975,7 @@ export interface FileRouteTypes {
     | '/app/expedientes'
     | '/app/legal'
     | '/app/mensajes'
+    | '/app/polizas'
     | '/app/reportes'
     | '/app/rfcs-vinculados'
     | '/app/riesgo'
@@ -999,7 +1000,6 @@ export interface FileRouteTypes {
     | '/app/'
     | '/dashboard/'
     | '/portal/'
-    | '/app/polizas'
     | '/app/admin/activos'
     | '/app/admin/buzon'
     | '/app/admin/correspondencia'
@@ -1071,6 +1071,7 @@ export interface FileRouteTypes {
     | '/app/despacho'
     | '/app/equipo'
     | '/app/expedientes'
+    | '/app/polizas'
     | '/app/rfcs-vinculados'
     | '/app/riesgo'
     | '/app/salud-fiscal'
@@ -1094,7 +1095,6 @@ export interface FileRouteTypes {
     | '/app'
     | '/dashboard'
     | '/portal'
-    | '/app/polizas'
     | '/app/admin/activos'
     | '/app/admin/buzon'
     | '/app/admin/correspondencia'
@@ -1175,6 +1175,7 @@ export interface FileRouteTypes {
     | '/app/expedientes'
     | '/app/legal'
     | '/app/mensajes'
+    | '/app/polizas'
     | '/app/reportes'
     | '/app/rfcs-vinculados'
     | '/app/riesgo'
@@ -1199,7 +1200,6 @@ export interface FileRouteTypes {
     | '/app/'
     | '/dashboard/'
     | '/portal/'
-    | '/_authenticated/app/polizas'
     | '/app/admin/activos'
     | '/app/admin/buzon'
     | '/app/admin/correspondencia'
@@ -1265,7 +1265,6 @@ export interface RootRouteChildren {
   SeguridadRoute: typeof SeguridadRoute
   TerminosRoute: typeof TerminosRoute
   InvitarTokenRoute: typeof InvitarTokenRoute
-  AuthenticatedAppPolizasRoute: typeof AuthenticatedAppPolizasRoute
   ApiPublicHooksSatSyncRoute: typeof ApiPublicHooksSatSyncRoute
   ApiPublicHooksWorkflowCronRoute: typeof ApiPublicHooksWorkflowCronRoute
 }
@@ -1522,6 +1521,13 @@ declare module '@tanstack/react-router' {
       path: '/reportes'
       fullPath: '/app/reportes'
       preLoaderRoute: typeof AppReportesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/polizas': {
+      id: '/app/polizas'
+      path: '/polizas'
+      fullPath: '/app/polizas'
+      preLoaderRoute: typeof AppPolizasRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/mensajes': {
@@ -1972,13 +1978,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminActivosRouteImport
       parentRoute: typeof AppAdminRoute
     }
-    '/_authenticated/app/polizas': {
-      id: '/_authenticated/app/polizas'
-      path: '/app/polizas'
-      fullPath: '/app/polizas'
-      preLoaderRoute: typeof AuthenticatedAppPolizasRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/hooks/workflow-cron': {
       id: '/api/public/hooks/workflow-cron'
       path: '/api/public/hooks/workflow-cron'
@@ -2137,6 +2136,7 @@ interface AppRouteChildren {
   AppExpedientesRoute: typeof AppExpedientesRoute
   AppLegalRoute: typeof AppLegalRouteWithChildren
   AppMensajesRoute: typeof AppMensajesRouteWithChildren
+  AppPolizasRoute: typeof AppPolizasRoute
   AppReportesRoute: typeof AppReportesRouteWithChildren
   AppRfcsVinculadosRoute: typeof AppRfcsVinculadosRoute
   AppRiesgoRoute: typeof AppRiesgoRoute
@@ -2185,6 +2185,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppExpedientesRoute: AppExpedientesRoute,
   AppLegalRoute: AppLegalRouteWithChildren,
   AppMensajesRoute: AppMensajesRouteWithChildren,
+  AppPolizasRoute: AppPolizasRoute,
   AppReportesRoute: AppReportesRouteWithChildren,
   AppRfcsVinculadosRoute: AppRfcsVinculadosRoute,
   AppRiesgoRoute: AppRiesgoRoute,
@@ -2280,7 +2281,6 @@ const rootRouteChildren: RootRouteChildren = {
   SeguridadRoute: SeguridadRoute,
   TerminosRoute: TerminosRoute,
   InvitarTokenRoute: InvitarTokenRoute,
-  AuthenticatedAppPolizasRoute: AuthenticatedAppPolizasRoute,
   ApiPublicHooksSatSyncRoute: ApiPublicHooksSatSyncRoute,
   ApiPublicHooksWorkflowCronRoute: ApiPublicHooksWorkflowCronRoute,
 }
