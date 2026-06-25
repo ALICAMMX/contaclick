@@ -20,6 +20,7 @@ import {
 } from "@/lib/cfdi/cfdi.functions";
 import { classifyXmls, reportTotalRejections, type RejectReport } from "@/lib/cfdi/dedup-xml";
 import { RejectModal } from "@/components/RejectModal";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { safeFilename, triggerFileDownload } from "@/lib/download";
 
 export const Route = createFileRoute("/app/cfdi/")({
