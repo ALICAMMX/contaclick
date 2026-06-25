@@ -48,6 +48,9 @@ function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [formMessage, setFormMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  const [mfa, setMfa] = useState<{ factorId: string } | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaLoading, setMfaLoading] = useState(false);
   const navigate = useNavigate();
   const bootstrapWorkspace = useServerFn(ensureUserWorkspace);
   const getEntry = useServerFn(getEntryContext);
@@ -119,6 +122,8 @@ function AuthPage() {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
       if (!data.session) return;
+      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aal?.nextLevel === "aal2" && aal.currentLevel !== "aal2") return; // requiere 2FA, no auto-entrar
       const entry = await getEntry();
       const isClient = entry.isClient || (await hasClientRoleFallback());
       navigate({ to: isClient ? "/portal" : "/app", replace: true });
@@ -221,6 +226,16 @@ function AuthPage() {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aal?.nextLevel === "aal2" && aal.currentLevel !== "aal2") {
+          const { data: list } = await supabase.auth.mfa.listFactors();
+          const totp = list?.totp?.find((f) => f.status === "verified");
+          if (totp) {
+            setMfa({ factorId: totp.id });
+            setLoading(false);
+            return;
+          }
+        }
         await finishAuthenticatedEntry({ fullName: null, despachoNombre: null });
       }
     } catch (err: unknown) {
@@ -261,6 +276,55 @@ function AuthPage() {
             {mode === "login" ? "Ingresa para continuar con tus clientes." : "Empieza gratis. Sin tarjeta."}
           </p>
 
+          {mfa ? (
+            <div className="space-y-3 mt-6">
+              <div className="rounded-lg border border-primary/40 bg-primary/10 p-3 text-sm">
+                Ingresa el código de 6 dígitos de tu app autenticadora.
+              </div>
+              <input
+                value={mfaCode}
+                onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="123456"
+                inputMode="numeric"
+                autoFocus
+                className="w-full h-12 px-4 rounded-md bg-input/50 border border-border text-center text-lg font-mono tracking-[0.4em]"
+              />
+              <Button
+                type="button"
+                variant="hero"
+                className="w-full h-11"
+                disabled={mfaCode.length !== 6 || mfaLoading}
+                onClick={async () => {
+                  if (!mfa) return;
+                  setMfaLoading(true);
+                  try {
+                    const { data: ch, error: e1 } = await supabase.auth.mfa.challenge({ factorId: mfa.factorId });
+                    if (e1) throw e1;
+                    const { error: e2 } = await supabase.auth.mfa.verify({
+                      factorId: mfa.factorId, challengeId: ch.id, code: mfaCode.trim(),
+                    });
+                    if (e2) throw e2;
+                    setMfa(null);
+                    setMfaCode("");
+                    await finishAuthenticatedEntry({ fullName: null, despachoNombre: null });
+                  } catch (e) {
+                    toast.error((e as Error).message || "Código inválido");
+                  } finally {
+                    setMfaLoading(false);
+                  }
+                }}
+              >
+                {mfaLoading ? "Verificando…" : "Verificar e ingresar"}
+              </Button>
+              <button
+                type="button"
+                onClick={async () => { await supabase.auth.signOut(); setMfa(null); setMfaCode(""); }}
+                className="w-full text-center text-sm text-muted-foreground hover:text-foreground"
+              >
+                Cancelar
+              </button>
+            </div>
+          ) : (
           <form onSubmit={onSubmit} className="space-y-3 mt-6">
             {formMessage && (
               <div
@@ -335,6 +399,7 @@ function AuthPage() {
               </button>
             )}
           </form>
+          )}
 
           <div className="mt-5 pt-5 border-t border-border/50">
             <Button

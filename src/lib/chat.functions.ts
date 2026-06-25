@@ -12,15 +12,7 @@ const Schema = z.object({
   })).min(1).max(40),
 });
 
-const SYSTEM = `Eres ContaClick IA, asistente fiscal experto en México (SAT, CFDI 4.0, ISR, IVA, RESICO, IMSS, contabilidad electrónica, DIOT, retenciones).
-
-REGLAS ESTRICTAS:
-- Responde SIEMPRE en español neutro mexicano, claro y profesional.
-- NUNCA inventes leyes, artículos, tasas o cálculos. Si no estás seguro, dilo.
-- Cuando cites legislación, menciona el ordenamiento (LISR, LIVA, CFF, RMF) sin inventar números de artículo.
-- Para cálculos, muestra el procedimiento paso a paso.
-- Si te piden redactar correos o WhatsApps al cliente, usa tono profesional y empático.
-- Sé conciso. Usa listas y negritas con markdown cuando ayude.`;
+// Prompt vive en src/lib/chat.prompts.server.ts (excluido del bundle del cliente).
 
 export const sendChat = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
@@ -52,7 +44,7 @@ export const sendChat = createServerFn({ method: "POST" })
         },
         body: JSON.stringify({
           model,
-          messages: [{ role: "system", content: SYSTEM }, ...data.messages],
+          messages: [{ role: "system", content: (await import("./chat.prompts.server")).CHAT_SYSTEM_PROMPT }, ...data.messages],
         }),
       });
 

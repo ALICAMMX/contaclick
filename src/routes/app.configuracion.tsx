@@ -11,6 +11,7 @@ import { seedDemo, clearDemo } from "@/lib/demo/demo.functions";
 import { Tour, resetTour } from "@/components/Tour";
 import { UsageProfileCard } from "@/components/UsageProfileCard";
 import { UsageHistoryPanel } from "@/components/UsageHistoryPanel";
+import { TwoFactorSection } from "@/components/TwoFactorSection";
 
 export const Route = createFileRoute("/app/configuracion")({
   component: ConfigPage,
@@ -150,6 +151,8 @@ function ConfigPage() {
 
       <UsageProfileCard />
       <UsageHistoryPanel />
+      <TwoFactorSection />
+
 
       <div className="rounded-xl border border-primary/30 bg-primary/5 p-5 space-y-4">
         <div className="flex items-center gap-3">
