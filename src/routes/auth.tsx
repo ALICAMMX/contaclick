@@ -122,6 +122,8 @@ function AuthPage() {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
       if (!data.session) return;
+      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aal?.nextLevel === "aal2" && aal.currentLevel !== "aal2") return; // requiere 2FA, no auto-entrar
       const entry = await getEntry();
       const isClient = entry.isClient || (await hasClientRoleFallback());
       navigate({ to: isClient ? "/portal" : "/app", replace: true });
