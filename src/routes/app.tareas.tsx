@@ -181,11 +181,19 @@ function CentroTareas() {
   const kpis = dashQ.data?.kpis;
 
   return (
-    <ToolShell
-      title="Centro de Tareas"
-      description="Organiza, asigna y supervisa todo el trabajo operativo del despacho desde un solo lugar."
-      icon={<ListChecks className="h-5 w-5" />}
-      footer={
+    <div className="space-y-6">
+      <header className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex items-start gap-4 min-w-0">
+          <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--gradient-primary)" }}>
+            <ListChecks className="h-5 w-5 text-primary-foreground" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Centro de Tareas</h1>
+            <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
+              Organiza, asigna y supervisa todo el trabajo operativo del despacho desde un solo lugar.
+            </p>
+          </div>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           {cliente?.id && (
             <Button variant="outline" size="sm" onClick={() => generar.mutate()} disabled={generar.isPending}>
@@ -197,8 +205,8 @@ function CentroTareas() {
             <Plus className="h-4 w-4 mr-1.5" /> Nueva tarea
           </Button>
         </div>
-      }
-    >
+      </header>
+
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full">
         <TabsList className="grid w-full max-w-2xl grid-cols-4">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
