@@ -109,6 +109,7 @@ import { Route as AppAdminBuzonRouteImport } from './routes/app.admin.buzon'
 import { Route as AppAdminActivosRouteImport } from './routes/app.admin.activos'
 import { Route as ApiPublicHooksWorkflowCronRouteImport } from './routes/api/public/hooks/workflow-cron'
 import { Route as ApiPublicHooksSatSyncRouteImport } from './routes/api/public/hooks/sat-sync'
+import { Route as AuthenticatedAppAdminSatSaldoRouteImport } from './routes/_authenticated.app.admin.sat-saldo'
 
 const TerminosRoute = TerminosRouteImport.update({
   id: '/terminos',
@@ -618,6 +619,12 @@ const ApiPublicHooksSatSyncRoute = ApiPublicHooksSatSyncRouteImport.update({
   path: '/api/public/hooks/sat-sync',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAppAdminSatSaldoRoute =
+  AuthenticatedAppAdminSatSaldoRouteImport.update({
+    id: '/_authenticated/app/admin/sat-saldo',
+    path: '/app/admin/sat-saldo',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -718,6 +725,7 @@ export interface FileRoutesByFullPath {
   '/app/mensajes/': typeof AppMensajesIndexRoute
   '/app/reportes/': typeof AppReportesIndexRoute
   '/app/tools/': typeof AppToolsIndexRoute
+  '/app/admin/sat-saldo': typeof AuthenticatedAppAdminSatSaldoRoute
   '/api/public/hooks/sat-sync': typeof ApiPublicHooksSatSyncRoute
   '/api/public/hooks/workflow-cron': typeof ApiPublicHooksWorkflowCronRoute
 }
@@ -810,6 +818,7 @@ export interface FileRoutesByTo {
   '/app/mensajes': typeof AppMensajesIndexRoute
   '/app/reportes': typeof AppReportesIndexRoute
   '/app/tools': typeof AppToolsIndexRoute
+  '/app/admin/sat-saldo': typeof AuthenticatedAppAdminSatSaldoRoute
   '/api/public/hooks/sat-sync': typeof ApiPublicHooksSatSyncRoute
   '/api/public/hooks/workflow-cron': typeof ApiPublicHooksWorkflowCronRoute
 }
@@ -913,6 +922,7 @@ export interface FileRoutesById {
   '/app/mensajes/': typeof AppMensajesIndexRoute
   '/app/reportes/': typeof AppReportesIndexRoute
   '/app/tools/': typeof AppToolsIndexRoute
+  '/_authenticated/app/admin/sat-saldo': typeof AuthenticatedAppAdminSatSaldoRoute
   '/api/public/hooks/sat-sync': typeof ApiPublicHooksSatSyncRoute
   '/api/public/hooks/workflow-cron': typeof ApiPublicHooksWorkflowCronRoute
 }
@@ -1017,6 +1027,7 @@ export interface FileRouteTypes {
     | '/app/mensajes/'
     | '/app/reportes/'
     | '/app/tools/'
+    | '/app/admin/sat-saldo'
     | '/api/public/hooks/sat-sync'
     | '/api/public/hooks/workflow-cron'
   fileRoutesByTo: FileRoutesByTo
@@ -1109,6 +1120,7 @@ export interface FileRouteTypes {
     | '/app/mensajes'
     | '/app/reportes'
     | '/app/tools'
+    | '/app/admin/sat-saldo'
     | '/api/public/hooks/sat-sync'
     | '/api/public/hooks/workflow-cron'
   id:
@@ -1211,6 +1223,7 @@ export interface FileRouteTypes {
     | '/app/mensajes/'
     | '/app/reportes/'
     | '/app/tools/'
+    | '/_authenticated/app/admin/sat-saldo'
     | '/api/public/hooks/sat-sync'
     | '/api/public/hooks/workflow-cron'
   fileRoutesById: FileRoutesById
@@ -1229,6 +1242,7 @@ export interface RootRouteChildren {
   SeguridadRoute: typeof SeguridadRoute
   TerminosRoute: typeof TerminosRoute
   InvitarTokenRoute: typeof InvitarTokenRoute
+  AuthenticatedAppAdminSatSaldoRoute: typeof AuthenticatedAppAdminSatSaldoRoute
   ApiPublicHooksSatSyncRoute: typeof ApiPublicHooksSatSyncRoute
   ApiPublicHooksWorkflowCronRoute: typeof ApiPublicHooksWorkflowCronRoute
 }
@@ -1935,6 +1949,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksSatSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/app/admin/sat-saldo': {
+      id: '/_authenticated/app/admin/sat-saldo'
+      path: '/app/admin/sat-saldo'
+      fullPath: '/app/admin/sat-saldo'
+      preLoaderRoute: typeof AuthenticatedAppAdminSatSaldoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -2218,6 +2239,7 @@ const rootRouteChildren: RootRouteChildren = {
   SeguridadRoute: SeguridadRoute,
   TerminosRoute: TerminosRoute,
   InvitarTokenRoute: InvitarTokenRoute,
+  AuthenticatedAppAdminSatSaldoRoute: AuthenticatedAppAdminSatSaldoRoute,
   ApiPublicHooksSatSyncRoute: ApiPublicHooksSatSyncRoute,
   ApiPublicHooksWorkflowCronRoute: ApiPublicHooksWorkflowCronRoute,
 }
