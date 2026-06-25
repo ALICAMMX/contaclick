@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { MessageCircle, Sparkles, Send, Loader2, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { getCliente } from "@/lib/clientes.functions";
 import { renderPlantilla, redactarMensajeAI, saveMensaje, listMensajes, type PlantillaKey } from "@/lib/mensajes/mensajes.functions";
