@@ -175,19 +175,56 @@ function validar(as: Asiento[]): string[] {
   return w;
 }
 
-export function contabilizarCfdi(c: CfdiParaContabilizar): PolizaSugerida {
+export type ReglaContable = {
+  id: string;
+  nombre: string;
+  prioridad: number;
+  activa: boolean;
+  cuenta_cargo: string;
+  cuenta_abono: string;
+  condicion: {
+    tipo_cfdi?: string | null;
+    rfc_emisor?: string | null;
+    rfc_receptor?: string | null;
+    keyword?: string | null;
+    min_monto?: number | null;
+    max_monto?: number | null;
+  };
+};
+
+function matchRegla(c: CfdiParaContabilizar, conceptoText: string, reglas: ReglaContable[]): ReglaContable | null {
+  const sorted = [...reglas].filter((r) => r.activa).sort((a, b) => b.prioridad - a.prioridad);
+  for (const r of sorted) {
+    const cd = r.condicion ?? {};
+    if (cd.tipo_cfdi && cd.tipo_cfdi.toUpperCase() !== (c.tipo_cfdi || "").toUpperCase()) continue;
+    if (cd.rfc_emisor && cd.rfc_emisor.toUpperCase() !== c.rfc_emisor.toUpperCase()) continue;
+    if (cd.rfc_receptor && cd.rfc_receptor.toUpperCase() !== c.rfc_receptor.toUpperCase()) continue;
+    if (cd.keyword && !conceptoText.toLowerCase().includes(cd.keyword.toLowerCase())) continue;
+    if (cd.min_monto != null && c.total < cd.min_monto) continue;
+    if (cd.max_monto != null && c.total > cd.max_monto) continue;
+    return r;
+  }
+  return null;
+}
+
+export function contabilizarCfdi(c: CfdiParaContabilizar, reglas: ReglaContable[] = []): PolizaSugerida {
   const esEmitido = c.rfc_emisor.toUpperCase() === c.rfc_cliente.toUpperCase();
   const tipo = (c.tipo_cfdi || "I").toUpperCase();
 
+  let base: PolizaSugerida;
   switch (tipo) {
     case "I":
-      return esEmitido ? ingresoEmitido(c) : gastoRecibido(c);
+      base = esEmitido ? ingresoEmitido(c) : gastoRecibido(c);
+      break;
     case "E":
-      return notaCredito(c, esEmitido);
+      base = notaCredito(c, esEmitido);
+      break;
     case "P":
-      return pago(c, esEmitido);
+      base = pago(c, esEmitido);
+      break;
     case "N":
-      return nomina(c);
+      base = nomina(c);
+      break;
     case "T":
       return {
         tipo: "diario",
@@ -205,4 +242,22 @@ export function contabilizarCfdi(c: CfdiParaContabilizar): PolizaSugerida {
         warnings: [`Tipo de CFDI no soportado: ${tipo}. Requiere clasificación manual.`],
       };
   }
+
+  // Aplicar regla: reemplaza la cuenta principal de cargo o abono según el tipo de póliza.
+  const regla = matchRegla(c, base.concepto, reglas);
+  if (regla) {
+    const isIngreso = base.tipo === "ingreso";
+    const asientos = base.asientos.map((a) => {
+      // Sustituir la cuenta principal: en gasto/egreso la primera de DEBE; en ingreso la primera de HABER
+      if (!isIngreso && a.debe > 0 && (a.cuenta === CTA.COMPRAS_GASTOS.c || a.cuenta === CTA.COMPRAS_INV.c)) {
+        return { ...a, cuenta: regla.cuenta_cargo, nombre: `${a.nombre} · ${regla.nombre}` };
+      }
+      if (isIngreso && a.haber > 0 && a.cuenta === CTA.INGRESOS.c) {
+        return { ...a, cuenta: regla.cuenta_abono, nombre: `${a.nombre} · ${regla.nombre}` };
+      }
+      return a;
+    });
+    base = { ...base, asientos, warnings: [...base.warnings, `Regla aplicada: ${regla.nombre}`] };
+  }
+  return base;
 }
