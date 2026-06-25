@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ModuleScaffold, KpiTile, DemoCard } from "@/components/ModuleScaffold";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { Boxes } from "lucide-react";
 
 export const Route = createFileRoute("/app/admin/inventarios")({ component: InvPage });
@@ -16,7 +17,9 @@ function InvPage() {
     <ModuleScaffold
       title="Inventarios"
       subtitle="Kardex derivado automáticamente de tus CFDI emitidos y recibidos. Sin captura, sin doble registro."
-      icon={<Boxes className="h-5 w-5" />}
+      icon={<Boxes className="h-5 w-5" /
+      actions={<HerramientaHelp slug="admin-inventarios" />}
+    >}
     >
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiTile label="SKUs activos" value="184" accent="primary" />

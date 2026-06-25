@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ModuleScaffold, DemoCard } from "@/components/ModuleScaffold";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { MessageSquare, Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/app/admin/correspondencia")({ component: CorPage });
@@ -18,7 +19,9 @@ function CorPage() {
     <ModuleScaffold
       title="Correspondencia & Minutas"
       subtitle="Generador de oficios, minutas y respuestas con tono profesional. Cada documento incluye fundamento legal cuando aplica."
-      icon={<MessageSquare className="h-5 w-5" />}
+      icon={<MessageSquare className="h-5 w-5" /
+      actions={<HerramientaHelp slug="admin-correspondencia" />}
+    >}
     >
       <div className="grid md:grid-cols-[1fr_1.4fr] gap-4">
         <DemoCard title="Plantillas disponibles">

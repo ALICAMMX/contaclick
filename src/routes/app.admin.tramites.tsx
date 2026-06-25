@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ModuleScaffold } from "@/components/ModuleScaffold";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { FileText, Plus, Trash2, X, Upload, Sparkles } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -119,6 +120,7 @@ function TramPage() {
       icon={<FileText className="h-5 w-5" />}
       badge={null}
       actions={<>
+        <HerramientaHelp slug="admin-tramites" />
         <Button size="sm" variant="outline" onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-3.5 w-3.5" /> Nuevo</Button>
         <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}><Upload className="h-3.5 w-3.5" /> Importar</Button>
         <Button size="sm" variant="ghost" onClick={() => seedMut.mutate()} disabled={seedMut.isPending}><Sparkles className="h-3.5 w-3.5" /> Cargar demo</Button>

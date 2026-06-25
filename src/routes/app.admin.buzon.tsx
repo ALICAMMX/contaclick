@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ModuleScaffold, KpiTile } from "@/components/ModuleScaffold";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { Mail, AlertTriangle, Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/app/admin/buzon")({ component: BuzonPage });
@@ -16,7 +17,9 @@ function BuzonPage() {
     <ModuleScaffold
       title="Lector de Buzón Tributario"
       subtitle="La IA lee cada notificación del SAT, IMSS e INFONAVIT, las interpreta, prepara borrador de respuesta y arranca el reloj del plazo legal."
-      icon={<Mail className="h-5 w-5" />}
+      icon={<Mail className="h-5 w-5" /
+      actions={<HerramientaHelp slug="admin-buzon" />}
+    >}
     >
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiTile label="Notificaciones 30d" value="14" accent="primary" />
