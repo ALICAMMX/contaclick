@@ -21,6 +21,7 @@ import {
 } from "@/lib/conciliacion/conciliacion.functions";
 import { listCuentas, createCuenta, BANCOS } from "@/lib/cuentas/cuentas.functions";
 import { exportXlsx, buildFilename } from "@/lib/export/xlsx";
+import { safeFilename, triggerFileDownload } from "@/lib/download";
 
 export const Route = createFileRoute("/app/conciliacion/")({
   component: ConciliacionPage,
@@ -209,10 +210,7 @@ function ConciliacionPage() {
     const headers = Object.keys(rows[0] ?? { fecha: "" });
     const csv = [headers.join(","), ...rows.map((r) => headers.map((h) => (r as any)[h]).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `conciliacion-${cliente?.rfc}-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
-    URL.revokeObjectURL(url);
+    triggerFileDownload(blob, safeFilename(`conciliacion-${cliente?.rfc}-${new Date().toISOString().slice(0, 10)}.csv`, "conciliacion.csv"));
   }
 
   function exportExcel() {

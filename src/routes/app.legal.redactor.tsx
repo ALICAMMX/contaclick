@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { RichMarkdown } from "@/components/RichMarkdown";
 import { toast } from "sonner";
+import { safeFilename, triggerFileDownload } from "@/lib/download";
 
 export const Route = createFileRoute("/app/legal/redactor")({ component: RedactorPage });
 
@@ -84,13 +85,12 @@ function RedactorPage() {
   };
 
   const onDownload = () => {
+    if (!escrito.trim()) {
+      toast.error("Genera el escrito antes de descargarlo.");
+      return;
+    }
     const blob = new Blob([escrito], { type: "text/markdown;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${tipoMeta.key}-${rfc || "escrito"}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
+    triggerFileDownload(blob, safeFilename(`${tipoMeta.key}-${rfc || "escrito"}.md`, "escrito.md"));
   };
 
   const cargarDemo = () => {

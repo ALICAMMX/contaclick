@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
+import { jsPDF } from "jspdf";
 import { toast } from "sonner";
 import {
   Sparkles, FileText, TrendingUp, AlertTriangle, Target, Send,
@@ -22,6 +23,7 @@ import {
   obtenerReporte, marcarReporteEnviado, listarRecomendaciones, actualizarRecomendacion,
   crearTareaDesdeRecomendacion, simularEscenario, listarSimulaciones,
 } from "@/lib/reportes-ejecutivos/reportes-ejecutivos.functions";
+import { safeFilename, triggerFileDownload } from "@/lib/download";
 
 export const Route = createFileRoute("/app/reporte-ejecutivo")({
   head: () => ({
@@ -399,8 +401,8 @@ function ReporteEjecutivoPage() {
 
       {/* Detalle de reporte */}
       <Dialog open={!!openReporte} onOpenChange={(v) => !v && setOpenReporte(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-          <DialogHeader>
+        <DialogContent className="max-w-5xl h-[92vh] overflow-hidden flex flex-col p-0 gap-0">
+          <DialogHeader className="shrink-0 border-b px-6 py-5 pr-12">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <DialogTitle>Reporte ejecutivo</DialogTitle>
@@ -413,11 +415,13 @@ function ReporteEjecutivoPage() {
               )}
             </div>
           </DialogHeader>
-          <ScrollArea className="flex-1 pr-4">
-            {repDetalle.isLoading && <Skeleton className="h-60" />}
-            {repDetalle.data && (
-              <ReporteDetalle data={repDetalle.data} onCrearTarea={(id) => mCrearTarea.mutate(id)} />
-            )}
+          <ScrollArea className="min-h-0 flex-1">
+            <div className="px-6 py-5 pr-8">
+              {repDetalle.isLoading && <Skeleton className="h-60" />}
+              {repDetalle.data && (
+                <ReporteDetalle data={repDetalle.data} onCrearTarea={(id) => mCrearTarea.mutate(id)} />
+              )}
+            </div>
           </ScrollArea>
         </DialogContent>
       </Dialog>
@@ -551,22 +555,18 @@ function Bloque({ titulo, datos }: { titulo: string; datos: Record<string, unkno
 
 function ExportButtons({ data }: { data: { reporte: any; recomendaciones: any[] } }) {
   const exportandoRef = useRef(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   const downloadJSON = () => {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `reporte-${data.reporte.clientes?.rfc ?? data.reporte.id}-${data.reporte.periodo}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    triggerFileDownload(blob, `reporte-${data.reporte.clientes?.rfc ?? data.reporte.id}-${data.reporte.periodo}.json`);
   };
 
-  const downloadPDF = async () => {
+  const downloadPDF = () => {
     if (exportandoRef.current) return;
     exportandoRef.current = true;
+    setPdfLoading(true);
     try {
-      const { jsPDF } = await import("jspdf");
       const r = data.reporte;
       const doc = new jsPDF({ unit: "pt", format: "a4" });
       const W = doc.internal.pageSize.getWidth();
@@ -577,9 +577,9 @@ function ExportButtons({ data }: { data: { reporte: any; recomendaciones: any[] 
       const ensure = (h: number) => {
         if (y + h > H - M) { doc.addPage(); y = M; }
       };
-      const text = (s: string, size = 10, bold = false, color: [number, number, number] = [30, 30, 30]) => {
-        doc.setFont("helvetica", bold ? "bold" : "normal");
-        doc.setFontSize(size);
+      const text = (s: string, size = 10, emphasis = false, color: [number, number, number] = [30, 30, 30]) => {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(emphasis ? size + 0.5 : size);
         doc.setTextColor(...color);
         const lines = doc.splitTextToSize(s ?? "", W - M * 2);
         for (const ln of lines) {
@@ -648,7 +648,7 @@ function ExportButtons({ data }: { data: { reporte: any; recomendaciones: any[] 
         data.recomendaciones.forEach((rec, i) => {
           text(`${i + 1}. ${rec.titulo} [${rec.prioridad}]`, 11, true);
           if (rec.descripcion) text(rec.descripcion, 10, false, [80, 80, 80]);
-          if (rec.accion_sugerida) text(`→ ${rec.accion_sugerida}`, 10, false, [40, 80, 40]);
+          if (rec.accion_sugerida) text(`Acción sugerida: ${rec.accion_sugerida}`, 10, false, [40, 80, 40]);
           if (rec.impacto_estimado_centavos > 0) text(`Impacto estimado: ${fmtMxn(rec.impacto_estimado_centavos)}`, 10, false, [40, 100, 40]);
           y += 2;
         });
@@ -663,12 +663,14 @@ function ExportButtons({ data }: { data: { reporte: any; recomendaciones: any[] 
         doc.text(`ContaClick · Generado ${new Date().toLocaleString("es-MX")} · Página ${i}/${pages}`, M, H - 20);
       }
 
-      doc.save(`reporte-${r.clientes?.rfc ?? r.id}-${r.periodo}.pdf`);
+      const blob = doc.output("blob");
+      triggerFileDownload(blob, safeFilename(`reporte-${r.clientes?.rfc ?? r.id}-${r.periodo}.pdf`, "reporte-ejecutivo.pdf"));
       toast.success("PDF descargado");
     } catch (e: any) {
       toast.error(e?.message ?? "Error al generar PDF");
     } finally {
       exportandoRef.current = false;
+      setPdfLoading(false);
     }
   };
 
@@ -677,8 +679,8 @@ function ExportButtons({ data }: { data: { reporte: any; recomendaciones: any[] 
       <Button size="sm" variant="outline" onClick={downloadJSON}>
         <Download className="h-3 w-3 mr-1" />JSON
       </Button>
-      <Button size="sm" onClick={downloadPDF}>
-        <Download className="h-3 w-3 mr-1" />PDF
+      <Button size="sm" onClick={downloadPDF} disabled={pdfLoading}>
+        <Download className="h-3 w-3 mr-1" />{pdfLoading ? "Generando..." : "PDF"}
       </Button>
     </div>
   );

@@ -22,6 +22,7 @@ import {
   eliminarPoliza,
   type PolizaInput,
 } from "@/lib/polizas/polizas.functions";
+import { triggerFileDownload } from "@/lib/download";
 
 export const Route = createFileRoute("/app/polizas")({
   component: PolizasPage,
@@ -125,12 +126,7 @@ function PolizasPage() {
 
   function descargarPlantilla() {
     const blob = new Blob([PLANTILLA_CSV], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "plantilla-polizas.csv";
-    a.click();
-    URL.revokeObjectURL(url);
+    triggerFileDownload(blob, "plantilla-polizas.csv");
   }
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {

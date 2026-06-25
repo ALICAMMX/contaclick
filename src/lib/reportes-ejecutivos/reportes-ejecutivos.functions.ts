@@ -3,6 +3,22 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 
+function extractJsonObject(raw: string) {
+  const text = String(raw ?? "").trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+  try { return JSON.parse(text); } catch { /* try extracting below */ }
+  const first = text.indexOf("{");
+  const last = text.lastIndexOf("}");
+  if (first >= 0 && last > first) return JSON.parse(text.slice(first, last + 1));
+  return {};
+}
+
+function assertAiComplete(choice: any) {
+  const finishReason = choice?.finish_reason ?? choice?.finishReason;
+  if (finishReason && !["stop", "STOP"].includes(String(finishReason))) {
+    throw new Error(`La IA no entregó el reporte completo (${finishReason}). Intenta nuevamente para evitar un reporte cortado.`);
+  }
+}
+
 // ============ Tipos ============
 export type ReporteEjecutivo = {
   id: string;
@@ -205,9 +221,9 @@ Datos: ${JSON.stringify({
         obligaciones_count: (datos.obligaciones as any).proximas?.length ?? 0,
       })}
 
-Responde SOLO JSON válido con esta forma:
+Responde SOLO JSON válido, completo, sin markdown y sin cortar textos. Redacta como asesor ejecutivo para un contador/despacho; cada detalle debe tener contexto suficiente para entender causa, impacto y siguiente acción. Forma:
 {
-  "resumen_ejecutivo": "máx 5 líneas tono CFO, claro y no técnico",
+  "resumen_ejecutivo": "8 a 12 líneas tono CFO, claro, no técnico, con diagnóstico, riesgos y próximos pasos",
   "hallazgos": [{"titulo":"...", "detalle":"...", "severidad":"alta|media|baja"}],
   "oportunidades": [{"titulo":"...", "detalle":"...", "impacto": numero_pesos_estimado}],
   "recomendaciones": [{"categoria":"optimizacion|correccion|riesgo_sat|flujo|nomina", "titulo":"...", "descripcion":"...", "accion_sugerida":"...", "prioridad":"alta|media|baja", "impacto_estimado": numero_pesos_estimado}],
@@ -218,28 +234,36 @@ Responde SOLO JSON válido con esta forma:
           method: "POST",
           headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
+            model: "google/gemini-3-flash-preview",
             messages: [{ role: "user", content: prompt }],
             response_format: { type: "json_object" },
-            max_tokens: 8000,
+            max_tokens: 12000,
+            maxOutputTokens: 12000,
           }),
         });
-        if (res.ok) {
-          const json = (await res.json()) as any;
-          const parsed = JSON.parse(json.choices?.[0]?.message?.content ?? "{}");
-          resumen = String(parsed.resumen_ejecutivo ?? "");
-          hallazgos = Array.isArray(parsed.hallazgos) ? parsed.hallazgos.slice(0, 8) : [];
-          oportunidades = Array.isArray(parsed.oportunidades) ? parsed.oportunidades.slice(0, 8) : [];
-          recomendaciones = Array.isArray(parsed.recomendaciones) ? parsed.recomendaciones.slice(0, 10) : [];
-          ahorroEstimado = Math.round(Number(parsed.ahorro_estimado_pesos ?? 0) * 100);
-        }
-      } catch {
-        // Fallback silencioso
+        if (!res.ok) throw new Error(`IA ${res.status}: no fue posible generar el análisis ejecutivo completo.`);
+        const json = (await res.json()) as any;
+        const choice = json.choices?.[0];
+        assertAiComplete(choice);
+        const parsed = extractJsonObject(choice?.message?.content ?? "{}");
+        resumen = String(parsed.resumen_ejecutivo ?? "");
+        hallazgos = Array.isArray(parsed.hallazgos) ? parsed.hallazgos : [];
+        oportunidades = Array.isArray(parsed.oportunidades) ? parsed.oportunidades : [];
+        recomendaciones = Array.isArray(parsed.recomendaciones) ? parsed.recomendaciones : [];
+        ahorroEstimado = Math.round(Number(parsed.ahorro_estimado_pesos ?? 0) * 100);
+      } catch (e) {
+        console.error("generarReporte IA incompleta", e);
+        throw new Error(e instanceof Error ? e.message : "La IA no generó un reporte completo. No se guardó para evitar información cortada.");
       }
     }
 
     if (!resumen) {
-      resumen = `Periodo ${periodo}: ingresos $${datos.resumen_financiero.ingresos.toFixed(2)}, utilidad $${datos.resumen_financiero.utilidad.toFixed(2)}. ${(datos.conciliacion as any).incidencias_total} incidencias detectadas.`;
+      resumen = [
+        `Periodo ${periodo}: el expediente presenta ingresos por $${datos.resumen_financiero.ingresos.toFixed(2)}, gastos por $${datos.resumen_financiero.gastos.toFixed(2)} y utilidad estimada de $${datos.resumen_financiero.utilidad.toFixed(2)}.`,
+        `El cálculo fiscal preliminar muestra ISR estimado de $${datos.resumen_fiscal.isr_estimado.toFixed(2)} e IVA neto de $${datos.resumen_fiscal.iva_neto.toFixed(2)}.`,
+        `La conciliación registra ${(datos.conciliacion as any).incidencias_total} incidencias, con ${(datos.conciliacion as any).criticas} críticas.`,
+        "Este reporte debe usarse como diagnóstico ejecutivo para priorizar revisión documental, conciliación bancaria y validación fiscal antes del cierre.",
+      ].join("\n");
     }
 
     const reporteId = crypto.randomUUID();
@@ -280,7 +304,8 @@ Responde SOLO JSON válido con esta forma:
         estado: "pendiente",
         created_by: userId,
       }));
-      await sb.from("recomendaciones_ia").insert(rows);
+      const { error: recError } = await sb.from("recomendaciones_ia").insert(rows);
+      if (recError) throw new Error(`El reporte se generó, pero falló el guardado de recomendaciones: ${recError.message}`);
     }
 
     return { id: reporteId, ahorro_estimado_centavos: ahorroEstimado, hallazgos_count: hallazgos.length, recomendaciones_count: recomendaciones.length };
@@ -417,15 +442,16 @@ Responde SOLO JSON:
           method: "POST",
           headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
+            model: "google/gemini-3-flash-preview",
             messages: [{ role: "user", content: prompt }],
             response_format: { type: "json_object" },
-            max_tokens: 4000,
+            max_tokens: 8000,
+            maxOutputTokens: 8000,
           }),
         });
         if (res.ok) {
           const json = (await res.json()) as any;
-          const parsed = JSON.parse(json.choices?.[0]?.message?.content ?? "{}");
+          const parsed = extractJsonObject(json.choices?.[0]?.message?.content ?? "{}");
           resultado = { ...resultado, ...(parsed.resultado ?? {}) };
           narrativa = String(parsed.narrativa ?? narrativa);
         }

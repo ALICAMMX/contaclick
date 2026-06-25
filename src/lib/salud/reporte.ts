@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import type { SaludFiscal } from "./salud.functions";
+import { safeFilename, triggerFileDownload } from "@/lib/download";
 
 const fmtMXN = (n: number) =>
   new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(Number(n) || 0);
@@ -64,6 +65,7 @@ export function descargarReporteSalud(salud: SaludFiscal) {
   y = (doc as any).lastAutoTable.finalY + 24;
 
   // Comparativo
+  if (y > 620) { doc.addPage(); y = 60; }
   doc.setTextColor(15, 23, 42);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
@@ -88,6 +90,7 @@ export function descargarReporteSalud(salud: SaludFiscal) {
   y = (doc as any).lastAutoTable.finalY + 20;
 
   if (salud.alertas.length) {
+    if (y > 660) { doc.addPage(); y = 60; }
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     doc.text("Alertas e incidencias", 40, y);
@@ -135,5 +138,5 @@ export function descargarReporteSalud(salud: SaludFiscal) {
     });
   }
 
-  doc.save(`salud-fiscal-${salud.cliente.rfc}-${salud.periodo}.pdf`);
+  triggerFileDownload(doc.output("blob"), safeFilename(`salud-fiscal-${salud.cliente.rfc}-${salud.periodo}.pdf`, "salud-fiscal.pdf"));
 }

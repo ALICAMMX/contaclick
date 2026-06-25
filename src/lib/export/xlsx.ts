@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { safeFilename, triggerFileDownload } from "@/lib/download";
 
 export type Sheet = {
   name: string;
@@ -13,7 +14,8 @@ export function exportXlsx(filename: string, sheets: Sheet[]) {
     XLSX.utils.book_append_sheet(wb, ws, s.name.slice(0, 31) || "Hoja1");
   }
   const safe = filename.endsWith(".xlsx") ? filename : `${filename}.xlsx`;
-  XLSX.writeFile(wb, safe);
+  const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  triggerFileDownload(new Blob([out], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), safeFilename(safe, "export.xlsx"));
 }
 
 export function buildFilename(prefix: string, rfc?: string | null) {
