@@ -50,6 +50,7 @@ const plans = [
     anual: 12900,
     rfc: "Hasta 25 RFC activos",
     ia: { solicitudes: "1,500 / mes", tokens: "5M tokens" },
+    sat: "1,000 descargas SAT / mes · sincronización diaria",
     storage: "25 GB de almacenamiento",
     highlight: true,
     features: [
