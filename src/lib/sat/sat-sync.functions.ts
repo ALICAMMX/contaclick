@@ -87,7 +87,11 @@ export const upsertSatSyncConfig = createServerFn({ method: "POST" })
     const { supabase } = context;
     const { data: cli } = await supabase.from("clientes").select("despacho_id").eq("id", data.cliente_id).maybeSingle();
     if (!cli?.despacho_id) throw new Error("Expediente no encontrado");
+    // Candado: la frecuencia debe estar permitida por el plan
+    const limites = await getPlanLimites(supabase, cli.despacho_id);
+    assertFrecuenciaPermitida(limites, data.frecuencia as FrecuenciaSat);
     const proxima = calcularProxima(data.frecuencia);
+
     const { error } = await supabase.from("sat_sync_config").upsert(
       {
         cliente_id: data.cliente_id,
