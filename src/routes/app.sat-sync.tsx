@@ -13,6 +13,7 @@ import { dashboardSatSync, runSyncNow, listSyncRuns, listSyncEventos, setSyncAct
 import { useActiveCliente } from "@/lib/active-cliente";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 
 export const Route = createFileRoute("/app/sat-sync")({ component: SatSyncPage });
 
