@@ -119,6 +119,9 @@ function ConciliacionIntegralPage() {
           ) : (
             <Badge variant="outline" className="text-xs">Sin expediente activo</Badge>
           )}
+          <Button asChild variant="outline">
+            <a href="/app/polizas"><BookOpen className="h-4 w-4 mr-1" />Pólizas</a>
+          </Button>
           <Button onClick={() => run.mutate()} disabled={!cliente || run.isPending}>
             <Play className="h-4 w-4 mr-1" />
             {run.isPending ? "Conciliando…" : "Correr ahora"}
