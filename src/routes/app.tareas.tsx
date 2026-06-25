@@ -318,7 +318,7 @@ function CentroTareas() {
                   )}
                   {tareas.map((t) => {
                     const dr = diasRestantes(t.due_date);
-                    const orig = ORIGEN_LABEL[t.origen ?? "manual"];
+                    const orig = ORIGEN_LABEL[t.origen ?? "manual"] ?? ORIGEN_LABEL.manual;
                     return (
                       <tr key={t.id} className="hover:bg-muted/30 cursor-pointer" onClick={() => setDetalleId(t.id)}>
                         <td className="p-3 max-w-xs">
