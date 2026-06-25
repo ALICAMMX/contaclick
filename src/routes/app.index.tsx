@@ -90,32 +90,123 @@ function Hub() {
         </Link>
       </section>
 
-      {/* Quick access */}
-      <section>
-        <div className="flex items-center gap-2 mb-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Accesos rápidos</h3>
-          <div className="h-px flex-1 bg-border" />
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-          {[
-            { icon: Briefcase, label: "Dashboard despacho", href: "/app/despacho" },
-            { icon: ShieldAlert, label: "Riesgo SAT", href: "/app/riesgo" },
-            { icon: FileText, label: "CFDI", href: "/app/cfdi" },
-            { icon: Banknote, label: "Conciliación", href: "/app/conciliacion" },
-            { icon: Mail, label: "Buzón", href: "/app/mensajes" },
-            { icon: Users, label: "Expedientes", href: "/app/expedientes" },
-          ].map((q) => {
-            const I = q.icon;
-            return (
-              <Link key={q.label} to={q.href} className="flex items-center gap-2 rounded-lg border border-border bg-card hover:bg-accent px-3 py-2.5 text-sm transition-colors">
-                <I className="h-4 w-4 text-primary" />
-                <span className="truncate">{q.label}</span>
-              </Link>
-            );
-          })}
-        </div>
-      </section>
+      {/* Catálogo completo de herramientas */}
+      <AllToolsCatalog />
     </div>
+  );
+}
+
+const ALL_TOOLS: { label: string; href: string; icon: any; group: string }[] = [
+  // Operación diaria
+  { label: "Calendario fiscal", href: "/app/calendario", icon: Calendar, group: "Operación diaria" },
+  { label: "Centro de Tareas", href: "/app/tareas", icon: ListChecks, group: "Operación diaria" },
+  { label: "Workflow Automático", href: "/app/workflows", icon: WorkflowIcon, group: "Operación diaria" },
+  { label: "Mensajería IA", href: "/app/mensajes", icon: Mail, group: "Operación diaria" },
+  { label: "Expedientes", href: "/app/clientes", icon: Users, group: "Operación diaria" },
+
+  // Fiscal SAT
+  { label: "Salud Fiscal", href: "/app/salud-fiscal", icon: Activity, group: "Fiscal · SAT" },
+  { label: "Riesgo SAT 2026", href: "/app/riesgo", icon: ShieldAlert, group: "Fiscal · SAT" },
+  { label: "Descarga Masiva SAT", href: "/app/sat-sync", icon: RefreshCw, group: "Fiscal · SAT" },
+  { label: "CFDI del expediente", href: "/app/cfdi", icon: FileText, group: "Fiscal · SAT" },
+  { label: "RFC vinculados", href: "/app/rfcs-vinculados", icon: FileBadge, group: "Fiscal · SAT" },
+
+  // Herramientas Contable/Fiscal
+  { label: "Lector de Constancia (CSF)", href: "/app/tools/csf-parser", icon: FileBadge, group: "Herramientas contables" },
+  { label: "Validador CFDI 4.0", href: "/app/tools/cfdi-validator", icon: FileText, group: "Herramientas contables" },
+  { label: "Verificador de UUID", href: "/app/tools/cfdi-verifier", icon: ShieldCheck, group: "Herramientas contables" },
+  { label: "Lector masivo de XML", href: "/app/tools/xml-bulk-reader", icon: FileStack, group: "Herramientas contables" },
+  { label: "Auditor express", href: "/app/tools/express-auditor", icon: ScanSearch, group: "Herramientas contables" },
+  { label: "Calculadora ISR / IVA — PF", href: "/app/tools/isr-iva-calculator", icon: Calculator, group: "Herramientas contables" },
+  { label: "Calculadora ISR / IVA — PM", href: "/app/tools/isr-iva-pm", icon: Calculator, group: "Herramientas contables" },
+  { label: "Calculadora RESICO PF", href: "/app/tools/resico-calculator", icon: Coins, group: "Herramientas contables" },
+  { label: "Validador 69-B / EFOS", href: "/app/tools/efos-validator", icon: ShieldAlert, group: "Herramientas contables" },
+  { label: "Validador de Deducibilidad", href: "/app/tools/deducibility-checker", icon: ShieldCheck, group: "Herramientas contables" },
+  { label: "Detector de Nómina Oculta", href: "/app/tools/shadow-payroll", icon: Users, group: "Herramientas contables" },
+  { label: "Precios de Importación", href: "/app/tools/import-prices", icon: Globe, group: "Herramientas contables" },
+  { label: "Generador de oficios SAT", href: "/app/tools/oficio-generator", icon: FileSignature, group: "Herramientas contables" },
+  { label: "Asistente fiscal IA", href: "/app/tools/fiscal-assistant", icon: Bot, group: "Herramientas contables" },
+
+  // Conciliación / Contabilidad
+  { label: "Conciliación bancaria", href: "/app/conciliacion", icon: Banknote, group: "Conciliación y contabilidad" },
+  { label: "Conciliación SAT vs Contabilidad", href: "/app/conciliacion-integral", icon: ScanSearch, group: "Conciliación y contabilidad" },
+  { label: "Histórico de conciliación", href: "/app/conciliacion/historial", icon: Banknote, group: "Conciliación y contabilidad" },
+  { label: "Pólizas contables", href: "/app/polizas", icon: FileSignature, group: "Conciliación y contabilidad" },
+  { label: "Contabilidad automática (CFDI → Pólizas)", href: "/app/contabilidad-auto", icon: FileSignature, group: "Conciliación y contabilidad" },
+
+  // Reportes
+  { label: "Reportes del expediente", href: "/app/reportes", icon: FileText, group: "Reportes" },
+  { label: "Reporte Ejecutivo + Agente IA", href: "/app/reporte-ejecutivo", icon: Activity, group: "Reportes" },
+  { label: "Resumen Fiscal", href: "/app/reportes/resumen-fiscal", icon: FileText, group: "Reportes" },
+
+  // Agentes IA
+  { label: "Mis Agentes IA", href: "/app/contable/agentes", icon: Bot, group: "Agentes IA" },
+  { label: "Agente CFDI", href: "/app/contable/agente-cfdi", icon: Bot, group: "Agentes IA" },
+  { label: "Agente Auditor", href: "/app/contable/agente-auditor", icon: Bot, group: "Agentes IA" },
+  { label: "Agente Cierre", href: "/app/contable/agente-cierre", icon: Bot, group: "Agentes IA" },
+  { label: "Agente Conciliación", href: "/app/contable/agente-conciliacion", icon: Bot, group: "Agentes IA" },
+
+  // Administrativo & RH
+  { label: "Tesorería", href: "/app/admin/tesoreria", icon: TrendingUp, group: "Administrativo & RH" },
+  { label: "Gestor de Trámites", href: "/app/admin/tramites", icon: FileText, group: "Administrativo & RH" },
+  { label: "Buzón Tributario", href: "/app/admin/buzon", icon: Mail, group: "Administrativo & RH" },
+  { label: "Correspondencia", href: "/app/admin/correspondencia", icon: MessageSquare, group: "Administrativo & RH" },
+  { label: "Nómina IA", href: "/app/admin/nomina", icon: Users, group: "Administrativo & RH" },
+  { label: "Cumplimiento Laboral", href: "/app/admin/cumplimiento", icon: ShieldCheck, group: "Administrativo & RH" },
+  { label: "Activos Fijos", href: "/app/admin/activos", icon: Building, group: "Administrativo & RH" },
+  { label: "Inventarios", href: "/app/admin/inventarios", icon: Boxes, group: "Administrativo & RH" },
+
+  // Legal
+  { label: "Lagunas Legales", href: "/app/legal/lagunas", icon: Gavel, group: "Inteligencia Legal" },
+  { label: "Redactor de Escritos", href: "/app/legal/redactor", icon: FileSignature, group: "Inteligencia Legal" },
+  { label: "Marketplace Legal", href: "/app/legal/marketplace", icon: Store, group: "Inteligencia Legal" },
+];
+
+const ALL_GROUPS = [
+  "Operación diaria",
+  "Fiscal · SAT",
+  "Herramientas contables",
+  "Conciliación y contabilidad",
+  "Reportes",
+  "Agentes IA",
+  "Administrativo & RH",
+  "Inteligencia Legal",
+];
+
+function AllToolsCatalog() {
+  return (
+    <section className="space-y-6">
+      <div className="flex items-center gap-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Todas las herramientas · {ALL_TOOLS.length}
+        </h3>
+        <div className="h-px flex-1 bg-border" />
+      </div>
+      {ALL_GROUPS.map((g) => {
+        const items = ALL_TOOLS.filter((t) => t.group === g);
+        if (!items.length) return null;
+        return (
+          <div key={g} className="space-y-2">
+            <div className="text-[11px] uppercase tracking-wider text-muted-foreground/80">{g}</div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+              {items.map((q) => {
+                const I = q.icon;
+                return (
+                  <Link
+                    key={q.href + q.label}
+                    to={q.href}
+                    className="flex items-center gap-2 rounded-lg border border-border bg-card hover:bg-accent hover:border-primary/40 px-3 py-2.5 text-sm transition-colors min-w-0"
+                  >
+                    <I className="h-4 w-4 text-primary shrink-0" />
+                    <span className="truncate">{q.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </section>
   );
 }
 
