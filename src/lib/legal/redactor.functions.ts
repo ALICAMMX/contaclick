@@ -87,7 +87,7 @@ export const generarEscrito = createServerFn({ method: "POST" })
         body: JSON.stringify({
           model: data.nivel === "premium" ? "google/gemini-2.5-pro" : "google/gemini-3-flash-preview",
           messages: [
-            { role: "system", content: SYSTEM },
+            { role: "system", content: (await import("./redactor.prompts.server")).REDACTOR_SYSTEM_PROMPT },
             { role: "user", content: buildUserPrompt(data, meta) },
           ],
         }),

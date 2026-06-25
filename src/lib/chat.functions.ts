@@ -44,7 +44,7 @@ export const sendChat = createServerFn({ method: "POST" })
         },
         body: JSON.stringify({
           model,
-          messages: [{ role: "system", content: SYSTEM }, ...data.messages],
+          messages: [{ role: "system", content: (await import("./chat.prompts.server")).CHAT_SYSTEM_PROMPT }, ...data.messages],
         }),
       });
 
