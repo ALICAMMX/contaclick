@@ -81,7 +81,7 @@ export const generarPolizasDesdeCfdi = createServerFn({ method: "POST" })
     let omitidos = 0;
     for (const c of cfdis ?? []) {
       const input: CfdiParaContabilizar = { ...(c as any), rfc_cliente: rfcCliente };
-      const sug = contabilizarCfdi(input);
+      const sug = contabilizarCfdi(input, reglas);
       if (sug.asientos.length === 0) { omitidos++; continue; }
       filas.push({
         id: crypto.randomUUID(),
