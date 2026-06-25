@@ -279,6 +279,21 @@ async function ingestOneInternal(
     }
   }
 
+  // Dispara workflows automáticos suscritos a "xml_uploaded" (no bloquea ante error)
+  try {
+    const { processTrigger } = await import("@/lib/workflows/engine.functions");
+    await processTrigger(supabase, despachoId, "xml_uploaded", clienteId, {
+      cfdi_id: ins.id,
+      uuid: parsed.uuid,
+      total: parsed.total ?? 0,
+      tipo: parsed.tipoComprobante ?? "I",
+      emisor: parsed.emisor.rfc,
+      receptor: parsed.receptor.rfc,
+    }, null);
+  } catch (e) {
+    console.warn("[workflow trigger xml_uploaded] error:", (e as any)?.message);
+  }
+
   return { id: ins.id as string, uuid: parsed.uuid, duplicado: false };
 }
 
