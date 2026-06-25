@@ -79,7 +79,7 @@ async function enrichTareas(supabase: any, rows: any[]): Promise<TareaRow[]> {
 
   const [{ data: clientes }, { data: profs }] = await Promise.all([
     clienteIds.length
-      ? supabase.from("clientes").select("id, razon_social, rfc_principal").in("id", clienteIds)
+      ? supabase.from("clientes").select("id, razon_social, rfc").in("id", clienteIds)
       : Promise.resolve({ data: [] as any[] }),
     userIds.length
       ? supabase.from("profiles").select("id, full_name, email").in("id", userIds)
@@ -105,7 +105,7 @@ async function enrichTareas(supabase: any, rows: any[]): Promise<TareaRow[]> {
       ...r,
       estatus,
       cliente_nombre: c?.razon_social ?? null,
-      cliente_rfc: c?.rfc_principal ?? null,
+      cliente_rfc: c?.rfc ?? null,
       asignado_nombre: p?.full_name ?? p?.email ?? null,
     } as TareaRow;
   });
@@ -195,14 +195,14 @@ export const getTareasDashboard = createServerFn({ method: "GET" })
     // Clientes con más tareas abiertas
     const clienteIds = Array.from(new Set(activas.map((t) => t.cliente_id).filter(Boolean))) as string[];
     const { data: clis } = clienteIds.length
-      ? await supabase.from("clientes").select("id, razon_social, rfc_principal").in("id", clienteIds)
+      ? await supabase.from("clientes").select("id, razon_social, rfc").in("id", clienteIds)
       : { data: [] as any[] };
     const cMap = new Map((clis ?? []).map((c: any) => [c.id, c]));
     const porCliente: { cliente_id: string; nombre: string; rfc: string | null; abiertas: number }[] = [];
     for (const cid of clienteIds) {
       const ab = activas.filter((t) => t.cliente_id === cid).length;
       const c = cMap.get(cid) as any;
-      porCliente.push({ cliente_id: cid, nombre: c?.razon_social ?? "—", rfc: c?.rfc_principal ?? null, abiertas: ab });
+      porCliente.push({ cliente_id: cid, nombre: c?.razon_social ?? "—", rfc: c?.rfc ?? null, abiertas: ab });
     }
     porCliente.sort((a, b) => b.abiertas - a.abiertas);
 
@@ -490,8 +490,8 @@ export const listClientesDespacho = createServerFn({ method: "GET" })
     const despachoId = await resolveActiveDespachoId(supabase, userId);
     const { data } = await supabase
       .from("clientes")
-      .select("id, razon_social, rfc_principal")
+      .select("id, razon_social, rfc")
       .eq("despacho_id", despachoId)
       .order("razon_social");
-    return (data ?? []) as { id: string; razon_social: string; rfc_principal: string | null }[];
+    return (data ?? []) as { id: string; razon_social: string; rfc: string | null }[];
   });
