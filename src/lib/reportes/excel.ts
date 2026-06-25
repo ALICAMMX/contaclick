@@ -65,8 +65,25 @@ export function downloadReporteCSV(args: { tipo: string; payload: any }) {
   const meta = payload.meta ?? {};
   const cli = meta.cliente ?? {};
   const periodo = meta.periodo ?? {};
-  const rows: any[] =
-    payload.detalle ?? payload.detalle_emitidos ?? payload.cfdi_sin_pago ?? [];
+  let rows: any[] = [];
+  if (tipo === "iva") {
+    rows = [
+      ...(payload.detalle_emitidos ?? []).map((r: any) => ({ origen: "emitido", ...r })),
+      ...(payload.detalle_recibidos ?? []).map((r: any) => ({ origen: "recibido", ...r })),
+    ];
+  } else if (tipo === "diferencias") {
+    rows = [
+      ...(payload.cfdi_sin_pago ?? []).map((r: any) => ({ origen: "cfdi_sin_pago", ...r })),
+      ...(payload.mov_sin_cfdi ?? []).map((r: any) => ({ origen: "mov_sin_cfdi", ...r })),
+    ];
+  } else if (tipo === "balanza") {
+    rows = [
+      ...(payload.ingresos ?? []).map((r: any) => ({ origen: "ingreso", ...r })),
+      ...(payload.egresos ?? []).map((r: any) => ({ origen: "egreso", ...r })),
+    ];
+  } else {
+    rows = payload.detalle ?? [];
+  }
   if (!rows.length) {
     const r = payload.resumen ?? {};
     const blob = new Blob([
