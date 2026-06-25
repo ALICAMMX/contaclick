@@ -218,6 +218,8 @@ export const runConciliacionIntegral = createServerFn({ method: "POST" })
       .eq("id", data.cliente_id)
       .maybeSingle();
     if (!cli) throw new Error("Cliente no encontrado");
+    if (!cli.despacho_id) throw new Error("Cliente sin despacho asignado");
+    const despachoId = cli.despacho_id as string;
     const rfcCli = (cli.rfc as string).toUpperCase();
 
     const [{ data: cfdis }, { data: polizas }, { data: movs }] = await Promise.all([
