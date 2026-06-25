@@ -34,7 +34,7 @@ export const crearPoliza = createServerFn({ method: "POST" })
     const row = {
       id: crypto.randomUUID(),
       cliente_id: data.cliente_id,
-      despacho_id: cli.despacho_id,
+      despacho_id: cli.despacho_id as string,
       tipo: data.poliza.tipo,
       fecha: data.poliza.fecha,
       monto: data.poliza.monto,
