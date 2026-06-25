@@ -12,6 +12,7 @@ import { exportXlsx, buildFilename } from "@/lib/export/xlsx";
 import { FindingExplain, LegalFooter } from "@/components/FindingExplain";
 import { metaForAudit, severidadToLevel } from "@/lib/legal/referencias";
 import { safeFilename, triggerFileDownload } from "@/lib/download";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/tools/express-auditor")({
   component: ExpressAuditor,
