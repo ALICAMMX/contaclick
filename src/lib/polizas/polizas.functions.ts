@@ -29,6 +29,7 @@ export const crearPoliza = createServerFn({ method: "POST" })
       .eq("id", data.cliente_id)
       .maybeSingle();
     if (errCli || !cli) throw new Error("Cliente no encontrado");
+    if (!cli.despacho_id) throw new Error("Cliente sin despacho asignado");
 
     const row = {
       id: crypto.randomUUID(),
