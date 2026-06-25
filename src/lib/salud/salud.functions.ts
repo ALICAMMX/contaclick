@@ -3,6 +3,15 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 
+function extractJsonObject(raw: string) {
+  const text = String(raw ?? "").trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+  try { return JSON.parse(text); } catch { /* try extracting below */ }
+  const first = text.indexOf("{");
+  const last = text.lastIndexOf("}");
+  if (first >= 0 && last > first) return JSON.parse(text.slice(first, last + 1));
+  return {};
+}
+
 const Input = z.object({
   cliente_id: z.string().uuid(),
   persist: z.boolean().optional(),
@@ -339,8 +348,10 @@ Responde SOLO JSON: {"resumen":"...", "hallazgos":[{"tipo":"patron|inconsistenci
       });
       if (!res.ok) return { error: `IA ${res.status}`, resumen: "", hallazgos: [] };
       const json = await res.json() as any;
+      const finishReason = json.choices?.[0]?.finish_reason ?? json.choices?.[0]?.finishReason;
+      if (finishReason && !["stop", "STOP"].includes(String(finishReason))) return { error: `IA incompleta (${finishReason})`, resumen: "", hallazgos: [] };
       const content = json.choices?.[0]?.message?.content ?? "{}";
-      const parsed = JSON.parse(content);
+      const parsed = extractJsonObject(content);
       const resumen = String(parsed.resumen ?? "");
       const hallazgos: SaludHallazgo[] = Array.isArray(parsed.hallazgos) ? parsed.hallazgos.slice(0, 5) : [];
       await supabase.from("salud_fiscal_snapshots")
