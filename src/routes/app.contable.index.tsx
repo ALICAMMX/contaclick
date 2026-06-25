@@ -35,6 +35,7 @@ const TOOLS: Tool[] = [
   { name: "Conciliación del expediente", desc: "Histórico mensual con semáforo verde/amarillo/rojo.", icon: Banknote, href: "/app/conciliacion/historial", status: "live", group: "3 · Auditoría y Conciliación", doneThisMonth: true },
   { name: "Conciliación SAT vs Contabilidad", desc: "Auditor automático: cruza CFDI, pólizas y banco. Detecta ingresos omitidos, gastos sin registrar, duplicados y diferencias con impacto fiscal.", icon: ScanSearch, href: "/app/conciliacion-integral", status: "live", group: "3 · Auditoría y Conciliación" },
   { name: "Pólizas contables", desc: "Importa pólizas por CSV (con plantilla y vista previa), alta manual y administra el historial que alimenta la conciliación.", icon: FileSignature, href: "/app/polizas", status: "live", group: "3 · Auditoría y Conciliación" },
+  { name: "Contabilidad automática (CFDI → Pólizas)", desc: "Convierte CFDI descargados del SAT en pólizas borrador con asientos sugeridos. Revisa, edita y aprueba.", icon: FileSignature, href: "/app/contabilidad-auto", status: "live", group: "3 · Auditoría y Conciliación" },
 
   // 4. Cálculo de impuestos
   { name: "Calculadora ISR / IVA", desc: "Pago provisional mensual.", icon: Calculator, href: "/app/tools/isr-iva-calculator", status: "live", group: "4 · Cálculo de impuestos" },
