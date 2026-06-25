@@ -107,6 +107,7 @@ import { Route as AppAdminCorrespondenciaRouteImport } from './routes/app.admin.
 import { Route as AppAdminBuzonRouteImport } from './routes/app.admin.buzon'
 import { Route as AppAdminActivosRouteImport } from './routes/app.admin.activos'
 import { Route as ApiPublicHooksWorkflowCronRouteImport } from './routes/api/public/hooks/workflow-cron'
+import { Route as ApiPublicHooksSatSyncRouteImport } from './routes/api/public/hooks/sat-sync'
 
 const TerminosRoute = TerminosRouteImport.update({
   id: '/terminos',
@@ -606,6 +607,11 @@ const ApiPublicHooksWorkflowCronRoute =
     path: '/api/public/hooks/workflow-cron',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksSatSyncRoute = ApiPublicHooksSatSyncRouteImport.update({
+  id: '/api/public/hooks/sat-sync',
+  path: '/api/public/hooks/sat-sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -705,6 +711,7 @@ export interface FileRoutesByFullPath {
   '/app/mensajes/': typeof AppMensajesIndexRoute
   '/app/reportes/': typeof AppReportesIndexRoute
   '/app/tools/': typeof AppToolsIndexRoute
+  '/api/public/hooks/sat-sync': typeof ApiPublicHooksSatSyncRoute
   '/api/public/hooks/workflow-cron': typeof ApiPublicHooksWorkflowCronRoute
 }
 export interface FileRoutesByTo {
@@ -795,6 +802,7 @@ export interface FileRoutesByTo {
   '/app/mensajes': typeof AppMensajesIndexRoute
   '/app/reportes': typeof AppReportesIndexRoute
   '/app/tools': typeof AppToolsIndexRoute
+  '/api/public/hooks/sat-sync': typeof ApiPublicHooksSatSyncRoute
   '/api/public/hooks/workflow-cron': typeof ApiPublicHooksWorkflowCronRoute
 }
 export interface FileRoutesById {
@@ -896,6 +904,7 @@ export interface FileRoutesById {
   '/app/mensajes/': typeof AppMensajesIndexRoute
   '/app/reportes/': typeof AppReportesIndexRoute
   '/app/tools/': typeof AppToolsIndexRoute
+  '/api/public/hooks/sat-sync': typeof ApiPublicHooksSatSyncRoute
   '/api/public/hooks/workflow-cron': typeof ApiPublicHooksWorkflowCronRoute
 }
 export interface FileRouteTypes {
@@ -998,6 +1007,7 @@ export interface FileRouteTypes {
     | '/app/mensajes/'
     | '/app/reportes/'
     | '/app/tools/'
+    | '/api/public/hooks/sat-sync'
     | '/api/public/hooks/workflow-cron'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -1088,6 +1098,7 @@ export interface FileRouteTypes {
     | '/app/mensajes'
     | '/app/reportes'
     | '/app/tools'
+    | '/api/public/hooks/sat-sync'
     | '/api/public/hooks/workflow-cron'
   id:
     | '__root__'
@@ -1188,6 +1199,7 @@ export interface FileRouteTypes {
     | '/app/mensajes/'
     | '/app/reportes/'
     | '/app/tools/'
+    | '/api/public/hooks/sat-sync'
     | '/api/public/hooks/workflow-cron'
   fileRoutesById: FileRoutesById
 }
@@ -1205,6 +1217,7 @@ export interface RootRouteChildren {
   SeguridadRoute: typeof SeguridadRoute
   TerminosRoute: typeof TerminosRoute
   InvitarTokenRoute: typeof InvitarTokenRoute
+  ApiPublicHooksSatSyncRoute: typeof ApiPublicHooksSatSyncRoute
   ApiPublicHooksWorkflowCronRoute: typeof ApiPublicHooksWorkflowCronRoute
 }
 
@@ -1896,6 +1909,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksWorkflowCronRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/sat-sync': {
+      id: '/api/public/hooks/sat-sync'
+      path: '/api/public/hooks/sat-sync'
+      fullPath: '/api/public/hooks/sat-sync'
+      preLoaderRoute: typeof ApiPublicHooksSatSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -2187,6 +2207,7 @@ const rootRouteChildren: RootRouteChildren = {
   SeguridadRoute: SeguridadRoute,
   TerminosRoute: TerminosRoute,
   InvitarTokenRoute: InvitarTokenRoute,
+  ApiPublicHooksSatSyncRoute: ApiPublicHooksSatSyncRoute,
   ApiPublicHooksWorkflowCronRoute: ApiPublicHooksWorkflowCronRoute,
 }
 export const routeTree = rootRouteImport
