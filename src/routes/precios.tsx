@@ -29,6 +29,7 @@ const plans = [
     anual: 4990, // 2 meses gratis
     rfc: "Hasta 5 RFC activos",
     ia: { solicitudes: "200 / mes", tokens: "1M tokens" },
+    sat: "200 descargas SAT / mes · sincronización semanal",
     storage: "5 GB de almacenamiento",
     highlight: false,
     features: [
@@ -49,6 +50,7 @@ const plans = [
     anual: 12900,
     rfc: "Hasta 25 RFC activos",
     ia: { solicitudes: "1,500 / mes", tokens: "5M tokens" },
+    sat: "1,000 descargas SAT / mes · sincronización diaria",
     storage: "25 GB de almacenamiento",
     highlight: true,
     features: [
@@ -72,6 +74,7 @@ const plans = [
     anual: 24900,
     rfc: "Hasta 100 RFC activos",
     ia: { solicitudes: "5,000 / mes", tokens: "20M tokens" },
+    sat: "4,000 descargas SAT / mes · sincronización diaria",
     storage: "100 GB de almacenamiento",
     highlight: false,
     features: [
@@ -94,6 +97,7 @@ const plans = [
     anual: null,
     rfc: "RFC ilimitados",
     ia: { solicitudes: "Personalizado", tokens: "Personalizado" },
+    sat: "Descargas SAT ilimitadas · sincronización diaria",
     storage: "Almacenamiento personalizado",
     highlight: false,
     features: [
@@ -201,6 +205,7 @@ function PreciosPage() {
                 <div className="mt-5 space-y-1.5 text-xs text-muted-foreground border-y border-border/50 py-4">
                   <div><b className="text-foreground">{p.rfc}</b></div>
                   <div>IA: <b className="text-foreground">{p.ia.solicitudes}</b> · {p.ia.tokens}</div>
+                  <div>{p.sat}</div>
                   <div>{p.storage}</div>
                 </div>
 
