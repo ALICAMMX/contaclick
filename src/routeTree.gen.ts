@@ -37,6 +37,7 @@ import { Route as DashboardClientesRouteImport } from './routes/dashboard.client
 import { Route as DashboardCfdiRouteImport } from './routes/dashboard.cfdi'
 import { Route as DashboardAuditorRouteImport } from './routes/dashboard.auditor'
 import { Route as DashboardAsistenteRouteImport } from './routes/dashboard.asistente'
+import { Route as AppWorkflowsRouteImport } from './routes/app.workflows'
 import { Route as AppTareasRouteImport } from './routes/app.tareas'
 import { Route as AppRiesgoRouteImport } from './routes/app.riesgo'
 import { Route as AppRfcsVinculadosRouteImport } from './routes/app.rfcs-vinculados'
@@ -244,6 +245,11 @@ const DashboardAsistenteRoute = DashboardAsistenteRouteImport.update({
   id: '/asistente',
   path: '/asistente',
   getParentRoute: () => DashboardRoute,
+} as any)
+const AppWorkflowsRoute = AppWorkflowsRouteImport.update({
+  id: '/workflows',
+  path: '/workflows',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppTareasRoute = AppTareasRouteImport.update({
   id: '/tareas',
@@ -622,6 +628,7 @@ export interface FileRoutesByFullPath {
   '/app/rfcs-vinculados': typeof AppRfcsVinculadosRoute
   '/app/riesgo': typeof AppRiesgoRoute
   '/app/tareas': typeof AppTareasRoute
+  '/app/workflows': typeof AppWorkflowsRoute
   '/dashboard/asistente': typeof DashboardAsistenteRoute
   '/dashboard/auditor': typeof DashboardAuditorRoute
   '/dashboard/cfdi': typeof DashboardCfdiRoute
@@ -709,6 +716,7 @@ export interface FileRoutesByTo {
   '/app/rfcs-vinculados': typeof AppRfcsVinculadosRoute
   '/app/riesgo': typeof AppRiesgoRoute
   '/app/tareas': typeof AppTareasRoute
+  '/app/workflows': typeof AppWorkflowsRoute
   '/dashboard/asistente': typeof DashboardAsistenteRoute
   '/dashboard/auditor': typeof DashboardAuditorRoute
   '/dashboard/cfdi': typeof DashboardCfdiRoute
@@ -807,6 +815,7 @@ export interface FileRoutesById {
   '/app/rfcs-vinculados': typeof AppRfcsVinculadosRoute
   '/app/riesgo': typeof AppRiesgoRoute
   '/app/tareas': typeof AppTareasRoute
+  '/app/workflows': typeof AppWorkflowsRoute
   '/dashboard/asistente': typeof DashboardAsistenteRoute
   '/dashboard/auditor': typeof DashboardAuditorRoute
   '/dashboard/cfdi': typeof DashboardCfdiRoute
@@ -906,6 +915,7 @@ export interface FileRouteTypes {
     | '/app/rfcs-vinculados'
     | '/app/riesgo'
     | '/app/tareas'
+    | '/app/workflows'
     | '/dashboard/asistente'
     | '/dashboard/auditor'
     | '/dashboard/cfdi'
@@ -993,6 +1003,7 @@ export interface FileRouteTypes {
     | '/app/rfcs-vinculados'
     | '/app/riesgo'
     | '/app/tareas'
+    | '/app/workflows'
     | '/dashboard/asistente'
     | '/dashboard/auditor'
     | '/dashboard/cfdi'
@@ -1090,6 +1101,7 @@ export interface FileRouteTypes {
     | '/app/rfcs-vinculados'
     | '/app/riesgo'
     | '/app/tareas'
+    | '/app/workflows'
     | '/dashboard/asistente'
     | '/dashboard/auditor'
     | '/dashboard/cfdi'
@@ -1369,6 +1381,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/asistente'
       preLoaderRoute: typeof DashboardAsistenteRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/app/workflows': {
+      id: '/app/workflows'
+      path: '/workflows'
+      fullPath: '/app/workflows'
+      preLoaderRoute: typeof AppWorkflowsRouteImport
+      parentRoute: typeof AppRoute
     }
     '/app/tareas': {
       id: '/app/tareas'
@@ -1998,6 +2017,7 @@ interface AppRouteChildren {
   AppRfcsVinculadosRoute: typeof AppRfcsVinculadosRoute
   AppRiesgoRoute: typeof AppRiesgoRoute
   AppTareasRoute: typeof AppTareasRoute
+  AppWorkflowsRoute: typeof AppWorkflowsRoute
   AppIndexRoute: typeof AppIndexRoute
   AppToolsBankReconcilerRoute: typeof AppToolsBankReconcilerRoute
   AppToolsCfdiValidatorRoute: typeof AppToolsCfdiValidatorRoute
@@ -2040,6 +2060,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppRfcsVinculadosRoute: AppRfcsVinculadosRoute,
   AppRiesgoRoute: AppRiesgoRoute,
   AppTareasRoute: AppTareasRoute,
+  AppWorkflowsRoute: AppWorkflowsRoute,
   AppIndexRoute: AppIndexRoute,
   AppToolsBankReconcilerRoute: AppToolsBankReconcilerRoute,
   AppToolsCfdiValidatorRoute: AppToolsCfdiValidatorRoute,
