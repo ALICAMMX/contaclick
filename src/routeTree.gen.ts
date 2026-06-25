@@ -51,6 +51,7 @@ import { Route as AppConfiguracionRouteImport } from './routes/app.configuracion
 import { Route as AppConciliacionRouteImport } from './routes/app.conciliacion'
 import { Route as AppClientesRouteImport } from './routes/app.clientes'
 import { Route as AppCfdiRouteImport } from './routes/app.cfdi'
+import { Route as AppCalendarioRouteImport } from './routes/app.calendario'
 import { Route as AppBuzonRouteImport } from './routes/app.buzon'
 import { Route as AppAdministrativoRouteImport } from './routes/app.administrativo'
 import { Route as AppAdminPanelRouteImport } from './routes/app.admin-panel'
@@ -310,6 +311,11 @@ const AppClientesRoute = AppClientesRouteImport.update({
 const AppCfdiRoute = AppCfdiRouteImport.update({
   id: '/cfdi',
   path: '/cfdi',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCalendarioRoute = AppCalendarioRouteImport.update({
+  id: '/calendario',
+  path: '/calendario',
   getParentRoute: () => AppRoute,
 } as any)
 const AppBuzonRoute = AppBuzonRouteImport.update({
@@ -587,6 +593,7 @@ export interface FileRoutesByFullPath {
   '/app/admin-panel': typeof AppAdminPanelRoute
   '/app/administrativo': typeof AppAdministrativoRoute
   '/app/buzon': typeof AppBuzonRoute
+  '/app/calendario': typeof AppCalendarioRoute
   '/app/cfdi': typeof AppCfdiRouteWithChildren
   '/app/clientes': typeof AppClientesRouteWithChildren
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
@@ -677,6 +684,7 @@ export interface FileRoutesByTo {
   '/app/admin-panel': typeof AppAdminPanelRoute
   '/app/administrativo': typeof AppAdministrativoRoute
   '/app/buzon': typeof AppBuzonRoute
+  '/app/calendario': typeof AppCalendarioRoute
   '/app/clientes': typeof AppClientesRouteWithChildren
   '/app/configuracion': typeof AppConfiguracionRoute
   '/app/dashboard': typeof AppDashboardRoute
@@ -766,6 +774,7 @@ export interface FileRoutesById {
   '/app/admin-panel': typeof AppAdminPanelRoute
   '/app/administrativo': typeof AppAdministrativoRoute
   '/app/buzon': typeof AppBuzonRoute
+  '/app/calendario': typeof AppCalendarioRoute
   '/app/cfdi': typeof AppCfdiRouteWithChildren
   '/app/clientes': typeof AppClientesRouteWithChildren
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
@@ -862,6 +871,7 @@ export interface FileRouteTypes {
     | '/app/admin-panel'
     | '/app/administrativo'
     | '/app/buzon'
+    | '/app/calendario'
     | '/app/cfdi'
     | '/app/clientes'
     | '/app/conciliacion'
@@ -952,6 +962,7 @@ export interface FileRouteTypes {
     | '/app/admin-panel'
     | '/app/administrativo'
     | '/app/buzon'
+    | '/app/calendario'
     | '/app/clientes'
     | '/app/configuracion'
     | '/app/dashboard'
@@ -1040,6 +1051,7 @@ export interface FileRouteTypes {
     | '/app/admin-panel'
     | '/app/administrativo'
     | '/app/buzon'
+    | '/app/calendario'
     | '/app/cfdi'
     | '/app/clientes'
     | '/app/conciliacion'
@@ -1428,6 +1440,13 @@ declare module '@tanstack/react-router' {
       path: '/cfdi'
       fullPath: '/app/cfdi'
       preLoaderRoute: typeof AppCfdiRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/calendario': {
+      id: '/app/calendario'
+      path: '/calendario'
+      fullPath: '/app/calendario'
+      preLoaderRoute: typeof AppCalendarioRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/buzon': {
@@ -1923,6 +1942,7 @@ interface AppRouteChildren {
   AppAdminPanelRoute: typeof AppAdminPanelRoute
   AppAdministrativoRoute: typeof AppAdministrativoRoute
   AppBuzonRoute: typeof AppBuzonRoute
+  AppCalendarioRoute: typeof AppCalendarioRoute
   AppCfdiRoute: typeof AppCfdiRouteWithChildren
   AppClientesRoute: typeof AppClientesRouteWithChildren
   AppConciliacionRoute: typeof AppConciliacionRouteWithChildren
@@ -1963,6 +1983,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminPanelRoute: AppAdminPanelRoute,
   AppAdministrativoRoute: AppAdministrativoRoute,
   AppBuzonRoute: AppBuzonRoute,
+  AppCalendarioRoute: AppCalendarioRoute,
   AppCfdiRoute: AppCfdiRouteWithChildren,
   AppClientesRoute: AppClientesRouteWithChildren,
   AppConciliacionRoute: AppConciliacionRouteWithChildren,
