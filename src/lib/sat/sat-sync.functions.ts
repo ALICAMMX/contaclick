@@ -107,9 +107,7 @@ export const dashboardSatSync = createServerFn({ method: "GET" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
-    // resolver despacho del usuario
-    const { data: prof } = await supabase.from("profiles").select("despacho_id").eq("user_id", userId).maybeSingle();
-    const despachoId = prof?.despacho_id;
+    const despachoId = await resolveActiveDespachoId(supabase, userId);
     if (!despachoId) return { conectados: 0, ultima: null, hoy: 0, nuevos: 0, errores: 0, pendientes: 0, actividad: [], desconectados: [], conErrores: [], novedades: [] };
 
     const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
