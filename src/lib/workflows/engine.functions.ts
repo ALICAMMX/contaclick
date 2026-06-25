@@ -327,9 +327,9 @@ export const emitTrigger = createServerFn({ method: "POST" })
     const { data: wfs, error } = await q;
     if (error) throw new Error(error.message);
 
-    const matches = (wfs ?? []).filter((wf: any) =>
-      !wf.cliente_id || wf.cliente_id === data.clienteId,
-    ) as WorkflowRow[];
+    const matches = ((wfs ?? []) as unknown as WorkflowRow[]).filter(
+      (wf) => !wf.cliente_id || wf.cliente_id === data.clienteId,
+    );
 
     const ejecutados: { workflow_id: string; run_id: string; status: string }[] = [];
     for (const wf of matches) {
