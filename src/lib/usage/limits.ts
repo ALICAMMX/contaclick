@@ -70,7 +70,7 @@ export async function getUsoPeriodo(
 ) {
   const { data } = await supabase
     .from("uso_periodo")
-    .select("ia_requests, ia_tokens, rfc_activos")
+    .select("ia_requests, ia_tokens, rfc_activos, sat_solicitudes, sat_costo_centavos")
     .eq("despacho_id", despachoId)
     .eq("periodo", periodo)
     .maybeSingle();
@@ -78,8 +78,11 @@ export async function getUsoPeriodo(
     ia_requests: data?.ia_requests ?? 0,
     ia_tokens: Number(data?.ia_tokens ?? 0),
     rfc_activos: data?.rfc_activos ?? 0,
+    sat_solicitudes: (data as any)?.sat_solicitudes ?? 0,
+    sat_costo_centavos: Number((data as any)?.sat_costo_centavos ?? 0),
   };
 }
+
 
 /**
  * Verifica límite ANTES de ejecutar la operación.
