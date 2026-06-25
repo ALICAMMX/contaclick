@@ -85,6 +85,10 @@ function RedactorPage() {
   };
 
   const onDownload = () => {
+    if (!escrito.trim()) {
+      toast.error("Genera el escrito antes de descargarlo.");
+      return;
+    }
     const blob = new Blob([escrito], { type: "text/markdown;charset=utf-8" });
     triggerFileDownload(blob, safeFilename(`${tipoMeta.key}-${rfc || "escrito"}.md`, "escrito.md"));
   };
