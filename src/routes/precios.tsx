@@ -205,6 +205,7 @@ function PreciosPage() {
                 <div className="mt-5 space-y-1.5 text-xs text-muted-foreground border-y border-border/50 py-4">
                   <div><b className="text-foreground">{p.rfc}</b></div>
                   <div>IA: <b className="text-foreground">{p.ia.solicitudes}</b> · {p.ia.tokens}</div>
+                  <div>{p.sat}</div>
                   <div>{p.storage}</div>
                 </div>
 
