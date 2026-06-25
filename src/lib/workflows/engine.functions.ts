@@ -346,43 +346,8 @@ export const emitTrigger = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const despachoId = await resolveActiveDespachoId(supabase, userId);
-
-    // 1) Registrar evento (bitácora cruda)
-    await supabase.from("workflow_events").insert({
-      despacho_id: despachoId,
-      cliente_id: data.clienteId ?? null,
-      trigger_type: data.triggerType,
-      payload: data.payload ?? {},
-      procesado: false,
-    });
-
-    // 2) Buscar workflows activos que coincidan
-    let q = supabase
-      .from("workflows")
-      .select("id, despacho_id, cliente_id, nombre, status, trigger_type, trigger_config, nodes, edges, total_runs, total_success, total_failed")
-      .eq("despacho_id", despachoId)
-      .eq("status", "activo")
-      .eq("trigger_type", data.triggerType);
-    const { data: wfs, error } = await q;
-    if (error) throw new Error(error.message);
-
-    const matches = ((wfs ?? []) as unknown as WorkflowRow[]).filter(
-      (wf) => !wf.cliente_id || wf.cliente_id === data.clienteId,
-    );
-
-    const ejecutados: { workflow_id: string; run_id: string; status: string }[] = [];
-    for (const wf of matches) {
-      const r = await runWorkflowInternal(supabase, wf, { ...(data.payload ?? {}), cliente_id: data.clienteId }, userId);
-      ejecutados.push({ workflow_id: wf.id, run_id: r.runId, status: r.status });
-    }
-
-    // 3) Marcar evento como procesado
-    await supabase.from("workflow_events").update({ procesado: true, procesado_at: new Date().toISOString() })
-      .eq("despacho_id", despachoId)
-      .eq("trigger_type", data.triggerType)
-      .eq("procesado", false);
-
-    return { ejecutados, total: ejecutados.length };
+    const r = await processTrigger(supabase, despachoId, data.triggerType, data.clienteId ?? null, data.payload, userId);
+    return { ejecutados: r.ejecutados, total: r.ejecutados.length };
   });
 
 export const runWorkflowAhora = createServerFn({ method: "POST" })
