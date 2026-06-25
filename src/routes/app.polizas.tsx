@@ -23,7 +23,7 @@ import {
   type PolizaInput,
 } from "@/lib/polizas/polizas.functions";
 
-export const Route = createFileRoute("/_authenticated/app/polizas")({
+export const Route = createFileRoute("/app/polizas")({
   component: PolizasPage,
 });
 
