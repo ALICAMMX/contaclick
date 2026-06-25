@@ -770,7 +770,7 @@ function DetalleTareaDialog({ id, onClose, onChanged, equipo }: { id: string; on
               <div className="flex justify-between"><span className="text-muted-foreground">Prioridad</span><Badge className={PRIO_COLOR[t.prioridad]}>{t.prioridad}</Badge></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Fecha límite</span><span>{t.due_date ?? "—"}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Tipo</span><span>{t.tipo ? TIPO_LABEL[t.tipo] : "—"}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Origen</span><span>{(ORIGEN_LABEL[t.origen ?? "manual"]).label}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Origen</span><span>{(ORIGEN_LABEL[t.origen ?? "manual"] ?? ORIGEN_LABEL.manual).label}</span></div>
             </div>
 
             <div className="rounded-lg border border-border/60 p-3 space-y-2">
