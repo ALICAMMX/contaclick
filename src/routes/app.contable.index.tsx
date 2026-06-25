@@ -19,6 +19,7 @@ const TOOLS: Tool[] = [
   { name: "Lector de Constancia Fiscal", desc: "Sube la CSF y autocompleta régimen, obligaciones y domicilio.", icon: FileBadge, href: "/app/tools/csf-parser", status: "live", group: "1 · Alta del expediente" },
   { name: "Calendario fiscal", desc: "Obligaciones del expediente con semáforo, alertas y autogeneración anual.", icon: Calendar, href: "/app/calendario", status: "live", group: "1 · Alta del expediente" },
   { name: "Centro de Tareas", desc: "Kanban, lista y productividad. Asigna trabajo y mide cumplimiento del despacho.", icon: ListChecks, href: "/app/tareas", status: "live", group: "1 · Alta del expediente" },
+  { name: "Workflow Automático", desc: "Motor de automatización: triggers, acciones y templates que conectan todos los módulos.", icon: WorkflowIcon, href: "/app/workflows", status: "live", group: "1 · Alta del expediente" },
 
   // 2. Ingesta de CFDI
   { name: "Lector masivo de XML", desc: "Procesa ZIPs del SAT y exporta tabla.", icon: FileStack, href: "/app/tools/xml-bulk-reader", status: "live", group: "2 · Ingesta de CFDI" },
