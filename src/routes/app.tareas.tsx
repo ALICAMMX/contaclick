@@ -183,9 +183,9 @@ function CentroTareas() {
   return (
     <ToolShell
       title="Centro de Tareas"
-      subtitle="Organiza, asigna y supervisa todo el trabajo operativo del despacho desde un solo lugar."
+      description="Organiza, asigna y supervisa todo el trabajo operativo del despacho desde un solo lugar."
       icon={<ListChecks className="h-5 w-5" />}
-      actions={
+      footer={
         <div className="flex flex-wrap items-center gap-2">
           {cliente?.id && (
             <Button variant="outline" size="sm" onClick={() => generar.mutate()} disabled={generar.isPending}>
