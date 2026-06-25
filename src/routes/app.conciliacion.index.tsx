@@ -275,6 +275,7 @@ function ConciliacionPage() {
           </div>
         </div>
         <div className="flex gap-2">
+          <HerramientaHelp slug="conciliacion-bancaria" />
           <Button variant="glass" onClick={exportCsv} disabled={!list.data?.movimientos.length}><Download className="h-4 w-4" /> CSV</Button>
           <Button variant="glass" onClick={exportExcel} disabled={!list.data?.movimientos.length}><Download className="h-4 w-4" /> Excel</Button>
           <Button variant="glass" onClick={() => ai.mutate()} disabled={ai.isPending || !s?.total_movimientos}>
