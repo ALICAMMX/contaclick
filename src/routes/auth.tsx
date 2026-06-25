@@ -48,6 +48,9 @@ function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [formMessage, setFormMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  const [mfa, setMfa] = useState<{ factorId: string } | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaLoading, setMfaLoading] = useState(false);
   const navigate = useNavigate();
   const bootstrapWorkspace = useServerFn(ensureUserWorkspace);
   const getEntry = useServerFn(getEntryContext);
