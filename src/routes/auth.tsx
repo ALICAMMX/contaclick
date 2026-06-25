@@ -224,6 +224,16 @@ function AuthPage() {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aal?.nextLevel === "aal2" && aal.currentLevel !== "aal2") {
+          const { data: list } = await supabase.auth.mfa.listFactors();
+          const totp = list?.totp?.find((f) => f.status === "verified");
+          if (totp) {
+            setMfa({ factorId: totp.id });
+            setLoading(false);
+            return;
+          }
+        }
         await finishAuthenticatedEntry({ fullName: null, despachoNombre: null });
       }
     } catch (err: unknown) {
