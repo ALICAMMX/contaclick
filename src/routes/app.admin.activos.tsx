@@ -20,9 +20,8 @@ function ActivosPage() {
     <ModuleScaffold
       title="Activos Fijos"
       subtitle="Depreciación fiscal y contable automática a partir de tus CFDI de compra. La IA clasifica cada activo y aplica el porcentaje correcto según la LISR."
-      icon={<Building className="h-5 w-5" /
+      icon={<Building className="h-5 w-5" />}
       actions={<HerramientaHelp slug="admin-activos" />}
-    >}
     >
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiTile label="Activos registrados" value="47" accent="primary" />

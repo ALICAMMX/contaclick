@@ -18,9 +18,8 @@ function NominaPage() {
     <ModuleScaffold
       title="Nómina IA"
       subtitle="Cálculo automático de SDI, IMSS, ISR y subsidio al empleo. Genera prenómina, recibos timbrados y SUA con un clic."
-      icon={<Users className="h-5 w-5" /
+      icon={<Users className="h-5 w-5" />}
       actions={<HerramientaHelp slug="admin-nomina" />}
-    >}
       actions={
         <button className="inline-flex items-center gap-2 h-9 px-3 rounded-md bg-gradient-to-r from-primary to-primary-glow text-primary-foreground text-xs font-medium shadow-lg shadow-primary/30">
           <Sparkles className="h-3.5 w-3.5" /> Generar prenómina con IA

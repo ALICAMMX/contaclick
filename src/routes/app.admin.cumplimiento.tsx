@@ -37,9 +37,8 @@ function CumplimientoPage() {
     <ModuleScaffold
       title="Cumplimiento Laboral"
       subtitle="Checklist en tiempo real de tus obligaciones IMSS, INFONAVIT, SAT y STPS. La IA detecta cambios normativos y ajusta el calendario."
-      icon={<ShieldCheck className="h-5 w-5" /
+      icon={<ShieldCheck className="h-5 w-5" />}
       actions={<HerramientaHelp slug="admin-cumplimiento" />}
-    >}
     >
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiTile label="Cumplimiento" value={`${pct}%`} accent="success" />
