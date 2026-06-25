@@ -310,6 +310,18 @@ function ClienteDetailPage() {
       <SaludFiscalExpediente clienteId={id} />
 
       <AutomatizacionesExpediente clienteId={id} />
+
+      <section className="rounded-xl border border-border/60 bg-card/50 p-6">
+        <div className="flex items-center gap-2 mb-3">
+          <RefreshCw className="h-4 w-4 text-primary" />
+          <h2 className="text-lg font-semibold">Sincronización SAT</h2>
+        </div>
+        <p className="text-xs text-muted-foreground mb-4">
+          Configura la descarga masiva automática para este expediente (CFDI emitidos, recibidos, nómina, pagos, retenciones).
+          Tras cada corrida se ejecuta en cascada Salud Fiscal, Riesgo SAT, Auditor Express y EFOS.
+        </p>
+        <ConfigExpediente clienteId={id} rfc={data?.rfc} />
+      </section>
     </div>
   );
 }
