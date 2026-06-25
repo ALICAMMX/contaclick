@@ -390,13 +390,13 @@ Responde en español, formato markdown, conciso.`;
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: "google/gemini-3-flash-preview",
           messages: [
             { role: "system", content: "Eres ContaClick IA, contador fiscalista mexicano experto en conciliaciones bancarias y SAT." },
             { role: "user", content: prompt },
           ],
-          max_tokens: 5000,
-          maxOutputTokens: 5000,
+          max_tokens: 8000,
+          maxOutputTokens: 8000,
         }),
       });
       if (res.status === 429) return { error: "Demasiadas solicitudes.", content: "" };
