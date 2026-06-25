@@ -189,7 +189,12 @@ function buildTables(tipo: string, p: any): Array<{ title: string; head: string[
   const fmtDate = (d: string) => (d ? d.slice(0, 10) : "");
   const limitedRows = (rows: any[] = [], limit: number, makeRow: (x: any) => any[]) => {
     const out = rows.slice(0, limit).map(makeRow);
-    if (rows.length > limit) out.push([`… y ${rows.length - limit} registros más no incluidos en este PDF`, "Descarga Excel para el detalle completo", "", "", "", "", "", ""]);
+    if (rows.length > limit) {
+      const note = Array(out[0]?.length ?? 1).fill("");
+      note[0] = `… y ${rows.length - limit} registros más no incluidos en este PDF`;
+      if (note.length > 1) note[1] = "Descarga Excel para el detalle completo";
+      out.push(note);
+    }
     return out;
   };
   if (tipo === "estado_resultados" && p.detalle?.length) {
