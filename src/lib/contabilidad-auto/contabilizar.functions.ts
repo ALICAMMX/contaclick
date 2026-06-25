@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
-import { contabilizarCfdi, type CfdiParaContabilizar, type Asiento } from "./engine";
+import { contabilizarCfdi, type CfdiParaContabilizar, type Asiento, type ReglaContable } from "./engine";
 
 // ---------- Listar CFDI pendientes de contabilizar (sin póliza vinculada) ----------
 export const listarCfdiPendientes = createServerFn({ method: "POST" })
