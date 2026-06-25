@@ -10,25 +10,43 @@ const ConnectSchema = z.object({
   password: z.string().min(1),
 });
 
-const RFC_REGEX = /\b([A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3})\b/g;
+// RFC: 3-4 letras (incluye Ñ y &) + 6 dígitos (fecha) + 3 alfanuméricos (homoclave).
+// Sin \b: en el DER el RFC puede estar rodeado de bytes alfanuméricos (longitudes ASN.1).
+const RFC_REGEX = /([A-ZÑ&]{3,4})(\d{2})(\d{2})(\d{2})([A-Z0-9]{2}[0-9A])/g;
 
 /**
  * Extrae los RFC presentes en el Subject del certificado .cer (DER en base64).
- * El SAT incluye el RFC en el campo x500UniqueIdentifier (OID 2.5.4.45) en texto plano,
- * por lo que basta con buscar patrones de RFC dentro de los bytes decodificados.
+ * El SAT incluye el RFC en el campo x500UniqueIdentifier (OID 2.5.4.45) en texto plano.
+ * Probamos varias decodificaciones para tolerar uploads PEM/DER y caracteres no-ASCII.
  */
 function extraerRfcsDeCer(cer_b64: string): string[] {
+  const found = new Set<string>();
+  const candidates: string[] = [];
   try {
     const limpio = cer_b64.replace(/-----[^-]+-----/g, "").replace(/\s+/g, "");
-    const bin = Buffer.from(limpio, "base64").toString("latin1");
-    const found = new Set<string>();
-    let m: RegExpExecArray | null;
-    const re = new RegExp(RFC_REGEX.source, "g");
-    while ((m = re.exec(bin))) found.add(m[1].toUpperCase());
-    return Array.from(found);
+    const buf = Buffer.from(limpio, "base64");
+    if (buf.length > 0) {
+      candidates.push(buf.toString("latin1"));
+      candidates.push(buf.toString("utf8"));
+      candidates.push(buf.toString("ascii"));
+    }
+    // Por si llegó ya decodificado / no era base64 válido
+    candidates.push(cer_b64);
   } catch {
-    return [];
+    candidates.push(cer_b64);
   }
+  for (const txt of candidates) {
+    const re = new RegExp(RFC_REGEX.source, "g");
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(txt))) {
+      // Validar mes 01-12 y día 01-31 para reducir falsos positivos
+      const mes = Number(m[3]);
+      const dia = Number(m[4]);
+      if (mes < 1 || mes > 12 || dia < 1 || dia > 31) continue;
+      found.add((m[1] + m[2] + m[3] + m[4] + m[5]).toUpperCase());
+    }
+  }
+  return Array.from(found);
 }
 
 
