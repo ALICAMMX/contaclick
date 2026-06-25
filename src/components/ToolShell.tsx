@@ -3,6 +3,7 @@ import { ArrowLeft, UserRound, AlertCircle } from "lucide-react";
 import type { ReactNode } from "react";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { Button } from "./ui/button";
+import { HerramientaHelp } from "./HerramientaHelp";
 
 export function ToolShell({
   title,
@@ -10,12 +11,15 @@ export function ToolShell({
   icon,
   children,
   requireCliente = true,
+  helpSlug,
 }: {
   title: string;
   description?: string;
   icon?: ReactNode;
   children: ReactNode;
   requireCliente?: boolean;
+  /** Slug en src/lib/help/registry.ts. Si se pasa, muestra el botón "Ayuda" en la cabecera. */
+  helpSlug?: string;
 }) {
   const { cliente } = useActiveCliente();
   const navigate = useNavigate();
