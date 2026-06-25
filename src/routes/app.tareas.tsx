@@ -395,7 +395,7 @@ function CentroTareas() {
       {detalleId && (
         <DetalleTareaDialog id={detalleId} onClose={() => setDetalleId(null)} onChanged={invalidate} equipo={equipoQ.data ?? []} />
       )}
-    </ToolShell>
+    </div>
   );
 }
 
