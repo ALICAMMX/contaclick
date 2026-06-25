@@ -103,6 +103,7 @@ function AgenteCfdiPage() {
       badge={activo ? "Activo · Auto-refresh cada 60s" : "Pausado"}
       actions={
         <>
+          <HerramientaHelp slug="agente-cfdi" />
           <Link
             to="/app/contable/agentes"
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-border/60 bg-card/60 hover:bg-card text-xs text-muted-foreground hover:text-foreground transition-colors"
