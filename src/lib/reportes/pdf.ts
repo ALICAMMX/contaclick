@@ -78,18 +78,21 @@ export function downloadReportePDF(args: {
 
   // AI summary
   if (resumenIA) {
+    const cleanResumen = resumenIA.replace(/[#*_]/g, "");
+    const lines = doc.splitTextToSize(cleanResumen, W - 104);
+    const boxH = Math.max(58, lines.length * 12 + 42);
+    if (y + boxH > 760) { doc.addPage(); y = 60; }
     doc.setFillColor(245, 247, 252);
-    doc.roundedRect(40, y, W - 80, 0.1, 6, 6, "F");
+    doc.roundedRect(40, y, W - 80, boxH, 6, 6, "F");
     doc.setTextColor(15, 23, 42);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
-    doc.text("Resumen ejecutivo", 40, y + 14);
-    y += 22;
+    doc.text("Resumen ejecutivo", 52, y + 18);
+    y += 34;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9.5);
-    const lines = doc.splitTextToSize(resumenIA.replace(/[#*_]/g, ""), W - 80);
-    doc.text(lines, 40, y);
-    y += lines.length * 12 + 12;
+    doc.text(lines, 52, y);
+    y += lines.length * 12 + 24;
   }
 
   // Tables
@@ -118,8 +121,9 @@ export function downloadReportePDF(args: {
     doc.setPage(p);
     doc.setFontSize(8);
     doc.setTextColor(120, 130, 150);
-    doc.text(`ContaClick IA · ${cli.razon_social ?? ""}`, 40, 820);
-    doc.text(`Página ${p} de ${pages}`, W - 80, 820);
+    const footerY = doc.internal.pageSize.getHeight() - 28;
+    doc.text(`ContaClick IA · ${cli.razon_social ?? ""}`, 40, footerY);
+    doc.text(`Página ${p} de ${pages}`, W - 80, footerY);
   }
 
   const fname = `${tipo}_${cli.rfc ?? "cliente"}_${periodo.desde ?? ""}_${periodo.hasta ?? ""}.pdf`;
@@ -183,23 +187,28 @@ function buildKpis(tipo: string, r: any): Array<{ label: string; value: string }
 function buildTables(tipo: string, p: any): Array<{ title: string; head: string[]; body: any[][] }> {
   const out: Array<{ title: string; head: string[]; body: any[][] }> = [];
   const fmtDate = (d: string) => (d ? d.slice(0, 10) : "");
+  const limitedRows = (rows: any[] = [], limit: number, makeRow: (x: any) => any[]) => {
+    const out = rows.slice(0, limit).map(makeRow);
+    if (rows.length > limit) out.push([`… y ${rows.length - limit} registros más no incluidos en este PDF`, "Descarga Excel para el detalle completo", "", "", "", "", "", ""]);
+    return out;
+  };
   if (tipo === "estado_resultados" && p.detalle?.length) {
     out.push({
       title: "CFDI emitidos (top 100)",
       head: ["Fecha", "UUID", "Cliente", "Subtotal", "Total"],
-      body: p.detalle.map((x: any) => [fmtDate(x.fecha), (x.uuid ?? "").slice(0, 8), x.cliente ?? "—", fmtMXN(x.subtotal), fmtMXN(x.total)]),
+      body: limitedRows(p.detalle, 100, (x: any) => [fmtDate(x.fecha), (x.uuid ?? "").slice(0, 8), x.cliente ?? "—", fmtMXN(x.subtotal), fmtMXN(x.total)]),
     });
   }
   if (tipo === "iva") {
     if (p.detalle_emitidos?.length) out.push({
       title: "IVA Trasladado (Emitidos)",
       head: ["Fecha", "UUID", "Receptor", "Subtotal", "IVA"],
-      body: p.detalle_emitidos.slice(0, 100).map((x: any) => [fmtDate(x.fecha), (x.uuid ?? "").slice(0, 8), x.receptor ?? "—", fmtMXN(x.subtotal), fmtMXN(x.iva)]),
+      body: limitedRows(p.detalle_emitidos, 100, (x: any) => [fmtDate(x.fecha), (x.uuid ?? "").slice(0, 8), x.receptor ?? "—", fmtMXN(x.subtotal), fmtMXN(x.iva)]),
     });
     if (p.detalle_recibidos?.length) out.push({
       title: "IVA Acreditable (Recibidos)",
       head: ["Fecha", "UUID", "Emisor", "Subtotal", "IVA"],
-      body: p.detalle_recibidos.slice(0, 100).map((x: any) => [fmtDate(x.fecha), (x.uuid ?? "").slice(0, 8), x.emisor ?? "—", fmtMXN(x.subtotal), fmtMXN(x.iva)]),
+      body: limitedRows(p.detalle_recibidos, 100, (x: any) => [fmtDate(x.fecha), (x.uuid ?? "").slice(0, 8), x.emisor ?? "—", fmtMXN(x.subtotal), fmtMXN(x.iva)]),
     });
   }
   if (tipo === "diferencias") {
@@ -232,12 +241,12 @@ function buildTables(tipo: string, p: any): Array<{ title: string; head: string[
     if (p.ingresos?.length) out.push({
       title: "Ingresos por cliente",
       head: ["RFC", "Nombre", "CFDI", "Subtotal", "IVA", "Total"],
-      body: p.ingresos.slice(0, 80).map((x: any) => [x.rfc, (x.nombre ?? "").slice(0, 36), x.n, fmtMXN(x.subtotal), fmtMXN(x.iva), fmtMXN(x.total)]),
+      body: limitedRows(p.ingresos, 80, (x: any) => [x.rfc, (x.nombre ?? "").slice(0, 36), x.n, fmtMXN(x.subtotal), fmtMXN(x.iva), fmtMXN(x.total)]),
     });
     if (p.egresos?.length) out.push({
       title: "Egresos por proveedor",
       head: ["RFC", "Nombre", "CFDI", "Subtotal", "IVA", "Total"],
-      body: p.egresos.slice(0, 80).map((x: any) => [x.rfc, (x.nombre ?? "").slice(0, 36), x.n, fmtMXN(x.subtotal), fmtMXN(x.iva), fmtMXN(x.total)]),
+      body: limitedRows(p.egresos, 80, (x: any) => [x.rfc, (x.nombre ?? "").slice(0, 36), x.n, fmtMXN(x.subtotal), fmtMXN(x.iva), fmtMXN(x.total)]),
     });
   }
   if (tipo === "balance_general") {
@@ -249,7 +258,7 @@ function buildTables(tipo: string, p: any): Array<{ title: string; head: string[
     out.push({
       title: "DIOT — Detalle por proveedor",
       head: ["RFC", "Nombre", "Tipo", "Op.", "Base 16%", "Base 0%/Ex", "IVA ret.", "ISR ret."],
-      body: p.detalle.slice(0, 200).map((x: any) => [x.rfc, (x.nombre ?? "").slice(0, 28), x.tipo_tercero, x.tipo_operacion, fmtMXN(x.iva16), fmtMXN((x.iva0 ?? 0) + (x.exento ?? 0)), fmtMXN(x.iva_ret), fmtMXN(x.isr_ret)]),
+      body: limitedRows(p.detalle, 200, (x: any) => [x.rfc, (x.nombre ?? "").slice(0, 28), x.tipo_tercero, x.tipo_operacion, fmtMXN(x.iva16), fmtMXN((x.iva0 ?? 0) + (x.exento ?? 0)), fmtMXN(x.iva_ret), fmtMXN(x.isr_ret)]),
     });
   }
   return out;
