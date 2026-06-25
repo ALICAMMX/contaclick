@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Calculator, FileText, FileStack, Coins, Banknote, FileBadge, FileSignature, ShieldCheck, ScanSearch, Bot, AlertTriangle, Users, Globe, Network, Mail, Bell, ShieldAlert, ChevronDown, Check, Calendar, Clock, ListChecks } from "lucide-react";
+import { Calculator, FileText, FileStack, Coins, Banknote, FileBadge, FileSignature, ShieldCheck, ScanSearch, Bot, AlertTriangle, Users, Globe, Network, Mail, Bell, ShieldAlert, ChevronDown, Check, Calendar, Clock, ListChecks, Workflow as WorkflowIcon } from "lucide-react";
 import type { ComponentType } from "react";
 import { useState } from "react";
 import { useActiveCliente } from "@/lib/active-cliente";
