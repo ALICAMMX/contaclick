@@ -332,13 +332,13 @@ Responde en español, formato markdown, máximo 220 palabras.`;
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: "google/gemini-3-flash-preview",
           messages: [
             { role: "system", content: "Eres ContaClick IA, traductor de tecnicismos fiscales a lenguaje claro." },
             { role: "user", content: prompt },
           ],
-          max_tokens: 6000,
-          maxOutputTokens: 6000,
+          max_tokens: 8000,
+          maxOutputTokens: 8000,
         }),
       });
       if (res.status === 429) return { error: "Demasiadas solicitudes.", content: "" };
