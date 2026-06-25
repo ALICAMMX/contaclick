@@ -30,21 +30,21 @@ export function ToolShell({
         <Link to="/app/contable" className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5">
           <ArrowLeft className="h-3.5 w-3.5" /> Volver a Contable y Fiscal
         </Link>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-card/50 border border-border text-xs">
-          <UserRound className="h-3.5 w-3.5 text-primary" />
-          {cliente ? (
-            <>
-              <span className="font-medium">{cliente.rfc}</span>
-              <span className="text-muted-foreground hidden sm:inline">· {cliente.razon_social}</span>
-            </>
-          ) : (
-            <span className="text-muted-foreground">Sin expediente activo</span>
-          )}
+        <div className="flex items-center gap-2">
+          {helpSlug && <HerramientaHelp slug={helpSlug} />}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-card/50 border border-border text-xs">
+            <UserRound className="h-3.5 w-3.5 text-primary" />
+            {cliente ? (
+              <>
+                <span className="font-medium">{cliente.rfc}</span>
+                <span className="text-muted-foreground hidden sm:inline">· {cliente.razon_social}</span>
+              </>
+            ) : (
+              <span className="text-muted-foreground">Sin expediente activo</span>
+            )}
+          </div>
         </div>
       </div>
-
-      <div className="flex items-start gap-4">
-        {icon && (
           <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--gradient-primary)" }}>
             {icon}
           </div>
