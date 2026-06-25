@@ -47,8 +47,8 @@ export function periodoActual(d: Date = new Date()): string {
 }
 
 // Default = plan Profesional (lo que se otorga durante el trial de 14 días,
-// alineado con la página /precios).
-const DEFAULT_LIMITS: Limites = { rfcs: 25, ia_msgs: 1500, ia_tokens: 5_000_000, sat_solicitudes_mes: 3500, sat_frecuencia_max: "diaria" };
+// alineado con la página /precios y los candados conservadores de PAC SAT).
+const DEFAULT_LIMITS: Limites = { rfcs: 25, ia_msgs: 1500, ia_tokens: 5_000_000, sat_solicitudes_mes: 1000, sat_frecuencia_max: "diaria" };
 
 export async function getPlanLimites(
   supabase: SupabaseClient,
