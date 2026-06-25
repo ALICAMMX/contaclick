@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { FileBarChart, Calculator, ArrowRight, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { getResumenFiscalMes } from "@/lib/fiscal/resumen.functions";
 
