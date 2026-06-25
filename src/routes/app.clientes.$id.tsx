@@ -2,7 +2,7 @@ import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, ShieldCheck, ShieldAlert, ShieldOff, Upload, Unlink, RefreshCw, CheckCircle2, History, Wrench, FileText, MapPin, Truck, Receipt, Users } from "lucide-react";
+import { ArrowLeft, ShieldCheck, ShieldAlert, ShieldOff, Upload, Unlink, RefreshCw, CheckCircle2, History, Wrench, FileText, MapPin, Truck, Receipt, Users, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { getCliente, listTerceros } from "@/lib/clientes.functions";
@@ -285,6 +285,24 @@ function ClienteDetailPage() {
             })}
           </ol>
         )}
+      </section>
+
+      <section className="rounded-xl border border-border/60 bg-card/50 p-6">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <ListChecks className="h-4 w-4 text-primary" />
+            <h2 className="text-lg font-semibold">Tareas del expediente</h2>
+          </div>
+          <Link
+            to="/app/tareas"
+            className="text-xs inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border hover:bg-muted/40"
+          >
+            Abrir en Centro de Tareas
+          </Link>
+        </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          Las tareas asignadas a este expediente se gestionan desde el Centro de Tareas. Usa el filtro "Solo {`{cliente}`}" o ejecuta "Generar desde calendario" para crear automáticamente las tareas de obligaciones fiscales pendientes.
+        </p>
       </section>
     </div>
   );
