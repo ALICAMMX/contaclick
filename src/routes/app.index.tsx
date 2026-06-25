@@ -59,7 +59,7 @@ function Hub() {
       </section>
 
       {/* Plan & uso */}
-      <section className="max-w-3xl mx-auto w-full">
+      <section className="w-full">
         <UsageProfileCard />
       </section>
 
