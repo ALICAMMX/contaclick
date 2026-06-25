@@ -23,24 +23,25 @@ function Tile({
     ? { bar: "bg-primary", ring: "ring-primary/20", txt: "text-primary", label: "Ilimitado" }
     : pctTone(pct);
   return (
-    <div className={`relative rounded-xl border border-border/60 bg-card/60 p-4 ring-1 ${tone.ring}`}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Icon className="h-3.5 w-3.5" /> {label}
+    <div className={`relative rounded-xl border border-border/60 bg-card/60 p-5 ring-1 ${tone.ring} min-w-0`}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground min-w-0">
+          <Icon className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">{label}</span>
         </div>
-        <span className={`text-[10px] uppercase tracking-wider font-medium ${tone.txt}`}>
+        <span className={`text-[10px] uppercase tracking-wider font-medium shrink-0 ${tone.txt}`}>
           {tone.label}
         </span>
       </div>
-      <div className="mt-3 flex items-baseline gap-1.5">
-        <span className="text-3xl font-semibold tabular-nums">
+      <div className="mt-4 flex items-baseline gap-1.5 flex-wrap">
+        <span className="text-3xl font-semibold tabular-nums leading-none">
           {ilimitado ? "∞" : fmt(restante)}
         </span>
         <span className="text-xs text-muted-foreground">
           {ilimitado ? "sin límite" : "disponibles"}
         </span>
       </div>
-      <div className="text-[11px] text-muted-foreground mt-0.5 tabular-nums">
+      <div className="text-[11px] text-muted-foreground mt-1 tabular-nums">
         {ilimitado
           ? `${fmt(usado)} ${unidad} usados este mes`
           : `${fmt(usado)} usados de ${fmt(limite)} ${unidad}`}
