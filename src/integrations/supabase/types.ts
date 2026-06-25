@@ -1635,6 +1635,220 @@ export type Database = {
         }
         Relationships: []
       }
+      sat_sync_config: {
+        Row: {
+          activo: boolean
+          cliente_id: string
+          created_at: string
+          despacho_id: string
+          emitidos: boolean
+          fecha_desde: string | null
+          fecha_hasta: string | null
+          frecuencia: string
+          nomina: boolean
+          pagos: boolean
+          periodo: string
+          proxima_corrida_at: string | null
+          recibidos: boolean
+          retenciones: boolean
+          ultima_corrida_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          cliente_id: string
+          created_at?: string
+          despacho_id: string
+          emitidos?: boolean
+          fecha_desde?: string | null
+          fecha_hasta?: string | null
+          frecuencia?: string
+          nomina?: boolean
+          pagos?: boolean
+          periodo?: string
+          proxima_corrida_at?: string | null
+          recibidos?: boolean
+          retenciones?: boolean
+          ultima_corrida_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          cliente_id?: string
+          created_at?: string
+          despacho_id?: string
+          emitidos?: boolean
+          fecha_desde?: string | null
+          fecha_hasta?: string | null
+          frecuencia?: string
+          nomina?: boolean
+          pagos?: boolean
+          periodo?: string
+          proxima_corrida_at?: string | null
+          recibidos?: boolean
+          retenciones?: boolean
+          ultima_corrida_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sat_sync_config_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: true
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sat_sync_config_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sat_sync_eventos: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          despacho_id: string
+          id: string
+          mensaje: string | null
+          monto: number | null
+          payload: Json | null
+          rfc_contraparte: string | null
+          run_id: string | null
+          tipo: string
+          uuid_cfdi: string | null
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          despacho_id: string
+          id?: string
+          mensaje?: string | null
+          monto?: number | null
+          payload?: Json | null
+          rfc_contraparte?: string | null
+          run_id?: string | null
+          tipo: string
+          uuid_cfdi?: string | null
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          despacho_id?: string
+          id?: string
+          mensaje?: string | null
+          monto?: number | null
+          payload?: Json | null
+          rfc_contraparte?: string | null
+          run_id?: string | null
+          tipo?: string
+          uuid_cfdi?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sat_sync_eventos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sat_sync_eventos_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sat_sync_eventos_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "sat_sync_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sat_sync_runs: {
+        Row: {
+          cancelados: number
+          cliente_id: string
+          descargados: number
+          desde: string | null
+          despacho_id: string
+          detalle: string | null
+          duplicados: number
+          duracion_ms: number | null
+          errores: Json
+          estatus: string
+          finalizado_at: string | null
+          hasta: string | null
+          id: string
+          iniciado_at: string
+          nuevos: number
+          origen: string
+          tipo: string
+          triggered_by: string | null
+        }
+        Insert: {
+          cancelados?: number
+          cliente_id: string
+          descargados?: number
+          desde?: string | null
+          despacho_id: string
+          detalle?: string | null
+          duplicados?: number
+          duracion_ms?: number | null
+          errores?: Json
+          estatus?: string
+          finalizado_at?: string | null
+          hasta?: string | null
+          id?: string
+          iniciado_at?: string
+          nuevos?: number
+          origen?: string
+          tipo?: string
+          triggered_by?: string | null
+        }
+        Update: {
+          cancelados?: number
+          cliente_id?: string
+          descargados?: number
+          desde?: string | null
+          despacho_id?: string
+          detalle?: string | null
+          duplicados?: number
+          duracion_ms?: number | null
+          errores?: Json
+          estatus?: string
+          finalizado_at?: string | null
+          hasta?: string | null
+          id?: string
+          iniciado_at?: string
+          nuevos?: number
+          origen?: string
+          tipo?: string
+          triggered_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sat_sync_runs_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sat_sync_runs_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       semaforo_fiscal: {
         Row: {
           calculado_at: string
