@@ -335,6 +335,26 @@ export const runSyncNow = createServerFn({ method: "POST" })
       detalle: estatus === "error" ? "La corrida no pudo completarse" : `Descargados: ${descargados}, nuevos: ${nuevos}, cancelados: ${cancelados}`,
     }).eq("id", runId);
 
+    // Registro de consumo SAT (cuota despacho + saldo PAC si es real)
+    if (solicitudesPrevistas > 0 && estatus !== "error") {
+      try {
+        let supabaseAdmin: any = null;
+        if (!esMockRun) {
+          const mod = await import("@/integrations/supabase/client.server");
+          supabaseAdmin = mod.supabaseAdmin;
+        }
+        await registrarConsumoSat({
+          supabase, supabaseAdmin,
+          despachoId: cli.despacho_id,
+          solicitudes: solicitudesPrevistas,
+          esMock: esMockRun,
+        });
+      } catch (e: any) {
+        console.warn("[sat-sync] registrar consumo falló:", e?.message ?? e);
+      }
+    }
+
+
     if (cfg) {
       await supabase.from("sat_sync_config").update({
         ultima_corrida_at: new Date(fin).toISOString(),
