@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Calculator, Briefcase, Scale, ArrowRight, FileText, ShieldAlert, Users, TrendingUp, Mail, Banknote, UserRound, Plus, X } from "lucide-react";
+import { Calculator, Briefcase, Scale, ArrowRight, FileText, ShieldAlert, Users, TrendingUp, Mail, Banknote, UserRound, Plus, X, Calendar, ListChecks, Workflow as WorkflowIcon, Activity, RefreshCw, FileSignature, ScanSearch, Bot, FileBadge, FileStack, ShieldCheck, Coins, Globe, Building, Boxes, MessageSquare, Gavel, Store } from "lucide-react";
 import { UsageProfileCard } from "@/components/UsageProfileCard";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { useQuery } from "@tanstack/react-query";
