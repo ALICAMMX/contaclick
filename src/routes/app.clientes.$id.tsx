@@ -2,7 +2,8 @@ import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, ShieldCheck, ShieldAlert, ShieldOff, Upload, Unlink, RefreshCw, CheckCircle2, History, Wrench, FileText, MapPin, Truck, Receipt, Users, ListChecks } from "lucide-react";
+import { ArrowLeft, ShieldCheck, ShieldAlert, ShieldOff, Upload, Unlink, RefreshCw, CheckCircle2, History, Wrench, FileText, MapPin, Truck, Receipt, Users, ListChecks, Workflow as WorkflowIcon } from "lucide-react";
+import { listWorkflows, listRuns } from "@/lib/workflows/workflows.functions";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { getCliente, listTerceros } from "@/lib/clientes.functions";
@@ -304,7 +305,58 @@ function ClienteDetailPage() {
           Las tareas asignadas a este expediente se gestionan desde el Centro de Tareas. Usa el filtro "Solo {`{cliente}`}" o ejecuta "Generar desde calendario" para crear automáticamente las tareas de obligaciones fiscales pendientes.
         </p>
       </section>
+
+      <AutomatizacionesExpediente clienteId={id} />
     </div>
+  );
+}
+
+function AutomatizacionesExpediente({ clienteId }: { clienteId: string }) {
+  const _list = useServerFn(listWorkflows);
+  const _runs = useServerFn(listRuns);
+  const wfsQ = useQuery({ queryKey: ["wfs-cliente", clienteId], queryFn: () => _list({ data: { clienteId } }) });
+  const runsQ = useQuery({ queryKey: ["wfs-runs-cliente", clienteId], queryFn: () => _runs({ data: { clienteId, limit: 20 } }) });
+  const wfs = (wfsQ.data ?? []) as any[];
+  const runs = (runsQ.data ?? []) as any[];
+  return (
+    <section className="rounded-xl border border-border/60 bg-card/50 p-6">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <WorkflowIcon className="h-4 w-4 text-primary" />
+          <h2 className="text-lg font-semibold">Automatizaciones activas</h2>
+        </div>
+        <Link to="/app/workflows" className="text-xs inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border hover:bg-muted/40">
+          Abrir Workflow Automático
+        </Link>
+      </div>
+      {wfs.length === 0 ? (
+        <p className="text-xs text-muted-foreground mt-3">Aún no hay workflows vinculados a este expediente. Aplica un template desde Workflow Automático.</p>
+      ) : (
+        <ul className="mt-3 divide-y divide-border/40">
+          {wfs.map((w) => (
+            <li key={w.id} className="py-2 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-sm font-medium truncate">{w.nombre}</div>
+                <div className="text-[11px] text-muted-foreground">{w.status} · {w.trigger_type} · {w.total_runs} ejec · última: {w.last_run_at ? new Date(w.last_run_at).toLocaleString("es-MX") : "—"}</div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {runs.length > 0 && (
+        <div className="mt-4">
+          <div className="text-xs font-medium text-muted-foreground mb-2">Últimas ejecuciones</div>
+          <ul className="space-y-1">
+            {runs.slice(0, 5).map((r) => (
+              <li key={r.id} className="text-xs flex items-center justify-between">
+                <span className="truncate">{r.workflow_nombre ?? r.workflow_id.slice(0, 8)}</span>
+                <span className="text-muted-foreground">{r.status} · {new Date(r.started_at).toLocaleString("es-MX")}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
   );
 }
 

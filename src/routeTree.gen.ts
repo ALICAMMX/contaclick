@@ -37,6 +37,7 @@ import { Route as DashboardClientesRouteImport } from './routes/dashboard.client
 import { Route as DashboardCfdiRouteImport } from './routes/dashboard.cfdi'
 import { Route as DashboardAuditorRouteImport } from './routes/dashboard.auditor'
 import { Route as DashboardAsistenteRouteImport } from './routes/dashboard.asistente'
+import { Route as AppWorkflowsRouteImport } from './routes/app.workflows'
 import { Route as AppTareasRouteImport } from './routes/app.tareas'
 import { Route as AppRiesgoRouteImport } from './routes/app.riesgo'
 import { Route as AppRfcsVinculadosRouteImport } from './routes/app.rfcs-vinculados'
@@ -103,6 +104,7 @@ import { Route as AppAdminCumplimientoRouteImport } from './routes/app.admin.cum
 import { Route as AppAdminCorrespondenciaRouteImport } from './routes/app.admin.correspondencia'
 import { Route as AppAdminBuzonRouteImport } from './routes/app.admin.buzon'
 import { Route as AppAdminActivosRouteImport } from './routes/app.admin.activos'
+import { Route as ApiPublicHooksWorkflowCronRouteImport } from './routes/api/public/hooks/workflow-cron'
 
 const TerminosRoute = TerminosRouteImport.update({
   id: '/terminos',
@@ -243,6 +245,11 @@ const DashboardAsistenteRoute = DashboardAsistenteRouteImport.update({
   id: '/asistente',
   path: '/asistente',
   getParentRoute: () => DashboardRoute,
+} as any)
+const AppWorkflowsRoute = AppWorkflowsRouteImport.update({
+  id: '/workflows',
+  path: '/workflows',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppTareasRoute = AppTareasRouteImport.update({
   id: '/tareas',
@@ -581,6 +588,12 @@ const AppAdminActivosRoute = AppAdminActivosRouteImport.update({
   path: '/activos',
   getParentRoute: () => AppAdminRoute,
 } as any)
+const ApiPublicHooksWorkflowCronRoute =
+  ApiPublicHooksWorkflowCronRouteImport.update({
+    id: '/api/public/hooks/workflow-cron',
+    path: '/api/public/hooks/workflow-cron',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -615,6 +628,7 @@ export interface FileRoutesByFullPath {
   '/app/rfcs-vinculados': typeof AppRfcsVinculadosRoute
   '/app/riesgo': typeof AppRiesgoRoute
   '/app/tareas': typeof AppTareasRoute
+  '/app/workflows': typeof AppWorkflowsRoute
   '/dashboard/asistente': typeof DashboardAsistenteRoute
   '/dashboard/auditor': typeof DashboardAuditorRoute
   '/dashboard/cfdi': typeof DashboardCfdiRoute
@@ -677,6 +691,7 @@ export interface FileRoutesByFullPath {
   '/app/mensajes/': typeof AppMensajesIndexRoute
   '/app/reportes/': typeof AppReportesIndexRoute
   '/app/tools/': typeof AppToolsIndexRoute
+  '/api/public/hooks/workflow-cron': typeof ApiPublicHooksWorkflowCronRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -701,6 +716,7 @@ export interface FileRoutesByTo {
   '/app/rfcs-vinculados': typeof AppRfcsVinculadosRoute
   '/app/riesgo': typeof AppRiesgoRoute
   '/app/tareas': typeof AppTareasRoute
+  '/app/workflows': typeof AppWorkflowsRoute
   '/dashboard/asistente': typeof DashboardAsistenteRoute
   '/dashboard/auditor': typeof DashboardAuditorRoute
   '/dashboard/cfdi': typeof DashboardCfdiRoute
@@ -763,6 +779,7 @@ export interface FileRoutesByTo {
   '/app/mensajes': typeof AppMensajesIndexRoute
   '/app/reportes': typeof AppReportesIndexRoute
   '/app/tools': typeof AppToolsIndexRoute
+  '/api/public/hooks/workflow-cron': typeof ApiPublicHooksWorkflowCronRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -798,6 +815,7 @@ export interface FileRoutesById {
   '/app/rfcs-vinculados': typeof AppRfcsVinculadosRoute
   '/app/riesgo': typeof AppRiesgoRoute
   '/app/tareas': typeof AppTareasRoute
+  '/app/workflows': typeof AppWorkflowsRoute
   '/dashboard/asistente': typeof DashboardAsistenteRoute
   '/dashboard/auditor': typeof DashboardAuditorRoute
   '/dashboard/cfdi': typeof DashboardCfdiRoute
@@ -860,6 +878,7 @@ export interface FileRoutesById {
   '/app/mensajes/': typeof AppMensajesIndexRoute
   '/app/reportes/': typeof AppReportesIndexRoute
   '/app/tools/': typeof AppToolsIndexRoute
+  '/api/public/hooks/workflow-cron': typeof ApiPublicHooksWorkflowCronRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -896,6 +915,7 @@ export interface FileRouteTypes {
     | '/app/rfcs-vinculados'
     | '/app/riesgo'
     | '/app/tareas'
+    | '/app/workflows'
     | '/dashboard/asistente'
     | '/dashboard/auditor'
     | '/dashboard/cfdi'
@@ -958,6 +978,7 @@ export interface FileRouteTypes {
     | '/app/mensajes/'
     | '/app/reportes/'
     | '/app/tools/'
+    | '/api/public/hooks/workflow-cron'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -982,6 +1003,7 @@ export interface FileRouteTypes {
     | '/app/rfcs-vinculados'
     | '/app/riesgo'
     | '/app/tareas'
+    | '/app/workflows'
     | '/dashboard/asistente'
     | '/dashboard/auditor'
     | '/dashboard/cfdi'
@@ -1044,6 +1066,7 @@ export interface FileRouteTypes {
     | '/app/mensajes'
     | '/app/reportes'
     | '/app/tools'
+    | '/api/public/hooks/workflow-cron'
   id:
     | '__root__'
     | '/'
@@ -1078,6 +1101,7 @@ export interface FileRouteTypes {
     | '/app/rfcs-vinculados'
     | '/app/riesgo'
     | '/app/tareas'
+    | '/app/workflows'
     | '/dashboard/asistente'
     | '/dashboard/auditor'
     | '/dashboard/cfdi'
@@ -1140,6 +1164,7 @@ export interface FileRouteTypes {
     | '/app/mensajes/'
     | '/app/reportes/'
     | '/app/tools/'
+    | '/api/public/hooks/workflow-cron'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1156,6 +1181,7 @@ export interface RootRouteChildren {
   SeguridadRoute: typeof SeguridadRoute
   TerminosRoute: typeof TerminosRoute
   InvitarTokenRoute: typeof InvitarTokenRoute
+  ApiPublicHooksWorkflowCronRoute: typeof ApiPublicHooksWorkflowCronRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1355,6 +1381,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/asistente'
       preLoaderRoute: typeof DashboardAsistenteRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/app/workflows': {
+      id: '/app/workflows'
+      path: '/workflows'
+      fullPath: '/app/workflows'
+      preLoaderRoute: typeof AppWorkflowsRouteImport
+      parentRoute: typeof AppRoute
     }
     '/app/tareas': {
       id: '/app/tareas'
@@ -1818,6 +1851,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminActivosRouteImport
       parentRoute: typeof AppAdminRoute
     }
+    '/api/public/hooks/workflow-cron': {
+      id: '/api/public/hooks/workflow-cron'
+      path: '/api/public/hooks/workflow-cron'
+      fullPath: '/api/public/hooks/workflow-cron'
+      preLoaderRoute: typeof ApiPublicHooksWorkflowCronRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1977,6 +2017,7 @@ interface AppRouteChildren {
   AppRfcsVinculadosRoute: typeof AppRfcsVinculadosRoute
   AppRiesgoRoute: typeof AppRiesgoRoute
   AppTareasRoute: typeof AppTareasRoute
+  AppWorkflowsRoute: typeof AppWorkflowsRoute
   AppIndexRoute: typeof AppIndexRoute
   AppToolsBankReconcilerRoute: typeof AppToolsBankReconcilerRoute
   AppToolsCfdiValidatorRoute: typeof AppToolsCfdiValidatorRoute
@@ -2019,6 +2060,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppRfcsVinculadosRoute: AppRfcsVinculadosRoute,
   AppRiesgoRoute: AppRiesgoRoute,
   AppTareasRoute: AppTareasRoute,
+  AppWorkflowsRoute: AppWorkflowsRoute,
   AppIndexRoute: AppIndexRoute,
   AppToolsBankReconcilerRoute: AppToolsBankReconcilerRoute,
   AppToolsCfdiValidatorRoute: AppToolsCfdiValidatorRoute,
@@ -2103,6 +2145,7 @@ const rootRouteChildren: RootRouteChildren = {
   SeguridadRoute: SeguridadRoute,
   TerminosRoute: TerminosRoute,
   InvitarTokenRoute: InvitarTokenRoute,
+  ApiPublicHooksWorkflowCronRoute: ApiPublicHooksWorkflowCronRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

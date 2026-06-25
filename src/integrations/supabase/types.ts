@@ -2156,6 +2156,355 @@ export type Database = {
           },
         ]
       }
+      workflow_events: {
+        Row: {
+          cliente_id: string | null
+          created_at: string
+          despacho_id: string
+          id: string
+          payload: Json
+          procesado: boolean
+          procesado_at: string | null
+          trigger_type: string
+        }
+        Insert: {
+          cliente_id?: string | null
+          created_at?: string
+          despacho_id: string
+          id?: string
+          payload?: Json
+          procesado?: boolean
+          procesado_at?: string | null
+          trigger_type: string
+        }
+        Update: {
+          cliente_id?: string | null
+          created_at?: string
+          despacho_id?: string
+          id?: string
+          payload?: Json
+          procesado?: boolean
+          procesado_at?: string | null
+          trigger_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_events_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_events_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_run_steps: {
+        Row: {
+          despacho_id: string
+          duration_ms: number | null
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          input: Json | null
+          kind: string
+          node_id: string
+          output: Json | null
+          position: number
+          run_id: string
+          started_at: string
+          status: Database["public"]["Enums"]["workflow_step_status"]
+          step_type: string
+        }
+        Insert: {
+          despacho_id: string
+          duration_ms?: number | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          input?: Json | null
+          kind: string
+          node_id: string
+          output?: Json | null
+          position?: number
+          run_id: string
+          started_at?: string
+          status?: Database["public"]["Enums"]["workflow_step_status"]
+          step_type: string
+        }
+        Update: {
+          despacho_id?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          input?: Json | null
+          kind?: string
+          node_id?: string
+          output?: Json | null
+          position?: number
+          run_id?: string
+          started_at?: string
+          status?: Database["public"]["Enums"]["workflow_step_status"]
+          step_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_run_steps_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_run_steps_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_runs: {
+        Row: {
+          cliente_id: string | null
+          created_at: string
+          despacho_id: string
+          duration_ms: number | null
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          started_at: string
+          status: Database["public"]["Enums"]["workflow_run_status"]
+          steps_failed: number
+          steps_ok: number
+          total_steps: number
+          trigger_payload: Json
+          trigger_type: string
+          triggered_by: string | null
+          workflow_id: string
+        }
+        Insert: {
+          cliente_id?: string | null
+          created_at?: string
+          despacho_id: string
+          duration_ms?: number | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          started_at?: string
+          status?: Database["public"]["Enums"]["workflow_run_status"]
+          steps_failed?: number
+          steps_ok?: number
+          total_steps?: number
+          trigger_payload?: Json
+          trigger_type: string
+          triggered_by?: string | null
+          workflow_id: string
+        }
+        Update: {
+          cliente_id?: string | null
+          created_at?: string
+          despacho_id?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          started_at?: string
+          status?: Database["public"]["Enums"]["workflow_run_status"]
+          steps_failed?: number
+          steps_ok?: number
+          total_steps?: number
+          trigger_payload?: Json
+          trigger_type?: string
+          triggered_by?: string | null
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_runs_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_runs_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_runs_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_suggestions: {
+        Row: {
+          acciones_sugeridas: Json
+          cliente_id: string | null
+          confianza: number
+          created_at: string
+          descripcion: string
+          despacho_id: string
+          estado: string
+          evidencia: Json | null
+          id: string
+          patron_detectado: string
+          resolved_at: string | null
+          resolved_by: string | null
+          template_sugerido: string | null
+          titulo: string
+          trigger_sugerido: string | null
+        }
+        Insert: {
+          acciones_sugeridas?: Json
+          cliente_id?: string | null
+          confianza?: number
+          created_at?: string
+          descripcion: string
+          despacho_id: string
+          estado?: string
+          evidencia?: Json | null
+          id?: string
+          patron_detectado: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          template_sugerido?: string | null
+          titulo: string
+          trigger_sugerido?: string | null
+        }
+        Update: {
+          acciones_sugeridas?: Json
+          cliente_id?: string | null
+          confianza?: number
+          created_at?: string
+          descripcion?: string
+          despacho_id?: string
+          estado?: string
+          evidencia?: Json | null
+          id?: string
+          patron_detectado?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          template_sugerido?: string | null
+          titulo?: string
+          trigger_sugerido?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_suggestions_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_suggestions_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflows: {
+        Row: {
+          cliente_id: string | null
+          created_at: string
+          created_by: string | null
+          descripcion: string | null
+          despacho_id: string
+          edges: Json
+          id: string
+          last_run_at: string | null
+          next_run_at: string | null
+          nodes: Json
+          nombre: string
+          prioridad: string
+          responsable_user_id: string | null
+          status: Database["public"]["Enums"]["workflow_status"]
+          template_key: string | null
+          total_failed: number
+          total_runs: number
+          total_success: number
+          trigger_config: Json
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          cliente_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          despacho_id: string
+          edges?: Json
+          id?: string
+          last_run_at?: string | null
+          next_run_at?: string | null
+          nodes?: Json
+          nombre: string
+          prioridad?: string
+          responsable_user_id?: string | null
+          status?: Database["public"]["Enums"]["workflow_status"]
+          template_key?: string | null
+          total_failed?: number
+          total_runs?: number
+          total_success?: number
+          trigger_config?: Json
+          trigger_type: string
+          updated_at?: string
+        }
+        Update: {
+          cliente_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          despacho_id?: string
+          edges?: Json
+          id?: string
+          last_run_at?: string | null
+          next_run_at?: string | null
+          nodes?: Json
+          nombre?: string
+          prioridad?: string
+          responsable_user_id?: string | null
+          status?: Database["public"]["Enums"]["workflow_status"]
+          template_key?: string | null
+          total_failed?: number
+          total_runs?: number
+          total_success?: number
+          trigger_config?: Json
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflows_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflows_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -2214,6 +2563,20 @@ export type Database = {
         | "auxiliar"
         | "cliente_final"
         | "colaborador"
+      workflow_run_status:
+        | "pendiente"
+        | "corriendo"
+        | "exito"
+        | "fallido"
+        | "parcial"
+        | "cancelado"
+      workflow_status: "activo" | "pausado" | "borrador" | "archivado"
+      workflow_step_status:
+        | "pendiente"
+        | "corriendo"
+        | "exito"
+        | "fallido"
+        | "omitido"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2348,6 +2711,22 @@ export const Constants = {
         "auxiliar",
         "cliente_final",
         "colaborador",
+      ],
+      workflow_run_status: [
+        "pendiente",
+        "corriendo",
+        "exito",
+        "fallido",
+        "parcial",
+        "cancelado",
+      ],
+      workflow_status: ["activo", "pausado", "borrador", "archivado"],
+      workflow_step_status: [
+        "pendiente",
+        "corriendo",
+        "exito",
+        "fallido",
+        "omitido",
       ],
     },
   },
