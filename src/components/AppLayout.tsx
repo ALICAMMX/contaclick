@@ -12,6 +12,7 @@ import { NotificationsBell } from "./NotificationsBell";
 import { CommandPaletteTrigger } from "./CommandPalette";
 import { TrialBanner } from "./TrialBanner";
 import { Tour, shouldAutoOpenTour } from "./Tour";
+import { UserWatermark } from "./UserWatermark";
 
 const LABELS: Record<string, string> = {
   app: "Inicio",
@@ -183,6 +184,7 @@ export function AppLayout() {
         </div>
       </main>
       <Tour open={tourOpen} onClose={() => setTourOpen(false)} />
+      <UserWatermark />
     </div>
   );
 }
