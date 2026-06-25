@@ -453,7 +453,7 @@ export const runConciliacionIntegral = createServerFn({ method: "POST" })
       .from("conciliacion_integral_runs")
       .insert({
         cliente_id: data.cliente_id,
-        despacho_id: cli.despacho_id,
+        despacho_id: despachoId,
         desde,
         hasta,
         score_consistencia: score,
@@ -474,7 +474,7 @@ export const runConciliacionIntegral = createServerFn({ method: "POST" })
     if (incidencias.length > 0) {
       const payload = incidencias.map((i) => ({
         cliente_id: data.cliente_id,
-        despacho_id: cli.despacho_id,
+        despacho_id: despachoId,
         run_id: run!.id,
         tipo: i.tipo,
         gravedad: i.gravedad,
@@ -498,7 +498,7 @@ export const runConciliacionIntegral = createServerFn({ method: "POST" })
     // ---------- Snapshot histórico ----------
     await supabase.from("conciliacion_score_historico").insert({
       cliente_id: data.cliente_id,
-      despacho_id: cli.despacho_id,
+      despacho_id: despachoId,
       run_id: run!.id,
       score,
       criticas,
