@@ -137,6 +137,63 @@ export type Database = {
           },
         ]
       }
+      catalogo_cuentas: {
+        Row: {
+          activa: boolean
+          cliente_id: string
+          codigo: string
+          created_at: string
+          created_by: string | null
+          despacho_id: string
+          id: string
+          naturaleza: string
+          nombre: string
+          tipo_sat: string | null
+          updated_at: string
+        }
+        Insert: {
+          activa?: boolean
+          cliente_id: string
+          codigo: string
+          created_at?: string
+          created_by?: string | null
+          despacho_id: string
+          id?: string
+          naturaleza: string
+          nombre: string
+          tipo_sat?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activa?: boolean
+          cliente_id?: string
+          codigo?: string
+          created_at?: string
+          created_by?: string | null
+          despacho_id?: string
+          id?: string
+          naturaleza?: string
+          nombre?: string
+          tipo_sat?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalogo_cuentas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalogo_cuentas_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cfdi_conceptos: {
         Row: {
           cantidad: number | null
@@ -1609,12 +1666,14 @@ export type Database = {
       }
       polizas: {
         Row: {
+          cfdi_id: string | null
           cliente_id: string
           concepto: string | null
           created_at: string
           created_by: string | null
           cuenta: string | null
           despacho_id: string
+          estado: string
           fecha: string
           id: string
           metadata: Json
@@ -1627,12 +1686,14 @@ export type Database = {
           uuid_cfdi: string | null
         }
         Insert: {
+          cfdi_id?: string | null
           cliente_id: string
           concepto?: string | null
           created_at?: string
           created_by?: string | null
           cuenta?: string | null
           despacho_id: string
+          estado?: string
           fecha: string
           id?: string
           metadata?: Json
@@ -1645,12 +1706,14 @@ export type Database = {
           uuid_cfdi?: string | null
         }
         Update: {
+          cfdi_id?: string | null
           cliente_id?: string
           concepto?: string | null
           created_at?: string
           created_by?: string | null
           cuenta?: string | null
           despacho_id?: string
+          estado?: string
           fecha?: string
           id?: string
           metadata?: Json
@@ -1663,6 +1726,13 @@ export type Database = {
           uuid_cfdi?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "polizas_cfdi_id_fkey"
+            columns: ["cfdi_id"]
+            isOneToOne: false
+            referencedRelation: "cfdi_xml"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "polizas_cliente_id_fkey"
             columns: ["cliente_id"]
@@ -1822,6 +1892,72 @@ export type Database = {
             columns: ["tarea_id"]
             isOneToOne: false
             referencedRelation: "tareas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reglas_contables: {
+        Row: {
+          activa: boolean
+          cliente_id: string
+          condicion: Json
+          created_at: string
+          created_by: string | null
+          cuenta_abono: string
+          cuenta_cargo: string
+          despacho_id: string
+          hits: number
+          id: string
+          nombre: string
+          origen: string
+          prioridad: number
+          updated_at: string
+        }
+        Insert: {
+          activa?: boolean
+          cliente_id: string
+          condicion?: Json
+          created_at?: string
+          created_by?: string | null
+          cuenta_abono: string
+          cuenta_cargo: string
+          despacho_id: string
+          hits?: number
+          id?: string
+          nombre: string
+          origen?: string
+          prioridad?: number
+          updated_at?: string
+        }
+        Update: {
+          activa?: boolean
+          cliente_id?: string
+          condicion?: Json
+          created_at?: string
+          created_by?: string | null
+          cuenta_abono?: string
+          cuenta_cargo?: string
+          despacho_id?: string
+          hits?: number
+          id?: string
+          nombre?: string
+          origen?: string
+          prioridad?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reglas_contables_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reglas_contables_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
             referencedColumns: ["id"]
           },
         ]
