@@ -74,7 +74,7 @@ function IsrIvaPM() {
   }
 
   return (
-    <ToolShell
+    <ToolShell helpSlug="isr-iva-pm"
       title="Calculadora ISR / IVA — Persona Moral"
       description="Pago provisional mensual para PM régimen general (Art. 14 LISR). Tasa fija 30 % aplicada a la utilidad fiscal estimada con coeficiente de utilidad."
       icon={<Calculator className="h-5 w-5 text-primary-foreground" />}

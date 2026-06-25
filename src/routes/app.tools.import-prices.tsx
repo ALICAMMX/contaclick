@@ -45,7 +45,7 @@ function ImportPrices() {
   const filtered = filter === "all" ? findings : findings.filter((f) => f.severidad === filter);
 
   return (
-    <ToolShell
+    <ToolShell helpSlug="import-prices"
       title="Validador de Precios de Importación"
       description="Detecta valores unitarios anómalos en CFDI de proveedores extranjeros (RFC XEXX). Genera comparables internos y memo justificativo para LISR 76-A, 179 y valor en aduana."
       icon={<Globe className="h-5 w-5 text-primary-foreground" />}

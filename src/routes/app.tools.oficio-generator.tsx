@@ -186,7 +186,7 @@ function OficioGenerator() {
   };
 
   return (
-    <ToolShell
+    <ToolShell helpSlug="oficio-generator"
       title="Generador de oficios SAT"
       description="Documento formal con estructura jurídica (antecedentes, fundamentos, petitorios) y exportación PDF lista para firma e impresión."
       icon={<FileSignature className="h-5 w-5 text-primary-foreground" />}
