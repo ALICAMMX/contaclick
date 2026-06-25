@@ -8,6 +8,7 @@ import { descargarReporteSalud } from "@/lib/salud/reporte";
 import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, Brain, CheckCircle2, Download, FileSearch, Plus, RefreshCw, Sparkles, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 
 export const Route = createFileRoute("/app/salud-fiscal")({
   component: SaludFiscalPage,
@@ -77,6 +78,7 @@ function SaludFiscalPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <HerramientaHelp slug="salud-fiscal" />
           <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isFetching}>
             <RefreshCw className={`h-4 w-4 mr-1 ${isFetching ? "animate-spin" : ""}`} /> Recalcular
           </Button>

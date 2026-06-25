@@ -17,6 +17,7 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useActiveCliente } from "@/lib/active-cliente";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 import {
   runConciliacionIntegral,
   listarIncidencias,
@@ -119,6 +120,7 @@ function ConciliacionIntegralPage() {
           ) : (
             <Badge variant="outline" className="text-xs">Sin expediente activo</Badge>
           )}
+          <HerramientaHelp slug="conciliacion-integral" />
           <Button asChild variant="outline">
             <a href="/app/polizas"><BookOpen className="h-4 w-4 mr-1" />Pólizas</a>
           </Button>

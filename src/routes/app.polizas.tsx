@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -164,6 +165,7 @@ function PolizasPage() {
             Carga tus pólizas manualmente o por CSV para alimentar el motor de conciliación.
           </p>
         </div>
+        <HerramientaHelp slug="polizas" />
       </div>
 
       <Tabs defaultValue="csv">

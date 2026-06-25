@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -99,18 +100,21 @@ function ContabilidadAutoPage() {
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      <div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Link to="/app/contable" className="hover:underline flex items-center gap-1">
-            <ArrowLeft className="h-3 w-3" /> Contabilidad
-          </Link>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Link to="/app/contable" className="hover:underline flex items-center gap-1">
+              <ArrowLeft className="h-3 w-3" /> Contabilidad
+            </Link>
+          </div>
+          <h1 className="text-2xl font-semibold flex items-center gap-2 mt-1">
+            <Sparkles className="h-6 w-6" /> Contabilidad automática · {cliente.razon_social ?? cliente.rfc}
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            Convierte los CFDI descargados del SAT en pólizas borrador. Revisa, ajusta y aprueba.
+          </p>
         </div>
-        <h1 className="text-2xl font-semibold flex items-center gap-2 mt-1">
-          <Sparkles className="h-6 w-6" /> Contabilidad automática · {cliente.razon_social ?? cliente.rfc}
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          Convierte los CFDI descargados del SAT en pólizas borrador. Revisa, ajusta y aprueba.
-        </p>
+        <HerramientaHelp slug="contabilidad-auto" />
       </div>
 
       <Tabs defaultValue="pendientes">
