@@ -7,6 +7,7 @@ import { computeRiesgoSAT, type CriterioRiesgo } from "@/lib/riesgo/riesgo.funct
 import { ShieldAlert, ShieldCheck, ShieldQuestion, Sparkles, AlertCircle, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { exportXlsx, buildFilename } from "@/lib/export/xlsx";
+import { HerramientaHelp } from "@/components/HerramientaHelp";
 
 export const Route = createFileRoute("/app/riesgo")({
   component: RiesgoPage,
@@ -185,6 +186,7 @@ function Header() {
           Cruza los 12 criterios del Plan Maestro de Fiscalización 2026 con tus datos reales. Se actualiza con cada CFDI y movimiento que cargas.
         </p>
       </div>
+      <HerramientaHelp slug="riesgo-sat" />
     </div>
   );
 }

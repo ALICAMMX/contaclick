@@ -37,10 +37,13 @@ function SatSyncPage() {
         <Link to="/app/contable" className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5">
           <ArrowLeft className="h-3.5 w-3.5" /> Volver a Contable y Fiscal
         </Link>
-        <Button variant="outline" size="sm" onClick={() => dash.refetch()} disabled={dash.isFetching}>
-          {dash.isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-          <span className="ml-2">Actualizar</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <HerramientaHelp slug="sat-sync" />
+          <Button variant="outline" size="sm" onClick={() => dash.refetch()} disabled={dash.isFetching}>
+            {dash.isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            <span className="ml-2">Actualizar</span>
+          </Button>
+        </div>
       </div>
 
       <div>
