@@ -50,6 +50,7 @@ const TOOLS: Tool[] = [
 
   // 6. Cierre y entregables
   { name: "Reportes del expediente", desc: "Exporta papeles de trabajo PDF/Excel.", icon: FileText, href: "/app/reportes", status: "live", group: "6 · Cierre & Entregables" },
+  { name: "Reporte Ejecutivo + Agente IA", desc: "Reportes premium tipo CFO advisor: hallazgos, oportunidades, recomendaciones accionables y simulador estratégico.", icon: Activity, href: "/app/reporte-ejecutivo", status: "live", group: "6 · Cierre & Entregables" },
   { name: "Generador de oficios SAT", desc: "Plantillas listas personalizadas.", icon: FileSignature, href: "/app/tools/oficio-generator", status: "live", group: "6 · Cierre & Entregables" },
 
   // 7. IA siempre activa
