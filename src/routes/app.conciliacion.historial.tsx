@@ -52,6 +52,7 @@ function HistorialPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <HerramientaHelp slug="conciliacion-historial" />
           <Button variant="glass" size="sm" onClick={() => setYear((y) => y - 1)}><ArrowLeft className="h-4 w-4" /></Button>
           <div className="text-lg font-semibold tabular-nums px-3">{year}</div>
           <Button variant="glass" size="sm" onClick={() => setYear((y) => y + 1)}><ArrowRight className="h-4 w-4" /></Button>
