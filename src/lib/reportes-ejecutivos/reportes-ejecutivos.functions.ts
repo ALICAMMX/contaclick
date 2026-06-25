@@ -221,6 +221,7 @@ Responde SOLO JSON válido con esta forma:
             model: "google/gemini-2.5-flash",
             messages: [{ role: "user", content: prompt }],
             response_format: { type: "json_object" },
+            max_tokens: 8000,
           }),
         });
         if (res.ok) {
