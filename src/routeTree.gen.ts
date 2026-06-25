@@ -24,6 +24,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PortalIndexRouteImport } from './routes/portal.index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as PortalSaludFiscalRouteImport } from './routes/portal.salud-fiscal'
 import { Route as PortalReportesRouteImport } from './routes/portal.reportes'
 import { Route as PortalMensajesRouteImport } from './routes/portal.mensajes'
 import { Route as PortalImpuestosRouteImport } from './routes/portal.impuestos'
@@ -39,6 +40,7 @@ import { Route as DashboardAuditorRouteImport } from './routes/dashboard.auditor
 import { Route as DashboardAsistenteRouteImport } from './routes/dashboard.asistente'
 import { Route as AppWorkflowsRouteImport } from './routes/app.workflows'
 import { Route as AppTareasRouteImport } from './routes/app.tareas'
+import { Route as AppSaludFiscalRouteImport } from './routes/app.salud-fiscal'
 import { Route as AppRiesgoRouteImport } from './routes/app.riesgo'
 import { Route as AppRfcsVinculadosRouteImport } from './routes/app.rfcs-vinculados'
 import { Route as AppReportesRouteImport } from './routes/app.reportes'
@@ -181,6 +183,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const PortalSaludFiscalRoute = PortalSaludFiscalRouteImport.update({
+  id: '/salud-fiscal',
+  path: '/salud-fiscal',
+  getParentRoute: () => PortalRoute,
+} as any)
 const PortalReportesRoute = PortalReportesRouteImport.update({
   id: '/reportes',
   path: '/reportes',
@@ -254,6 +261,11 @@ const AppWorkflowsRoute = AppWorkflowsRouteImport.update({
 const AppTareasRoute = AppTareasRouteImport.update({
   id: '/tareas',
   path: '/tareas',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSaludFiscalRoute = AppSaludFiscalRouteImport.update({
+  id: '/salud-fiscal',
+  path: '/salud-fiscal',
   getParentRoute: () => AppRoute,
 } as any)
 const AppRiesgoRoute = AppRiesgoRouteImport.update({
@@ -627,6 +639,7 @@ export interface FileRoutesByFullPath {
   '/app/reportes': typeof AppReportesRouteWithChildren
   '/app/rfcs-vinculados': typeof AppRfcsVinculadosRoute
   '/app/riesgo': typeof AppRiesgoRoute
+  '/app/salud-fiscal': typeof AppSaludFiscalRoute
   '/app/tareas': typeof AppTareasRoute
   '/app/workflows': typeof AppWorkflowsRoute
   '/dashboard/asistente': typeof DashboardAsistenteRoute
@@ -642,6 +655,7 @@ export interface FileRoutesByFullPath {
   '/portal/impuestos': typeof PortalImpuestosRoute
   '/portal/mensajes': typeof PortalMensajesRoute
   '/portal/reportes': typeof PortalReportesRoute
+  '/portal/salud-fiscal': typeof PortalSaludFiscalRoute
   '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/portal/': typeof PortalIndexRoute
@@ -715,6 +729,7 @@ export interface FileRoutesByTo {
   '/app/expedientes': typeof AppExpedientesRoute
   '/app/rfcs-vinculados': typeof AppRfcsVinculadosRoute
   '/app/riesgo': typeof AppRiesgoRoute
+  '/app/salud-fiscal': typeof AppSaludFiscalRoute
   '/app/tareas': typeof AppTareasRoute
   '/app/workflows': typeof AppWorkflowsRoute
   '/dashboard/asistente': typeof DashboardAsistenteRoute
@@ -730,6 +745,7 @@ export interface FileRoutesByTo {
   '/portal/impuestos': typeof PortalImpuestosRoute
   '/portal/mensajes': typeof PortalMensajesRoute
   '/portal/reportes': typeof PortalReportesRoute
+  '/portal/salud-fiscal': typeof PortalSaludFiscalRoute
   '/app': typeof AppIndexRoute
   '/dashboard': typeof DashboardIndexRoute
   '/portal': typeof PortalIndexRoute
@@ -814,6 +830,7 @@ export interface FileRoutesById {
   '/app/reportes': typeof AppReportesRouteWithChildren
   '/app/rfcs-vinculados': typeof AppRfcsVinculadosRoute
   '/app/riesgo': typeof AppRiesgoRoute
+  '/app/salud-fiscal': typeof AppSaludFiscalRoute
   '/app/tareas': typeof AppTareasRoute
   '/app/workflows': typeof AppWorkflowsRoute
   '/dashboard/asistente': typeof DashboardAsistenteRoute
@@ -829,6 +846,7 @@ export interface FileRoutesById {
   '/portal/impuestos': typeof PortalImpuestosRoute
   '/portal/mensajes': typeof PortalMensajesRoute
   '/portal/reportes': typeof PortalReportesRoute
+  '/portal/salud-fiscal': typeof PortalSaludFiscalRoute
   '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/portal/': typeof PortalIndexRoute
@@ -914,6 +932,7 @@ export interface FileRouteTypes {
     | '/app/reportes'
     | '/app/rfcs-vinculados'
     | '/app/riesgo'
+    | '/app/salud-fiscal'
     | '/app/tareas'
     | '/app/workflows'
     | '/dashboard/asistente'
@@ -929,6 +948,7 @@ export interface FileRouteTypes {
     | '/portal/impuestos'
     | '/portal/mensajes'
     | '/portal/reportes'
+    | '/portal/salud-fiscal'
     | '/app/'
     | '/dashboard/'
     | '/portal/'
@@ -1002,6 +1022,7 @@ export interface FileRouteTypes {
     | '/app/expedientes'
     | '/app/rfcs-vinculados'
     | '/app/riesgo'
+    | '/app/salud-fiscal'
     | '/app/tareas'
     | '/app/workflows'
     | '/dashboard/asistente'
@@ -1017,6 +1038,7 @@ export interface FileRouteTypes {
     | '/portal/impuestos'
     | '/portal/mensajes'
     | '/portal/reportes'
+    | '/portal/salud-fiscal'
     | '/app'
     | '/dashboard'
     | '/portal'
@@ -1100,6 +1122,7 @@ export interface FileRouteTypes {
     | '/app/reportes'
     | '/app/rfcs-vinculados'
     | '/app/riesgo'
+    | '/app/salud-fiscal'
     | '/app/tareas'
     | '/app/workflows'
     | '/dashboard/asistente'
@@ -1115,6 +1138,7 @@ export interface FileRouteTypes {
     | '/portal/impuestos'
     | '/portal/mensajes'
     | '/portal/reportes'
+    | '/portal/salud-fiscal'
     | '/app/'
     | '/dashboard/'
     | '/portal/'
@@ -1291,6 +1315,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/portal/salud-fiscal': {
+      id: '/portal/salud-fiscal'
+      path: '/salud-fiscal'
+      fullPath: '/portal/salud-fiscal'
+      preLoaderRoute: typeof PortalSaludFiscalRouteImport
+      parentRoute: typeof PortalRoute
+    }
     '/portal/reportes': {
       id: '/portal/reportes'
       path: '/reportes'
@@ -1394,6 +1425,13 @@ declare module '@tanstack/react-router' {
       path: '/tareas'
       fullPath: '/app/tareas'
       preLoaderRoute: typeof AppTareasRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/salud-fiscal': {
+      id: '/app/salud-fiscal'
+      path: '/salud-fiscal'
+      fullPath: '/app/salud-fiscal'
+      preLoaderRoute: typeof AppSaludFiscalRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/riesgo': {
@@ -2016,6 +2054,7 @@ interface AppRouteChildren {
   AppReportesRoute: typeof AppReportesRouteWithChildren
   AppRfcsVinculadosRoute: typeof AppRfcsVinculadosRoute
   AppRiesgoRoute: typeof AppRiesgoRoute
+  AppSaludFiscalRoute: typeof AppSaludFiscalRoute
   AppTareasRoute: typeof AppTareasRoute
   AppWorkflowsRoute: typeof AppWorkflowsRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -2059,6 +2098,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppReportesRoute: AppReportesRouteWithChildren,
   AppRfcsVinculadosRoute: AppRfcsVinculadosRoute,
   AppRiesgoRoute: AppRiesgoRoute,
+  AppSaludFiscalRoute: AppSaludFiscalRoute,
   AppTareasRoute: AppTareasRoute,
   AppWorkflowsRoute: AppWorkflowsRoute,
   AppIndexRoute: AppIndexRoute,
@@ -2115,6 +2155,7 @@ interface PortalRouteChildren {
   PortalImpuestosRoute: typeof PortalImpuestosRoute
   PortalMensajesRoute: typeof PortalMensajesRoute
   PortalReportesRoute: typeof PortalReportesRoute
+  PortalSaludFiscalRoute: typeof PortalSaludFiscalRoute
   PortalIndexRoute: typeof PortalIndexRoute
 }
 
@@ -2125,6 +2166,7 @@ const PortalRouteChildren: PortalRouteChildren = {
   PortalImpuestosRoute: PortalImpuestosRoute,
   PortalMensajesRoute: PortalMensajesRoute,
   PortalReportesRoute: PortalReportesRoute,
+  PortalSaludFiscalRoute: PortalSaludFiscalRoute,
   PortalIndexRoute: PortalIndexRoute,
 }
 

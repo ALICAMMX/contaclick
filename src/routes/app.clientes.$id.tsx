@@ -306,6 +306,8 @@ function ClienteDetailPage() {
         </p>
       </section>
 
+      <SaludFiscalExpediente clienteId={id} />
+
       <AutomatizacionesExpediente clienteId={id} />
     </div>
   );
