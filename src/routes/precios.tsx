@@ -314,10 +314,11 @@ function PreciosPage() {
         <div className="mx-auto max-w-7xl px-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
           <Logo size="sm" />
           <div>© 2026 ContaClick IA · Hecho en México 🇲🇽</div>
-          <div className="flex gap-5">
+          <div className="flex gap-5 items-center flex-wrap justify-center">
             <Link to="/privacidad" className="hover:text-foreground">Privacidad</Link>
             <Link to="/terminos" className="hover:text-foreground">Términos</Link>
             <Link to="/contacto" className="hover:text-foreground">Contacto</Link>
+            <PWAInstallLink />
           </div>
         </div>
       </footer>
