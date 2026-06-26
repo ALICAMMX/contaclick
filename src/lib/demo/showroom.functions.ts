@@ -5,7 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { PERFILES_DEMO, DEMO_TAG, EFOS_DEMO_RFCS, type PerfilDemo } from "./perfiles";
 import { generateDemoCfdi } from "./cfdi-generator";
 
-const DESPACHO_RFC = "DEMODESP010101AA0";
+
 
 async function getDespacho(supabase: SupabaseClient, userId: string): Promise<string> {
   const { data: m } = await supabase
