@@ -107,6 +107,13 @@ export function HelpBot() {
     return () => document.removeEventListener("mousedown", onDown);
   }, [open]);
 
+  // External trigger to open the bot from other parts of the app
+  useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener("open-bot-ayuda", onOpen);
+    return () => window.removeEventListener("open-bot-ayuda", onOpen);
+  }, []);
+
   useEffect(() => {
     if (open) {
       endRef.current?.scrollIntoView({ behavior: "smooth" });
