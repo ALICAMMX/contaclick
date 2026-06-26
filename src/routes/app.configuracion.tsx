@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useDespacho } from "@/lib/despacho/use-despacho";
 import { updateDespacho, createDespacho } from "@/lib/despacho/despacho.functions";
 import { seedDemo, clearDemo } from "@/lib/demo/demo.functions";
+import { seedDemoShowroom, clearDemoShowroom } from "@/lib/demo/showroom.functions";
 import { Tour, resetTour } from "@/components/Tour";
 import { UsageProfileCard } from "@/components/UsageProfileCard";
 import { UsageHistoryPanel } from "@/components/UsageHistoryPanel";
@@ -24,6 +25,8 @@ function ConfigPage() {
   const fnCreate = useServerFn(createDespacho);
   const fnSeed = useServerFn(seedDemo);
   const fnClear = useServerFn(clearDemo);
+  const fnSeedShow = useServerFn(seedDemoShowroom);
+  const fnClearShow = useServerFn(clearDemoShowroom);
   const [tourOpen, setTourOpen] = useState(false);
 
   const [nombre, setNombre] = useState("");
@@ -42,6 +45,24 @@ function ConfigPage() {
     mutationFn: () => fnClear(),
     onSuccess: (r: any) => {
       toast.success(r.removed > 0 ? `Demo eliminado (${r.removed} clientes).` : "No había datos demo.");
+      qc.invalidateQueries({ queryKey: ["clientes"] });
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  const seedShow = useMutation({
+    mutationFn: () => fnSeedShow(),
+    onSuccess: (r: any) => {
+      if (r.alreadySeeded) toast.info("El showroom demo ya estaba cargado.");
+      else toast.success(`Showroom demo cargado: ${r.clientes} expedientes con perfiles diferenciados.`);
+      qc.invalidateQueries({ queryKey: ["clientes"] });
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+  const clearShow = useMutation({
+    mutationFn: () => fnClearShow(),
+    onSuccess: (r: any) => {
+      toast.success(r.removed > 0 ? `Showroom demo eliminado (${r.removed} expedientes).` : "No había showroom demo.");
       qc.invalidateQueries({ queryKey: ["clientes"] });
     },
     onError: (e) => toast.error((e as Error).message),
