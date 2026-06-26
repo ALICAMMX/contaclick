@@ -32,6 +32,12 @@ const SUGERENCIAS = [
 ];
 
 export function HelpBot() {
+  const { user } = useAuth();
+  const firstName = useMemo(() => getFirstName(user), [user]);
+  const INITIAL: Msg[] = useMemo(
+    () => [{ role: "assistant", content: buildWelcome(firstName) }],
+    [firstName],
+  );
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>(INITIAL);
   const [input, setInput] = useState("");
