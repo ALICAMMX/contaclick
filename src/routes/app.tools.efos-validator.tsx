@@ -6,6 +6,7 @@ import { AlertTriangle, ShieldAlert, ShieldCheck, Search, Loader2, ExternalLink 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ToolShell } from "@/components/ToolShell";
+import { DemoCaseButtons } from "@/components/DemoCaseButtons";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { lookupEfosRfc, scanClienteEfos, efosCatalog } from "@/lib/efos/efos.functions";
 import type { EfosSituacion } from "@/lib/efos/lista-demo";
@@ -126,6 +127,13 @@ function EfosValidator() {
         <p className="text-xs text-muted-foreground">
           Pega uno o varios RFCs (separados por coma o salto de línea). Útil cuando un cliente te manda un CFDI suelto.
         </p>
+        <DemoCaseButtons
+          toolKey="efos-validator"
+          onLoad={(payload) => {
+            setRfcInput((payload.rfcs as string[]).join(", "));
+            setTimeout(() => onLookup(), 50);
+          }}
+        />
         <div className="flex flex-col md:flex-row gap-2">
           <Input
             value={rfcInput}

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useDespacho } from "@/lib/despacho/use-despacho";
 import { updateDespacho, createDespacho } from "@/lib/despacho/despacho.functions";
 import { seedDemo, clearDemo } from "@/lib/demo/demo.functions";
+import { seedDemoShowroom, clearDemoShowroom } from "@/lib/demo/showroom.functions";
 import { Tour, resetTour } from "@/components/Tour";
 import { UsageProfileCard } from "@/components/UsageProfileCard";
 import { UsageHistoryPanel } from "@/components/UsageHistoryPanel";
@@ -24,6 +25,8 @@ function ConfigPage() {
   const fnCreate = useServerFn(createDespacho);
   const fnSeed = useServerFn(seedDemo);
   const fnClear = useServerFn(clearDemo);
+  const fnSeedShow = useServerFn(seedDemoShowroom);
+  const fnClearShow = useServerFn(clearDemoShowroom);
   const [tourOpen, setTourOpen] = useState(false);
 
   const [nombre, setNombre] = useState("");
@@ -42,6 +45,24 @@ function ConfigPage() {
     mutationFn: () => fnClear(),
     onSuccess: (r: any) => {
       toast.success(r.removed > 0 ? `Demo eliminado (${r.removed} clientes).` : "No había datos demo.");
+      qc.invalidateQueries({ queryKey: ["clientes"] });
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  const seedShow = useMutation({
+    mutationFn: () => fnSeedShow(),
+    onSuccess: (r: any) => {
+      if (r.alreadySeeded) toast.info("El showroom demo ya estaba cargado.");
+      else toast.success(`Showroom demo cargado: ${r.clientes} expedientes con perfiles diferenciados.`);
+      qc.invalidateQueries({ queryKey: ["clientes"] });
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+  const clearShow = useMutation({
+    mutationFn: () => fnClearShow(),
+    onSuccess: (r: any) => {
+      toast.success(r.removed > 0 ? `Showroom demo eliminado (${r.removed} expedientes).` : "No había showroom demo.");
       qc.invalidateQueries({ queryKey: ["clientes"] });
     },
     onError: (e) => toast.error((e as Error).message),
@@ -177,6 +198,30 @@ function ConfigPage() {
           <Button onClick={() => clear.mutate()} disabled={clear.isPending} variant="ghost" size="sm">
             {clear.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
             Limpiar demo
+          </Button>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-primary/50 bg-gradient-to-br from-primary/10 to-primary/5 p-5 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-lg bg-primary/20 flex items-center justify-center">
+            <Sparkles className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <div className="font-semibold">Showroom demo completo (5 expedientes)</div>
+            <div className="text-xs text-muted-foreground">
+              Siembra 5 clientes con perfiles distintos: cumplido modelo (🟢), buen contribuyente (🟢), regular (🟡), en problemas (🟠) y crítico con 69-B (🔴). Incluye CFDI, bancos, conciliaciones, salud fiscal, pólizas, tareas, defensas, trámites, alertas, mensajes y reportes ejecutivos precargados.
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => seedShow.mutate()} disabled={seedShow.isPending} variant="hero" size="sm">
+            {seedShow.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            Cargar showroom completo
+          </Button>
+          <Button onClick={() => clearShow.mutate()} disabled={clearShow.isPending} variant="ghost" size="sm">
+            {clearShow.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            Limpiar showroom
           </Button>
         </div>
       </div>
