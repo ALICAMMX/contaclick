@@ -54,40 +54,6 @@ function CfdiValidator() {
     const text = await file.text();
     await processXml(text, file.name);
   };
-    if (!cliente) {
-      toast.error("Selecciona un expediente activo antes de validar un CFDI.");
-      return;
-    }
-    const text = await file.text();
-    let result: CfdiParsed;
-    try {
-      result = parseCfdi(text);
-    } catch (e: any) {
-      const rep = emptyReport(cliente.rfc.toUpperCase());
-      rep.errores.push({ archivo: file.name, motivo: "No se pudo leer el XML", detalle: e?.message ?? "" });
-      setReport(rep);
-      setParsed(null);
-      setFileName(null);
-      return;
-    }
-    const rfc = cliente.rfc.toUpperCase();
-    const emisor = (result.emisor.rfc ?? "").toUpperCase();
-    const receptor = (result.receptor.rfc ?? "").toUpperCase();
-    if (emisor !== rfc && receptor !== rfc) {
-      const rep = emptyReport(rfc);
-      rep.rfcAjeno.push({
-        archivo: file.name,
-        motivo: "RFC ajeno al expediente",
-        detalle: `Emisor ${emisor || "—"} · Receptor ${receptor || "—"}`,
-      });
-      setReport(rep);
-      setParsed(null);
-      setFileName(null);
-      return;
-    }
-    setFileName(file.name);
-    setParsed(result);
-  };
 
   const onSave = async () => {
     if (!parsed) return;
