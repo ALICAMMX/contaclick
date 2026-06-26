@@ -215,10 +215,13 @@ async function seedOneCliente(supabase: SupabaseClient, despacho_id: string, use
 
   // 12) Tareas
   if (perfil.tareas.length > 0) {
+    const mapKanban = (s: string) => s === "completada" ? "finalizado" : s === "en_progreso" ? "en_proceso" : "pendiente";
+    const mapEstatus = (s: string) => s === "completada" || s === "en_progreso" ? "en_proceso" : "pendiente";
     await supabase.from("tareas").insert(perfil.tareas.map((t) => ({
       despacho_id, cliente_id, titulo: t.titulo,
-      estatus: t.estatus, kanban_estado: t.estatus, prioridad: t.prioridad,
+      estatus: mapEstatus(t.estatus), kanban_estado: mapKanban(t.estatus), prioridad: t.prioridad,
       origen: "demo", created_by: userId,
+      completada_at: t.estatus === "completada" ? new Date().toISOString() : null,
     })));
   }
 
