@@ -10,6 +10,7 @@ import {
   deleteBotAyudaThread,
 } from "@/lib/bot-ayuda.functions";
 import { useAuth } from "@/lib/auth";
+import { useActiveCliente } from "@/lib/active-cliente";
 import { toast } from "sonner";
 
 type Msg = { role: "user" | "assistant"; content: string };
@@ -27,20 +28,33 @@ function getFirstName(user: any): string {
   return "";
 }
 
-function buildWelcome(name: string): string {
+function buildWelcome(name: string, expedienteNombre?: string | null): string {
   const saludo = name ? `¡Bienvenido(a), **${name}**!` : "¡Bienvenido(a)!";
-  return `${saludo} 👋\n\nSoy el **Bot de Ayuda de ContaClick**. Estoy aquí para ayudarte: si es tu primera vez en ContaClick puedo darte una guía de cómo comenzar a usar tu herramienta. Ahora eres parte de nuestra familia y queremos tratarte como tal.\n\n**¿Por dónde quieres comenzar?**\n\n- **a)** Explicación de cómo funciona ContaClick\n- **b)** Cuáles son las funciones principales de ContaClick\n- **c)** Escribe algo personalizado en el chat y con todo gusto te respondo`;
+  const opcionD = expedienteNombre
+    ? `\n- **d)** ¿Quieres tratar algo del expediente **${expedienteNombre}**?`
+    : "";
+  return `${saludo} 👋\n\nSoy el **Bot de Ayuda de ContaClick**. Estoy aquí para ayudarte: si es tu primera vez en ContaClick puedo darte una guía de cómo comenzar a usar tu herramienta. Ahora eres parte de nuestra familia y queremos tratarte como tal.\n\n**¿Por dónde quieres comenzar?**\n\n- **a)** Explicación de cómo funciona ContaClick\n- **b)** Cuáles son las funciones principales de ContaClick\n- **c)** Escribe algo personalizado en el chat y con todo gusto te respondo${opcionD}`;
 }
-
-const SUGERENCIAS = [
-  "a) Explícame cómo funciona ContaClick",
-  "b) ¿Cuáles son las funciones principales de ContaClick?",
-];
 
 export function HelpBot() {
   const { user } = useAuth();
+  const { cliente } = useActiveCliente();
   const firstName = useMemo(() => getFirstName(user), [user]);
-  const welcome = useMemo<Msg>(() => ({ role: "assistant", content: buildWelcome(firstName) }), [firstName]);
+  const expedienteNombre = cliente?.razon_social ?? null;
+  const welcome = useMemo<Msg>(
+    () => ({ role: "assistant", content: buildWelcome(firstName, expedienteNombre) }),
+    [firstName, expedienteNombre],
+  );
+  const sugerencias = useMemo<string[]>(() => {
+    const base = [
+      "a) Explícame cómo funciona ContaClick",
+      "b) ¿Cuáles son las funciones principales de ContaClick?",
+    ];
+    if (expedienteNombre) {
+      base.push(`d) Quiero tratar algo del expediente ${expedienteNombre}`);
+    }
+    return base;
+  }, [expedienteNombre]);
 
   const [open, setOpen] = useState(false);
   const [threads, setThreads] = useState<Thread[]>([]);
@@ -92,6 +106,13 @@ export function HelpBot() {
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
   }, [open]);
+
+  // External trigger to open the bot from other parts of the app
+  useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener("open-bot-ayuda", onOpen);
+    return () => window.removeEventListener("open-bot-ayuda", onOpen);
+  }, []);
 
   useEffect(() => {
     if (open) {
@@ -151,7 +172,10 @@ export function HelpBot() {
     setInput("");
     setLoading(true);
     try {
-      const res = await send({ data: { threadId: activeId, messages: next } });
+      const clienteContext = cliente
+        ? `Razón social: ${cliente.razon_social} · RFC: ${cliente.rfc}${cliente.regimen_fiscal ? ` · Régimen: ${cliente.regimen_fiscal}` : ""}`
+        : null;
+      const res = await send({ data: { threadId: activeId, messages: next, clienteContext } });
       if (res.error) {
         toast.error(res.error);
         setMessages(messages);
@@ -327,7 +351,7 @@ export function HelpBot() {
               )}
               {!loadingThread && messages.length <= 1 && !loading && (
                 <div className="grid gap-1.5 pt-1">
-                  {SUGERENCIAS.map((s) => (
+                  {sugerencias.map((s: string) => (
                     <button
                       key={s}
                       onClick={() => onSend(s)}
