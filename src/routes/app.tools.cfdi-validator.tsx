@@ -71,6 +71,10 @@ function CfdiValidator() {
       description="Sube un XML, valida su estructura y revisa todos los datos relevantes."
       icon={<FileSearch className="h-5 w-5 text-primary-foreground" />}
     >
+      <DemoCaseButtons
+        toolKey="cfdi-validator"
+        onLoad={(payload, variant) => processXml(payload.xml, variant === "ok" ? "demo-ok.xml" : "demo-riesgo.xml")}
+      />
       <label className="block rounded-xl border-2 border-dashed border-border bg-card/30 p-10 text-center hover:border-primary/50 transition-colors cursor-pointer">
         <input type="file" accept=".xml,text/xml,application/xml" className="hidden"
           onChange={async (e) => { const f = e.target.files?.[0]; if (f) await onFile(f); e.target.value = ""; }} />
