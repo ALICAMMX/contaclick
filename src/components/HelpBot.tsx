@@ -1,26 +1,34 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Bot, Send, X, Sparkles, Loader2, Minus } from "lucide-react";
 import { RichMarkdown } from "@/components/RichMarkdown";
 import { Button } from "@/components/ui/button";
 import { sendBotAyuda } from "@/lib/bot-ayuda.functions";
+import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
-const INITIAL: Msg[] = [
-  {
-    role: "assistant",
-    content:
-      "👋 Hola, soy el **Bot de Ayuda de ContaClick**. Pregúntame cómo usar cualquier herramienta: te explico paso a paso, qué requisitos necesita, cómo realizar la operación y cómo verificar que el resultado es correcto.\n\n**Ejemplos:**\n- ¿Cómo descargo XMLs masivos del SAT?\n- ¿Qué necesito antes de usar el Conciliador bancario?\n- ¿Cómo verifico que mi cálculo de RESICO es correcto?",
-  },
-];
+function getFirstName(user: any): string {
+  const meta = user?.user_metadata ?? {};
+  const full = (meta.full_name || meta.name || meta.nombre || "").toString().trim();
+  if (full) return full.split(/\s+/)[0];
+  const email: string = user?.email ?? "";
+  if (email) {
+    const local = email.split("@")[0].replace(/[._-]+/g, " ").trim();
+    if (local) return local.charAt(0).toUpperCase() + local.slice(1);
+  }
+  return "";
+}
+
+function buildWelcome(name: string): string {
+  const saludo = name ? `¡Bienvenido(a), **${name}**!` : "¡Bienvenido(a)!";
+  return `${saludo} 👋\n\nSoy el **Bot de Ayuda de ContaClick**. Estoy aquí para ayudarte: si es tu primera vez en ContaClick puedo darte una guía de cómo comenzar a usar tu herramienta. Ahora eres parte de nuestra familia y queremos tratarte como tal.\n\n**¿Por dónde quieres comenzar?**\n\n- **a)** Explicación de cómo funciona ContaClick\n- **b)** Cuáles son las funciones principales de ContaClick\n- **c)** Escribe algo personalizado en el chat y con todo gusto te respondo`;
+}
 
 const SUGERENCIAS = [
-  "¿Cómo subo CFDIs a un expediente?",
-  "Pasos para generar una póliza automática",
-  "¿Qué revisa el Auditor Express?",
-  "Cómo interpretar el semáforo de Salud Fiscal",
+  "a) Explícame cómo funciona ContaClick",
+  "b) ¿Cuáles son las funciones principales de ContaClick?",
 ];
 
 export function HelpBot() {
