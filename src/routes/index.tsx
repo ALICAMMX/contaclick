@@ -8,6 +8,7 @@ import {
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
+import { PWAInstallLink } from "@/components/PWAInstall";
 import heroImg1 from "@/assets/hero-bg-1.jpg";
 import heroImg2 from "@/assets/hero-bg-2.jpg";
 import heroImg3 from "@/assets/hero-bg-3.jpg";

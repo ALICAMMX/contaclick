@@ -4,6 +4,7 @@ import { CheckCircle2, Sparkles, ArrowRight, Zap, Building2, Rocket, Users } fro
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
+import { PWAInstallLink } from "@/components/PWAInstall";
 
 export const Route = createFileRoute("/precios")({
   head: () => ({
