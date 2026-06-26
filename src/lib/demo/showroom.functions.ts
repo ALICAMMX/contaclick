@@ -160,7 +160,7 @@ async function seedOneCliente(supabase: SupabaseClient, despacho_id: string, use
       fecha: new Date(c.fecha as string).toISOString().slice(0, 10),
       concepto: esEmisor ? "Venta a público" : "Compra a proveedor",
       monto: Number(c.total),
-      cuenta: esEmisor ? "4000" : "5000", origen: "auto", estado: "confirmada",
+      cuenta: esEmisor ? "4000" : "5000", origen: "auto_sat", estado: "confirmada",
       created_by: userId, metadata: { demo: true },
     });
   }
@@ -320,7 +320,7 @@ async function seedOneCliente(supabase: SupabaseClient, despacho_id: string, use
       monto: +(5000 + rng() * 25000).toFixed(2),
       fecha_emision: new Date(now.getFullYear(), now.getMonth() - 1, 1 + i).toISOString().slice(0, 10),
       fecha_vencimiento: new Date(now.getFullYear(), now.getMonth(), 15 + i).toISOString().slice(0, 10),
-      estado: perfil.idx >= 4 && i < 2 ? "vencida" : "pendiente",
+      estado: "pendiente",
       created_by: userId,
     });
     cxpRows.push({
@@ -360,7 +360,7 @@ async function seedOneCliente(supabase: SupabaseClient, despacho_id: string, use
     await supabase.from("sat_sync_runs").insert({
       despacho_id, cliente_id,
       iniciado_at: iniciado.toISOString(), finalizado_at: finalizado.toISOString(),
-      duracion_ms: 45000, origen: "automatico", tipo: "ambos",
+      duracion_ms: 45000, origen: "cron", tipo: "ambos",
       estatus: i === 0 && perfil.idx >= 4 ? "error" : "exitoso",
       descargados: perfil.cfdi_emitidos + perfil.cfdi_recibidos,
       nuevos: i === 0 ? perfil.cfdi_emitidos + perfil.cfdi_recibidos : 0,

@@ -29,7 +29,7 @@ export type PerfilDemo = {
   // Defensas abiertas
   defensas: Array<{ nombre: string; conflicto: string; potencial: string }>;
   // Trámites
-  tramites: Array<{ titulo: string; autoridad: string; estado: "pendiente" | "en_proceso" | "completado" }>;
+  tramites: Array<{ titulo: string; autoridad: string; estado: "pendiente" | "en_proceso" | "resuelto" }>;
 };
 
 export const PERFILES_DEMO: PerfilDemo[] = [
@@ -67,7 +67,7 @@ export const PERFILES_DEMO: PerfilDemo[] = [
 
 **Recomendaciones:** Mantener la disciplina actual. Considerar deducciones adicionales por inversiones en activo fijo del último trimestre.`,
     defensas: [],
-    tramites: [{ titulo: "Renovación de e.firma", autoridad: "SAT", estado: "completado" }],
+    tramites: [{ titulo: "Renovación de e.firma", autoridad: "SAT", estado: "resuelto" }],
   },
   {
     idx: 2,
