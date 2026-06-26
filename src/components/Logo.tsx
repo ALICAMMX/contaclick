@@ -1,20 +1,20 @@
-import { Sparkles } from "lucide-react";
+import logoAsset from "@/assets/contaclick-logo.png.asset.json";
 
 export function Logo({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
-  const dims = size === "sm" ? "h-7 w-7" : size === "lg" ? "h-10 w-10" : "h-8 w-8";
-  const text = size === "sm" ? "text-base" : size === "lg" ? "text-2xl" : "text-lg";
+  const h = size === "sm" ? "h-8" : size === "lg" ? "h-14" : "h-10";
+  const text = size === "sm" ? "text-[10px]" : size === "lg" ? "text-sm" : "text-xs";
   return (
-    <div className="flex items-center gap-2.5">
-      <div
-        className={`${dims} rounded-lg flex items-center justify-center relative overflow-hidden`}
-        style={{ background: "var(--gradient-primary)", boxShadow: "var(--shadow-glow)" }}
-      >
-        <Sparkles className="h-4 w-4 text-primary-foreground relative z-10" strokeWidth={2.5} />
-      </div>
-      <div className={`font-display font-semibold ${text} tracking-tight`}>
-        Conta<span className="gradient-text">Click</span>
-        <span className="text-muted-foreground font-normal ml-1">IA</span>
-      </div>
+    <div className="flex items-center gap-2">
+      <img
+        src={logoAsset.url}
+        alt="ContaClick"
+        className={`${h} w-auto object-contain`}
+        loading="eager"
+        decoding="async"
+      />
+      <span className={`font-display font-semibold tracking-wider text-muted-foreground ${text} uppercase`}>
+        IA
+      </span>
     </div>
   );
 }
