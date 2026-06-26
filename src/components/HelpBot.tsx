@@ -28,15 +28,13 @@ function getFirstName(user: any): string {
   return "";
 }
 
-function buildWelcome(name: string): string {
+function buildWelcome(name: string, expedienteNombre?: string | null): string {
   const saludo = name ? `¡Bienvenido(a), **${name}**!` : "¡Bienvenido(a)!";
-  return `${saludo} 👋\n\nSoy el **Bot de Ayuda de ContaClick**. Estoy aquí para ayudarte: si es tu primera vez en ContaClick puedo darte una guía de cómo comenzar a usar tu herramienta. Ahora eres parte de nuestra familia y queremos tratarte como tal.\n\n**¿Por dónde quieres comenzar?**\n\n- **a)** Explicación de cómo funciona ContaClick\n- **b)** Cuáles son las funciones principales de ContaClick\n- **c)** Escribe algo personalizado en el chat y con todo gusto te respondo`;
+  const opcionD = expedienteNombre
+    ? `\n- **d)** ¿Quieres tratar algo del expediente **${expedienteNombre}**?`
+    : "";
+  return `${saludo} 👋\n\nSoy el **Bot de Ayuda de ContaClick**. Estoy aquí para ayudarte: si es tu primera vez en ContaClick puedo darte una guía de cómo comenzar a usar tu herramienta. Ahora eres parte de nuestra familia y queremos tratarte como tal.\n\n**¿Por dónde quieres comenzar?**\n\n- **a)** Explicación de cómo funciona ContaClick\n- **b)** Cuáles son las funciones principales de ContaClick\n- **c)** Escribe algo personalizado en el chat y con todo gusto te respondo${opcionD}`;
 }
-
-const SUGERENCIAS = [
-  "a) Explícame cómo funciona ContaClick",
-  "b) ¿Cuáles son las funciones principales de ContaClick?",
-];
 
 export function HelpBot() {
   const { user } = useAuth();
