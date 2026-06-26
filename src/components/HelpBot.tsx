@@ -10,6 +10,7 @@ import {
   deleteBotAyudaThread,
 } from "@/lib/bot-ayuda.functions";
 import { useAuth } from "@/lib/auth";
+import { useActiveCliente } from "@/lib/active-cliente";
 import { toast } from "sonner";
 
 type Msg = { role: "user" | "assistant"; content: string };
