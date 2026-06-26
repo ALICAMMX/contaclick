@@ -1,13 +1,19 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Bot, Send, X, Sparkles, Loader2, Minus } from "lucide-react";
+import { Bot, Send, X, Sparkles, Loader2, Minus, Plus, Trash2, MessageSquare, Menu } from "lucide-react";
 import { RichMarkdown } from "@/components/RichMarkdown";
 import { Button } from "@/components/ui/button";
-import { sendBotAyuda } from "@/lib/bot-ayuda.functions";
+import {
+  sendBotAyuda,
+  listBotAyudaThreads,
+  loadBotAyudaThread,
+  deleteBotAyudaThread,
+} from "@/lib/bot-ayuda.functions";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 
 type Msg = { role: "user" | "assistant"; content: string };
+type Thread = { id: string; title: string; updated_at: string };
 
 function getFirstName(user: any): string {
   const meta = user?.user_metadata ?? {};
@@ -34,21 +40,47 @@ const SUGERENCIAS = [
 export function HelpBot() {
   const { user } = useAuth();
   const firstName = useMemo(() => getFirstName(user), [user]);
-  const INITIAL: Msg[] = useMemo(
-    () => [{ role: "assistant", content: buildWelcome(firstName) }],
-    [firstName],
-  );
+  const welcome = useMemo<Msg>(() => ({ role: "assistant", content: buildWelcome(firstName) }), [firstName]);
+
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<Msg[]>(INITIAL);
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Msg[]>([welcome]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingThread, setLoadingThread] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   const send = useServerFn(sendBotAyuda);
+  const listThreads = useServerFn(listBotAyudaThreads);
+  const loadThread = useServerFn(loadBotAyudaThread);
+  const delThread = useServerFn(deleteBotAyudaThread);
+
   const panelRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Minimizar al hacer click fuera (no cerrar / no perder conversación)
+  const refreshThreads = useCallback(async () => {
+    try {
+      const r = await listThreads({});
+      setThreads(r.threads as Thread[]);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [listThreads]);
+
+  // Load thread list on open
+  useEffect(() => {
+    if (open) refreshThreads();
+  }, [open, refreshThreads]);
+
+  // Reset welcome to use current name
+  useEffect(() => {
+    if (!activeId) setMessages([welcome]);
+  }, [welcome, activeId]);
+
+  // Minimize on outside click
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
@@ -61,19 +93,55 @@ export function HelpBot() {
     return () => document.removeEventListener("mousedown", onDown);
   }, [open]);
 
-  // Sync welcome when user/name resolves after initial render
-  useEffect(() => {
-    setMessages((prev) =>
-      prev.length === 1 && prev[0].role === "assistant" ? INITIAL : prev,
-    );
-  }, [INITIAL]);
-
   useEffect(() => {
     if (open) {
       endRef.current?.scrollIntoView({ behavior: "smooth" });
       inputRef.current?.focus();
     }
   }, [open, messages, loading]);
+
+  const handleNew = () => {
+    setActiveId(null);
+    setMessages([welcome]);
+    setSidebarOpen(false);
+    inputRef.current?.focus();
+  };
+
+  const handleSelect = async (id: string) => {
+    if (id === activeId) {
+      setSidebarOpen(false);
+      return;
+    }
+    setLoadingThread(true);
+    setSidebarOpen(false);
+    try {
+      const r = await loadThread({ data: { threadId: id } });
+      const msgs = r.messages as Msg[];
+      setActiveId(id);
+      setMessages(msgs.length ? msgs : [welcome]);
+    } catch (e: any) {
+      toast.error("No se pudo cargar la conversación");
+    } finally {
+      setLoadingThread(false);
+    }
+  };
+
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm("¿Eliminar esta conversación?")) return;
+    try {
+      const r = await delThread({ data: { threadId: id } });
+      if (!r.ok) {
+        toast.error(r.error ?? "Error al eliminar");
+        return;
+      }
+      setThreads((prev) => prev.filter((t) => t.id !== id));
+      if (activeId === id) handleNew();
+      toast.success("Conversación eliminada");
+    } catch {
+      toast.error("Error al eliminar");
+    }
+  };
 
   const onSend = async (text: string) => {
     const trimmed = text.trim();
@@ -83,15 +151,18 @@ export function HelpBot() {
     setInput("");
     setLoading(true);
     try {
-      const res = await send({ data: { messages: next } });
+      const res = await send({ data: { threadId: activeId, messages: next } });
       if (res.error) {
         toast.error(res.error);
-        setMessages(next);
+        setMessages(messages);
       } else {
         setMessages([...next, { role: "assistant", content: res.content }]);
+        if (res.threadId && res.threadId !== activeId) setActiveId(res.threadId);
+        refreshThreads();
       }
     } catch (e: any) {
       toast.error(e?.message ?? "Error al consultar el bot");
+      setMessages(messages);
     } finally {
       setLoading(false);
     }
@@ -125,100 +196,179 @@ export function HelpBot() {
       {open && (
         <div
           ref={panelRef}
-          className="fixed bottom-24 right-5 z-[60] w-[calc(100vw-2.5rem)] sm:w-[420px] h-[600px] max-h-[calc(100vh-8rem)] lg:bottom-10 lg:right-10 lg:left-10 lg:top-10 lg:w-auto lg:h-auto lg:max-h-none lg:mx-auto lg:max-w-6xl rounded-2xl bg-popover border border-border shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-200"
+          className="fixed bottom-24 right-5 z-[60] w-[calc(100vw-2.5rem)] sm:w-[420px] h-[600px] max-h-[calc(100vh-8rem)] lg:bottom-10 lg:right-10 lg:left-10 lg:top-10 lg:w-auto lg:h-auto lg:max-h-none lg:mx-auto lg:max-w-6xl rounded-2xl bg-popover border border-border shadow-2xl flex overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-200"
           style={{ boxShadow: "0 20px 60px -15px rgba(0,0,0,0.45)" }}
         >
-          {/* Header */}
-          <div className="px-4 py-3 border-b border-border flex items-center gap-3 bg-gradient-to-r from-primary/10 to-transparent">
-            <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: "var(--gradient-primary)" }}>
-              <Bot className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-semibold text-sm flex items-center gap-1.5">
-                Bot de Ayuda ContaClick
-                <Sparkles className="h-3 w-3 text-primary" />
-              </div>
-              <div className="text-[11px] text-muted-foreground">Experto en todas las herramientas · 24/7</div>
-            </div>
-            <button
-              onClick={() => setOpen(false)}
-              className="h-7 w-7 rounded-md hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-foreground"
-              aria-label="Minimizar"
-              title="Minimizar (la conversación se conserva)"
-            >
-              <Minus className="h-4 w-4" />
-            </button>
-          </div>
-
-          {/* Mensajes */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-3">
-            {messages.map((m, i) => (
-              <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div
-                  className={`max-w-[88%] rounded-2xl px-3 py-2 text-sm ${
-                    m.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-card border border-border/60"
-                  }`}
-                >
-                  {m.role === "assistant" ? (
-                    <RichMarkdown compact>{m.content}</RichMarkdown>
-                  ) : (
-                    <div className="whitespace-pre-wrap leading-relaxed">{m.content}</div>
-                  )}
-                </div>
-              </div>
-            ))}
-            {loading && (
-              <div className="flex justify-start">
-                <div className="bg-card border border-border/60 rounded-2xl px-3 py-2 text-xs flex items-center gap-2 text-muted-foreground">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> Pensando...
-                </div>
-              </div>
-            )}
-            {messages.length <= 1 && !loading && (
-              <div className="grid gap-1.5 pt-1">
-                {SUGERENCIAS.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => onSend(s)}
-                    className="text-left text-xs rounded-lg px-3 py-2 border border-border/60 bg-card/50 hover:bg-card hover:border-primary/40 transition"
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            )}
-            <div ref={endRef} />
-          </div>
-
-          {/* Input */}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              onSend(input);
-            }}
-            className="border-t border-border p-2.5 flex gap-2 bg-card/30"
+          {/* Sidebar — desktop siempre visible, mobile drawer */}
+          <aside
+            className={`absolute inset-y-0 left-0 z-10 w-64 bg-card border-r border-border flex flex-col transition-transform lg:static lg:translate-x-0 ${
+              sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+            }`}
           >
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  onSend(input);
-                }
-              }}
-              placeholder="Pregunta cómo usar cualquier herramienta..."
-              rows={1}
-              disabled={loading}
-              className="flex-1 resize-none rounded-lg bg-input/50 border border-border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 max-h-32"
+            <div className="p-2.5 border-b border-border">
+              <Button onClick={handleNew} variant="hero" size="sm" className="w-full justify-start gap-2">
+                <Plus className="h-4 w-4" /> Nuevo chat
+              </Button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
+              {threads.length === 0 && (
+                <div className="text-[11px] text-muted-foreground px-3 py-4 text-center">
+                  Aún no tienes conversaciones guardadas.
+                </div>
+              )}
+              {threads.map((t) => {
+                const active = t.id === activeId;
+                return (
+                  <div
+                    key={t.id}
+                    onClick={() => handleSelect(t.id)}
+                    className={`group flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer text-xs transition ${
+                      active ? "bg-primary/15 text-foreground" : "hover:bg-accent text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+                    <span className="flex-1 min-w-0 truncate">{t.title || "Conversación"}</span>
+                    <button
+                      onClick={(e) => handleDelete(t.id, e)}
+                      className="opacity-0 group-hover:opacity-100 hover:text-destructive transition shrink-0"
+                      aria-label="Eliminar conversación"
+                      title="Eliminar"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </aside>
+
+          {/* Backdrop mobile */}
+          {sidebarOpen && (
+            <div
+              className="absolute inset-0 z-[5] bg-black/40 lg:hidden"
+              onClick={() => setSidebarOpen(false)}
             />
-            <Button type="submit" size="icon" variant="hero" disabled={loading || !input.trim()} aria-label="Enviar">
-              <Send className="h-4 w-4" />
-            </Button>
-          </form>
+          )}
+
+          {/* Columna chat */}
+          <div className="flex-1 flex flex-col min-w-0">
+            {/* Header */}
+            <div className="px-3 py-3 border-b border-border flex items-center gap-2 bg-gradient-to-r from-primary/10 to-transparent">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden h-8 w-8 rounded-md hover:bg-accent flex items-center justify-center"
+                aria-label="Abrir historial"
+              >
+                <Menu className="h-4 w-4" />
+              </button>
+              <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: "var(--gradient-primary)" }}>
+                <Bot className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-sm flex items-center gap-1.5 truncate">
+                  Bot de Ayuda ContaClick
+                  <Sparkles className="h-3 w-3 text-primary shrink-0" />
+                </div>
+                <div className="text-[11px] text-muted-foreground truncate">
+                  {activeId
+                    ? threads.find((t) => t.id === activeId)?.title ?? "Conversación"
+                    : "Nueva conversación · 24/7"}
+                </div>
+              </div>
+              <button
+                onClick={handleNew}
+                className="lg:hidden h-8 w-8 rounded-md hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-foreground"
+                aria-label="Nuevo chat"
+                title="Nuevo chat"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setOpen(false)}
+                className="h-8 w-8 rounded-md hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-foreground"
+                aria-label="Minimizar"
+                title="Minimizar (la conversación se conserva)"
+              >
+                <Minus className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Mensajes */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-3">
+              {loadingThread ? (
+                <div className="flex items-center justify-center py-12 text-muted-foreground text-xs gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Cargando conversación...
+                </div>
+              ) : (
+                messages.map((m, i) => (
+                  <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                    <div
+                      className={`max-w-[88%] rounded-2xl px-3 py-2 text-sm ${
+                        m.role === "user"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-card border border-border/60"
+                      }`}
+                    >
+                      {m.role === "assistant" ? (
+                        <RichMarkdown compact>{m.content}</RichMarkdown>
+                      ) : (
+                        <div className="whitespace-pre-wrap leading-relaxed">{m.content}</div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+              {loading && (
+                <div className="flex justify-start">
+                  <div className="bg-card border border-border/60 rounded-2xl px-3 py-2 text-xs flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> Pensando...
+                  </div>
+                </div>
+              )}
+              {!loadingThread && messages.length <= 1 && !loading && (
+                <div className="grid gap-1.5 pt-1">
+                  {SUGERENCIAS.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => onSend(s)}
+                      className="text-left text-xs rounded-lg px-3 py-2 border border-border/60 bg-card/50 hover:bg-card hover:border-primary/40 transition"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div ref={endRef} />
+            </div>
+
+            {/* Input */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                onSend(input);
+              }}
+              className="border-t border-border p-2.5 flex gap-2 bg-card/30"
+            >
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    onSend(input);
+                  }
+                }}
+                placeholder="Pregunta cómo usar cualquier herramienta..."
+                rows={1}
+                disabled={loading || loadingThread}
+                className="flex-1 resize-none rounded-lg bg-input/50 border border-border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 max-h-32"
+              />
+              <Button type="submit" size="icon" variant="hero" disabled={loading || loadingThread || !input.trim()} aria-label="Enviar">
+                <Send className="h-4 w-4" />
+              </Button>
+            </form>
+          </div>
         </div>
       )}
     </>
