@@ -341,7 +341,7 @@ export function HelpBot() {
               )}
               {!loadingThread && messages.length <= 1 && !loading && (
                 <div className="grid gap-1.5 pt-1">
-                  {SUGERENCIAS.map((s) => (
+                  {sugerencias.map((s: string) => (
                     <button
                       key={s}
                       onClick={() => onSend(s)}
