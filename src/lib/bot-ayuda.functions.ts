@@ -63,12 +63,21 @@ export const sendBotAyuda = createServerFn({ method: "POST" })
 
     try {
       const { BOT_AYUDA_SYSTEM_PROMPT } = await import("./bot-ayuda.prompts.server");
+      const sysMessages: Array<{ role: "system"; content: string }> = [
+        { role: "system", content: BOT_AYUDA_SYSTEM_PROMPT },
+      ];
+      if (data.clienteContext) {
+        sysMessages.push({
+          role: "system",
+          content: `## Expediente activo del usuario\n${data.clienteContext}\n\nCuando el usuario pregunte por "este expediente", "mi cliente actual" o seleccione la opción **d)** del menú de bienvenida, asume que se refiere a este expediente. Usa la información del expediente activo antes de suponer y nunca mezcles datos con otros expedientes.`,
+        });
+      }
       const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           model,
-          messages: [{ role: "system", content: BOT_AYUDA_SYSTEM_PROMPT }, ...data.messages],
+          messages: [...sysMessages, ...data.messages],
         }),
       });
 
