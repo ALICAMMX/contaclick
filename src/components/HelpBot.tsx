@@ -61,6 +61,13 @@ export function HelpBot() {
     return () => document.removeEventListener("mousedown", onDown);
   }, [open]);
 
+  // Sync welcome when user/name resolves after initial render
+  useEffect(() => {
+    setMessages((prev) =>
+      prev.length === 1 && prev[0].role === "assistant" ? INITIAL : prev,
+    );
+  }, [INITIAL]);
+
   useEffect(() => {
     if (open) {
       endRef.current?.scrollIntoView({ behavior: "smooth" });
