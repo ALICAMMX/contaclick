@@ -172,7 +172,10 @@ export function HelpBot() {
     setInput("");
     setLoading(true);
     try {
-      const res = await send({ data: { threadId: activeId, messages: next } });
+      const clienteContext = cliente
+        ? `Razón social: ${cliente.razon_social} · RFC: ${cliente.rfc}${cliente.regimen_fiscal ? ` · Régimen: ${cliente.regimen_fiscal}` : ""}`
+        : null;
+      const res = await send({ data: { threadId: activeId, messages: next, clienteContext } });
       if (res.error) {
         toast.error(res.error);
         setMessages(messages);
