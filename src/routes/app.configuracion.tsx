@@ -202,6 +202,30 @@ function ConfigPage() {
         </div>
       </div>
 
+      <div className="rounded-xl border border-primary/50 bg-gradient-to-br from-primary/10 to-primary/5 p-5 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-lg bg-primary/20 flex items-center justify-center">
+            <Sparkles className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <div className="font-semibold">Showroom demo completo (5 expedientes)</div>
+            <div className="text-xs text-muted-foreground">
+              Siembra 5 clientes con perfiles distintos: cumplido modelo (🟢), buen contribuyente (🟢), regular (🟡), en problemas (🟠) y crítico con 69-B (🔴). Incluye CFDI, bancos, conciliaciones, salud fiscal, pólizas, tareas, defensas, trámites, alertas, mensajes y reportes ejecutivos precargados.
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => seedShow.mutate()} disabled={seedShow.isPending} variant="hero" size="sm">
+            {seedShow.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            Cargar showroom completo
+          </Button>
+          <Button onClick={() => clearShow.mutate()} disabled={clearShow.isPending} variant="ghost" size="sm">
+            {clearShow.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            Limpiar showroom
+          </Button>
+        </div>
+      </div>
+
       <Tour open={tourOpen} onClose={() => setTourOpen(false)} />
     </div>
   );
