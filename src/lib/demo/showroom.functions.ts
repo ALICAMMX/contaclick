@@ -252,7 +252,7 @@ async function seedOneCliente(supabase: SupabaseClient, despacho_id: string, use
 
   // 15) Reporte ejecutivo precargado
   await supabase.from("reportes_ejecutivos").insert({
-    despacho_id, cliente_id, periodo, tipo: "mensual", estado: "publicado",
+    despacho_id, cliente_id, periodo, tipo: "mensual", estado: "listo",
     resumen_financiero: { ingresos: cfdisInserted.filter((c) => c.rfc_emisor === perfil.rfc).reduce((s, c) => s + Number(c.total), 0) },
     resumen_fiscal: { score: perfil.score_salud },
     salud: { score: perfil.score_salud, semaforo: perfil.semaforo },
