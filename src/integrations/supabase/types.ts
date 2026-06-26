@@ -1561,6 +1561,7 @@ export type Database = {
           alert_channels: string[]
           alert_days_before: number
           clave: string
+          cliente_id: string | null
           completada_at: string | null
           completada_by: string | null
           created_at: string
@@ -1583,6 +1584,7 @@ export type Database = {
           alert_channels?: string[]
           alert_days_before?: number
           clave: string
+          cliente_id?: string | null
           completada_at?: string | null
           completada_by?: string | null
           created_at?: string
@@ -1605,6 +1607,7 @@ export type Database = {
           alert_channels?: string[]
           alert_days_before?: number
           clave?: string
+          cliente_id?: string | null
           completada_at?: string | null
           completada_by?: string | null
           created_at?: string
@@ -1623,6 +1626,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "obligaciones_fiscales_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "obligaciones_fiscales_despacho_id_fkey"
             columns: ["despacho_id"]
