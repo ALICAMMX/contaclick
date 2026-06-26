@@ -14,6 +14,7 @@ const MsgSchema = z.object({
 const SendSchema = z.object({
   threadId: z.string().uuid().nullable().optional(),
   messages: z.array(MsgSchema).min(1).max(40),
+  clienteContext: z.string().max(500).nullable().optional(),
 });
 
 function deriveTitle(text: string): string {
