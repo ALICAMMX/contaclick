@@ -5,6 +5,7 @@ import { FileSearch, Upload, CheckCircle2, AlertTriangle, Save } from "lucide-re
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ToolShell } from "@/components/ToolShell";
+import { DemoCaseButtons } from "@/components/DemoCaseButtons";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { parseCfdi, type CfdiParsed } from "@/lib/tools/cfdi-parser";
 import { saveToolRun } from "@/lib/tool-runs.functions";
@@ -22,7 +23,37 @@ function CfdiValidator() {
   const [report, setReport] = useState<RejectReport | null>(null);
   const save = useServerFn(saveToolRun);
 
+  const processXml = async (text: string, name: string) => {
+    if (!cliente) {
+      toast.error("Selecciona un expediente activo antes de validar un CFDI.");
+      return;
+    }
+    let result: CfdiParsed;
+    try {
+      result = parseCfdi(text);
+    } catch (e: any) {
+      const rep = emptyReport(cliente.rfc.toUpperCase());
+      rep.errores.push({ archivo: name, motivo: "No se pudo leer el XML", detalle: e?.message ?? "" });
+      setReport(rep); setParsed(null); setFileName(null);
+      return;
+    }
+    const rfc = cliente.rfc.toUpperCase();
+    const emisor = (result.emisor.rfc ?? "").toUpperCase();
+    const receptor = (result.receptor.rfc ?? "").toUpperCase();
+    if (emisor !== rfc && receptor !== rfc) {
+      const rep = emptyReport(rfc);
+      rep.rfcAjeno.push({ archivo: name, motivo: "RFC ajeno al expediente",
+        detalle: `Emisor ${emisor || "—"} · Receptor ${receptor || "—"}` });
+      setReport(rep); setParsed(null); setFileName(null);
+      return;
+    }
+    setFileName(name); setParsed(result);
+  };
+
   const onFile = async (file: File) => {
+    const text = await file.text();
+    await processXml(text, file.name);
+  };
     if (!cliente) {
       toast.error("Selecciona un expediente activo antes de validar un CFDI.");
       return;
