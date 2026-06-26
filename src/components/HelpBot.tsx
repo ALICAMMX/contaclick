@@ -104,7 +104,7 @@ export function HelpBot() {
       {open && (
         <div
           ref={panelRef}
-          className="fixed bottom-24 right-5 z-[60] w-[calc(100vw-2.5rem)] sm:w-[420px] h-[600px] max-h-[calc(100vh-8rem)] rounded-2xl bg-popover border border-border shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-200"
+          className="fixed bottom-24 right-5 z-[60] w-[calc(100vw-2.5rem)] sm:w-[420px] h-[600px] max-h-[calc(100vh-8rem)] lg:bottom-10 lg:right-10 lg:left-10 lg:top-10 lg:w-auto lg:h-auto lg:max-h-none lg:mx-auto lg:max-w-6xl rounded-2xl bg-popover border border-border shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-200"
           style={{ boxShadow: "0 20px 60px -15px rgba(0,0,0,0.45)" }}
         >
           {/* Header */}
