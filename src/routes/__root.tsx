@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -14,7 +15,13 @@ import { AuthProvider } from "@/lib/auth";
 import { ThemeProvider } from "@/lib/theme";
 import { Toaster } from "@/components/ui/sonner";
 import { WhatsAppFloat } from "@/components/WhatsAppFloat";
+import { PWAInstallBanner } from "@/components/PWAInstall";
 import { supabase } from "@/integrations/supabase/client";
+
+const INTERNAL_PREFIXES = ["/app", "/portal", "/dashboard", "/auth", "/reset-password", "/invitar"];
+function isInternalPath(pathname: string) {
+  return INTERNAL_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
+}
 
 function NotFoundComponent() {
   return (
@@ -130,6 +137,8 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const internal = isInternalPath(pathname);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -137,7 +146,8 @@ function RootComponent() {
         <AuthProvider>
           <AuthCacheSync />
           <Outlet />
-          <WhatsAppFloat />
+          {!internal && <WhatsAppFloat />}
+          {!internal && <PWAInstallBanner />}
           <Toaster richColors position="top-right" />
         </AuthProvider>
       </ThemeProvider>
