@@ -38,8 +38,23 @@ function buildWelcome(name: string, expedienteNombre?: string | null): string {
 
 export function HelpBot() {
   const { user } = useAuth();
+  const { cliente } = useActiveCliente();
   const firstName = useMemo(() => getFirstName(user), [user]);
-  const welcome = useMemo<Msg>(() => ({ role: "assistant", content: buildWelcome(firstName) }), [firstName]);
+  const expedienteNombre = cliente?.razon_social ?? null;
+  const welcome = useMemo<Msg>(
+    () => ({ role: "assistant", content: buildWelcome(firstName, expedienteNombre) }),
+    [firstName, expedienteNombre],
+  );
+  const sugerencias = useMemo<string[]>(() => {
+    const base = [
+      "a) Explícame cómo funciona ContaClick",
+      "b) ¿Cuáles son las funciones principales de ContaClick?",
+    ];
+    if (expedienteNombre) {
+      base.push(`d) Quiero tratar algo del expediente ${expedienteNombre}`);
+    }
+    return base;
+  }, [expedienteNombre]);
 
   const [open, setOpen] = useState(false);
   const [threads, setThreads] = useState<Thread[]>([]);
