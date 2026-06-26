@@ -432,16 +432,14 @@ function AuthPage() {
       <div className="hidden lg:flex flex-1 items-center justify-center p-12 relative overflow-hidden border-l border-border/50">
         <div className="absolute inset-0" style={{ background: "var(--gradient-hero)" }} />
         <div className="absolute inset-0 grid-bg opacity-50" />
-        <div className="relative max-w-md text-center">
-          <div className="h-14 w-14 rounded-2xl mx-auto flex items-center justify-center mb-6" style={{ background: "var(--gradient-primary)", boxShadow: "var(--shadow-glow)" }}>
-            <Sparkles className="h-6 w-6 text-primary-foreground" />
-          </div>
-          <h2 className="text-3xl font-semibold tracking-tight">
-            La IA que tu <span className="gradient-text">despacho</span> estaba esperando.
-          </h2>
-          <p className="text-muted-foreground mt-4">
-            Analiza CFDI, concilia bancos y detecta riesgos fiscales en minutos. No en horas.
-          </p>
+        <div className="relative flex items-center justify-center w-full">
+          <img
+            src={logoAsset.url}
+            alt="ContaClick"
+            className="h-auto w-auto max-h-[70vh] max-w-[85%] object-contain drop-shadow-2xl"
+            loading="eager"
+            decoding="async"
+          />
         </div>
       </div>
     </div>
