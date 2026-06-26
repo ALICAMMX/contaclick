@@ -13,6 +13,7 @@ import { CommandPaletteTrigger } from "./CommandPalette";
 import { TrialBanner } from "./TrialBanner";
 import { Tour, shouldAutoOpenTour } from "./Tour";
 import { UserWatermark } from "./UserWatermark";
+import { HelpBot } from "./HelpBot";
 
 const LABELS: Record<string, string> = {
   app: "Inicio",
@@ -185,6 +186,7 @@ export function AppLayout() {
       </main>
       <Tour open={tourOpen} onClose={() => setTourOpen(false)} />
       <UserWatermark />
+      <HelpBot />
     </div>
   );
 }
