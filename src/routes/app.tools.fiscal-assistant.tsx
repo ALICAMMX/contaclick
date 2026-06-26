@@ -1,105 +1,83 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useRef, useEffect } from "react";
-import { useServerFn } from "@tanstack/react-start";
-import { Send, Sparkles, Loader2, Bot } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { Bot, Sparkles, MessageSquare, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ToolShell } from "@/components/ToolShell";
-import { sendChat } from "@/lib/chat.functions";
 import { useActiveCliente } from "@/lib/active-cliente";
-import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/tools/fiscal-assistant")({
-  component: FiscalAssistant,
+  component: FiscalAssistantCard,
 });
 
-type Msg = { role: "user" | "assistant"; content: string };
-
-function FiscalAssistant() {
+function FiscalAssistantCard() {
   const { cliente } = useActiveCliente();
-  const greeting = cliente
-    ? `Hola, estoy listo para ayudarte con asuntos fiscales del expediente **${cliente.razon_social}** (RFC ${cliente.rfc}${cliente.regimen_fiscal ? ` · ${cliente.regimen_fiscal}` : ""}). ¿En qué te apoyo?`
-    : "Hola, soy tu asistente fiscal. ¿En qué te ayudo hoy?";
-  const [messages, setMessages] = useState<Msg[]>([{ role: "assistant", content: greeting }]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const send = useServerFn(sendChat);
-  const endRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
-
-  const onSend = async (text: string) => {
-    if (!text.trim() || loading) return;
-    const ctxLine = cliente ? `[Contexto del expediente activo: razón social "${cliente.razon_social}", RFC ${cliente.rfc}${cliente.regimen_fiscal ? `, régimen ${cliente.regimen_fiscal}` : ""}]` : "";
-    const userMsg: Msg = { role: "user", content: ctxLine ? `${ctxLine}\n\n${text}` : text };
-    const display: Msg = { role: "user", content: text };
-    const next = [...messages, display];
-    setMessages(next);
-    setInput("");
-    setLoading(true);
-
-    try {
-      const payloadMessages = [...messages, userMsg];
-      const res = await send({ data: { messages: payloadMessages } });
-      if (res.error) toast.error(res.error);
-      else setMessages([...next, { role: "assistant", content: res.content }]);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Error al consultar la IA");
-    } finally {
-      setLoading(false);
-    }
+  const openBot = () => {
+    window.dispatchEvent(new CustomEvent("open-bot-ayuda"));
   };
 
   return (
-    <ToolShell helpSlug="fiscal-assistant"
-      title="Asistente fiscal IA"
-      description="Pregunta puntual de legislación fiscal mexicana. Responde con el contexto del expediente activo."
+    <ToolShell
+      helpSlug="fiscal-assistant"
+      title="Asistente Fiscal IA"
+      description="Ahora integrado con el Bot de Ayuda ContaClick: chat especializado en fiscal, contable y soporte de tu expediente activo."
       icon={<Bot className="h-5 w-5 text-primary-foreground" />}
       requireCliente={false}
     >
-      <div className="rounded-xl border border-border/60 bg-card/30 flex flex-col h-[60vh]">
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
-          {messages.map((m, i) => (
-            <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
-                m.role === "user" ? "bg-primary/15 border border-primary/30" : "bg-card border border-border/60"
-              }`}>
-                {m.role === "assistant" && (
-                  <div className="flex items-center gap-1.5 text-xs text-primary mb-1.5">
-                    <Sparkles className="h-3 w-3" /> ContaClick IA
-                  </div>
-                )}
-                {m.role === "assistant" ? (
-                  <div className="leading-relaxed prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-headings:mt-3 prose-headings:mb-2 prose-pre:my-2 prose-code:text-xs">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
-                  </div>
-                ) : (
-                  <div className="leading-relaxed whitespace-pre-wrap">{m.content}</div>
-                )}
-              </div>
-            </div>
-          ))}
-          {loading && (
-            <div className="flex justify-start">
-              <div className="bg-card border border-border/60 rounded-2xl px-4 py-3 text-sm flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin text-primary" /> Pensando...
-              </div>
-            </div>
-          )}
-          <div ref={endRef} />
+      <div className="rounded-2xl border border-border/60 bg-gradient-to-br from-primary/10 via-card to-card p-6 sm:p-8 space-y-6">
+        <div className="flex items-start gap-4">
+          <div
+            className="h-14 w-14 rounded-2xl flex items-center justify-center shrink-0"
+            style={{ background: "var(--gradient-primary)", boxShadow: "var(--shadow-glow)" }}
+          >
+            <Bot className="h-7 w-7 text-primary-foreground" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              Bot de Ayuda ContaClick
+              <Sparkles className="h-4 w-4 text-primary" />
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Asistente especializado en materia fiscal, contable y administrativa para contadores y despachos en
+              México. Responde con fundamento, cita fuentes oficiales y se conecta con tus herramientas y expediente
+              activo.
+            </p>
+          </div>
         </div>
-        <form onSubmit={(e) => { e.preventDefault(); onSend(input); }} className="flex gap-2 p-4 border-t border-border/50">
-          <input
-            value={input} onChange={(e) => setInput(e.target.value)}
-            placeholder="Pregunta sobre CFDI, ISR, IVA, RESICO..."
-            disabled={loading}
-            className="flex-1 h-11 px-4 rounded-lg bg-input/50 border border-border focus:outline-none focus:ring-1 focus:ring-ring text-sm disabled:opacity-50"
-          />
-          <Button type="submit" variant="hero" size="lg" disabled={loading || !input.trim()}>
-            <Send className="h-4 w-4" />
+
+        <div className="grid sm:grid-cols-3 gap-3">
+          <div className="rounded-xl border border-border/60 bg-card/60 p-4">
+            <MessageSquare className="h-4 w-4 text-primary mb-2" />
+            <div className="text-sm font-medium">Chat con historial</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Crea, recupera y elimina conversaciones. Tu historial se conserva entre sesiones.
+            </p>
+          </div>
+          <div className="rounded-xl border border-border/60 bg-card/60 p-4">
+            <Sparkles className="h-4 w-4 text-primary mb-2" />
+            <div className="text-sm font-medium">Especializado MX</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              CFDI 4.0, ISR, IVA, RESICO, IMSS, nómina y procedimientos SAT con nivel de confianza en cada respuesta.
+            </p>
+          </div>
+          <div className="rounded-xl border border-border/60 bg-card/60 p-4">
+            <FileText className="h-4 w-4 text-primary mb-2" />
+            <div className="text-sm font-medium">Sobre tu expediente</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {cliente
+                ? `Atiende consultas del expediente activo: ${cliente.razon_social} (${cliente.rfc}).`
+                : "Selecciona un expediente y el bot podrá ayudarte con asuntos puntuales del mismo."}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-2">
+          <Button variant="hero" size="lg" onClick={openBot} className="gap-2">
+            <Bot className="h-4 w-4" /> Abrir Bot de Ayuda
           </Button>
-        </form>
+          <p className="text-xs text-muted-foreground">
+            También está disponible siempre desde el botón flotante en la esquina inferior derecha.
+          </p>
+        </div>
       </div>
     </ToolShell>
   );
