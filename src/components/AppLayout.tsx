@@ -11,6 +11,7 @@ import { isSuperAdmin } from "@/lib/admin-panel/admin-panel.functions";
 import { NotificationsBell } from "./NotificationsBell";
 import { CommandPaletteTrigger } from "./CommandPalette";
 import { TrialBanner } from "./TrialBanner";
+import { DemoBanner } from "./DemoBanner";
 import { Tour, shouldAutoOpenTour } from "./Tour";
 import { UserWatermark } from "./UserWatermark";
 import { HelpBot } from "./HelpBot";
@@ -178,6 +179,7 @@ export function AppLayout() {
           </div>
         </div>
       </header>
+      <DemoBanner />
       <TrialBanner />
       <main className="flex-1">
         <div className="max-w-7xl mx-auto px-6 py-8">
