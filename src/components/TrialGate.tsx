@@ -40,10 +40,11 @@ export function TrialGate({ children }: { children: ReactNode }) {
         </p>
         <div className="flex flex-col sm:flex-row gap-2 justify-center">
           <Link
-            to="/precios"
+            to="/app/checkout"
+            search={{ plan: "pro", cycle: "mensual" }}
             className="inline-flex items-center justify-center gap-1.5 h-10 px-5 rounded-md bg-destructive text-white text-sm font-semibold hover:bg-destructive/90 transition-colors"
           >
-            Ver planes <ArrowRight className="h-4 w-4" />
+            Contratar ahora <ArrowRight className="h-4 w-4" />
           </Link>
           <Link
             to="/app/configuracion"
