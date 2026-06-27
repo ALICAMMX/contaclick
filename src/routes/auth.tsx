@@ -277,6 +277,25 @@ function AuthPage() {
             {mode === "login" ? "Ingresa para continuar con tus clientes." : "Empieza gratis. Sin tarjeta."}
           </p>
 
+          {!mfa && (
+            <div className="mt-5 grid grid-cols-2 gap-1 rounded-lg bg-muted/50 p-1 border border-border">
+              <button
+                type="button"
+                onClick={() => { setMode("login"); setFormMessage(null); }}
+                className={`h-9 rounded-md text-sm font-medium transition ${mode === "login" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                Iniciar sesión
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMode("signup"); setFormMessage(null); }}
+                className={`h-9 rounded-md text-sm font-medium transition ${mode === "signup" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                Crear cuenta
+              </button>
+            </div>
+          )}
+
           {mfa ? (
             <div className="space-y-3 mt-6">
               <div className="rounded-lg border border-primary/40 bg-primary/10 p-3 text-sm">
