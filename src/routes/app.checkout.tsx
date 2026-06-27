@@ -184,6 +184,44 @@ function CheckoutPage() {
               <Switch checked={includeIva} onCheckedChange={setIncludeIva} />
             </div>
           </section>
+
+          {/* Cupón */}
+          <section className="rounded-2xl border border-border/60 bg-card p-5">
+            <h2 className="font-medium flex items-center gap-2 mb-1">
+              <Ticket className="h-4 w-4 text-primary" /> 4. ¿Tienes un cupón?
+            </h2>
+            <p className="text-xs text-muted-foreground mb-3">
+              Aplica un código promocional. El descuento se calcula sobre el subtotal antes de IVA.
+            </p>
+            {cupon ? (
+              <div className="flex items-center justify-between rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-sm">
+                <span className="font-medium text-success">
+                  {cupon.codigo.toUpperCase()} — -{cupon.porcentaje}%
+                </span>
+                <button
+                  type="button"
+                  onClick={() => { setCupon(null); setCuponInput(""); }}
+                  className="text-muted-foreground hover:text-foreground"
+                  aria-label="Quitar cupón"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <Input
+                  value={cuponInput}
+                  onChange={(e) => setCuponInput(e.target.value)}
+                  placeholder="Código de cupón"
+                  className="uppercase"
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); aplicarCupon(); } }}
+                />
+                <Button type="button" variant="secondary" onClick={aplicarCupon} disabled={cuponLoading || !cuponInput.trim()}>
+                  {cuponLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Aplicar"}
+                </Button>
+              </div>
+            )}
+          </section>
         </div>
 
         {/* DERECHA: resumen */}
@@ -192,6 +230,10 @@ function CheckoutPage() {
           <div className="space-y-2 text-sm">
             <Row label="Plan" value={plan.name} />
             <Row label="Ciclo" value={cycle === "mensual" ? "Mensual" : "Anual"} />
+            <Row label="Precio base" value={mxn(totals.base)} />
+            {cupon && (
+              <Row label={`Cupón ${cupon.codigo.toUpperCase()} (-${cupon.porcentaje}%)`} value={`- ${mxn(totals.descuento)}`} />
+            )}
             <Row label="Subtotal" value={mxn(totals.subtotal)} />
             <Row label="IVA (16%)" value={includeIva ? mxn(totals.iva) : "No aplica"} />
             {monthlyEq && <Row label="Equivalente mensual" value={`${mxn(monthlyEq)} / mes`} muted />}
