@@ -26,30 +26,34 @@ function ContactoPage() {
   const [message, setMessage] = useState("");
   const [sent, setSent] = useState(false);
 
-  const onSubmit = (e: React.FormEvent) => {
+  const [sending, setSending] = useState(false);
+
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !email.trim() || !message.trim()) {
       toast.error("Completa nombre, correo y mensaje.");
       return;
     }
-
-    const body = [
-      `Nombre: ${name}`,
-      `Correo: ${email}`,
-      `Teléfono: ${telefono || "(no proporcionado)"}`,
-      `Despacho / Empresa: ${despacho || "(no proporcionado)"}`,
-      "",
-      "Mensaje:",
-      message,
-      "",
-      "—",
-      `Enviado desde contaclick.lovable.app el ${new Date().toLocaleString("es-MX")}`,
-    ].join("\n");
-
-    const href = `mailto:${DESTINO}?subject=${encodeURIComponent(ASUNTO)}&body=${encodeURIComponent(body)}`;
-    window.location.href = href;
-    setSent(true);
-    toast.success("Abriendo tu cliente de correo para enviar el mensaje.");
+    setSending(true);
+    try {
+      const res = await fetch("/api/public/contact", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name, email, telefono, despacho, message }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(json.error || "No se pudo enviar tu mensaje.");
+        setSending(false);
+        return;
+      }
+      setSent(true);
+      toast.success("¡Mensaje enviado! Te respondemos en menos de 24 hrs.");
+    } catch {
+      toast.error("Error de red. Intenta de nuevo.");
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -66,11 +70,7 @@ function ContactoPage() {
             <CheckCircle2 className="h-10 w-10 text-success mx-auto" />
             <h2 className="mt-4 text-xl font-semibold">¡Listo!</h2>
             <p className="text-sm text-muted-foreground mt-2">
-              Si tu cliente de correo no se abrió automáticamente, escríbenos directo a{" "}
-              <a href={`mailto:${DESTINO}?subject=${encodeURIComponent(ASUNTO)}`} className="text-primary hover:underline">
-                {DESTINO}
-              </a>{" "}
-              con el asunto <strong>{ASUNTO}</strong>.
+          ¡Tu mensaje fue enviado correctamente! Un asesor de ContaClick te contactará en menos de 24 hrs hábiles. También te llegó una copia a <strong>{email}</strong>.
             </p>
             <Link to="/" className="inline-block mt-6 text-sm text-primary hover:underline">← Volver al inicio</Link>
           </div>
