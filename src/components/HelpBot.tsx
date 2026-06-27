@@ -218,7 +218,7 @@ export function HelpBot() {
         style={{ boxShadow: "0 10px 40px -10px hsl(var(--primary) / 0.6), var(--shadow-glow)" }}
       >
         <span className="absolute inset-0 rounded-full bg-primary/40 animate-ping opacity-40" />
-        {open ? <X className="h-6 w-6 relative" /> : <Bot className="h-6 w-6 relative" />}
+        {open ? <X className="h-6 w-6 relative" /> : <BotMark className="h-7 w-7 relative" />}
         {unread && (
           <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-emerald-400 ring-2 ring-background animate-pulse" />
         )}
