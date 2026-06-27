@@ -26,7 +26,7 @@ export function BrandSpinner({ size = "md", label, fullscreen }: Props) {
         />
         {/* Logo pulsando al centro */}
         <img
-          src={logoC}
+          src={logoC.url}
           alt="ContaClick"
           className="absolute inset-1.5 m-auto h-[70%] w-[70%] object-contain animate-pulse drop-shadow"
           style={{ animationDuration: "1.6s" }}
