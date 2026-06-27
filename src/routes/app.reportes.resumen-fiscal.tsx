@@ -1,5 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { FileBarChart, Calculator, ArrowRight, Loader2, AlertCircle } from "lucide-react";
@@ -8,7 +8,13 @@ import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { getResumenFiscalMes } from "@/lib/fiscal/resumen.functions";
 
+const MES_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+
 export const Route = createFileRoute("/app/reportes/resumen-fiscal")({
+  validateSearch: (search: Record<string, unknown>) => {
+    const mes = typeof search.mes === "string" && MES_RE.test(search.mes) ? search.mes : undefined;
+    return { mes } as { mes?: string };
+  },
   component: ResumenFiscalPage,
 });
 
