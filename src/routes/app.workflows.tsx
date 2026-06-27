@@ -589,6 +589,7 @@ function DetalleRunDialog({ runId, onClose }: { runId: string; onClose: () => vo
   const q = useQuery({ queryKey: ["wf-run", runId], queryFn: () => _det({ data: { runId } }) });
   const steps = q.data?.steps ?? [];
   const run = q.data?.run;
+  const hasError = run?.status === "fallido" || run?.status === "parcial" || Boolean(run?.error_message);
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -600,6 +601,18 @@ function DetalleRunDialog({ runId, onClose }: { runId: string; onClose: () => vo
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+          {q.isLoading && <div className="text-sm text-muted-foreground text-center py-10">Cargando bitácora de pasos…</div>}
+          {q.isError && (
+            <div className="p-3 rounded-md border border-red-500/30 bg-red-500/5 text-sm text-red-600">
+              {(q.error as any)?.message ?? "No se pudo cargar el detalle de la ejecución."}
+            </div>
+          )}
+          {!q.isLoading && !q.isError && hasError && run?.error_message && (
+            <div className="p-3 rounded-md border border-red-500/30 bg-red-500/5">
+              <div className="text-xs font-semibold text-red-700 dark:text-red-300">Error detectado</div>
+              <div className="text-sm text-red-600 dark:text-red-300 mt-1 break-words">{run.error_message}</div>
+            </div>
+          )}
           {steps.map((s: any) => {
             const def = catalogEntry(s.step_type as any, s.kind);
             const Icon = def?.icon ?? Activity;
@@ -618,7 +631,13 @@ function DetalleRunDialog({ runId, onClose }: { runId: string; onClose: () => vo
               </div>
             );
           })}
-          {steps.length === 0 && <div className="text-sm text-muted-foreground text-center py-10">Sin pasos registrados.</div>}
+          {!q.isLoading && !q.isError && steps.length === 0 && (
+            <div className="text-sm text-muted-foreground text-center py-10">
+              {run?.error_message
+                ? "No hay pasos detallados disponibles, pero el error de la ejecución ya se muestra arriba."
+                : "Sin pasos registrados."}
+            </div>
+          )}
         </div>
         <DialogFooter><Button variant="ghost" onClick={onClose}>Cerrar</Button></DialogFooter>
       </DialogContent>
