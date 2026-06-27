@@ -210,7 +210,7 @@ function IsrIvaCalculator() {
           onChange={(e) => e.target.files && procesarXmlLocal(e.target.files)}
         />
         <Button asChild variant="ghost" className="gap-2 ml-auto">
-          <Link to="/app/reportes/resumen-fiscal">
+          <Link to="/app/reportes/resumen-fiscal" search={{ mes: periodo }}>
             <FileBarChart className="h-4 w-4" />
             Resumen fiscal del mes
           </Link>
