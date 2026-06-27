@@ -278,6 +278,13 @@ export const setEstatusObligacion = createServerFn({ method: "POST" })
     }
     const { error } = await supabase.from("obligaciones_fiscales").update(update).eq("id", data.id);
     if (error) throw new Error(error.message);
+    try {
+      const { data: row } = await supabase.from("obligaciones_fiscales").select("despacho_id").eq("id", data.id).maybeSingle();
+      if (row?.despacho_id) {
+        const { pushObligacionToGoogle } = await import("@/lib/google-calendar/google.server");
+        await pushObligacionToGoogle(row.despacho_id as string, data.id);
+      }
+    } catch (e) { console.error("google push (estatus) failed", e); }
     return { ok: true };
   });
 
