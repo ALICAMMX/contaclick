@@ -238,15 +238,22 @@ export const upsertObligacion = createServerFn({ method: "POST" })
       alert_channels: data.alert_channels ?? ["interna"],
     };
 
+    let savedId: string;
     if (data.id) {
       const { error } = await supabase.from("obligaciones_fiscales").update(payload).eq("id", data.id);
       if (error) throw new Error(error.message);
-      return { ok: true, id: data.id };
+      savedId = data.id;
+    } else {
+      payload.estatus = "pendiente";
+      const { data: row, error } = await supabase.from("obligaciones_fiscales").insert(payload).select("id").single();
+      if (error) throw new Error(error.message);
+      savedId = (row as any).id;
     }
-    payload.estatus = "pendiente";
-    const { data: row, error } = await supabase.from("obligaciones_fiscales").insert(payload).select("id").single();
-    if (error) throw new Error(error.message);
-    return { ok: true, id: (row as any).id };
+    try {
+      const { pushObligacionToGoogle } = await import("@/lib/google-calendar/google.server");
+      await pushObligacionToGoogle(despachoId, savedId);
+    } catch (e) { console.error("google push (upsert) failed", e); }
+    return { ok: true, id: savedId };
   });
 
 // ------------------- MARCAR COMPLETADA / PENDIENTE -------------------
@@ -271,6 +278,13 @@ export const setEstatusObligacion = createServerFn({ method: "POST" })
     }
     const { error } = await supabase.from("obligaciones_fiscales").update(update).eq("id", data.id);
     if (error) throw new Error(error.message);
+    try {
+      const { data: row } = await supabase.from("obligaciones_fiscales").select("despacho_id").eq("id", data.id).maybeSingle();
+      if (row?.despacho_id) {
+        const { pushObligacionToGoogle } = await import("@/lib/google-calendar/google.server");
+        await pushObligacionToGoogle(row.despacho_id as string, data.id);
+      }
+    } catch (e) { console.error("google push (estatus) failed", e); }
     return { ok: true };
   });
 
@@ -291,6 +305,13 @@ export const posponerObligacion = createServerFn({ method: "POST" })
       .update({ proximo_vencimiento: data.nuevaFecha, estatus: "pendiente" })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
+    try {
+      const { data: row } = await supabase.from("obligaciones_fiscales").select("despacho_id").eq("id", data.id).maybeSingle();
+      if (row?.despacho_id) {
+        const { pushObligacionToGoogle } = await import("@/lib/google-calendar/google.server");
+        await pushObligacionToGoogle(row.despacho_id as string, data.id);
+      }
+    } catch (e) { console.error("google push (posponer) failed", e); }
     return { ok: true };
   });
 
@@ -300,8 +321,15 @@ export const eliminarObligacion = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
+    const { data: row } = await context.supabase.from("obligaciones_fiscales").select("despacho_id").eq("id", data.id).maybeSingle();
     const { error } = await context.supabase.from("obligaciones_fiscales").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
+    try {
+      if (row?.despacho_id) {
+        const { deleteObligacionFromGoogle } = await import("@/lib/google-calendar/google.server");
+        await deleteObligacionFromGoogle(row.despacho_id as string, data.id);
+      }
+    } catch (e) { console.error("google delete failed", e); }
     return { ok: true };
   });
 
