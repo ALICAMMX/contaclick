@@ -328,18 +328,24 @@ function WorkflowsPage() {
         <TabsContent value="logs" className="mt-6">
           <Card className="border-border/60 divide-y divide-border/40">
             {(runsQ.data ?? []).filter((r: any) => r.status === "fallido" || r.status === "parcial").map((r: any) => (
-              <div key={r.id} className="p-3 flex items-start gap-3 hover:bg-muted/20 cursor-pointer" onClick={() => setOpenDetalleRun(r.id)}>
+              <div key={r.id} className="p-3 flex items-start gap-3 hover:bg-muted/20">
                 <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium">{r.workflow_nombre ?? r.workflow_id.slice(0, 8)}</div>
-                  <div className="text-xs text-muted-foreground truncate">{r.error_message ?? "Falla parcial en algunos pasos."}</div>
-                  <div className="text-[10px] text-muted-foreground mt-1">{new Date(r.started_at).toLocaleString("es-MX")} · {r.steps_failed} pasos fallidos</div>
+                  <div className="text-xs text-red-600 break-words">{r.error_message ?? "Falla parcial en algunos pasos."}</div>
+                  <div className="text-[10px] text-muted-foreground mt-1">{new Date(r.started_at).toLocaleString("es-MX")} · {r.steps_failed} paso(s) fallido(s)</div>
                 </div>
-                <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); correr.mutate(r.workflow_id); }}>
-                  <RefreshCw className="h-3.5 w-3.5 mr-1" /> Reintentar
-                </Button>
+                <div className="flex flex-col gap-1 shrink-0">
+                  <Button variant="secondary" size="sm" onClick={() => setOpenDetalleRun(r.id)}>
+                    <Activity className="h-3.5 w-3.5 mr-1" /> Ver detalle
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => correr.mutate(r.workflow_id)}>
+                    <RefreshCw className="h-3.5 w-3.5 mr-1" /> Reintentar
+                  </Button>
+                </div>
               </div>
             ))}
+
             {!(runsQ.data ?? []).some((r: any) => r.status === "fallido" || r.status === "parcial") && (
               <div className="p-10 text-center text-sm text-muted-foreground">Sin errores. Todo corre limpio.</div>
             )}
