@@ -13,6 +13,7 @@ import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as TerminosRouteImport } from './routes/terminos'
 import { Route as SeguridadRouteImport } from './routes/seguridad'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as RegistroRouteImport } from './routes/registro'
 import { Route as PrivacidadRouteImport } from './routes/privacidad'
 import { Route as PreciosRouteImport } from './routes/precios'
 import { Route as PortalRouteImport } from './routes/portal'
@@ -141,6 +142,11 @@ const SeguridadRoute = SeguridadRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegistroRoute = RegistroRouteImport.update({
+  id: '/registro',
+  path: '/registro',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacidadRoute = PrivacidadRouteImport.update({
@@ -710,6 +716,7 @@ export interface FileRoutesByFullPath {
   '/portal': typeof PortalRouteWithChildren
   '/precios': typeof PreciosRoute
   '/privacidad': typeof PrivacidadRoute
+  '/registro': typeof RegistroRoute
   '/reset-password': typeof ResetPasswordRoute
   '/seguridad': typeof SeguridadRoute
   '/terminos': typeof TerminosRoute
@@ -822,6 +829,7 @@ export interface FileRoutesByTo {
   '/folleto-herramientas': typeof FolletoHerramientasRoute
   '/precios': typeof PreciosRoute
   '/privacidad': typeof PrivacidadRoute
+  '/registro': typeof RegistroRoute
   '/reset-password': typeof ResetPasswordRoute
   '/seguridad': typeof SeguridadRoute
   '/terminos': typeof TerminosRoute
@@ -931,6 +939,7 @@ export interface FileRoutesById {
   '/portal': typeof PortalRouteWithChildren
   '/precios': typeof PreciosRoute
   '/privacidad': typeof PrivacidadRoute
+  '/registro': typeof RegistroRoute
   '/reset-password': typeof ResetPasswordRoute
   '/seguridad': typeof SeguridadRoute
   '/terminos': typeof TerminosRoute
@@ -1048,6 +1057,7 @@ export interface FileRouteTypes {
     | '/portal'
     | '/precios'
     | '/privacidad'
+    | '/registro'
     | '/reset-password'
     | '/seguridad'
     | '/terminos'
@@ -1160,6 +1170,7 @@ export interface FileRouteTypes {
     | '/folleto-herramientas'
     | '/precios'
     | '/privacidad'
+    | '/registro'
     | '/reset-password'
     | '/seguridad'
     | '/terminos'
@@ -1268,6 +1279,7 @@ export interface FileRouteTypes {
     | '/portal'
     | '/precios'
     | '/privacidad'
+    | '/registro'
     | '/reset-password'
     | '/seguridad'
     | '/terminos'
@@ -1384,6 +1396,7 @@ export interface RootRouteChildren {
   PortalRoute: typeof PortalRouteWithChildren
   PreciosRoute: typeof PreciosRoute
   PrivacidadRoute: typeof PrivacidadRoute
+  RegistroRoute: typeof RegistroRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SeguridadRoute: typeof SeguridadRoute
   TerminosRoute: typeof TerminosRoute
@@ -1428,6 +1441,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/registro': {
+      id: '/registro'
+      path: '/registro'
+      fullPath: '/registro'
+      preLoaderRoute: typeof RegistroRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacidad': {
@@ -2482,6 +2502,7 @@ const rootRouteChildren: RootRouteChildren = {
   PortalRoute: PortalRouteWithChildren,
   PreciosRoute: PreciosRoute,
   PrivacidadRoute: PrivacidadRoute,
+  RegistroRoute: RegistroRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SeguridadRoute: SeguridadRoute,
   TerminosRoute: TerminosRoute,
