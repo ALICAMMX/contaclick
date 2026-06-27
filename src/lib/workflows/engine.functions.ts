@@ -230,13 +230,16 @@ async function runWorkflowInternal(
       });
       output = r.output;
       err = r.error;
-      if (err) {
+      if (r.skipped) {
+        status = "omitido";
+      } else if (err) {
         status = "fallido";
         failCount++;
       } else {
         okCount++;
         lastOutput = { ...lastOutput, ...(typeof output === "object" ? output : {}) };
       }
+
     } else if (node.type === "condition") {
       const pasa = evaluarCondicion(node.kind, node.params ?? {}, lastOutput);
       output = { evaluacion: pasa };
