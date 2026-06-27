@@ -11,6 +11,7 @@ import { isSuperAdmin } from "@/lib/admin-panel/admin-panel.functions";
 import { NotificationsBell } from "./NotificationsBell";
 import { CommandPaletteTrigger } from "./CommandPalette";
 import { TrialBanner } from "./TrialBanner";
+import { TrialGate } from "./TrialGate";
 import { DemoBanner } from "./DemoBanner";
 import { Tour, shouldAutoOpenTour } from "./Tour";
 import { UserWatermark } from "./UserWatermark";
@@ -183,7 +184,9 @@ export function AppLayout() {
       <TrialBanner />
       <main className="flex-1">
         <div className="max-w-7xl mx-auto px-6 py-8">
-          <Outlet />
+          <TrialGate>
+            <Outlet />
+          </TrialGate>
         </div>
       </main>
       <Tour open={tourOpen} onClose={() => setTourOpen(false)} />
