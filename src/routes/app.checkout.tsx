@@ -2,12 +2,14 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
-import { CheckCircle2, CreditCard, Loader2, Lock, Receipt } from "lucide-react";
+import { CheckCircle2, CreditCard, Loader2, Lock, Receipt, Ticket, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { PLANS, computeTotal, isValidPlan, isValidCycle, type BillingCycle, type PlanId } from "@/lib/payments/plans";
 import { createMpCheckout } from "@/lib/payments/mp.functions";
+import { validarCupon } from "@/lib/payments/cupones.functions";
 
 const Search = z.object({
   plan: z.string().optional(),
