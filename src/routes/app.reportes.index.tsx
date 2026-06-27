@@ -106,7 +106,19 @@ function ReportesPage() {
     onError: (e) => toast.error(friendlyError(e)),
   });
 
-  const recent = list.data?.reportes ?? [];
+  const TIPO_KEYS = useMemo(() => new Set(TIPOS.map((t) => t.key as string)), []);
+  const recent = (list.data?.reportes ?? []).filter((r: any) => {
+    if (!TIPO_KEYS.has(r.tipo)) return false;
+    try {
+      const params = JSON.parse(r.parametros_json || "{}");
+      const payload = JSON.parse(r.resultado_json || "{}");
+      if (!params.desde || !params.hasta) return false;
+      if (!payload || Object.keys(payload).length === 0) return false;
+      return true;
+    } catch {
+      return false;
+    }
+  });
 
   return (
     <div className="space-y-6">
