@@ -15,9 +15,39 @@ import heroImg2 from "@/assets/hero-bg-2.jpg";
 import heroImg3 from "@/assets/hero-bg-3.jpg";
 
 const heroSlides = [
-  { src: heroImg1, alt: "Oficina ejecutiva moderna con vista panorámica" },
-  { src: heroImg2, alt: "Escritorio con laptop mostrando dashboards financieros" },
-  { src: heroImg3, alt: "Sala de juntas corporativa al atardecer" },
+  {
+    src: heroImg1,
+    alt: "Oficina ejecutiva moderna con vista panorámica",
+    chip: "IA fiscal entrenada para el SAT mexicano",
+    title: "La IA que tu",
+    emphasis: "despacho contable",
+    titleTail: "estaba esperando.",
+    copy: "Analiza CFDI, concilia bancos, detecta riesgos fiscales y automatiza tu despacho. Todo en una plataforma moderna, modular y diseñada para contadores en México.",
+    ctaPrimary: { label: "Probar gratis", to: "/app" },
+    ctaSecondary: { label: "Ver demo en vivo", to: "/app/tools/cfdi-validator" },
+  },
+  {
+    src: heroImg2,
+    alt: "Escritorio con laptop mostrando dashboards financieros",
+    chip: "Descarga masiva SAT + Contabilidad automática",
+    title: "Olvida bajar XML",
+    emphasis: "uno por uno.",
+    titleTail: "Nosotros lo hacemos por ti.",
+    copy: "Conectamos con el SAT, descargamos los CFDI emitidos y recibidos de tus clientes, los clasificamos y generamos pólizas listas para CONTPAQi y Anexo 24.",
+    ctaPrimary: { label: "Ver descarga SAT", to: "/app/sat-sync" },
+    ctaSecondary: { label: "Contabilidad automática", to: "/app/contabilidad-auto" },
+  },
+  {
+    src: heroImg3,
+    alt: "Sala de juntas corporativa al atardecer",
+    chip: "Conti · tu asistente fiscal 24/7",
+    title: "Un Contador Senior IA",
+    emphasis: "a un clic",
+    titleTail: "de cada decisión.",
+    copy: "Conti analiza tus expedientes, detecta riesgos EFOS/69-B, redacta oficios al SAT y te da un semáforo de salud fiscal por cliente. Sin alucinaciones, con fundamento legal vigente.",
+    ctaPrimary: { label: "Hablar con Conti", to: "/app" },
+    ctaSecondary: { label: "Ver salud fiscal", to: "/app/salud-fiscal" },
+  },
 ];
 
 export const Route = createFileRoute("/")({
@@ -103,24 +133,29 @@ function Landing() {
         </div>
 
         <div className="mx-auto max-w-7xl px-6 pt-20 pb-28 lg:pt-28 lg:pb-36 relative w-full">
-          <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass hero-chip text-xs mb-6">
+          <div className="max-w-3xl" key={slide}>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass hero-chip text-xs mb-6 animate-fade-in">
               <Sparkles className="h-3.5 w-3.5 text-gold" />
-              IA fiscal entrenada para el SAT mexicano
+              {heroSlides[slide].chip}
             </div>
-            <h1 className="hero-heading text-5xl md:text-7xl font-semibold leading-[0.95] tracking-tight">
-              La IA que tu <span className="hero-emphasis">despacho contable</span> estaba esperando.
+            <h1 className="hero-heading text-5xl md:text-7xl font-semibold leading-[0.95] tracking-tight animate-fade-in">
+              {heroSlides[slide].title}{" "}
+              <span className="hero-emphasis">{heroSlides[slide].emphasis}</span>{" "}
+              {heroSlides[slide].titleTail}
             </h1>
-            <p className="hero-copy mt-6 text-lg md:text-xl max-w-2xl leading-relaxed">
-              Analiza CFDI, concilia bancos, detecta riesgos fiscales y automatiza tu despacho.
-              Todo en una plataforma moderna, modular y diseñada para contadores en México.
+            <p className="hero-copy mt-6 text-lg md:text-xl max-w-2xl leading-relaxed animate-fade-in">
+              {heroSlides[slide].copy}
             </p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
+            <div className="mt-8 flex flex-wrap items-center gap-3 animate-fade-in">
               <Button asChild size="lg" variant="hero">
-                <Link to="/app">Probar gratis <ArrowRight className="h-4 w-4" /></Link>
+                <Link to={heroSlides[slide].ctaPrimary.to}>
+                  {heroSlides[slide].ctaPrimary.label} <ArrowRight className="h-4 w-4" />
+                </Link>
               </Button>
               <Button asChild size="lg" variant="glass">
-                <Link to="/app/tools/cfdi-validator">Ver demo en vivo</Link>
+                <Link to={heroSlides[slide].ctaSecondary.to}>
+                  {heroSlides[slide].ctaSecondary.label}
+                </Link>
               </Button>
             </div>
             <div className="hero-subcopy mt-10 flex items-center gap-6 text-xs">
@@ -129,6 +164,7 @@ function Landing() {
               <div className="flex items-center gap-1.5"><Brain className="h-4 w-4 text-success" /> IA fiscal MX</div>
             </div>
           </div>
+
 
           {/* Stats */}
           <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-4">
