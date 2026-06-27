@@ -9,28 +9,38 @@ import { useEffect, useRef, useState } from "react";
 
 export const Route = createFileRoute("/app/")({ component: Hub });
 
+const CONTABLE_GROUPS = [
+  "Operación diaria",
+  "Fiscal · SAT",
+  "Herramientas contables",
+  "Conciliación y contabilidad",
+  "Reportes",
+  "Agentes IA",
+];
+const ADMIN_GROUPS = ["Administrativo & RH"];
+
 const MODULES = [
   {
     key: "contable",
     title: "Contable y Fiscal",
     short: "Cumplimiento, CFDI, declaraciones, defensa SAT.",
-    description: "22 herramientas + 8 agentes IA para tu cumplimiento fiscal mensual y anual.",
+    description: "Cumplimiento fiscal mensual y anual con agentes IA integrados.",
     href: "/app/contable",
     icon: Calculator,
     accent: "var(--module-contable)",
     bullets: ["Validador CFDI 4.0", "Riesgo SAT 2026", "Conciliación bancaria", "ISR / IVA / RESICO"],
-    counts: { tools: 22, live: 17 },
+    groups: CONTABLE_GROUPS,
   },
   {
     key: "admin",
     title: "Administrativo & RH",
     short: "Nómina, trámites, tesorería, activos.",
-    description: "Todo lo que tu despacho o pyme necesita más allá del SAT. 10 herramientas, 7 agentes.",
+    description: "Todo lo que tu despacho o pyme necesita más allá del SAT.",
     href: "/app/admin",
     icon: Briefcase,
     accent: "var(--module-admin)",
     bullets: ["Nómina IA · IMSS · INFONAVIT", "Tesorería y flujo de caja", "Trámites con semáforo", "Activos fijos & inventarios"],
-    counts: { tools: 10, live: 0 },
+    groups: ADMIN_GROUPS,
   },
 ] as const;
 
