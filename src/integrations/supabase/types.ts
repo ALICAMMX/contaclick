@@ -1763,6 +1763,62 @@ export type Database = {
           },
         ]
       }
+      mp_subscriptions: {
+        Row: {
+          amount_mxn: number
+          billing_cycle: string
+          created_at: string
+          despacho_id: string
+          id: string
+          iva_included: boolean
+          last_event: Json | null
+          mp_init_point: string | null
+          mp_preapproval_id: string | null
+          plan_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_mxn: number
+          billing_cycle: string
+          created_at?: string
+          despacho_id: string
+          id?: string
+          iva_included?: boolean
+          last_event?: Json | null
+          mp_init_point?: string | null
+          mp_preapproval_id?: string | null
+          plan_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_mxn?: number
+          billing_cycle?: string
+          created_at?: string
+          despacho_id?: string
+          id?: string
+          iva_included?: boolean
+          last_event?: Json | null
+          mp_init_point?: string | null
+          mp_preapproval_id?: string | null
+          plan_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mp_subscriptions_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       obligaciones_fiscales: {
         Row: {
           adjunto_path: string | null
