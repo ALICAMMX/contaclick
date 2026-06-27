@@ -213,7 +213,7 @@ export function HelpBot() {
       <button
         ref={btnRef}
         onClick={() => setOpen((v) => !v)}
-        aria-label="Abrir bot de ayuda"
+        aria-label="Abrir Conti"
         className="fixed bottom-5 right-5 z-[60] h-14 w-14 rounded-full bg-gradient-to-br from-primary to-primary-glow text-primary-foreground shadow-2xl ring-2 ring-primary/40 hover:scale-105 active:scale-95 transition-all flex items-center justify-center group"
         style={{ boxShadow: "0 10px 40px -10px hsl(var(--primary) / 0.6), var(--shadow-glow)" }}
       >
