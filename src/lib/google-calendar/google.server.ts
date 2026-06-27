@@ -168,3 +168,110 @@ export async function deleteEvent(accessToken: string, calendarId: string, event
     throw new Error(`Calendar delete ${res.status}: ${await res.text()}`);
   }
 }
+
+// ------------- One-off push/delete for a single obligacion -------------
+// Best-effort: silently no-op if Google is not connected, logs on failure.
+
+export async function pushObligacionToGoogle(despachoId: string, obligacionId: string) {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const conn = await getValidAccessToken(despachoId);
+    if (!conn) return { skipped: true as const, reason: "not_connected" };
+
+    const { data: o } = await supabaseAdmin
+      .from("obligaciones_fiscales")
+      .select("id, nombre, clave, periodicidad, proximo_vencimiento, estatus, notas, cliente_id, periodo")
+      .eq("id", obligacionId)
+      .maybeSingle();
+    if (!o || !o.proximo_vencimiento) return { skipped: true as const, reason: "no_date" };
+
+    const { data: existing } = await supabaseAdmin
+      .from("google_calendar_event_map")
+      .select("google_event_id")
+      .eq("despacho_id", despachoId)
+      .eq("obligacion_id", obligacionId)
+      .maybeSingle();
+
+    // If already completed, remove event from Google instead.
+    if (o.estatus === "cumplida" || o.estatus === "presentada") {
+      if (existing?.google_event_id) {
+        await deleteEvent(conn.token, conn.calendarId, existing.google_event_id);
+        await supabaseAdmin
+          .from("google_calendar_event_map")
+          .delete()
+          .eq("despacho_id", despachoId)
+          .eq("obligacion_id", obligacionId);
+      }
+      return { ok: true as const, removed: true };
+    }
+
+    let cli: any = null;
+    if (o.cliente_id) {
+      const { data: c } = await supabaseAdmin
+        .from("clientes")
+        .select("id, nombre, rfc")
+        .eq("id", o.cliente_id)
+        .maybeSingle();
+      cli = c;
+    }
+    const summary = `[ContaClick] ${o.nombre || o.clave || "Obligación"}${cli ? ` · ${cli.nombre}` : ""}`;
+    const description = [
+      o.clave ? `Clave: ${o.clave}` : null,
+      o.periodicidad ? `Periodicidad: ${o.periodicidad}` : null,
+      o.periodo ? `Periodo: ${o.periodo}` : null,
+      cli?.rfc ? `RFC: ${cli.rfc}` : null,
+      o.notas || null,
+      "—",
+      "Generado automáticamente por ContaClick",
+    ].filter(Boolean).join("\n");
+
+    const ev = await upsertEvent({
+      accessToken: conn.token,
+      calendarId: conn.calendarId,
+      eventId: existing?.google_event_id || null,
+      summary,
+      description,
+      dateISO: o.proximo_vencimiento as string,
+      reminderMinutes: 60 * 24,
+    });
+
+    await supabaseAdmin.from("google_calendar_event_map").upsert(
+      {
+        despacho_id: despachoId,
+        obligacion_id: obligacionId,
+        google_event_id: ev.id,
+        last_pushed_at: new Date().toISOString(),
+      },
+      { onConflict: "despacho_id,obligacion_id" }
+    );
+    return { ok: true as const, eventId: ev.id };
+  } catch (e) {
+    console.error("[google] pushObligacionToGoogle failed", obligacionId, e);
+    return { ok: false as const, error: (e as Error).message };
+  }
+}
+
+export async function deleteObligacionFromGoogle(despachoId: string, obligacionId: string) {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: existing } = await supabaseAdmin
+      .from("google_calendar_event_map")
+      .select("google_event_id")
+      .eq("despacho_id", despachoId)
+      .eq("obligacion_id", obligacionId)
+      .maybeSingle();
+    if (!existing?.google_event_id) return { skipped: true as const };
+    const conn = await getValidAccessToken(despachoId);
+    if (!conn) return { skipped: true as const, reason: "not_connected" };
+    await deleteEvent(conn.token, conn.calendarId, existing.google_event_id);
+    await supabaseAdmin
+      .from("google_calendar_event_map")
+      .delete()
+      .eq("despacho_id", despachoId)
+      .eq("obligacion_id", obligacionId);
+    return { ok: true as const };
+  } catch (e) {
+    console.error("[google] deleteObligacionFromGoogle failed", obligacionId, e);
+    return { ok: false as const, error: (e as Error).message };
+  }
+}
