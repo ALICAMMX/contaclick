@@ -7,7 +7,8 @@ import { ActiveClienteProvider } from "@/lib/active-cliente";
 import { useAuth } from "@/lib/auth";
 import { getEntryContext } from "@/lib/auth-bootstrap.functions";
 import { supabase } from "@/integrations/supabase/client";
-import { Sparkles, Home, Wrench, FolderOpen, ArrowLeft } from "lucide-react";
+import { BrandSpinner } from "@/components/BrandSpinner";
+import { Home, Wrench, FolderOpen, ArrowLeft } from "lucide-react";
 
 function AppNotFound() {
   return (
