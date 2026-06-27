@@ -96,7 +96,13 @@ async function ejecutarAccion(
         return { output: { ok: true, mensaje: "Reporte ejecutivo solicitado al módulo de Reportes." } };
 
       case "solicitar_documento_cliente": {
-        if (!ctx.clienteId) return { output: null, error: "Sin cliente_id" };
+        if (!ctx.clienteId) {
+          return {
+            output: { skipped: true, motivo: "Sin cliente asociado. Asocia el workflow a un cliente para enviar solicitudes." },
+            skipped: true,
+          };
+        }
+
         const ins: any = {
           despacho_id: ctx.despachoId,
           cliente_id: ctx.clienteId,
