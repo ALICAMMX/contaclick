@@ -1,6 +1,19 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Bot, Send, X, Sparkles, Loader2, Minus, Plus, Trash2, MessageSquare, Menu } from "lucide-react";
+import logoC from "@/assets/contaclick-c.png.asset.json";
+
+function BotMark({ className = "h-5 w-5", spin = false }: { className?: string; spin?: boolean }) {
+  return (
+    <img
+      src={logoC.url}
+      alt="ContaClick IA"
+      draggable={false}
+      className={`${className} object-contain ${spin ? "animate-spin" : ""}`}
+      style={spin ? { animationDuration: "1.1s" } : undefined}
+    />
+  );
+}
 import { RichMarkdown } from "@/components/RichMarkdown";
 import { Button } from "@/components/ui/button";
 import {
