@@ -35,13 +35,7 @@ function PortalLayout() {
   }, [isLoading, ctx, navigate]);
 
   if (loading || isLoading || !user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex items-center gap-3 text-muted-foreground">
-          <Sparkles className="h-5 w-5 text-primary animate-pulse" /> Cargando portal...
-        </div>
-      </div>
-    );
+    return <BrandSpinner fullscreen size="lg" label="Cargando portal" />;
   }
 
   if (!ctx || !ctx.isClient) return null;
