@@ -335,7 +335,7 @@ function ModuleCard({ m }: { m: typeof MODULES[number] }) {
           <Icon className="h-7 w-7" />
         </div>
         <div className="text-right">
-          <div className="text-3xl serif" style={{ color: m.accent }}>{m.counts.tools}</div>
+          <div className="text-3xl serif" style={{ color: m.accent }}>{toolCount}</div>
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground">herramientas</div>
         </div>
       </div>
