@@ -313,6 +313,7 @@ function ExpedienteBar() {
 
 function ModuleCard({ m }: { m: typeof MODULES[number] }) {
   const Icon = m.icon;
+  const toolCount = ALL_TOOLS.filter((t) => (m.groups as readonly string[]).includes(t.group)).length;
   return (
     <Link
       to={m.href}
