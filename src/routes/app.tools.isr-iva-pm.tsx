@@ -99,7 +99,7 @@ function IsrIvaPM() {
           <Link to="/app/tools/isr-iva-calculator"><Calculator className="h-4 w-4" /> Versión Persona Física</Link>
         </Button>
         <Button asChild variant="ghost" className="gap-2">
-          <Link to="/app/reportes/resumen-fiscal"><FileBarChart className="h-4 w-4" /> Resumen fiscal</Link>
+          <Link to="/app/reportes/resumen-fiscal" search={{ mes: periodo }}><FileBarChart className="h-4 w-4" /> Resumen fiscal</Link>
         </Button>
       </div>
       {importedFrom && (
