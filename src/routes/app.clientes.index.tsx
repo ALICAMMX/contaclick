@@ -85,14 +85,28 @@ function ClientesPage() {
             <FileBadge className="h-4 w-4" /> RFC vinculados
           </Link>
           {canManageExpedientes && (
-            <Button variant="hero" onClick={() => setOpenForm((v) => !v)}>
+            <Button
+              variant="hero"
+              type="button"
+              onPointerDown={(e) => {
+                // Responder en pointerdown evita la "primera pulsación perdida"
+                // cuando el botón aún no tiene foco (regresión de doble-click).
+                if (e.button !== 0) return;
+                setOpenForm((v) => !v);
+              }}
+              onClick={(e) => e.preventDefault()}
+            >
               {openForm ? <><X className="h-4 w-4" /> Cancelar</> : <><Plus className="h-4 w-4" /> Nuevo expediente</>}
             </Button>
           )}
         </div>
       </div>
 
-      {openForm && canManageExpedientes && <NewClienteForm onSubmit={(d) => createMut.mutate(d)} loading={createMut.isPending} />}
+      {canManageExpedientes && (
+        <div hidden={!openForm}>
+          <NewClienteForm onSubmit={(d) => createMut.mutate(d)} loading={createMut.isPending} />
+        </div>
+      )}
 
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
