@@ -177,20 +177,29 @@ function Landing() {
             </p>
           </div>
 
-          <div className="mt-14 grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {modules.map((m) => (
-              <div
-                key={m.title}
-                className="group relative rounded-2xl p-6 border border-border/50 bg-card/40 hover:bg-card/80 transition-all duration-300 hover:-translate-y-1"
-                style={{ boxShadow: "var(--shadow-card)" }}
-              >
-                <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${m.color} opacity-0 group-hover:opacity-100 transition-opacity`} aria-hidden />
-                <div className="relative">
-                  <div className="h-11 w-11 rounded-lg flex items-center justify-center bg-primary/10 border border-primary/20 mb-4">
-                    <m.icon className="h-5 w-5 text-primary" />
-                  </div>
-                  <h3 className="text-lg font-semibold">{m.title}</h3>
-                  <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{m.desc}</p>
+          <div className="mt-14 space-y-4">
+            {[
+              { items: modules.slice(0, Math.ceil(modules.length / 2)), reverse: false },
+              { items: modules.slice(Math.ceil(modules.length / 2)), reverse: true },
+            ].map((row, idx) => (
+              <div key={idx} className="marquee-mask overflow-hidden">
+                <div className={`marquee-track ${row.reverse ? "reverse" : ""}`}>
+                  {[...row.items, ...row.items].map((m, i) => (
+                    <div
+                      key={`${m.title}-${i}`}
+                      className="group relative rounded-2xl p-6 border border-border/50 bg-card/40 hover:bg-card/80 transition-all duration-300 w-[320px] shrink-0"
+                      style={{ boxShadow: "var(--shadow-card)" }}
+                    >
+                      <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${m.color} opacity-0 group-hover:opacity-100 transition-opacity`} aria-hidden />
+                      <div className="relative">
+                        <div className="h-11 w-11 rounded-lg flex items-center justify-center bg-primary/10 border border-primary/20 mb-4">
+                          <m.icon className="h-5 w-5 text-primary" />
+                        </div>
+                        <h3 className="text-lg font-semibold">{m.title}</h3>
+                        <p className="mt-2 text-sm text-muted-foreground leading-relaxed line-clamp-3">{m.desc}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
