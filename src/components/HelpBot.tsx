@@ -224,7 +224,7 @@ export function HelpBot() {
         )}
         {!open && (
           <span className="absolute right-full mr-3 whitespace-nowrap rounded-md bg-popover border border-border text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity text-foreground shadow-lg pointer-events-none">
-            Bot de Ayuda
+            Conti · Asistente IA
           </span>
         )}
       </button>
