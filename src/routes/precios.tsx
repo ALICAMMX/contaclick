@@ -219,15 +219,25 @@ function PreciosPage() {
                   ))}
                 </ul>
 
-                <div className="mt-6">
+                <div className="mt-6 space-y-2">
                   {p.id === "enterprise" ? (
                     <Button asChild variant="glass" className="w-full">
                       <Link to="/contacto">Hablar con ventas</Link>
                     </Button>
                   ) : (
-                    <Button asChild variant={p.highlight ? "hero" : "glass"} className="w-full">
-                      <Link to="/auth">Comenzar prueba de 14 días</Link>
-                    </Button>
+                    <>
+                      <Button asChild variant={p.highlight ? "hero" : "glass"} className="w-full">
+                        <Link
+                          to="/auth"
+                          search={{ next: `/app/checkout?plan=${p.id}&cycle=${billing}` }}
+                        >
+                          Contratar {p.name}
+                        </Link>
+                      </Button>
+                      <Button asChild variant="ghost" size="sm" className="w-full text-xs">
+                        <Link to="/auth">o prueba 14 días gratis</Link>
+                      </Button>
+                    </>
                   )}
                 </div>
               </div>

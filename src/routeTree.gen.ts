@@ -61,6 +61,7 @@ import { Route as AppContabilidadAutoRouteImport } from './routes/app.contabilid
 import { Route as AppConfiguracionRouteImport } from './routes/app.configuracion'
 import { Route as AppConciliacionIntegralRouteImport } from './routes/app.conciliacion-integral'
 import { Route as AppConciliacionRouteImport } from './routes/app.conciliacion'
+import { Route as AppCheckoutRouteImport } from './routes/app.checkout'
 import { Route as AppCfdiRouteImport } from './routes/app.cfdi'
 import { Route as AppCalendarioRouteImport } from './routes/app.calendario'
 import { Route as AppBuzonRouteImport } from './routes/app.buzon'
@@ -116,6 +117,7 @@ import { Route as AppAdminCumplimientoRouteImport } from './routes/app.admin.cum
 import { Route as AppAdminCorrespondenciaRouteImport } from './routes/app.admin.correspondencia'
 import { Route as AppAdminBuzonRouteImport } from './routes/app.admin.buzon'
 import { Route as AppAdminActivosRouteImport } from './routes/app.admin.activos'
+import { Route as ApiPublicMpWebhookRouteImport } from './routes/api/public/mp-webhook'
 import { Route as ApiPublicContactRouteImport } from './routes/api/public/contact'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
@@ -382,6 +384,11 @@ const AppConciliacionIntegralRoute = AppConciliacionIntegralRouteImport.update({
 const AppConciliacionRoute = AppConciliacionRouteImport.update({
   id: '/conciliacion',
   path: '/conciliacion',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCheckoutRoute = AppCheckoutRouteImport.update({
+  id: '/checkout',
+  path: '/checkout',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCfdiRoute = AppCfdiRouteImport.update({
@@ -666,6 +673,11 @@ const AppAdminActivosRoute = AppAdminActivosRouteImport.update({
   path: '/activos',
   getParentRoute: () => AppAdminRoute,
 } as any)
+const ApiPublicMpWebhookRoute = ApiPublicMpWebhookRouteImport.update({
+  id: '/api/public/mp-webhook',
+  path: '/api/public/mp-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicContactRoute = ApiPublicContactRouteImport.update({
   id: '/api/public/contact',
   path: '/api/public/contact',
@@ -728,6 +740,7 @@ export interface FileRoutesByFullPath {
   '/app/buzon': typeof AppBuzonRoute
   '/app/calendario': typeof AppCalendarioRoute
   '/app/cfdi': typeof AppCfdiRouteWithChildren
+  '/app/checkout': typeof AppCheckoutRoute
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
   '/app/conciliacion-integral': typeof AppConciliacionIntegralRoute
   '/app/configuracion': typeof AppConfiguracionRoute
@@ -767,6 +780,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/': typeof DashboardIndexRoute
   '/portal/': typeof PortalIndexRoute
   '/api/public/contact': typeof ApiPublicContactRoute
+  '/api/public/mp-webhook': typeof ApiPublicMpWebhookRoute
   '/app/admin/activos': typeof AppAdminActivosRoute
   '/app/admin/buzon': typeof AppAdminBuzonRoute
   '/app/admin/correspondencia': typeof AppAdminCorrespondenciaRoute
@@ -839,6 +853,7 @@ export interface FileRoutesByTo {
   '/app/administrativo': typeof AppAdministrativoRoute
   '/app/buzon': typeof AppBuzonRoute
   '/app/calendario': typeof AppCalendarioRoute
+  '/app/checkout': typeof AppCheckoutRoute
   '/app/conciliacion-integral': typeof AppConciliacionIntegralRoute
   '/app/configuracion': typeof AppConfiguracionRoute
   '/app/contabilidad-auto': typeof AppContabilidadAutoRoute
@@ -873,6 +888,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardIndexRoute
   '/portal': typeof PortalIndexRoute
   '/api/public/contact': typeof ApiPublicContactRoute
+  '/api/public/mp-webhook': typeof ApiPublicMpWebhookRoute
   '/app/admin/activos': typeof AppAdminActivosRoute
   '/app/admin/buzon': typeof AppAdminBuzonRoute
   '/app/admin/correspondencia': typeof AppAdminCorrespondenciaRoute
@@ -951,6 +967,7 @@ export interface FileRoutesById {
   '/app/buzon': typeof AppBuzonRoute
   '/app/calendario': typeof AppCalendarioRoute
   '/app/cfdi': typeof AppCfdiRouteWithChildren
+  '/app/checkout': typeof AppCheckoutRoute
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
   '/app/conciliacion-integral': typeof AppConciliacionIntegralRoute
   '/app/configuracion': typeof AppConfiguracionRoute
@@ -990,6 +1007,7 @@ export interface FileRoutesById {
   '/dashboard/': typeof DashboardIndexRoute
   '/portal/': typeof PortalIndexRoute
   '/api/public/contact': typeof ApiPublicContactRoute
+  '/api/public/mp-webhook': typeof ApiPublicMpWebhookRoute
   '/app/admin/activos': typeof AppAdminActivosRoute
   '/app/admin/buzon': typeof AppAdminBuzonRoute
   '/app/admin/correspondencia': typeof AppAdminCorrespondenciaRoute
@@ -1069,6 +1087,7 @@ export interface FileRouteTypes {
     | '/app/buzon'
     | '/app/calendario'
     | '/app/cfdi'
+    | '/app/checkout'
     | '/app/conciliacion'
     | '/app/conciliacion-integral'
     | '/app/configuracion'
@@ -1108,6 +1127,7 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/portal/'
     | '/api/public/contact'
+    | '/api/public/mp-webhook'
     | '/app/admin/activos'
     | '/app/admin/buzon'
     | '/app/admin/correspondencia'
@@ -1180,6 +1200,7 @@ export interface FileRouteTypes {
     | '/app/administrativo'
     | '/app/buzon'
     | '/app/calendario'
+    | '/app/checkout'
     | '/app/conciliacion-integral'
     | '/app/configuracion'
     | '/app/contabilidad-auto'
@@ -1214,6 +1235,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/portal'
     | '/api/public/contact'
+    | '/api/public/mp-webhook'
     | '/app/admin/activos'
     | '/app/admin/buzon'
     | '/app/admin/correspondencia'
@@ -1291,6 +1313,7 @@ export interface FileRouteTypes {
     | '/app/buzon'
     | '/app/calendario'
     | '/app/cfdi'
+    | '/app/checkout'
     | '/app/conciliacion'
     | '/app/conciliacion-integral'
     | '/app/configuracion'
@@ -1330,6 +1353,7 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/portal/'
     | '/api/public/contact'
+    | '/api/public/mp-webhook'
     | '/app/admin/activos'
     | '/app/admin/buzon'
     | '/app/admin/correspondencia'
@@ -1404,6 +1428,7 @@ export interface RootRouteChildren {
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   InvitarTokenRoute: typeof InvitarTokenRoute
   ApiPublicContactRoute: typeof ApiPublicContactRoute
+  ApiPublicMpWebhookRoute: typeof ApiPublicMpWebhookRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicGoogleCallbackRoute: typeof ApiPublicGoogleCallbackRoute
   ApiPublicHooksSatSyncRoute: typeof ApiPublicHooksSatSyncRoute
@@ -1777,6 +1802,13 @@ declare module '@tanstack/react-router' {
       path: '/conciliacion'
       fullPath: '/app/conciliacion'
       preLoaderRoute: typeof AppConciliacionRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/checkout': {
+      id: '/app/checkout'
+      path: '/checkout'
+      fullPath: '/app/checkout'
+      preLoaderRoute: typeof AppCheckoutRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/cfdi': {
@@ -2164,6 +2196,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminActivosRouteImport
       parentRoute: typeof AppAdminRoute
     }
+    '/api/public/mp-webhook': {
+      id: '/api/public/mp-webhook'
+      path: '/api/public/mp-webhook'
+      fullPath: '/api/public/mp-webhook'
+      preLoaderRoute: typeof ApiPublicMpWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/contact': {
       id: '/api/public/contact'
       path: '/api/public/contact'
@@ -2347,6 +2386,7 @@ interface AppRouteChildren {
   AppBuzonRoute: typeof AppBuzonRoute
   AppCalendarioRoute: typeof AppCalendarioRoute
   AppCfdiRoute: typeof AppCfdiRouteWithChildren
+  AppCheckoutRoute: typeof AppCheckoutRoute
   AppConciliacionRoute: typeof AppConciliacionRouteWithChildren
   AppConciliacionIntegralRoute: typeof AppConciliacionIntegralRoute
   AppConfiguracionRoute: typeof AppConfiguracionRoute
@@ -2398,6 +2438,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppBuzonRoute: AppBuzonRoute,
   AppCalendarioRoute: AppCalendarioRoute,
   AppCfdiRoute: AppCfdiRouteWithChildren,
+  AppCheckoutRoute: AppCheckoutRoute,
   AppConciliacionRoute: AppConciliacionRouteWithChildren,
   AppConciliacionIntegralRoute: AppConciliacionIntegralRoute,
   AppConfiguracionRoute: AppConfiguracionRoute,
@@ -2510,6 +2551,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   InvitarTokenRoute: InvitarTokenRoute,
   ApiPublicContactRoute: ApiPublicContactRoute,
+  ApiPublicMpWebhookRoute: ApiPublicMpWebhookRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicGoogleCallbackRoute: ApiPublicGoogleCallbackRoute,
   ApiPublicHooksSatSyncRoute: ApiPublicHooksSatSyncRoute,

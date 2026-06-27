@@ -24,8 +24,16 @@ import {
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    next: typeof s.next === "string" && s.next.startsWith("/") ? s.next : undefined,
+  }),
   component: AuthPage,
 });
+
+function safeNext(next: string | undefined, fallback: string): string {
+  if (!next || !next.startsWith("/") || next.startsWith("//")) return fallback;
+  return next;
+}
 
 type AuthFailure = {
   code?: string;
@@ -76,10 +84,13 @@ function AuthPage() {
     return !!data?.cliente_id;
   };
 
+  const search = Route.useSearch();
+
   const finishAuthenticatedEntry = async (payload: { fullName: string | null; despachoNombre: string | null }) => {
     const entry = await bootstrapWorkspace({ data: payload });
     const isClient = entry.isClient || (await hasClientRoleFallback());
-    navigate({ to: isClient ? "/portal" : "/app", replace: true });
+    const fallback = isClient ? "/portal" : "/app";
+    navigate({ to: safeNext(search.next, fallback), replace: true });
   };
 
   const handleDemoLogin = async () => {
@@ -127,9 +138,10 @@ function AuthPage() {
       if (aal?.nextLevel === "aal2" && aal.currentLevel !== "aal2") return; // requiere 2FA, no auto-entrar
       const entry = await getEntry();
       const isClient = entry.isClient || (await hasClientRoleFallback());
-      navigate({ to: isClient ? "/portal" : "/app", replace: true });
+      const fallback = isClient ? "/portal" : "/app";
+      navigate({ to: safeNext(search.next, fallback), replace: true });
     });
-  }, [getEntry, navigate]);
+  }, [getEntry, navigate, search.next]);
 
   const sendPasswordReset = async () => {
     if (!email.trim()) {
