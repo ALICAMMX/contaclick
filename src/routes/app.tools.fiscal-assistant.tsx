@@ -72,7 +72,7 @@ function FiscalAssistantCard() {
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-2">
           <Button variant="hero" size="lg" onClick={openBot} className="gap-2">
-            <Bot className="h-4 w-4" /> Abrir Bot de Ayuda
+            <Bot className="h-4 w-4" /> Abrir Conti
           </Button>
           <p className="text-xs text-muted-foreground">
             También está disponible siempre desde el botón flotante en la esquina inferior derecha.
