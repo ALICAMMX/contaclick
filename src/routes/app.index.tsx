@@ -9,28 +9,38 @@ import { useEffect, useRef, useState } from "react";
 
 export const Route = createFileRoute("/app/")({ component: Hub });
 
+const CONTABLE_GROUPS = [
+  "Operación diaria",
+  "Fiscal · SAT",
+  "Herramientas contables",
+  "Conciliación y contabilidad",
+  "Reportes",
+  "Agentes IA",
+];
+const ADMIN_GROUPS = ["Administrativo & RH"];
+
 const MODULES = [
   {
     key: "contable",
     title: "Contable y Fiscal",
     short: "Cumplimiento, CFDI, declaraciones, defensa SAT.",
-    description: "22 herramientas + 8 agentes IA para tu cumplimiento fiscal mensual y anual.",
+    description: "Cumplimiento fiscal mensual y anual con agentes IA integrados.",
     href: "/app/contable",
     icon: Calculator,
     accent: "var(--module-contable)",
     bullets: ["Validador CFDI 4.0", "Riesgo SAT 2026", "Conciliación bancaria", "ISR / IVA / RESICO"],
-    counts: { tools: 22, live: 17 },
+    groups: CONTABLE_GROUPS,
   },
   {
     key: "admin",
     title: "Administrativo & RH",
     short: "Nómina, trámites, tesorería, activos.",
-    description: "Todo lo que tu despacho o pyme necesita más allá del SAT. 10 herramientas, 7 agentes.",
+    description: "Todo lo que tu despacho o pyme necesita más allá del SAT.",
     href: "/app/admin",
     icon: Briefcase,
     accent: "var(--module-admin)",
     bullets: ["Nómina IA · IMSS · INFONAVIT", "Tesorería y flujo de caja", "Trámites con semáforo", "Activos fijos & inventarios"],
-    counts: { tools: 10, live: 0 },
+    groups: ADMIN_GROUPS,
   },
 ] as const;
 
@@ -303,6 +313,7 @@ function ExpedienteBar() {
 
 function ModuleCard({ m }: { m: typeof MODULES[number] }) {
   const Icon = m.icon;
+  const toolCount = ALL_TOOLS.filter((t) => (m.groups as readonly string[]).includes(t.group)).length;
   return (
     <Link
       to={m.href}
@@ -324,7 +335,7 @@ function ModuleCard({ m }: { m: typeof MODULES[number] }) {
           <Icon className="h-7 w-7" />
         </div>
         <div className="text-right">
-          <div className="text-3xl serif" style={{ color: m.accent }}>{m.counts.tools}</div>
+          <div className="text-3xl serif" style={{ color: m.accent }}>{toolCount}</div>
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground">herramientas</div>
         </div>
       </div>
@@ -343,7 +354,7 @@ function ModuleCard({ m }: { m: typeof MODULES[number] }) {
 
       <div className="relative mt-6 flex items-center justify-between pt-5 border-t border-border">
         <span className="text-xs text-muted-foreground">
-          {m.counts.live > 0 ? `${m.counts.live} en vivo · resto en construcción` : "Vista previa · módulo en construcción"}
+          {toolCount} herramientas disponibles
         </span>
         <span className="inline-flex items-center gap-1.5 text-sm font-medium group-hover:gap-2.5 transition-all" style={{ color: m.accent }}>
           Entrar <ArrowRight className="h-4 w-4" />
