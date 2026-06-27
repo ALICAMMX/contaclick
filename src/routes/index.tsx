@@ -289,11 +289,11 @@ function Landing() {
         </div>
       </section>
 
-      <footer className="border-t border-border/50 py-10">
-        <div className="mx-auto max-w-7xl px-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
-          <Logo size="sm" />
+      <footer className="border-t border-border/50 py-16">
+        <div className="mx-auto max-w-7xl px-6 flex flex-col md:flex-row justify-between items-center gap-8 text-base text-muted-foreground">
+          <Logo size="xl" />
           <div>© 2026 ContaClick IA · Hecho en México 🇲🇽</div>
-          <div className="flex gap-5 items-center flex-wrap justify-center">
+          <div className="flex gap-6 items-center flex-wrap justify-center">
             <Link to="/privacidad" className="hover:text-foreground">Privacidad</Link>
             <Link to="/terminos" className="hover:text-foreground">Términos</Link>
             <Link to="/contacto" className="hover:text-foreground">Contacto</Link>
