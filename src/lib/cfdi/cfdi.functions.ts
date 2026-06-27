@@ -409,6 +409,35 @@ export const getCfdiStats = createServerFn({ method: "POST" })
     };
   });
 
+const UUID_MONTH_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export const getCfdiMonthStats = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ cliente_id: z.string().min(1) }).parse(d))
+  .handler(async ({ data, context }) => {
+    if (!UUID_MONTH_RE.test(data.cliente_id)) {
+      return { total: 0, emitidos: 0, recibidos: 0, desde: "", hasta: "" };
+    }
+    const now = new Date();
+    const desde = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const hasta = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
+    const { data: cli } = await context.supabase.from("clientes").select("rfc").eq("id", data.cliente_id).maybeSingle();
+    const rfc = (cli?.rfc ?? "").toUpperCase();
+    const { data: rows, error } = await context.supabase
+      .from("cfdi_xml")
+      .select("rfc_emisor, rfc_receptor, fecha")
+      .eq("cliente_id", data.cliente_id)
+      .gte("fecha", desde)
+      .lt("fecha", hasta);
+    if (error) throw new Error(error.message);
+    const r = rows ?? [];
+    const emitidos = rfc ? r.filter((x) => String(x.rfc_emisor ?? "").toUpperCase() === rfc).length : 0;
+    const recibidos = rfc ? r.filter((x) => String(x.rfc_receptor ?? "").toUpperCase() === rfc).length : 0;
+    return { total: r.length, emitidos, recibidos, desde, hasta };
+  });
+
+
+
 export const getCfdi = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
