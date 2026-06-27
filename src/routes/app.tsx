@@ -7,7 +7,8 @@ import { ActiveClienteProvider } from "@/lib/active-cliente";
 import { useAuth } from "@/lib/auth";
 import { getEntryContext } from "@/lib/auth-bootstrap.functions";
 import { supabase } from "@/integrations/supabase/client";
-import { Sparkles, Home, Wrench, FolderOpen, ArrowLeft } from "lucide-react";
+import { BrandSpinner } from "@/components/BrandSpinner";
+import { Home, Wrench, FolderOpen, ArrowLeft } from "lucide-react";
 
 function AppNotFound() {
   return (
@@ -102,13 +103,7 @@ function AppRoot() {
   }, [entryContext.data?.isClient, navigate]);
 
   if (loading || !user || entryContext.isLoading || entryContext.data?.isClient) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex items-center gap-3 text-muted-foreground">
-          <Sparkles className="h-5 w-5 text-primary animate-pulse" /> Cargando...
-        </div>
-      </div>
-    );
+    return <BrandSpinner fullscreen size="lg" label="Cargando ContaClick" />;
   }
 
   return (
