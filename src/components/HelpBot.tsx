@@ -46,7 +46,7 @@ function buildWelcome(name: string, expedienteNombre?: string | null): string {
   const opcionD = expedienteNombre
     ? `\n- **d)** ¿Quieres tratar algo del expediente **${expedienteNombre}**?`
     : "";
-  return `${saludo} 👋\n\nSoy el **Bot de Ayuda de ContaClick**. Estoy aquí para ayudarte: si es tu primera vez en ContaClick puedo darte una guía de cómo comenzar a usar tu herramienta. Ahora eres parte de nuestra familia y queremos tratarte como tal.\n\n**¿Por dónde quieres comenzar?**\n\n- **a)** Explicación de cómo funciona ContaClick\n- **b)** Cuáles son las funciones principales de ContaClick\n- **c)** Escribe algo personalizado en el chat y con todo gusto te respondo${opcionD}`;
+  return `${saludo} 👋\n\nSoy **Conti**, tu asistente IA de ContaClick. Estoy aquí para ayudarte: si es tu primera vez en ContaClick puedo darte una guía de cómo comenzar a usar tu herramienta. Ahora eres parte de nuestra familia y queremos tratarte como tal.\n\n**¿Por dónde quieres comenzar?**\n\n- **a)** Explicación de cómo funciona ContaClick\n- **b)** Cuáles son las funciones principales de ContaClick\n- **c)** Escribe algo personalizado en el chat y con todo gusto te respondo${opcionD}`;
 }
 
 export function HelpBot() {
@@ -213,7 +213,7 @@ export function HelpBot() {
       <button
         ref={btnRef}
         onClick={() => setOpen((v) => !v)}
-        aria-label="Abrir bot de ayuda"
+        aria-label="Abrir Conti"
         className="fixed bottom-5 right-5 z-[60] h-14 w-14 rounded-full bg-gradient-to-br from-primary to-primary-glow text-primary-foreground shadow-2xl ring-2 ring-primary/40 hover:scale-105 active:scale-95 transition-all flex items-center justify-center group"
         style={{ boxShadow: "0 10px 40px -10px hsl(var(--primary) / 0.6), var(--shadow-glow)" }}
       >
@@ -224,7 +224,7 @@ export function HelpBot() {
         )}
         {!open && (
           <span className="absolute right-full mr-3 whitespace-nowrap rounded-md bg-popover border border-border text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity text-foreground shadow-lg pointer-events-none">
-            Bot de Ayuda
+            Conti · Asistente IA
           </span>
         )}
       </button>
@@ -303,7 +303,7 @@ export function HelpBot() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-sm flex items-center gap-1.5 truncate">
-                  Bot de Ayuda ContaClick
+                  Conti · Asistente IA
                   <Sparkles className="h-3 w-3 text-primary shrink-0" />
                 </div>
                 <div className="text-[11px] text-muted-foreground truncate">

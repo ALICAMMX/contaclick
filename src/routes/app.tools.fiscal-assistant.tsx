@@ -19,7 +19,7 @@ function FiscalAssistantCard() {
     <ToolShell
       helpSlug="fiscal-assistant"
       title="Asistente Fiscal IA"
-      description="Ahora integrado con el Bot de Ayuda ContaClick: chat especializado en fiscal, contable y soporte de tu expediente activo."
+      description="Ahora integrado con Conti, el asistente IA de ContaClick: chat especializado en fiscal, contable y soporte de tu expediente activo."
       icon={<Bot className="h-5 w-5 text-primary-foreground" />}
       requireCliente={false}
     >
@@ -33,7 +33,7 @@ function FiscalAssistantCard() {
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-semibold flex items-center gap-2">
-              Bot de Ayuda ContaClick
+              Conti · Asistente IA ContaClick
               <Sparkles className="h-4 w-4 text-primary" />
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
@@ -72,7 +72,7 @@ function FiscalAssistantCard() {
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-2">
           <Button variant="hero" size="lg" onClick={openBot} className="gap-2">
-            <Bot className="h-4 w-4" /> Abrir Bot de Ayuda
+            <Bot className="h-4 w-4" /> Abrir Conti
           </Button>
           <p className="text-xs text-muted-foreground">
             También está disponible siempre desde el botón flotante en la esquina inferior derecha.
