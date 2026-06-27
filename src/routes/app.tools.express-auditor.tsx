@@ -160,6 +160,7 @@ function ExpressAuditor() {
 
   return (
     <ToolShell
+      helpSlug="express-auditor"
       title="Auditor express"
       description="5 validaciones automáticas sobre los CFDIs del expediente: duplicados, NC huérfanas, cancelados, PPD sin pago y fuera de periodo."
       icon={<ScanSearch className="h-5 w-5 text-primary-foreground" />}
