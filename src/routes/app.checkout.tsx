@@ -35,19 +35,46 @@ function CheckoutPage() {
   const [cycle, setCycle] = useState<BillingCycle>(initialCycle);
   const [includeIva, setIncludeIva] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [cuponInput, setCuponInput] = useState("");
+  const [cupon, setCupon] = useState<{ codigo: string; porcentaje: number } | null>(null);
+  const [cuponLoading, setCuponLoading] = useState(false);
 
   // Mantener URL sincronizada
   useEffect(() => {
     navigate({ to: "/app/checkout", search: { plan: planId, cycle }, replace: true });
   }, [planId, cycle, navigate]);
 
+  // Si cambia plan o ciclo, revalidar/limpiar cupón aplicado
+  useEffect(() => { if (cupon) setCupon(null); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [planId, cycle]);
+
   const plan = PLANS[planId];
-  const totals = useMemo(() => computeTotal(plan, cycle, includeIva), [plan, cycle, includeIva]);
+  const totals = useMemo(
+    () => computeTotal(plan, cycle, includeIva, cupon?.porcentaje ?? 0),
+    [plan, cycle, includeIva, cupon],
+  );
   const monthlyEq = cycle === "anual" ? Math.round(totals.total / 12) : null;
 
   const start = useServerFn(createMpCheckout);
+  const validar = useServerFn(validarCupon);
 
-  async function handlePay() {
+  async function aplicarCupon() {
+    const codigo = cuponInput.trim();
+    if (!codigo) return;
+    setCuponLoading(true);
+    try {
+      const r = await validar({ data: { codigo, plan_id: planId, billing_cycle: cycle } });
+      if (!r.valido) {
+        toast.error(r.motivo || "Cupón inválido");
+        return;
+      }
+      setCupon({ codigo, porcentaje: r.porcentaje });
+      toast.success(`Cupón aplicado: -${r.porcentaje}%`);
+    } catch (e: any) {
+      toast.error(e?.message || "No se pudo validar el cupón");
+    } finally {
+      setCuponLoading(false);
+    }
+  }
     setLoading(true);
     try {
       const r = await start({
