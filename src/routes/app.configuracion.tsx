@@ -174,6 +174,7 @@ function ConfigPage() {
       <UsageProfileCard />
       <UsageHistoryPanel />
       <TwoFactorSection />
+      <GoogleCalendarSection />
 
 
       <div className="rounded-xl border border-primary/30 bg-primary/5 p-5 space-y-4">
