@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import {
   FileText, Banknote, Bot, Shield, BarChart3, Zap, Users, FileCheck,
   ArrowRight, CheckCircle2, Sparkles, Brain, Lock, ChevronLeft, ChevronRight,
-  Calculator, Bell,
+  Calculator, Bell, Download, GitCompare, BookOpen, CalendarDays, KanbanSquare,
+  Workflow, HeartPulse, Scale, Building2, AlertTriangle, Briefcase, Search,
 } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,17 @@ const modules = [
   { icon: Calculator, title: "Calculadora Fiscal", desc: "ISR, IVA, RESICO, retenciones y estimaciones en tiempo real. Simula escenarios fiscales al instante.", color: "from-rose-500/20 to-rose-500/5" },
   { icon: FileCheck, title: "Validador RFC & Constancias", desc: "Verifica RFC de proveedores y clientes. Descarga constancias de situación fiscal y detecta contribuyentes con problemas.", color: "from-lime-500/20 to-lime-500/5" },
   { icon: Bell, title: "Alertas SAT Proactivas", desc: "Vencimientos, citatorios, cambios de obligaciones y notificaciones del SAT directo a tu dashboard.", color: "from-orange-500/20 to-orange-500/5" },
+  { icon: Download, title: "Descarga Masiva SAT", desc: "Descarga automatizada de CFDI emitidos, recibidos y metadatos directo del SAT con credenciales cifradas.", color: "from-sky-500/20 to-sky-500/5" },
+  { icon: GitCompare, title: "Conciliación Integral", desc: "Cruza CFDI vs bancos vs contabilidad en una sola corrida. Detecta diferencias y genera pólizas automáticamente.", color: "from-teal-500/20 to-teal-500/5" },
+  { icon: BookOpen, title: "Contabilidad Automática", desc: "Mapea CFDI al catálogo de cuentas y exporta en formato CONTPAQi y Anexo 24 listo para autoridad.", color: "from-indigo-500/20 to-indigo-500/5" },
+  { icon: CalendarDays, title: "Calendario Fiscal", desc: "Obligaciones por RFC y régimen: ISR, IVA, DIOT, DyP. Nunca pierdas un vencimiento.", color: "from-fuchsia-500/20 to-fuchsia-500/5" },
+  { icon: KanbanSquare, title: "Centro de Tareas", desc: "Kanban del despacho: asigna pendientes por cliente, prioridad y vencimiento con seguimiento en tiempo real.", color: "from-pink-500/20 to-pink-500/5" },
+  { icon: Workflow, title: "Workflows Automáticos", desc: "Automatiza recordatorios, envíos, conciliaciones y reportes con disparadores por evento o calendario.", color: "from-yellow-500/20 to-yellow-500/5" },
+  { icon: HeartPulse, title: "Dashboard de Salud Fiscal", desc: "Score por cliente con análisis IA: cumplimiento, riesgos, oportunidades de optimización fiscal.", color: "from-red-500/20 to-red-500/5" },
+  { icon: AlertTriangle, title: "Validador EFOS / 69-B", desc: "Detecta proveedores en listas negras del SAT antes de deducir. Protege a tus clientes de cancelaciones.", color: "from-amber-500/20 to-amber-500/5" },
+  { icon: Scale, title: "Redactor Legal IA", desc: "Genera oficios, aclaraciones, contestaciones y promociones con fundamento legal vigente.", color: "from-purple-500/20 to-purple-500/5" },
+  { icon: Briefcase, title: "Módulo Administrativo", desc: "Trámites, nómina, tesorería, activos, inventarios y correspondencia para despachos completos.", color: "from-slate-500/20 to-slate-500/5" },
+  { icon: Search, title: "Auditor Express", desc: "Diagnóstico instantáneo del expediente: hallazgos, semáforo y plan de acción priorizado.", color: "from-green-500/20 to-green-500/5" },
 ];
 
 const stats = [
