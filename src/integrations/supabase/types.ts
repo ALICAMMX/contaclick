@@ -1255,6 +1255,56 @@ export type Database = {
           },
         ]
       }
+      despacho_google_tokens: {
+        Row: {
+          access_token: string | null
+          calendar_id: string | null
+          connected_by: string | null
+          created_at: string
+          despacho_id: string
+          expires_at: string | null
+          google_email: string
+          last_sync_at: string | null
+          refresh_token: string
+          scope: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string | null
+          calendar_id?: string | null
+          connected_by?: string | null
+          created_at?: string
+          despacho_id: string
+          expires_at?: string | null
+          google_email: string
+          last_sync_at?: string | null
+          refresh_token: string
+          scope?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string | null
+          calendar_id?: string | null
+          connected_by?: string | null
+          created_at?: string
+          despacho_id?: string
+          expires_at?: string | null
+          google_email?: string
+          last_sync_at?: string | null
+          refresh_token?: string
+          scope?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "despacho_google_tokens_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: true
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       despachos: {
         Row: {
           acceso_restringido: boolean
@@ -1388,6 +1438,74 @@ export type Database = {
           used_at?: string | null
         }
         Relationships: []
+      }
+      google_calendar_event_map: {
+        Row: {
+          despacho_id: string
+          google_event_id: string
+          id: string
+          last_pushed_at: string
+          obligacion_id: string
+        }
+        Insert: {
+          despacho_id: string
+          google_event_id: string
+          id?: string
+          last_pushed_at?: string
+          obligacion_id: string
+        }
+        Update: {
+          despacho_id?: string
+          google_event_id?: string
+          id?: string
+          last_pushed_at?: string
+          obligacion_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "google_calendar_event_map_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "google_calendar_event_map_obligacion_id_fkey"
+            columns: ["obligacion_id"]
+            isOneToOne: false
+            referencedRelation: "obligaciones_fiscales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      google_oauth_states: {
+        Row: {
+          created_at: string
+          despacho_id: string
+          state: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          despacho_id: string
+          state: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          despacho_id?: string
+          state?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "google_oauth_states_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ia_historial: {
         Row: {
