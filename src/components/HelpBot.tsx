@@ -299,7 +299,7 @@ export function HelpBot() {
                 <Menu className="h-4 w-4" />
               </button>
               <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: "var(--gradient-primary)" }}>
-                <Bot className="h-5 w-5 text-primary-foreground" />
+                <BotMark className="h-6 w-6" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-sm flex items-center gap-1.5 truncate">
