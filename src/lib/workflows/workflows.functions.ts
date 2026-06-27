@@ -52,6 +52,40 @@ function buildRunErrorSummary(run: any, steps: any[]): string | null {
   return run?.error_message ?? null;
 }
 
+async function enrichRunsWithNamesAndErrors(supabase: any, runs: any[]): Promise<RunRow[]> {
+  const ids = Array.from(new Set(runs.map((r) => r.workflow_id).filter(Boolean)));
+  const runIds = runs.map((r) => r.id).filter(Boolean);
+  const nombreMap = new Map<string, string>();
+  const stepsMap = new Map<string, any[]>();
+
+  await Promise.all([
+    ids.length
+      ? supabase.from("workflows").select("id, nombre").in("id", ids).then(({ data }: any) => {
+          for (const w of data ?? []) nombreMap.set(w.id, w.nombre);
+        })
+      : Promise.resolve(),
+    runIds.length
+      ? supabase
+          .from("workflow_run_steps")
+          .select("run_id, kind, status, error_message, position")
+          .in("run_id", runIds)
+          .order("position", { ascending: true })
+          .then(({ data }: any) => {
+            for (const s of data ?? []) {
+              if (!stepsMap.has(s.run_id)) stepsMap.set(s.run_id, []);
+              stepsMap.get(s.run_id)!.push(s);
+            }
+          })
+      : Promise.resolve(),
+  ]);
+
+  return runs.map((r: any) => ({
+    ...r,
+    workflow_nombre: nombreMap.get(r.workflow_id),
+    error_message: buildRunErrorSummary(r, stepsMap.get(r.id) ?? []),
+  })) as RunRow[];
+}
+
 export const listWorkflows = createServerFn({ method: "GET" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) =>
@@ -99,14 +133,7 @@ export const getWorkflowsDashboard = createServerFn({ method: "GET" })
 
     const tiempoAhorradoMin = today.reduce((acc, r) => acc + Math.max(2, Math.round((r.duration_ms ?? 0) / 1000 / 60) + 5), 0);
 
-    // join nombre de workflow
-    const ids = Array.from(new Set(allRuns.map((r) => r.workflow_id)));
-    let nombreMap = new Map<string, string>();
-    if (ids.length) {
-      const { data: wfNames } = await supabase.from("workflows").select("id, nombre").in("id", ids);
-      for (const w of (wfNames ?? []) as any[]) nombreMap.set(w.id, w.nombre);
-    }
-    const runsConNombre = allRuns.map((r) => ({ ...r, workflow_nombre: nombreMap.get(r.workflow_id) }));
+    const runsConNombre = await enrichRunsWithNamesAndErrors(supabase, allRuns);
 
     const errores = runsConNombre.filter((r) => r.status === "fallido" || r.status === "parcial").slice(0, 5);
 
@@ -148,13 +175,7 @@ export const listRuns = createServerFn({ method: "GET" })
     if (data?.status) q = q.eq("status", data.status as any);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
-    const ids = Array.from(new Set((rows ?? []).map((r: any) => r.workflow_id)));
-    let nombres = new Map<string, string>();
-    if (ids.length) {
-      const { data: w } = await supabase.from("workflows").select("id, nombre").in("id", ids);
-      for (const x of (w ?? []) as any[]) nombres.set(x.id, x.nombre);
-    }
-    return (rows ?? []).map((r: any) => ({ ...r, workflow_nombre: nombres.get(r.workflow_id) })) as RunRow[];
+    return enrichRunsWithNamesAndErrors(supabase, rows ?? []);
   });
 
 export const getRunDetalle = createServerFn({ method: "GET" })

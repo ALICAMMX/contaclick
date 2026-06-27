@@ -49,4 +49,4 @@
 ## Workflows: "Ver detalle" mostraba "Sin pasos registrados"
 - Síntoma: en `/app/workflows`, el botón **Ver detalle** existía pero el modal podía mostrar "Sin pasos registrados" y ocultar el error real de ejecuciones parciales/fallidas.
 - Causa: `getRunDetalle` ignoraba errores de lectura y devolvía arreglo vacío si la bitácora de pasos no llegaba a la UI; además el modal no mostraba estado de carga/error ni resumen de la ejecución.
-- Corrección: el detalle ahora valida el despacho activo, falla explícitamente si no puede leer la bitácora, reconstruye el resumen real desde los pasos fallidos (`kind: error`) y el modal muestra un bloque **Error detectado** aunque no existan pasos visibles.
+- Corrección: los listados y el detalle ahora reconstruyen el resumen real desde los pasos fallidos (`kind: error`), validan el despacho activo, fallan explícitamente si no pueden leer la bitácora y el modal muestra un bloque **Error detectado** aunque no existan pasos visibles.
