@@ -4,7 +4,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { getPortalContext } from "@/lib/portal/portal.functions";
-import { Sparkles, Home, FileText, Wallet, Receipt, BarChart3, MessageSquare, Upload, LogOut, Building2, Activity } from "lucide-react";
+import { Home, FileText, Wallet, Receipt, BarChart3, MessageSquare, Upload, LogOut, Building2, Activity } from "lucide-react";
+import { BrandSpinner } from "@/components/BrandSpinner";
 import { Logo } from "@/components/Logo";
 
 export const Route = createFileRoute("/portal")({
