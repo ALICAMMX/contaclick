@@ -128,11 +128,14 @@ export const createMpCheckout = createServerFn({ method: "POST" })
         total_final: totals.total,
       });
       if (!redErr) {
-        await supabaseAdmin.rpc("increment_cupon_uso" as never, { _cupon_id: cuponId } as never).then(() => null, () => null);
-        // Fallback simple si la rpc no existe
+        const { data: cur } = await supabaseAdmin
+          .from("cupones")
+          .select("usos_actuales")
+          .eq("id", cuponId)
+          .maybeSingle();
         await supabaseAdmin
           .from("cupones")
-          .update({ usos_actuales: ((await supabaseAdmin.from("cupones").select("usos_actuales").eq("id", cuponId).maybeSingle()).data?.usos_actuales ?? 0) + 1 })
+          .update({ usos_actuales: (cur?.usos_actuales ?? 0) + 1 })
           .eq("id", cuponId);
       }
     }
