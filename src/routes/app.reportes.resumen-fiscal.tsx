@@ -97,7 +97,7 @@ function ResumenFiscalPage() {
             <input
               type="month"
               value={periodo}
-              onChange={(e) => setPeriodo(e.target.value)}
+              onChange={(e) => navigate({ search: { mes: e.target.value || undefined } })}
               className="h-9 px-3 rounded-md bg-input/50 border border-border text-sm focus:outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
