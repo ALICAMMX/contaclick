@@ -121,6 +121,7 @@ import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/l
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as ApiPublicHooksWorkflowCronRouteImport } from './routes/api/public/hooks/workflow-cron'
 import { Route as ApiPublicHooksSatSyncRouteImport } from './routes/api/public/hooks/sat-sync'
+import { Route as ApiPublicGoogleCallbackRouteImport } from './routes/api/public/google.callback'
 
 const UnsubscribeRoute = UnsubscribeRouteImport.update({
   id: '/unsubscribe',
@@ -693,6 +694,11 @@ const ApiPublicHooksSatSyncRoute = ApiPublicHooksSatSyncRouteImport.update({
   path: '/api/public/hooks/sat-sync',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicGoogleCallbackRoute = ApiPublicGoogleCallbackRouteImport.update({
+  id: '/api/public/google/callback',
+  path: '/api/public/google/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -802,6 +808,7 @@ export interface FileRoutesByFullPath {
   '/app/mensajes/': typeof AppMensajesIndexRoute
   '/app/reportes/': typeof AppReportesIndexRoute
   '/app/tools/': typeof AppToolsIndexRoute
+  '/api/public/google/callback': typeof ApiPublicGoogleCallbackRoute
   '/api/public/hooks/sat-sync': typeof ApiPublicHooksSatSyncRoute
   '/api/public/hooks/workflow-cron': typeof ApiPublicHooksWorkflowCronRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -906,6 +913,7 @@ export interface FileRoutesByTo {
   '/app/mensajes': typeof AppMensajesIndexRoute
   '/app/reportes': typeof AppReportesIndexRoute
   '/app/tools': typeof AppToolsIndexRoute
+  '/api/public/google/callback': typeof ApiPublicGoogleCallbackRoute
   '/api/public/hooks/sat-sync': typeof ApiPublicHooksSatSyncRoute
   '/api/public/hooks/workflow-cron': typeof ApiPublicHooksWorkflowCronRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -1021,6 +1029,7 @@ export interface FileRoutesById {
   '/app/mensajes/': typeof AppMensajesIndexRoute
   '/app/reportes/': typeof AppReportesIndexRoute
   '/app/tools/': typeof AppToolsIndexRoute
+  '/api/public/google/callback': typeof ApiPublicGoogleCallbackRoute
   '/api/public/hooks/sat-sync': typeof ApiPublicHooksSatSyncRoute
   '/api/public/hooks/workflow-cron': typeof ApiPublicHooksWorkflowCronRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -1137,6 +1146,7 @@ export interface FileRouteTypes {
     | '/app/mensajes/'
     | '/app/reportes/'
     | '/app/tools/'
+    | '/api/public/google/callback'
     | '/api/public/hooks/sat-sync'
     | '/api/public/hooks/workflow-cron'
     | '/lovable/email/queue/process'
@@ -1241,6 +1251,7 @@ export interface FileRouteTypes {
     | '/app/mensajes'
     | '/app/reportes'
     | '/app/tools'
+    | '/api/public/google/callback'
     | '/api/public/hooks/sat-sync'
     | '/api/public/hooks/workflow-cron'
     | '/lovable/email/queue/process'
@@ -1355,6 +1366,7 @@ export interface FileRouteTypes {
     | '/app/mensajes/'
     | '/app/reportes/'
     | '/app/tools/'
+    | '/api/public/google/callback'
     | '/api/public/hooks/sat-sync'
     | '/api/public/hooks/workflow-cron'
     | '/lovable/email/queue/process'
@@ -1380,6 +1392,7 @@ export interface RootRouteChildren {
   InvitarTokenRoute: typeof InvitarTokenRoute
   ApiPublicContactRoute: typeof ApiPublicContactRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
+  ApiPublicGoogleCallbackRoute: typeof ApiPublicGoogleCallbackRoute
   ApiPublicHooksSatSyncRoute: typeof ApiPublicHooksSatSyncRoute
   ApiPublicHooksWorkflowCronRoute: typeof ApiPublicHooksWorkflowCronRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
@@ -2173,6 +2186,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksSatSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/google/callback': {
+      id: '/api/public/google/callback'
+      path: '/api/public/google/callback'
+      fullPath: '/api/public/google/callback'
+      preLoaderRoute: typeof ApiPublicGoogleCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -2470,6 +2490,7 @@ const rootRouteChildren: RootRouteChildren = {
   InvitarTokenRoute: InvitarTokenRoute,
   ApiPublicContactRoute: ApiPublicContactRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
+  ApiPublicGoogleCallbackRoute: ApiPublicGoogleCallbackRoute,
   ApiPublicHooksSatSyncRoute: ApiPublicHooksSatSyncRoute,
   ApiPublicHooksWorkflowCronRoute: ApiPublicHooksWorkflowCronRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,

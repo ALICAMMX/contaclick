@@ -13,6 +13,7 @@ import { Tour, resetTour } from "@/components/Tour";
 import { UsageProfileCard } from "@/components/UsageProfileCard";
 import { UsageHistoryPanel } from "@/components/UsageHistoryPanel";
 import { TwoFactorSection } from "@/components/TwoFactorSection";
+import { GoogleCalendarSection } from "@/components/GoogleCalendarSection";
 
 export const Route = createFileRoute("/app/configuracion")({
   component: ConfigPage,
