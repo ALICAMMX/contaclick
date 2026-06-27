@@ -2,12 +2,14 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
-import { CheckCircle2, CreditCard, Loader2, Lock, Receipt } from "lucide-react";
+import { CheckCircle2, CreditCard, Loader2, Lock, Receipt, Ticket, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { PLANS, computeTotal, isValidPlan, isValidCycle, type BillingCycle, type PlanId } from "@/lib/payments/plans";
 import { createMpCheckout } from "@/lib/payments/mp.functions";
+import { validarCupon } from "@/lib/payments/cupones.functions";
 
 const Search = z.object({
   plan: z.string().optional(),
@@ -33,23 +35,57 @@ function CheckoutPage() {
   const [cycle, setCycle] = useState<BillingCycle>(initialCycle);
   const [includeIva, setIncludeIva] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [cuponInput, setCuponInput] = useState("");
+  const [cupon, setCupon] = useState<{ codigo: string; porcentaje: number } | null>(null);
+  const [cuponLoading, setCuponLoading] = useState(false);
 
   // Mantener URL sincronizada
   useEffect(() => {
     navigate({ to: "/app/checkout", search: { plan: planId, cycle }, replace: true });
   }, [planId, cycle, navigate]);
 
+  // Si cambia plan o ciclo, revalidar/limpiar cupón aplicado
+  useEffect(() => { if (cupon) setCupon(null); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [planId, cycle]);
+
   const plan = PLANS[planId];
-  const totals = useMemo(() => computeTotal(plan, cycle, includeIva), [plan, cycle, includeIva]);
+  const totals = useMemo(
+    () => computeTotal(plan, cycle, includeIva, cupon?.porcentaje ?? 0),
+    [plan, cycle, includeIva, cupon],
+  );
   const monthlyEq = cycle === "anual" ? Math.round(totals.total / 12) : null;
 
   const start = useServerFn(createMpCheckout);
+  const validar = useServerFn(validarCupon);
+
+  async function aplicarCupon() {
+    const codigo = cuponInput.trim();
+    if (!codigo) return;
+    setCuponLoading(true);
+    try {
+      const r = await validar({ data: { codigo, plan_id: planId, billing_cycle: cycle } });
+      if (!r.valido) {
+        toast.error(r.motivo || "Cupón inválido");
+        return;
+      }
+      setCupon({ codigo, porcentaje: r.porcentaje });
+      toast.success(`Cupón aplicado: -${r.porcentaje}%`);
+    } catch (e: any) {
+      toast.error(e?.message || "No se pudo validar el cupón");
+    } finally {
+      setCuponLoading(false);
+    }
+  }
 
   async function handlePay() {
     setLoading(true);
     try {
       const r = await start({
-        data: { plan_id: planId, billing_cycle: cycle, include_iva: includeIva },
+        data: {
+          plan_id: planId,
+          billing_cycle: cycle,
+          include_iva: includeIva,
+          cupon_codigo: cupon?.codigo,
+        },
       });
       const url = r.init_point || r.sandbox_init_point;
       if (!url) throw new Error("No se obtuvo URL de pago");
@@ -148,6 +184,44 @@ function CheckoutPage() {
               <Switch checked={includeIva} onCheckedChange={setIncludeIva} />
             </div>
           </section>
+
+          {/* Cupón */}
+          <section className="rounded-2xl border border-border/60 bg-card p-5">
+            <h2 className="font-medium flex items-center gap-2 mb-1">
+              <Ticket className="h-4 w-4 text-primary" /> 4. ¿Tienes un cupón?
+            </h2>
+            <p className="text-xs text-muted-foreground mb-3">
+              Aplica un código promocional. El descuento se calcula sobre el subtotal antes de IVA.
+            </p>
+            {cupon ? (
+              <div className="flex items-center justify-between rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-sm">
+                <span className="font-medium text-success">
+                  {cupon.codigo.toUpperCase()} — -{cupon.porcentaje}%
+                </span>
+                <button
+                  type="button"
+                  onClick={() => { setCupon(null); setCuponInput(""); }}
+                  className="text-muted-foreground hover:text-foreground"
+                  aria-label="Quitar cupón"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <Input
+                  value={cuponInput}
+                  onChange={(e) => setCuponInput(e.target.value)}
+                  placeholder="Código de cupón"
+                  className="uppercase"
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); aplicarCupon(); } }}
+                />
+                <Button type="button" variant="secondary" onClick={aplicarCupon} disabled={cuponLoading || !cuponInput.trim()}>
+                  {cuponLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Aplicar"}
+                </Button>
+              </div>
+            )}
+          </section>
         </div>
 
         {/* DERECHA: resumen */}
@@ -156,6 +230,10 @@ function CheckoutPage() {
           <div className="space-y-2 text-sm">
             <Row label="Plan" value={plan.name} />
             <Row label="Ciclo" value={cycle === "mensual" ? "Mensual" : "Anual"} />
+            <Row label="Precio base" value={mxn(totals.base)} />
+            {cupon && (
+              <Row label={`Cupón ${cupon.codigo.toUpperCase()} (-${cupon.porcentaje}%)`} value={`- ${mxn(totals.descuento)}`} />
+            )}
             <Row label="Subtotal" value={mxn(totals.subtotal)} />
             <Row label="IVA (16%)" value={includeIva ? mxn(totals.iva) : "No aplica"} />
             {monthlyEq && <Row label="Equivalente mensual" value={`${mxn(monthlyEq)} / mes`} muted />}

@@ -113,6 +113,7 @@ import { Route as AppAdminTramitesRouteImport } from './routes/app.admin.tramite
 import { Route as AppAdminTesoreriaRouteImport } from './routes/app.admin.tesoreria'
 import { Route as AppAdminNominaRouteImport } from './routes/app.admin.nomina'
 import { Route as AppAdminInventariosRouteImport } from './routes/app.admin.inventarios'
+import { Route as AppAdminCuponesRouteImport } from './routes/app.admin.cupones'
 import { Route as AppAdminCumplimientoRouteImport } from './routes/app.admin.cumplimiento'
 import { Route as AppAdminCorrespondenciaRouteImport } from './routes/app.admin.correspondencia'
 import { Route as AppAdminBuzonRouteImport } from './routes/app.admin.buzon'
@@ -653,6 +654,11 @@ const AppAdminInventariosRoute = AppAdminInventariosRouteImport.update({
   path: '/inventarios',
   getParentRoute: () => AppAdminRoute,
 } as any)
+const AppAdminCuponesRoute = AppAdminCuponesRouteImport.update({
+  id: '/cupones',
+  path: '/cupones',
+  getParentRoute: () => AppAdminRoute,
+} as any)
 const AppAdminCumplimientoRoute = AppAdminCumplimientoRouteImport.update({
   id: '/cumplimiento',
   path: '/cumplimiento',
@@ -785,6 +791,7 @@ export interface FileRoutesByFullPath {
   '/app/admin/buzon': typeof AppAdminBuzonRoute
   '/app/admin/correspondencia': typeof AppAdminCorrespondenciaRoute
   '/app/admin/cumplimiento': typeof AppAdminCumplimientoRoute
+  '/app/admin/cupones': typeof AppAdminCuponesRoute
   '/app/admin/inventarios': typeof AppAdminInventariosRoute
   '/app/admin/nomina': typeof AppAdminNominaRoute
   '/app/admin/tesoreria': typeof AppAdminTesoreriaRoute
@@ -893,6 +900,7 @@ export interface FileRoutesByTo {
   '/app/admin/buzon': typeof AppAdminBuzonRoute
   '/app/admin/correspondencia': typeof AppAdminCorrespondenciaRoute
   '/app/admin/cumplimiento': typeof AppAdminCumplimientoRoute
+  '/app/admin/cupones': typeof AppAdminCuponesRoute
   '/app/admin/inventarios': typeof AppAdminInventariosRoute
   '/app/admin/nomina': typeof AppAdminNominaRoute
   '/app/admin/tesoreria': typeof AppAdminTesoreriaRoute
@@ -1012,6 +1020,7 @@ export interface FileRoutesById {
   '/app/admin/buzon': typeof AppAdminBuzonRoute
   '/app/admin/correspondencia': typeof AppAdminCorrespondenciaRoute
   '/app/admin/cumplimiento': typeof AppAdminCumplimientoRoute
+  '/app/admin/cupones': typeof AppAdminCuponesRoute
   '/app/admin/inventarios': typeof AppAdminInventariosRoute
   '/app/admin/nomina': typeof AppAdminNominaRoute
   '/app/admin/tesoreria': typeof AppAdminTesoreriaRoute
@@ -1132,6 +1141,7 @@ export interface FileRouteTypes {
     | '/app/admin/buzon'
     | '/app/admin/correspondencia'
     | '/app/admin/cumplimiento'
+    | '/app/admin/cupones'
     | '/app/admin/inventarios'
     | '/app/admin/nomina'
     | '/app/admin/tesoreria'
@@ -1240,6 +1250,7 @@ export interface FileRouteTypes {
     | '/app/admin/buzon'
     | '/app/admin/correspondencia'
     | '/app/admin/cumplimiento'
+    | '/app/admin/cupones'
     | '/app/admin/inventarios'
     | '/app/admin/nomina'
     | '/app/admin/tesoreria'
@@ -1358,6 +1369,7 @@ export interface FileRouteTypes {
     | '/app/admin/buzon'
     | '/app/admin/correspondencia'
     | '/app/admin/cumplimiento'
+    | '/app/admin/cupones'
     | '/app/admin/inventarios'
     | '/app/admin/nomina'
     | '/app/admin/tesoreria'
@@ -2168,6 +2180,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminInventariosRouteImport
       parentRoute: typeof AppAdminRoute
     }
+    '/app/admin/cupones': {
+      id: '/app/admin/cupones'
+      path: '/cupones'
+      fullPath: '/app/admin/cupones'
+      preLoaderRoute: typeof AppAdminCuponesRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
     '/app/admin/cumplimiento': {
       id: '/app/admin/cumplimiento'
       path: '/cumplimiento'
@@ -2260,6 +2279,7 @@ interface AppAdminRouteChildren {
   AppAdminBuzonRoute: typeof AppAdminBuzonRoute
   AppAdminCorrespondenciaRoute: typeof AppAdminCorrespondenciaRoute
   AppAdminCumplimientoRoute: typeof AppAdminCumplimientoRoute
+  AppAdminCuponesRoute: typeof AppAdminCuponesRoute
   AppAdminInventariosRoute: typeof AppAdminInventariosRoute
   AppAdminNominaRoute: typeof AppAdminNominaRoute
   AppAdminTesoreriaRoute: typeof AppAdminTesoreriaRoute
@@ -2272,6 +2292,7 @@ const AppAdminRouteChildren: AppAdminRouteChildren = {
   AppAdminBuzonRoute: AppAdminBuzonRoute,
   AppAdminCorrespondenciaRoute: AppAdminCorrespondenciaRoute,
   AppAdminCumplimientoRoute: AppAdminCumplimientoRoute,
+  AppAdminCuponesRoute: AppAdminCuponesRoute,
   AppAdminInventariosRoute: AppAdminInventariosRoute,
   AppAdminNominaRoute: AppAdminNominaRoute,
   AppAdminTesoreriaRoute: AppAdminTesoreriaRoute,

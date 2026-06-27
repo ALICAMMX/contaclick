@@ -1063,6 +1063,114 @@ export type Database = {
           },
         ]
       }
+      cupon_redenciones: {
+        Row: {
+          billing_cycle: string
+          created_at: string
+          cupon_id: string
+          descuento: number
+          despacho_id: string
+          id: string
+          mp_subscription_id: string | null
+          plan_id: string
+          subtotal_original: number
+          total_final: number
+          user_id: string
+        }
+        Insert: {
+          billing_cycle: string
+          created_at?: string
+          cupon_id: string
+          descuento: number
+          despacho_id: string
+          id?: string
+          mp_subscription_id?: string | null
+          plan_id: string
+          subtotal_original: number
+          total_final: number
+          user_id: string
+        }
+        Update: {
+          billing_cycle?: string
+          created_at?: string
+          cupon_id?: string
+          descuento?: number
+          despacho_id?: string
+          id?: string
+          mp_subscription_id?: string | null
+          plan_id?: string
+          subtotal_original?: number
+          total_final?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cupon_redenciones_cupon_id_fkey"
+            columns: ["cupon_id"]
+            isOneToOne: false
+            referencedRelation: "cupones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cupon_redenciones_mp_subscription_id_fkey"
+            columns: ["mp_subscription_id"]
+            isOneToOne: false
+            referencedRelation: "mp_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cupones: {
+        Row: {
+          activo: boolean
+          ciclos_permitidos: string[] | null
+          codigo: string
+          created_at: string
+          created_by: string | null
+          descripcion: string | null
+          id: string
+          max_usos: number | null
+          planes_permitidos: string[] | null
+          porcentaje: number
+          updated_at: string
+          usos_actuales: number
+          vigente_desde: string | null
+          vigente_hasta: string | null
+        }
+        Insert: {
+          activo?: boolean
+          ciclos_permitidos?: string[] | null
+          codigo: string
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          id?: string
+          max_usos?: number | null
+          planes_permitidos?: string[] | null
+          porcentaje: number
+          updated_at?: string
+          usos_actuales?: number
+          vigente_desde?: string | null
+          vigente_hasta?: string | null
+        }
+        Update: {
+          activo?: boolean
+          ciclos_permitidos?: string[] | null
+          codigo?: string
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          id?: string
+          max_usos?: number | null
+          planes_permitidos?: string[] | null
+          porcentaje?: number
+          updated_at?: string
+          usos_actuales?: number
+          vigente_desde?: string | null
+          vigente_hasta?: string | null
+        }
+        Relationships: []
+      }
       cxc: {
         Row: {
           cliente_id: string | null
@@ -4024,6 +4132,20 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      validar_cupon: {
+        Args: {
+          _codigo: string
+          _cycle: string
+          _despacho: string
+          _plan_id: string
+        }
+        Returns: {
+          cupon_id: string
+          motivo: string
+          porcentaje: number
+          valido: boolean
+        }[]
       }
     }
     Enums: {
