@@ -40,3 +40,8 @@
 - El mini-dashboard de `/app/contable` mostraba "CFDI este mes: 128 · 98 emitidos · 30 recibidos" hardcoded, sin relación con el expediente activo.
 - Nueva `getCfdiMonthStats(cliente_id)` cuenta CFDIs del mes actual filtrados por `cliente_id` y distingue emitidos/recibidos comparando contra el RFC del cliente.
 - El tile ahora se llama "CFDI este mes (expediente)" y refleja datos reales. Se eliminaron también los placeholders "17 días" y "Hoy" (ahora muestran "—").
+
+## Unificación de /app/clientes y /app/expedientes
+- `/app/expedientes` ahora redirige a `/app/clientes` (vista canónica).
+- `/app/clientes` incorpora toggle Tabla/Tarjetas, KPIs de cartera (riesgo, alertas, ingresos) y filtros por semáforo, reutilizando `listExpedientes` para los datos enriquecidos.
+- Se elimina la doble experiencia paralela sobre la misma entidad.
