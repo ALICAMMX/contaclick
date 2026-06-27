@@ -127,7 +127,18 @@ export function downloadReportePDF(args: {
   }
 
   const fname = `${tipo}_${cli.rfc ?? "cliente"}_${periodo.desde ?? ""}_${periodo.hasta ?? ""}.pdf`;
-  triggerFileDownload(doc.output("blob"), safeFilename(fname, "reporte.pdf"));
+  const blob = doc.output("blob");
+  triggerFileDownload(blob, safeFilename(fname, "reporte.pdf"));
+  // Also open in a new tab so the user immediately sees the PDF
+  try {
+    const url = URL.createObjectURL(blob);
+    const win = window.open(url, "_blank", "noopener,noreferrer");
+    // Revoke after a delay; if popup was blocked, caller still has the downloaded file
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    return { url, opened: !!win };
+  } catch {
+    return { url: "", opened: false };
+  }
 }
 
 function buildKpis(tipo: string, r: any): Array<{ label: string; value: string }> {

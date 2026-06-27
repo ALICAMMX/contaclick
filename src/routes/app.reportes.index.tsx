@@ -88,8 +88,14 @@ function ReportesPage() {
       return fnCompute({ data: { cliente_id: cliente.id, desde, hasta, tipo } });
     },
     onSuccess: (res, tipo) => {
-      toast.success("Reporte generado", { description: TIPOS.find((t) => t.key === tipo)?.titulo });
-      downloadReportePDF({ tipo, payload: res.payload });
+      const r = downloadReportePDF({ tipo, payload: res.payload }) as { url?: string; opened?: boolean } | void;
+      toast.success("Reporte generado", {
+        description: TIPOS.find((t) => t.key === tipo)?.titulo,
+        action: r?.url
+          ? { label: r.opened ? "Abrir de nuevo" : "Ver ahora →", onClick: () => window.open(r.url!, "_blank", "noopener,noreferrer") }
+          : undefined,
+        duration: 8000,
+      });
       qc.invalidateQueries({ queryKey: ["reportes", cliente?.id] });
     },
     onError: (e) => toast.error(friendlyError(e)),
