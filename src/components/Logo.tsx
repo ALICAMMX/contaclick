@@ -1,4 +1,4 @@
-import logoAsset from "@/assets/contaclick-logo.png.asset.json";
+import logoAsset from "@/assets/contaclick-logo-transparent.png";
 
 export function Logo({ size = "md" }: { size?: "sm" | "md" | "lg" | "xl" }) {
   const h = size === "sm" ? "h-8" : size === "lg" ? "h-14" : size === "xl" ? "h-24" : "h-10";
@@ -6,7 +6,7 @@ export function Logo({ size = "md" }: { size?: "sm" | "md" | "lg" | "xl" }) {
   return (
     <div className="flex items-center gap-2">
       <img
-        src={logoAsset.url}
+        src={logoAsset}
         alt="ContaClick"
         className={`${h} w-auto object-contain`}
         loading="eager"
