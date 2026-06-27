@@ -1,6 +1,19 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Bot, Send, X, Sparkles, Loader2, Minus, Plus, Trash2, MessageSquare, Menu } from "lucide-react";
+import logoC from "@/assets/contaclick-c.png.asset.json";
+
+function BotMark({ className = "h-5 w-5", spin = false }: { className?: string; spin?: boolean }) {
+  return (
+    <img
+      src={logoC.url}
+      alt="ContaClick IA"
+      draggable={false}
+      className={`${className} object-contain ${spin ? "animate-spin" : ""}`}
+      style={spin ? { animationDuration: "1.1s" } : undefined}
+    />
+  );
+}
 import { RichMarkdown } from "@/components/RichMarkdown";
 import { Button } from "@/components/ui/button";
 import {
@@ -205,7 +218,7 @@ export function HelpBot() {
         style={{ boxShadow: "0 10px 40px -10px hsl(var(--primary) / 0.6), var(--shadow-glow)" }}
       >
         <span className="absolute inset-0 rounded-full bg-primary/40 animate-ping opacity-40" />
-        {open ? <X className="h-6 w-6 relative" /> : <Bot className="h-6 w-6 relative" />}
+        {open ? <X className="h-6 w-6 relative" /> : <BotMark className="h-7 w-7 relative" />}
         {unread && (
           <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-emerald-400 ring-2 ring-background animate-pulse" />
         )}
@@ -286,7 +299,7 @@ export function HelpBot() {
                 <Menu className="h-4 w-4" />
               </button>
               <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: "var(--gradient-primary)" }}>
-                <Bot className="h-5 w-5 text-primary-foreground" />
+                <BotMark className="h-6 w-6" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-sm flex items-center gap-1.5 truncate">
@@ -345,7 +358,7 @@ export function HelpBot() {
               {loading && (
                 <div className="flex justify-start">
                   <div className="bg-card border border-border/60 rounded-2xl px-3 py-2 text-xs flex items-center gap-2 text-muted-foreground">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> Pensando...
+                    <BotMark className="h-4 w-4" spin /> Pensando...
                   </div>
                 </div>
               )}
