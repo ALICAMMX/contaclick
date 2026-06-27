@@ -6,7 +6,7 @@ export function Logo({ size = "md" }: { size?: "sm" | "md" | "lg" | "xl" }) {
   return (
     <div className="flex items-center gap-2">
       <img
-        src={logoAsset.url}
+        src={logoAsset}
         alt="ContaClick"
         className={`${h} w-auto object-contain`}
         loading="eager"
