@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 
 // Rutas permitidas aunque el trial haya vencido (para que el usuario pueda pagar / cerrar sesión / ver equipo).
 const ALLOWED_PREFIXES = [
+  "/app/checkout",
   "/app/configuracion",
   "/app/admin-panel",
   "/app/equipo",
