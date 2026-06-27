@@ -354,7 +354,7 @@ function ModuleCard({ m }: { m: typeof MODULES[number] }) {
 
       <div className="relative mt-6 flex items-center justify-between pt-5 border-t border-border">
         <span className="text-xs text-muted-foreground">
-          {m.counts.live > 0 ? `${m.counts.live} en vivo · resto en construcción` : "Vista previa · módulo en construcción"}
+          {toolCount} herramientas disponibles
         </span>
         <span className="inline-flex items-center gap-1.5 text-sm font-medium group-hover:gap-2.5 transition-all" style={{ color: m.accent }}>
           Entrar <ArrowRight className="h-4 w-4" />
