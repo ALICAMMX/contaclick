@@ -91,8 +91,8 @@ function ContactoPage() {
                 className="w-full pl-10 pr-3 py-3 rounded-lg bg-input/50 border border-border text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-none"
               />
             </div>
-            <Button type="submit" variant="hero" className="w-full h-11">
-              Enviar mensaje
+            <Button type="submit" variant="hero" className="w-full h-11" disabled={sending}>
+              {sending ? "Enviando…" : "Enviar mensaje"}
             </Button>
             <Button asChild variant="outline" className="w-full h-11 gap-2">
               <a href="https://wa.me/5215545282044?text=Hola,%20quiero%20información%20sobre%20ContaClick%20IA" target="_blank" rel="noopener noreferrer">
