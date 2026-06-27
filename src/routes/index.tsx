@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import {
   FileText, Banknote, Bot, Shield, BarChart3, Zap, Users, FileCheck,
   ArrowRight, CheckCircle2, Sparkles, Brain, Lock, ChevronLeft, ChevronRight,
-  Calculator, Bell,
+  Calculator, Bell, Download, GitCompare, BookOpen, CalendarDays, KanbanSquare,
+  Workflow, HeartPulse, Scale, Building2, AlertTriangle, Briefcase, Search,
 } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
