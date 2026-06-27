@@ -55,7 +55,9 @@ function labelMes(periodo: string) {
 function ResumenFiscalPage() {
   const { cliente } = useActiveCliente();
   const fn = useServerFn(getResumenFiscalMes);
-  const [periodo, setPeriodo] = useState(currentPeriodo());
+  const { mes } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const periodo = mes ?? currentPeriodo();
 
   const q = useQuery({
     queryKey: ["resumen-fiscal", cliente?.id, periodo],
