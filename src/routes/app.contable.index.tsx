@@ -6,6 +6,7 @@ import { useActiveCliente } from "@/lib/active-cliente";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { computeRiesgoSAT } from "@/lib/riesgo/riesgo.functions";
+import { getCfdiMonthStats } from "@/lib/cfdi/cfdi.functions";
 
 export const Route = createFileRoute("/app/contable/")({ component: ContableCatalog });
 
@@ -148,11 +149,29 @@ function MiniDashboard({ nombre, rfc, clienteId }: { nombre: string; rfc: string
     return { value: `${riesgo.score} / 100`, sub: label, accent, dot };
   })();
 
+  const runCfdi = useServerFn(getCfdiMonthStats);
+  const { data: cfdiMes, isLoading: cfdiLoading } = useQuery({
+    queryKey: ["cfdi-month", clienteId],
+    queryFn: async () => {
+      try { return await runCfdi({ data: { cliente_id: clienteId } }); }
+      catch (e) { if (e instanceof Response) return null; throw e; }
+    },
+    enabled: isReal,
+    staleTime: 60_000,
+    retry: (count, err) => !(err instanceof Response) && count < 1,
+  });
+
+  const cfdiMetric = !isReal
+    ? { value: "—", sub: "Expediente demo" }
+    : cfdiLoading || !cfdiMes
+      ? { value: "…", sub: "Calculando" }
+      : { value: String(cfdiMes.total), sub: `${cfdiMes.emitidos} emitidos · ${cfdiMes.recibidos} recibidos` };
+
   const metrics = [
     { label: "Riesgo SAT", value: riesgoMetric.value, sub: riesgoMetric.sub, icon: ShieldAlert, accent: riesgoMetric.accent, dot: riesgoMetric.dot },
-    { label: "Próximo vencimiento", value: "17 días", sub: "Pago provisional", icon: Calendar, accent: "text-primary", dot: "bg-primary" },
-    { label: "CFDI este mes", value: "128", sub: "98 emitidos · 30 recibidos", icon: FileText, accent: "text-foreground", dot: "bg-emerald-500" },
-    { label: "Última actividad", value: "Hoy", sub: "Conciliación bancaria", icon: Clock, accent: "text-muted-foreground", dot: "bg-muted-foreground" },
+    { label: "Próximo vencimiento", value: "—", sub: "Ver calendario", icon: Calendar, accent: "text-primary", dot: "bg-primary" },
+    { label: "CFDI este mes (expediente)", value: cfdiMetric.value, sub: cfdiMetric.sub, icon: FileText, accent: "text-foreground", dot: "bg-emerald-500" },
+    { label: "Última actividad", value: "—", sub: "Sin registro reciente", icon: Clock, accent: "text-muted-foreground", dot: "bg-muted-foreground" },
   ];
   return (
     <section className="rounded-2xl border border-border bg-card overflow-hidden">

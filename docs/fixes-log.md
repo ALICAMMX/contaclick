@@ -35,3 +35,8 @@
 ## PDF de reportes no se abría
 - `downloadReportePDF` ahora abre el blob en nueva pestaña además de descargarlo, y retorna `{ url, opened }`.
 - El toast de "Reporte generado" incluye acción **Ver ahora →** / **Abrir de nuevo** como fallback si el navegador bloquea el popup.
+
+## KPIs fantasma del catálogo de herramientas
+- El mini-dashboard de `/app/contable` mostraba "CFDI este mes: 128 · 98 emitidos · 30 recibidos" hardcoded, sin relación con el expediente activo.
+- Nueva `getCfdiMonthStats(cliente_id)` cuenta CFDIs del mes actual filtrados por `cliente_id` y distingue emitidos/recibidos comparando contra el RFC del cliente.
+- El tile ahora se llama "CFDI este mes (expediente)" y refleja datos reales. Se eliminaron también los placeholders "17 días" y "Hoy" (ahora muestran "—").
