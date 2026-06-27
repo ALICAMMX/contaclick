@@ -42,6 +42,16 @@ export type RunRow = {
   workflow_nombre?: string;
 };
 
+function buildRunErrorSummary(run: any, steps: any[]): string | null {
+  const failed = steps.filter((s) => s.status === "fallido" && s.error_message);
+  if (failed.length) {
+    const first = failed[0];
+    const label = `${first.kind}: ${first.error_message}`;
+    return failed.length > 1 ? `${label} (+${failed.length - 1} más)` : label;
+  }
+  return run?.error_message ?? null;
+}
+
 export const listWorkflows = createServerFn({ method: "GET" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) =>
@@ -151,19 +161,37 @@ export const getRunDetalle = createServerFn({ method: "GET" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ runId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
-    const { data: run } = await supabase.from("workflow_runs").select("*").eq("id", data.runId).single();
-    const { data: steps } = await supabase
+    const { supabase, userId } = context;
+    const despachoId = await resolveActiveDespachoId(supabase, userId);
+    const { data: run, error: runError } = await supabase
+      .from("workflow_runs")
+      .select("*")
+      .eq("id", data.runId)
+      .eq("despacho_id", despachoId)
+      .single();
+    if (runError || !run) throw new Error(runError?.message ?? "Ejecución no encontrada");
+
+    const { data: steps, error: stepsError } = await supabase
       .from("workflow_run_steps")
       .select("id, node_id, kind, step_type, status, input, output, error_message, started_at, finished_at, duration_ms, position")
       .eq("run_id", data.runId)
+      .eq("despacho_id", despachoId)
       .order("position", { ascending: true });
+    if (stepsError) throw new Error(`No se pudo leer la bitácora de pasos: ${stepsError.message}`);
+
+    const safeSteps = steps ?? [];
+    const resumenError = buildRunErrorSummary(run, safeSteps);
     let workflowNombre: string | null = null;
     if (run?.workflow_id) {
-      const { data: w } = await supabase.from("workflows").select("nombre").eq("id", run.workflow_id).single();
+      const { data: w } = await supabase
+        .from("workflows")
+        .select("nombre")
+        .eq("id", run.workflow_id)
+        .eq("despacho_id", despachoId)
+        .single();
       workflowNombre = (w as any)?.nombre ?? null;
     }
-    return { run, steps: steps ?? [], workflowNombre };
+    return { run: { ...run, error_message: resumenError }, steps: safeSteps, workflowNombre };
   });
 
 const upsertSchema = z.object({
