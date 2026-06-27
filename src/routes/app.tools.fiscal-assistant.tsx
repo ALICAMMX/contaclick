@@ -33,7 +33,7 @@ function FiscalAssistantCard() {
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-semibold flex items-center gap-2">
-              Bot de Ayuda ContaClick
+              Conti · Asistente IA ContaClick
               <Sparkles className="h-4 w-4 text-primary" />
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
