@@ -46,7 +46,7 @@ function buildWelcome(name: string, expedienteNombre?: string | null): string {
   const opcionD = expedienteNombre
     ? `\n- **d)** ¿Quieres tratar algo del expediente **${expedienteNombre}**?`
     : "";
-  return `${saludo} 👋\n\nSoy el **Bot de Ayuda de ContaClick**. Estoy aquí para ayudarte: si es tu primera vez en ContaClick puedo darte una guía de cómo comenzar a usar tu herramienta. Ahora eres parte de nuestra familia y queremos tratarte como tal.\n\n**¿Por dónde quieres comenzar?**\n\n- **a)** Explicación de cómo funciona ContaClick\n- **b)** Cuáles son las funciones principales de ContaClick\n- **c)** Escribe algo personalizado en el chat y con todo gusto te respondo${opcionD}`;
+  return `${saludo} 👋\n\nSoy **Conti**, tu asistente IA de ContaClick. Estoy aquí para ayudarte: si es tu primera vez en ContaClick puedo darte una guía de cómo comenzar a usar tu herramienta. Ahora eres parte de nuestra familia y queremos tratarte como tal.\n\n**¿Por dónde quieres comenzar?**\n\n- **a)** Explicación de cómo funciona ContaClick\n- **b)** Cuáles son las funciones principales de ContaClick\n- **c)** Escribe algo personalizado en el chat y con todo gusto te respondo${opcionD}`;
 }
 
 export function HelpBot() {
