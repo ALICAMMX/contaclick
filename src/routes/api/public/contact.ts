@@ -24,7 +24,7 @@ function generateToken(): string {
 }
 
 async function enqueueTemplate(opts: {
-  supabase: ReturnType<typeof createClient>
+  supabase: any
   templateName: string
   recipientEmail: string
   templateData: Record<string, any>

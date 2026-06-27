@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as TerminosRouteImport } from './routes/terminos'
 import { Route as SeguridadRouteImport } from './routes/seguridad'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -114,12 +115,18 @@ import { Route as AppAdminCumplimientoRouteImport } from './routes/app.admin.cum
 import { Route as AppAdminCorrespondenciaRouteImport } from './routes/app.admin.correspondencia'
 import { Route as AppAdminBuzonRouteImport } from './routes/app.admin.buzon'
 import { Route as AppAdminActivosRouteImport } from './routes/app.admin.activos'
+import { Route as ApiPublicContactRouteImport } from './routes/api/public/contact'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as ApiPublicHooksWorkflowCronRouteImport } from './routes/api/public/hooks/workflow-cron'
 import { Route as ApiPublicHooksSatSyncRouteImport } from './routes/api/public/hooks/sat-sync'
 
+const UnsubscribeRoute = UnsubscribeRouteImport.update({
+  id: '/unsubscribe',
+  path: '/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TerminosRoute = TerminosRouteImport.update({
   id: '/terminos',
   path: '/terminos',
@@ -652,6 +659,11 @@ const AppAdminActivosRoute = AppAdminActivosRouteImport.update({
   path: '/activos',
   getParentRoute: () => AppAdminRoute,
 } as any)
+const ApiPublicContactRoute = ApiPublicContactRouteImport.update({
+  id: '/api/public/contact',
+  path: '/api/public/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LovableEmailTransactionalSendRoute =
   LovableEmailTransactionalSendRouteImport.update({
     id: '/lovable/email/transactional/send',
@@ -695,6 +707,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/seguridad': typeof SeguridadRoute
   '/terminos': typeof TerminosRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/app/admin': typeof AppAdminRouteWithChildren
   '/app/admin-panel': typeof AppAdminPanelRoute
   '/app/admin-sat-saldo': typeof AppAdminSatSaldoRoute
@@ -740,6 +753,7 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/portal/': typeof PortalIndexRoute
+  '/api/public/contact': typeof ApiPublicContactRoute
   '/app/admin/activos': typeof AppAdminActivosRoute
   '/app/admin/buzon': typeof AppAdminBuzonRoute
   '/app/admin/correspondencia': typeof AppAdminCorrespondenciaRoute
@@ -804,6 +818,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/seguridad': typeof SeguridadRoute
   '/terminos': typeof TerminosRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/app/admin-panel': typeof AppAdminPanelRoute
   '/app/admin-sat-saldo': typeof AppAdminSatSaldoRoute
   '/app/administrativo': typeof AppAdministrativoRoute
@@ -842,6 +857,7 @@ export interface FileRoutesByTo {
   '/app': typeof AppIndexRoute
   '/dashboard': typeof DashboardIndexRoute
   '/portal': typeof PortalIndexRoute
+  '/api/public/contact': typeof ApiPublicContactRoute
   '/app/admin/activos': typeof AppAdminActivosRoute
   '/app/admin/buzon': typeof AppAdminBuzonRoute
   '/app/admin/correspondencia': typeof AppAdminCorrespondenciaRoute
@@ -910,6 +926,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/seguridad': typeof SeguridadRoute
   '/terminos': typeof TerminosRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/app/admin': typeof AppAdminRouteWithChildren
   '/app/admin-panel': typeof AppAdminPanelRoute
   '/app/admin-sat-saldo': typeof AppAdminSatSaldoRoute
@@ -955,6 +972,7 @@ export interface FileRoutesById {
   '/app/': typeof AppIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/portal/': typeof PortalIndexRoute
+  '/api/public/contact': typeof ApiPublicContactRoute
   '/app/admin/activos': typeof AppAdminActivosRoute
   '/app/admin/buzon': typeof AppAdminBuzonRoute
   '/app/admin/correspondencia': typeof AppAdminCorrespondenciaRoute
@@ -1024,6 +1042,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/seguridad'
     | '/terminos'
+    | '/unsubscribe'
     | '/app/admin'
     | '/app/admin-panel'
     | '/app/admin-sat-saldo'
@@ -1069,6 +1088,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/dashboard/'
     | '/portal/'
+    | '/api/public/contact'
     | '/app/admin/activos'
     | '/app/admin/buzon'
     | '/app/admin/correspondencia'
@@ -1133,6 +1153,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/seguridad'
     | '/terminos'
+    | '/unsubscribe'
     | '/app/admin-panel'
     | '/app/admin-sat-saldo'
     | '/app/administrativo'
@@ -1171,6 +1192,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/dashboard'
     | '/portal'
+    | '/api/public/contact'
     | '/app/admin/activos'
     | '/app/admin/buzon'
     | '/app/admin/correspondencia'
@@ -1238,6 +1260,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/seguridad'
     | '/terminos'
+    | '/unsubscribe'
     | '/app/admin'
     | '/app/admin-panel'
     | '/app/admin-sat-saldo'
@@ -1283,6 +1306,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/dashboard/'
     | '/portal/'
+    | '/api/public/contact'
     | '/app/admin/activos'
     | '/app/admin/buzon'
     | '/app/admin/correspondencia'
@@ -1351,8 +1375,10 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SeguridadRoute: typeof SeguridadRoute
   TerminosRoute: typeof TerminosRoute
+  UnsubscribeRoute: typeof UnsubscribeRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   InvitarTokenRoute: typeof InvitarTokenRoute
+  ApiPublicContactRoute: typeof ApiPublicContactRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicHooksSatSyncRoute: typeof ApiPublicHooksSatSyncRoute
   ApiPublicHooksWorkflowCronRoute: typeof ApiPublicHooksWorkflowCronRoute
@@ -1363,6 +1389,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/unsubscribe': {
+      id: '/unsubscribe'
+      path: '/unsubscribe'
+      fullPath: '/unsubscribe'
+      preLoaderRoute: typeof UnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/terminos': {
       id: '/terminos'
       path: '/terminos'
@@ -2098,6 +2131,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminActivosRouteImport
       parentRoute: typeof AppAdminRoute
     }
+    '/api/public/contact': {
+      id: '/api/public/contact'
+      path: '/api/public/contact'
+      fullPath: '/api/public/contact'
+      preLoaderRoute: typeof ApiPublicContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lovable/email/transactional/send': {
       id: '/lovable/email/transactional/send'
       path: '/lovable/email/transactional/send'
@@ -2425,8 +2465,10 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SeguridadRoute: SeguridadRoute,
   TerminosRoute: TerminosRoute,
+  UnsubscribeRoute: UnsubscribeRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   InvitarTokenRoute: InvitarTokenRoute,
+  ApiPublicContactRoute: ApiPublicContactRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicHooksSatSyncRoute: ApiPublicHooksSatSyncRoute,
   ApiPublicHooksWorkflowCronRoute: ApiPublicHooksWorkflowCronRoute,
