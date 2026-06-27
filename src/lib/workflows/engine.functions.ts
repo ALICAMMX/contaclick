@@ -279,7 +279,14 @@ async function runWorkflowInternal(
     duration_ms: finishedAt.getTime() - startedAt.getTime(),
     steps_ok: okCount,
     steps_failed: failCount,
-    error_message: failCount ? `${failCount} paso(s) fallaron` : null,
+    error_message: failCount
+      ? (() => {
+          const first = stepRows.find((s) => s.status === "fallido");
+          const label = first ? `${first.kind}: ${first.error_message ?? "error"}` : "error";
+          return failCount > 1 ? `${label} (+${failCount - 1} más)` : label;
+        })()
+      : null,
+
   }).eq("id", runId);
 
   await supabase.from("workflows").update({
