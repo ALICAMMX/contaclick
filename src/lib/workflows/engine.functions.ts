@@ -32,7 +32,7 @@ async function ejecutarAccion(
   kind: string,
   params: Record<string, any>,
   ctx: { despachoId: string; clienteId: string | null; payload: any; userId?: string | null },
-): Promise<{ output: any; error?: string }> {
+): Promise<{ output: any; error?: string; skipped?: boolean }> {
   try {
     switch (kind) {
       case "validar_cfdi":
@@ -54,7 +54,12 @@ async function ejecutarAccion(
         return { output: { score_anterior: null, score_nuevo: null, mensaje: "Score recalculado." } };
 
       case "generar_tarea": {
-        if (!ctx.clienteId) return { output: null, error: "Sin cliente_id para crear tarea" };
+        if (!ctx.clienteId) {
+          return {
+            output: { skipped: true, motivo: "Sin cliente asociado al evento. Asocia este workflow a un cliente o dispara el trigger con cliente_id." },
+            skipped: true,
+          };
+        }
         const ins = {
           despacho_id: ctx.despachoId,
           cliente_id: ctx.clienteId,
@@ -70,6 +75,7 @@ async function ejecutarAccion(
         if (error) return { output: null, error: error.message };
         return { output: { tarea_id: data.id } };
       }
+
 
       case "crear_alerta": {
         const ins: any = {
@@ -90,7 +96,13 @@ async function ejecutarAccion(
         return { output: { ok: true, mensaje: "Reporte ejecutivo solicitado al módulo de Reportes." } };
 
       case "solicitar_documento_cliente": {
-        if (!ctx.clienteId) return { output: null, error: "Sin cliente_id" };
+        if (!ctx.clienteId) {
+          return {
+            output: { skipped: true, motivo: "Sin cliente asociado. Asocia el workflow a un cliente para enviar solicitudes." },
+            skipped: true,
+          };
+        }
+
         const ins: any = {
           despacho_id: ctx.despachoId,
           cliente_id: ctx.clienteId,
@@ -218,13 +230,16 @@ async function runWorkflowInternal(
       });
       output = r.output;
       err = r.error;
-      if (err) {
+      if (r.skipped) {
+        status = "omitido";
+      } else if (err) {
         status = "fallido";
         failCount++;
       } else {
         okCount++;
         lastOutput = { ...lastOutput, ...(typeof output === "object" ? output : {}) };
       }
+
     } else if (node.type === "condition") {
       const pasa = evaluarCondicion(node.kind, node.params ?? {}, lastOutput);
       output = { evaluacion: pasa };
@@ -264,7 +279,14 @@ async function runWorkflowInternal(
     duration_ms: finishedAt.getTime() - startedAt.getTime(),
     steps_ok: okCount,
     steps_failed: failCount,
-    error_message: failCount ? `${failCount} paso(s) fallaron` : null,
+    error_message: failCount
+      ? (() => {
+          const first = stepRows.find((s) => s.status === "fallido");
+          const label = first ? `${first.kind}: ${first.error_message ?? "error"}` : "error";
+          return failCount > 1 ? `${label} (+${failCount - 1} más)` : label;
+        })()
+      : null,
+
   }).eq("id", runId);
 
   await supabase.from("workflows").update({
