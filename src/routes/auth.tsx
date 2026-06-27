@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Logo } from "@/components/Logo";
-import logoAsset from "@/assets/contaclick-logo.png.asset.json";
+import logoAsset from "@/assets/contaclick-logo-full.png.asset.json";
 import { ensureUserWorkspace, getEntryContext } from "@/lib/auth-bootstrap.functions";
 import { ensureDemoAccount } from "@/lib/demo/demo-account.functions";
 import { seedDemo } from "@/lib/demo/demo.functions";
