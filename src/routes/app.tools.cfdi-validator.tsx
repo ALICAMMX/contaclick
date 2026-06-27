@@ -23,29 +23,27 @@ function CfdiValidator() {
   const [report, setReport] = useState<RejectReport | null>(null);
   const save = useServerFn(saveToolRun);
 
-  const processXml = async (text: string, name: string) => {
-    if (!cliente) {
-      toast.error("Selecciona un expediente activo antes de validar un CFDI.");
-      return;
-    }
+  const processXml = async (text: string, name: string, opts?: { skipRfcCheck?: boolean }) => {
     let result: CfdiParsed;
     try {
       result = parseCfdi(text);
     } catch (e: any) {
-      const rep = emptyReport(cliente.rfc.toUpperCase());
+      const rep = emptyReport(cliente?.rfc?.toUpperCase() ?? "");
       rep.errores.push({ archivo: name, motivo: "No se pudo leer el XML", detalle: e?.message ?? "" });
       setReport(rep); setParsed(null); setFileName(null);
       return;
     }
-    const rfc = cliente.rfc.toUpperCase();
-    const emisor = (result.emisor.rfc ?? "").toUpperCase();
-    const receptor = (result.receptor.rfc ?? "").toUpperCase();
-    if (emisor !== rfc && receptor !== rfc) {
-      const rep = emptyReport(rfc);
-      rep.rfcAjeno.push({ archivo: name, motivo: "RFC ajeno al expediente",
-        detalle: `Emisor ${emisor || "—"} · Receptor ${receptor || "—"}` });
-      setReport(rep); setParsed(null); setFileName(null);
-      return;
+    if (cliente && !opts?.skipRfcCheck) {
+      const rfc = cliente.rfc.toUpperCase();
+      const emisor = (result.emisor.rfc ?? "").toUpperCase();
+      const receptor = (result.receptor.rfc ?? "").toUpperCase();
+      if (emisor !== rfc && receptor !== rfc) {
+        const rep = emptyReport(rfc);
+        rep.rfcAjeno.push({ archivo: name, motivo: "RFC ajeno al expediente",
+          detalle: `Emisor ${emisor || "—"} · Receptor ${receptor || "—"}` });
+        setReport(rep); setParsed(null); setFileName(null);
+        return;
+      }
     }
     setFileName(name); setParsed(result);
   };
@@ -73,7 +71,7 @@ function CfdiValidator() {
     >
       <DemoCaseButtons
         toolKey="cfdi-validator"
-        onLoad={(payload, variant) => processXml(payload.xml, variant === "ok" ? "demo-ok.xml" : "demo-riesgo.xml")}
+        onLoad={(payload, variant) => processXml(payload.xml, variant === "ok" ? "ejemplo-ok.xml" : "ejemplo-riesgo.xml", { skipRfcCheck: true })}
       />
       <label className="block rounded-xl border-2 border-dashed border-border bg-card/30 p-10 text-center hover:border-primary/50 transition-colors cursor-pointer">
         <input type="file" accept=".xml,text/xml,application/xml" className="hidden"
