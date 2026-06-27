@@ -358,7 +358,7 @@ export function HelpBot() {
               {loading && (
                 <div className="flex justify-start">
                   <div className="bg-card border border-border/60 rounded-2xl px-3 py-2 text-xs flex items-center gap-2 text-muted-foreground">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> Pensando...
+                    <BotMark className="h-4 w-4" spin /> Pensando...
                   </div>
                 </div>
               )}
