@@ -6,6 +6,7 @@ import { useActiveCliente } from "@/lib/active-cliente";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { computeRiesgoSAT } from "@/lib/riesgo/riesgo.functions";
+import { getCfdiMonthStats } from "@/lib/cfdi/cfdi.functions";
 
 export const Route = createFileRoute("/app/contable/")({ component: ContableCatalog });
 
