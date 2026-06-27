@@ -1,5 +1,5 @@
 import { useAuth } from "@/lib/auth";
-import { Sparkles, AlertTriangle } from "lucide-react";
+import { Sparkles, AlertTriangle, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getDemoCases } from "@/lib/demo/demo-cases";
 import { DEMO_EMAIL } from "@/lib/demo/demo-account.functions";
@@ -10,21 +10,33 @@ type Props = {
 };
 
 /**
- * Botones "Cargar caso demo" visibles solo para la cuenta demo.
- * Permiten ver qué arroja la herramienta con datos en regla vs en riesgo.
+ * Botones "Cargar caso demo" / "Ejemplos".
+ * - Cuenta demo: se muestran como "Modo demo" para guiar el recorrido.
+ * - Cuentas reales: se muestran como "Ejemplos educativos" para que un
+ *   contador nuevo pueda explorar la herramienta sin necesidad de tener
+ *   un XML real a la mano. No tocan BD: solo precargan payloads sintéticos.
  */
 export function DemoCaseButtons({ toolKey, onLoad }: Props) {
   const { user } = useAuth();
   const cases = getDemoCases(toolKey);
-  if (!cases || user?.email !== DEMO_EMAIL) return null;
+  if (!cases) return null;
 
+  const isDemo = user?.email === DEMO_EMAIL;
   const ok = cases.ok;
   const riesgo = cases.riesgo;
 
   return (
     <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 flex flex-wrap items-center gap-2">
       <div className="text-xs font-medium text-primary mr-1 flex items-center gap-1.5">
-        <Sparkles className="h-3.5 w-3.5" /> Modo demo:
+        {isDemo ? (
+          <>
+            <Sparkles className="h-3.5 w-3.5" /> Modo demo:
+          </>
+        ) : (
+          <>
+            <GraduationCap className="h-3.5 w-3.5" /> Ejemplos educativos:
+          </>
+        )}
       </div>
       {ok && (
         <Button
@@ -45,6 +57,11 @@ export function DemoCaseButtons({ toolKey, onLoad }: Props) {
         >
           <AlertTriangle className="h-3.5 w-3.5 text-destructive" /> {riesgo.label}
         </Button>
+      )}
+      {!isDemo && (
+        <span className="text-[11px] text-muted-foreground ml-1">
+          Datos sintéticos · no se guardan en tu expediente
+        </span>
       )}
     </div>
   );
