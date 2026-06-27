@@ -112,6 +112,7 @@ import { Route as AppAdminCumplimientoRouteImport } from './routes/app.admin.cum
 import { Route as AppAdminCorrespondenciaRouteImport } from './routes/app.admin.correspondencia'
 import { Route as AppAdminBuzonRouteImport } from './routes/app.admin.buzon'
 import { Route as AppAdminActivosRouteImport } from './routes/app.admin.activos'
+import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as ApiPublicHooksWorkflowCronRouteImport } from './routes/api/public/hooks/workflow-cron'
 import { Route as ApiPublicHooksSatSyncRouteImport } from './routes/api/public/hooks/sat-sync'
 
@@ -637,6 +638,12 @@ const AppAdminActivosRoute = AppAdminActivosRouteImport.update({
   path: '/activos',
   getParentRoute: () => AppAdminRoute,
 } as any)
+const LovableEmailQueueProcessRoute =
+  LovableEmailQueueProcessRouteImport.update({
+    id: '/lovable/email/queue/process',
+    path: '/lovable/email/queue/process',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksWorkflowCronRoute =
   ApiPublicHooksWorkflowCronRouteImport.update({
     id: '/api/public/hooks/workflow-cron',
@@ -755,6 +762,7 @@ export interface FileRoutesByFullPath {
   '/app/tools/': typeof AppToolsIndexRoute
   '/api/public/hooks/sat-sync': typeof ApiPublicHooksSatSyncRoute
   '/api/public/hooks/workflow-cron': typeof ApiPublicHooksWorkflowCronRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -852,6 +860,7 @@ export interface FileRoutesByTo {
   '/app/tools': typeof AppToolsIndexRoute
   '/api/public/hooks/sat-sync': typeof ApiPublicHooksSatSyncRoute
   '/api/public/hooks/workflow-cron': typeof ApiPublicHooksWorkflowCronRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -960,6 +969,7 @@ export interface FileRoutesById {
   '/app/tools/': typeof AppToolsIndexRoute
   '/api/public/hooks/sat-sync': typeof ApiPublicHooksSatSyncRoute
   '/api/public/hooks/workflow-cron': typeof ApiPublicHooksWorkflowCronRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -1069,6 +1079,7 @@ export interface FileRouteTypes {
     | '/app/tools/'
     | '/api/public/hooks/sat-sync'
     | '/api/public/hooks/workflow-cron'
+    | '/lovable/email/queue/process'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -1166,6 +1177,7 @@ export interface FileRouteTypes {
     | '/app/tools'
     | '/api/public/hooks/sat-sync'
     | '/api/public/hooks/workflow-cron'
+    | '/lovable/email/queue/process'
   id:
     | '__root__'
     | '/'
@@ -1273,6 +1285,7 @@ export interface FileRouteTypes {
     | '/app/tools/'
     | '/api/public/hooks/sat-sync'
     | '/api/public/hooks/workflow-cron'
+    | '/lovable/email/queue/process'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1291,6 +1304,7 @@ export interface RootRouteChildren {
   InvitarTokenRoute: typeof InvitarTokenRoute
   ApiPublicHooksSatSyncRoute: typeof ApiPublicHooksSatSyncRoute
   ApiPublicHooksWorkflowCronRoute: typeof ApiPublicHooksWorkflowCronRoute
+  LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -2016,6 +2030,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminActivosRouteImport
       parentRoute: typeof AppAdminRoute
     }
+    '/lovable/email/queue/process': {
+      id: '/lovable/email/queue/process'
+      path: '/lovable/email/queue/process'
+      fullPath: '/lovable/email/queue/process'
+      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/workflow-cron': {
       id: '/api/public/hooks/workflow-cron'
       path: '/api/public/hooks/workflow-cron'
@@ -2325,6 +2346,7 @@ const rootRouteChildren: RootRouteChildren = {
   InvitarTokenRoute: InvitarTokenRoute,
   ApiPublicHooksSatSyncRoute: ApiPublicHooksSatSyncRoute,
   ApiPublicHooksWorkflowCronRoute: ApiPublicHooksWorkflowCronRoute,
+  LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

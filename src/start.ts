@@ -19,7 +19,11 @@ const authenticatedServerFnFetch: typeof fetch = async (input, init) => {
   return fetch(input, { ...init, headers });
 };
 
-const errorMiddleware = createMiddleware().server(async ({ next }) => {
+const errorMiddleware = createMiddleware().server(async ({ next, request }) => {
+  const url = new URL(request.url);
+  if (url.pathname.startsWith("/lovable/")) {
+    return next();
+  }
   try {
     return await next();
   } catch (error) {
