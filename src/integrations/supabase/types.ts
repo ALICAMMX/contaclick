@@ -25,6 +25,7 @@ export type Database = {
           evidencia: Json | null
           id: string
           nivel: string
+          origen: string | null
           recomendacion: string | null
           resuelta_at: string | null
           resuelta_por: string | null
@@ -42,6 +43,7 @@ export type Database = {
           evidencia?: Json | null
           id?: string
           nivel: string
+          origen?: string | null
           recomendacion?: string | null
           resuelta_at?: string | null
           resuelta_por?: string | null
@@ -59,6 +61,7 @@ export type Database = {
           evidencia?: Json | null
           id?: string
           nivel?: string
+          origen?: string | null
           recomendacion?: string | null
           resuelta_at?: string | null
           resuelta_por?: string | null
