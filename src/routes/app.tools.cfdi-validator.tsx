@@ -71,7 +71,7 @@ function CfdiValidator() {
     >
       <DemoCaseButtons
         toolKey="cfdi-validator"
-        onLoad={(payload, variant) => processXml(payload.xml, variant === "ok" ? "demo-ok.xml" : "demo-riesgo.xml")}
+        onLoad={(payload, variant) => processXml(payload.xml, variant === "ok" ? "ejemplo-ok.xml" : "ejemplo-riesgo.xml", { skipRfcCheck: true })}
       />
       <label className="block rounded-xl border-2 border-dashed border-border bg-card/30 p-10 text-center hover:border-primary/50 transition-colors cursor-pointer">
         <input type="file" accept=".xml,text/xml,application/xml" className="hidden"
