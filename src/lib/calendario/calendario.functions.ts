@@ -238,15 +238,22 @@ export const upsertObligacion = createServerFn({ method: "POST" })
       alert_channels: data.alert_channels ?? ["interna"],
     };
 
+    let savedId: string;
     if (data.id) {
       const { error } = await supabase.from("obligaciones_fiscales").update(payload).eq("id", data.id);
       if (error) throw new Error(error.message);
-      return { ok: true, id: data.id };
+      savedId = data.id;
+    } else {
+      payload.estatus = "pendiente";
+      const { data: row, error } = await supabase.from("obligaciones_fiscales").insert(payload).select("id").single();
+      if (error) throw new Error(error.message);
+      savedId = (row as any).id;
     }
-    payload.estatus = "pendiente";
-    const { data: row, error } = await supabase.from("obligaciones_fiscales").insert(payload).select("id").single();
-    if (error) throw new Error(error.message);
-    return { ok: true, id: (row as any).id };
+    try {
+      const { pushObligacionToGoogle } = await import("@/lib/google-calendar/google.server");
+      await pushObligacionToGoogle(despachoId, savedId);
+    } catch (e) { console.error("google push (upsert) failed", e); }
+    return { ok: true, id: savedId };
   });
 
 // ------------------- MARCAR COMPLETADA / PENDIENTE -------------------
