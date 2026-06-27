@@ -32,7 +32,7 @@ async function ejecutarAccion(
   kind: string,
   params: Record<string, any>,
   ctx: { despachoId: string; clienteId: string | null; payload: any; userId?: string | null },
-): Promise<{ output: any; error?: string }> {
+): Promise<{ output: any; error?: string; skipped?: boolean }> {
   try {
     switch (kind) {
       case "validar_cfdi":
