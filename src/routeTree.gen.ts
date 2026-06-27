@@ -32,6 +32,7 @@ import { Route as PortalEstadoCuentaRouteImport } from './routes/portal.estado-c
 import { Route as PortalDocumentosRouteImport } from './routes/portal.documentos'
 import { Route as PortalCfdiRouteImport } from './routes/portal.cfdi'
 import { Route as InvitarTokenRouteImport } from './routes/invitar.$token'
+import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as DashboardReportesRouteImport } from './routes/dashboard.reportes'
 import { Route as DashboardConciliadorRouteImport } from './routes/dashboard.conciliador'
 import { Route as DashboardClientesRouteImport } from './routes/dashboard.clientes'
@@ -74,6 +75,7 @@ import { Route as AppConciliacionIndexRouteImport } from './routes/app.conciliac
 import { Route as AppClientesIndexRouteImport } from './routes/app.clientes.index'
 import { Route as AppCfdiIndexRouteImport } from './routes/app.cfdi.index'
 import { Route as AppAdminIndexRouteImport } from './routes/app.admin.index'
+import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as AppToolsXmlBulkReaderRouteImport } from './routes/app.tools.xml-bulk-reader'
 import { Route as AppToolsShadowPayrollRouteImport } from './routes/app.tools.shadow-payroll'
 import { Route as AppToolsSatRiskRouteImport } from './routes/app.tools.sat-risk'
@@ -112,6 +114,8 @@ import { Route as AppAdminCumplimientoRouteImport } from './routes/app.admin.cum
 import { Route as AppAdminCorrespondenciaRouteImport } from './routes/app.admin.correspondencia'
 import { Route as AppAdminBuzonRouteImport } from './routes/app.admin.buzon'
 import { Route as AppAdminActivosRouteImport } from './routes/app.admin.activos'
+import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
+import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as ApiPublicHooksWorkflowCronRouteImport } from './routes/api/public/hooks/workflow-cron'
 import { Route as ApiPublicHooksSatSyncRouteImport } from './routes/api/public/hooks/sat-sync'
@@ -229,6 +233,11 @@ const PortalCfdiRoute = PortalCfdiRouteImport.update({
 const InvitarTokenRoute = InvitarTokenRouteImport.update({
   id: '/invitar/$token',
   path: '/invitar/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
+  id: '/email/unsubscribe',
+  path: '/email/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardReportesRoute = DashboardReportesRouteImport.update({
@@ -441,6 +450,11 @@ const AppAdminIndexRoute = AppAdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppAdminRoute,
 } as any)
+const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
+  id: '/lovable/email/suppression',
+  path: '/lovable/email/suppression',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppToolsXmlBulkReaderRoute = AppToolsXmlBulkReaderRouteImport.update({
   id: '/tools/xml-bulk-reader',
   path: '/tools/xml-bulk-reader',
@@ -638,6 +652,18 @@ const AppAdminActivosRoute = AppAdminActivosRouteImport.update({
   path: '/activos',
   getParentRoute: () => AppAdminRoute,
 } as any)
+const LovableEmailTransactionalSendRoute =
+  LovableEmailTransactionalSendRouteImport.update({
+    id: '/lovable/email/transactional/send',
+    path: '/lovable/email/transactional/send',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const LovableEmailTransactionalPreviewRoute =
+  LovableEmailTransactionalPreviewRouteImport.update({
+    id: '/lovable/email/transactional/preview',
+    path: '/lovable/email/transactional/preview',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const LovableEmailQueueProcessRoute =
   LovableEmailQueueProcessRouteImport.update({
     id: '/lovable/email/queue/process',
@@ -702,6 +728,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/clientes': typeof DashboardClientesRoute
   '/dashboard/conciliador': typeof DashboardConciliadorRoute
   '/dashboard/reportes': typeof DashboardReportesRoute
+  '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/invitar/$token': typeof InvitarTokenRoute
   '/portal/cfdi': typeof PortalCfdiRoute
   '/portal/documentos': typeof PortalDocumentosRoute
@@ -751,6 +778,7 @@ export interface FileRoutesByFullPath {
   '/app/tools/sat-risk': typeof AppToolsSatRiskRoute
   '/app/tools/shadow-payroll': typeof AppToolsShadowPayrollRoute
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
+  '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/app/admin/': typeof AppAdminIndexRoute
   '/app/cfdi/': typeof AppCfdiIndexRoute
   '/app/clientes/': typeof AppClientesIndexRoute
@@ -763,6 +791,8 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/sat-sync': typeof ApiPublicHooksSatSyncRoute
   '/api/public/hooks/workflow-cron': typeof ApiPublicHooksWorkflowCronRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
+  '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -800,6 +830,7 @@ export interface FileRoutesByTo {
   '/dashboard/clientes': typeof DashboardClientesRoute
   '/dashboard/conciliador': typeof DashboardConciliadorRoute
   '/dashboard/reportes': typeof DashboardReportesRoute
+  '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/invitar/$token': typeof InvitarTokenRoute
   '/portal/cfdi': typeof PortalCfdiRoute
   '/portal/documentos': typeof PortalDocumentosRoute
@@ -849,6 +880,7 @@ export interface FileRoutesByTo {
   '/app/tools/sat-risk': typeof AppToolsSatRiskRoute
   '/app/tools/shadow-payroll': typeof AppToolsShadowPayrollRoute
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
+  '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/app/admin': typeof AppAdminIndexRoute
   '/app/cfdi': typeof AppCfdiIndexRoute
   '/app/clientes': typeof AppClientesIndexRoute
@@ -861,6 +893,8 @@ export interface FileRoutesByTo {
   '/api/public/hooks/sat-sync': typeof ApiPublicHooksSatSyncRoute
   '/api/public/hooks/workflow-cron': typeof ApiPublicHooksWorkflowCronRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
+  '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -909,6 +943,7 @@ export interface FileRoutesById {
   '/dashboard/clientes': typeof DashboardClientesRoute
   '/dashboard/conciliador': typeof DashboardConciliadorRoute
   '/dashboard/reportes': typeof DashboardReportesRoute
+  '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/invitar/$token': typeof InvitarTokenRoute
   '/portal/cfdi': typeof PortalCfdiRoute
   '/portal/documentos': typeof PortalDocumentosRoute
@@ -958,6 +993,7 @@ export interface FileRoutesById {
   '/app/tools/sat-risk': typeof AppToolsSatRiskRoute
   '/app/tools/shadow-payroll': typeof AppToolsShadowPayrollRoute
   '/app/tools/xml-bulk-reader': typeof AppToolsXmlBulkReaderRoute
+  '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/app/admin/': typeof AppAdminIndexRoute
   '/app/cfdi/': typeof AppCfdiIndexRoute
   '/app/clientes/': typeof AppClientesIndexRoute
@@ -970,6 +1006,8 @@ export interface FileRoutesById {
   '/api/public/hooks/sat-sync': typeof ApiPublicHooksSatSyncRoute
   '/api/public/hooks/workflow-cron': typeof ApiPublicHooksWorkflowCronRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
+  '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -1019,6 +1057,7 @@ export interface FileRouteTypes {
     | '/dashboard/clientes'
     | '/dashboard/conciliador'
     | '/dashboard/reportes'
+    | '/email/unsubscribe'
     | '/invitar/$token'
     | '/portal/cfdi'
     | '/portal/documentos'
@@ -1068,6 +1107,7 @@ export interface FileRouteTypes {
     | '/app/tools/sat-risk'
     | '/app/tools/shadow-payroll'
     | '/app/tools/xml-bulk-reader'
+    | '/lovable/email/suppression'
     | '/app/admin/'
     | '/app/cfdi/'
     | '/app/clientes/'
@@ -1080,6 +1120,8 @@ export interface FileRouteTypes {
     | '/api/public/hooks/sat-sync'
     | '/api/public/hooks/workflow-cron'
     | '/lovable/email/queue/process'
+    | '/lovable/email/transactional/preview'
+    | '/lovable/email/transactional/send'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -1117,6 +1159,7 @@ export interface FileRouteTypes {
     | '/dashboard/clientes'
     | '/dashboard/conciliador'
     | '/dashboard/reportes'
+    | '/email/unsubscribe'
     | '/invitar/$token'
     | '/portal/cfdi'
     | '/portal/documentos'
@@ -1166,6 +1209,7 @@ export interface FileRouteTypes {
     | '/app/tools/sat-risk'
     | '/app/tools/shadow-payroll'
     | '/app/tools/xml-bulk-reader'
+    | '/lovable/email/suppression'
     | '/app/admin'
     | '/app/cfdi'
     | '/app/clientes'
@@ -1178,6 +1222,8 @@ export interface FileRouteTypes {
     | '/api/public/hooks/sat-sync'
     | '/api/public/hooks/workflow-cron'
     | '/lovable/email/queue/process'
+    | '/lovable/email/transactional/preview'
+    | '/lovable/email/transactional/send'
   id:
     | '__root__'
     | '/'
@@ -1225,6 +1271,7 @@ export interface FileRouteTypes {
     | '/dashboard/clientes'
     | '/dashboard/conciliador'
     | '/dashboard/reportes'
+    | '/email/unsubscribe'
     | '/invitar/$token'
     | '/portal/cfdi'
     | '/portal/documentos'
@@ -1274,6 +1321,7 @@ export interface FileRouteTypes {
     | '/app/tools/sat-risk'
     | '/app/tools/shadow-payroll'
     | '/app/tools/xml-bulk-reader'
+    | '/lovable/email/suppression'
     | '/app/admin/'
     | '/app/cfdi/'
     | '/app/clientes/'
@@ -1286,6 +1334,8 @@ export interface FileRouteTypes {
     | '/api/public/hooks/sat-sync'
     | '/api/public/hooks/workflow-cron'
     | '/lovable/email/queue/process'
+    | '/lovable/email/transactional/preview'
+    | '/lovable/email/transactional/send'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1301,10 +1351,14 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SeguridadRoute: typeof SeguridadRoute
   TerminosRoute: typeof TerminosRoute
+  EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   InvitarTokenRoute: typeof InvitarTokenRoute
+  LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicHooksSatSyncRoute: typeof ApiPublicHooksSatSyncRoute
   ApiPublicHooksWorkflowCronRoute: typeof ApiPublicHooksWorkflowCronRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
+  LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
+  LovableEmailTransactionalSendRoute: typeof LovableEmailTransactionalSendRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1468,6 +1522,13 @@ declare module '@tanstack/react-router' {
       path: '/invitar/$token'
       fullPath: '/invitar/$token'
       preLoaderRoute: typeof InvitarTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/email/unsubscribe': {
+      id: '/email/unsubscribe'
+      path: '/email/unsubscribe'
+      fullPath: '/email/unsubscribe'
+      preLoaderRoute: typeof EmailUnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard/reportes': {
@@ -1764,6 +1825,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminIndexRouteImport
       parentRoute: typeof AppAdminRoute
     }
+    '/lovable/email/suppression': {
+      id: '/lovable/email/suppression'
+      path: '/lovable/email/suppression'
+      fullPath: '/lovable/email/suppression'
+      preLoaderRoute: typeof LovableEmailSuppressionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app/tools/xml-bulk-reader': {
       id: '/app/tools/xml-bulk-reader'
       path: '/tools/xml-bulk-reader'
@@ -2029,6 +2097,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/admin/activos'
       preLoaderRoute: typeof AppAdminActivosRouteImport
       parentRoute: typeof AppAdminRoute
+    }
+    '/lovable/email/transactional/send': {
+      id: '/lovable/email/transactional/send'
+      path: '/lovable/email/transactional/send'
+      fullPath: '/lovable/email/transactional/send'
+      preLoaderRoute: typeof LovableEmailTransactionalSendRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/transactional/preview': {
+      id: '/lovable/email/transactional/preview'
+      path: '/lovable/email/transactional/preview'
+      fullPath: '/lovable/email/transactional/preview'
+      preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/lovable/email/queue/process': {
       id: '/lovable/email/queue/process'
@@ -2343,10 +2425,14 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SeguridadRoute: SeguridadRoute,
   TerminosRoute: TerminosRoute,
+  EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   InvitarTokenRoute: InvitarTokenRoute,
+  LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicHooksSatSyncRoute: ApiPublicHooksSatSyncRoute,
   ApiPublicHooksWorkflowCronRoute: ApiPublicHooksWorkflowCronRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
+  LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
+  LovableEmailTransactionalSendRoute: LovableEmailTransactionalSendRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
