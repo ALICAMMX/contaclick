@@ -79,6 +79,8 @@ function CheckoutPage() {
             <div className="grid sm:grid-cols-3 gap-3">
               {(Object.values(PLANS) as typeof PLANS[PlanId][]).map((p) => {
                 const active = p.id === planId;
+                const cardPrice = cycle === "mensual" ? p.mensual : p.anual;
+                const cardMonthlyEq = cycle === "anual" ? Math.round(p.anual / 12) : null;
                 return (
                   <button
                     key={p.id}
@@ -92,9 +94,16 @@ function CheckoutPage() {
                     <div className="text-sm font-semibold">{p.name}</div>
                     <div className="text-xs text-muted-foreground mt-1">{p.description}</div>
                     <div className="mt-3 text-lg font-bold">
-                      ${p.mensual.toLocaleString("es-MX")}
-                      <span className="text-xs font-normal text-muted-foreground"> /mes</span>
+                      ${cardPrice.toLocaleString("es-MX")}
+                      <span className="text-xs font-normal text-muted-foreground">
+                        {" "}/{cycle === "mensual" ? "mes" : "año"}
+                      </span>
                     </div>
+                    {cardMonthlyEq && (
+                      <div className="text-[11px] text-muted-foreground mt-0.5">
+                        ≈ ${cardMonthlyEq.toLocaleString("es-MX")} / mes
+                      </div>
+                    )}
                   </button>
                 );
               })}
