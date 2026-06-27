@@ -54,7 +54,12 @@ async function ejecutarAccion(
         return { output: { score_anterior: null, score_nuevo: null, mensaje: "Score recalculado." } };
 
       case "generar_tarea": {
-        if (!ctx.clienteId) return { output: null, error: "Sin cliente_id para crear tarea" };
+        if (!ctx.clienteId) {
+          return {
+            output: { skipped: true, motivo: "Sin cliente asociado al evento. Asocia este workflow a un cliente o dispara el trigger con cliente_id." },
+            skipped: true,
+          };
+        }
         const ins = {
           despacho_id: ctx.despachoId,
           cliente_id: ctx.clienteId,
@@ -70,6 +75,7 @@ async function ejecutarAccion(
         if (error) return { output: null, error: error.message };
         return { output: { tarea_id: data.id } };
       }
+
 
       case "crear_alerta": {
         const ins: any = {
