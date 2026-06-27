@@ -214,11 +214,21 @@ export function HelpBot() {
         ref={btnRef}
         onClick={() => setOpen((v) => !v)}
         aria-label="Abrir Conti"
-        className="fixed bottom-5 right-5 z-[60] h-14 w-14 rounded-full bg-gradient-to-br from-primary to-primary-glow text-primary-foreground shadow-2xl ring-2 ring-primary/40 hover:scale-105 active:scale-95 transition-all flex items-center justify-center group"
-        style={{ boxShadow: "0 10px 40px -10px hsl(var(--primary) / 0.6), var(--shadow-glow)" }}
+        className="fixed bottom-5 right-5 z-[60] h-14 w-14 rounded-full bg-white text-foreground shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center group"
+        style={{ boxShadow: "0 10px 40px -10px hsl(var(--primary) / 0.45)" }}
       >
-        <span className="absolute inset-0 rounded-full bg-primary/40 animate-ping opacity-40" />
-        {open ? <X className="h-6 w-6 relative" /> : <BotMark className="h-7 w-7 relative" />}
+        {open ? (
+          <X className="h-6 w-6 relative text-foreground" />
+        ) : (
+          <span className="relative h-10 w-10 flex items-center justify-center">
+            <span
+              className="absolute inset-0 rounded-full border-2 border-primary/20 border-t-primary animate-spin"
+              style={{ animationDuration: "1.1s" }}
+              aria-hidden
+            />
+            <BotMark className="h-[70%] w-[70%] relative" />
+          </span>
+        )}
         {unread && (
           <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-emerald-400 ring-2 ring-background animate-pulse" />
         )}
