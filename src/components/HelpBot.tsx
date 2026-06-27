@@ -303,7 +303,7 @@ export function HelpBot() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-sm flex items-center gap-1.5 truncate">
-                  Bot de Ayuda ContaClick
+                  Conti · Asistente IA
                   <Sparkles className="h-3 w-3 text-primary shrink-0" />
                 </div>
                 <div className="text-[11px] text-muted-foreground truncate">
