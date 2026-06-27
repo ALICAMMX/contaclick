@@ -19,7 +19,7 @@ function FiscalAssistantCard() {
     <ToolShell
       helpSlug="fiscal-assistant"
       title="Asistente Fiscal IA"
-      description="Ahora integrado con el Bot de Ayuda ContaClick: chat especializado en fiscal, contable y soporte de tu expediente activo."
+      description="Ahora integrado con Conti, el asistente IA de ContaClick: chat especializado en fiscal, contable y soporte de tu expediente activo."
       icon={<Bot className="h-5 w-5 text-primary-foreground" />}
       requireCliente={false}
     >
