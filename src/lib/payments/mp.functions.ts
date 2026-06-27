@@ -10,6 +10,7 @@ const Input = z.object({
   billing_cycle: z.string().refine(isValidCycle, { message: "ciclo inválido" }),
   include_iva: z.boolean().default(true),
   payer_email: z.string().email().optional(),
+  cupon_codigo: z.string().trim().min(2).max(64).optional(),
 });
 
 function siteOrigin(): string {
@@ -28,19 +29,40 @@ export const createMpCheckout = createServerFn({ method: "POST" })
 
     const despachoId = await resolveActiveDespachoId(supabase, userId);
     const plan = PLANS[data.plan_id as keyof typeof PLANS];
-    const { total } = computeTotal(plan, data.billing_cycle as "mensual" | "anual", data.include_iva);
     const cycle = data.billing_cycle as "mensual" | "anual";
+
+    // Revalidar cupón en servidor (autoridad)
+    let cuponId: string | null = null;
+    let porcentaje = 0;
+    if (data.cupon_codigo) {
+      const { data: row, error } = await supabase
+        .rpc("validar_cupon", {
+          _codigo: data.cupon_codigo,
+          _plan_id: data.plan_id,
+          _cycle: cycle,
+          _despacho: despachoId,
+        })
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      const r = row as { valido: boolean; motivo: string; cupon_id: string | null; porcentaje: number | null } | null;
+      if (!r || !r.valido) throw new Error(r?.motivo || "Cupón inválido");
+      cuponId = r.cupon_id;
+      porcentaje = Number(r.porcentaje ?? 0);
+    }
+
+    const totals = computeTotal(plan, cycle, data.include_iva, porcentaje);
     const payerEmail = data.payer_email || (claims as { email?: string })?.email || "cliente@contaclick.cloud";
 
     const origin = siteOrigin();
     const backUrl = `${origin}/app/configuracion?pago=ok`;
 
+    const reasonExtra = porcentaje > 0 ? ` (-${porcentaje}% cupón)` : "";
     const preApprovalData = {
-      reason: `ContaClick ${plan.name} — ${cycle === "mensual" ? "Mensual" : "Anual"}${data.include_iva ? " (IVA incl.)" : ""}`,
+      reason: `ContaClick ${plan.name} — ${cycle === "mensual" ? "Mensual" : "Anual"}${data.include_iva ? " (IVA incl.)" : ""}${reasonExtra}`,
       auto_recurring: {
         frequency: cycle === "mensual" ? 1 : 12,
         frequency_type: "months",
-        transaction_amount: total,
+        transaction_amount: totals.total,
         currency_id: "MXN",
       },
       payer_email: payerEmail,
@@ -51,6 +73,8 @@ export const createMpCheckout = createServerFn({ method: "POST" })
         plan_id: data.plan_id,
         billing_cycle: cycle,
         include_iva: data.include_iva,
+        cupon_id: cuponId,
+        descuento_pct: porcentaje,
       }),
     };
 
@@ -73,19 +97,45 @@ export const createMpCheckout = createServerFn({ method: "POST" })
       throw new Error(result.message || "No se pudo iniciar el pago con Mercado Pago.");
     }
 
-    // Registrar la suscripción en pending
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin.from("mp_subscriptions").insert({
-      despacho_id: despachoId,
-      user_id: userId,
-      plan_id: data.plan_id,
-      billing_cycle: cycle,
-      iva_included: data.include_iva,
-      amount_mxn: total,
-      mp_preapproval_id: result.id ?? null,
-      mp_init_point: result.init_point,
-      status: "pending",
-    });
+    const { data: subRow } = await supabaseAdmin
+      .from("mp_subscriptions")
+      .insert({
+        despacho_id: despachoId,
+        user_id: userId,
+        plan_id: data.plan_id,
+        billing_cycle: cycle,
+        iva_included: data.include_iva,
+        amount_mxn: totals.total,
+        mp_preapproval_id: result.id ?? null,
+        mp_init_point: result.init_point,
+        status: "pending",
+      })
+      .select("id")
+      .maybeSingle();
+
+    // Registrar redención del cupón (única por despacho gracias al unique constraint)
+    if (cuponId) {
+      const { error: redErr } = await supabaseAdmin.from("cupon_redenciones").insert({
+        cupon_id: cuponId,
+        despacho_id: despachoId,
+        user_id: userId,
+        mp_subscription_id: subRow?.id ?? null,
+        plan_id: data.plan_id,
+        billing_cycle: cycle,
+        subtotal_original: totals.base,
+        descuento: totals.descuento,
+        total_final: totals.total,
+      });
+      if (!redErr) {
+        await supabaseAdmin.rpc("increment_cupon_uso" as never, { _cupon_id: cuponId } as never).then(() => null, () => null);
+        // Fallback simple si la rpc no existe
+        await supabaseAdmin
+          .from("cupones")
+          .update({ usos_actuales: ((await supabaseAdmin.from("cupones").select("usos_actuales").eq("id", cuponId).maybeSingle()).data?.usos_actuales ?? 0) + 1 })
+          .eq("id", cuponId);
+      }
+    }
 
     return {
       init_point: result.init_point,
