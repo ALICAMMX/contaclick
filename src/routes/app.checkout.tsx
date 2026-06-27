@@ -75,10 +75,17 @@ function CheckoutPage() {
       setCuponLoading(false);
     }
   }
+
+  async function handlePay() {
     setLoading(true);
     try {
       const r = await start({
-        data: { plan_id: planId, billing_cycle: cycle, include_iva: includeIva },
+        data: {
+          plan_id: planId,
+          billing_cycle: cycle,
+          include_iva: includeIva,
+          cupon_codigo: cupon?.codigo,
+        },
       });
       const url = r.init_point || r.sandbox_init_point;
       if (!url) throw new Error("No se obtuvo URL de pago");
