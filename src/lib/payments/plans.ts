@@ -36,11 +36,19 @@ export const PLANS: Record<PlanId, PlanDef> = {
 
 export const IVA_RATE = 0.16;
 
-export function computeTotal(plan: PlanDef, cycle: BillingCycle, includeIva: boolean) {
-  const subtotal = cycle === "mensual" ? plan.mensual : plan.anual;
+export function computeTotal(
+  plan: PlanDef,
+  cycle: BillingCycle,
+  includeIva: boolean,
+  discountPct: number = 0,
+) {
+  const base = cycle === "mensual" ? plan.mensual : plan.anual;
+  const pct = Math.max(0, Math.min(100, discountPct || 0));
+  const descuento = Math.round(base * (pct / 100) * 100) / 100;
+  const subtotal = Math.round((base - descuento) * 100) / 100;
   const iva = includeIva ? Math.round(subtotal * IVA_RATE * 100) / 100 : 0;
-  const total = subtotal + iva;
-  return { subtotal, iva, total };
+  const total = Math.round((subtotal + iva) * 100) / 100;
+  return { base, descuento, subtotal, iva, total };
 }
 
 export function isValidPlan(id: string): id is PlanId {
