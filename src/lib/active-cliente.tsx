@@ -25,18 +25,48 @@ export function ActiveClienteProvider({ children }: { children: ReactNode }) {
   const setCliente = useCallback((c: ActiveCliente) => {
     setClienteState(c);
     try {
-      if (c) localStorage.setItem(STORAGE_KEY, JSON.stringify(c));
+      // Solo guardamos el id en localStorage. El RFC, razón social y régimen
+      // fiscal son datos sensibles y se re-resuelven server-side en cada carga.
+      if (c?.id) localStorage.setItem(STORAGE_KEY, JSON.stringify({ id: c.id }));
       else localStorage.removeItem(STORAGE_KEY);
     } catch { /* ignore */ }
   }, []);
 
+  // Hidratación inicial: leer solo el id persistido y resolver server-side.
   useEffect(() => {
+    let alive = true;
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setClienteState(JSON.parse(raw));
-    } catch { /* ignore */ }
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { id?: string };
+      const id = parsed?.id;
+      if (!id) {
+        localStorage.removeItem(STORAGE_KEY);
+        return;
+      }
+      resolveCliente({ data: { id } })
+        .then((resolved) => {
+          if (!alive) return;
+          if (resolved) {
+            setClienteState({
+              id: resolved.id,
+              rfc: resolved.rfc,
+              razon_social: resolved.razon_social,
+              regimen_fiscal: resolved.regimen_fiscal,
+            });
+          } else {
+            try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+          }
+        })
+        .catch(() => { /* sin red / sin sesión: no hidratar */ });
+    } catch {
+      try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+    }
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Revalidación posterior al cambio de cliente activo.
   useEffect(() => {
     if (!cliente?.id) return;
     let alive = true;
@@ -48,9 +78,10 @@ export function ActiveClienteProvider({ children }: { children: ReactNode }) {
           : null;
         if (JSON.stringify(next) !== JSON.stringify(cliente)) setCliente(next);
       })
-      .catch(() => { /* si no puede validar, conserva el estado local */ });
+      .catch(() => { /* conservar estado local si no se puede validar */ });
     return () => { alive = false; };
   }, [cliente, resolveCliente, setCliente]);
+
 
   const value = useMemo<Ctx>(() => ({ cliente, setCliente, clear: () => setCliente(null) }), [cliente, setCliente]);
   return <ActiveCtx.Provider value={value}>{children}</ActiveCtx.Provider>;
