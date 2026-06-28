@@ -18,11 +18,76 @@ async function getServerEntry(): Promise<ServerEntry> {
   return serverEntryPromise;
 }
 
-function brandedErrorResponse(): Response {
-  return new Response(renderErrorPage(), {
-    status: 500,
-    headers: { "content-type": "text/html; charset=utf-8" },
+// Content Security Policy + cabeceras de seguridad.
+// Limita orígenes de scripts/estilos/imágenes/conexiones para mitigar XSS
+// (un script inyectado no podría exfiltrar tokens a un dominio externo).
+const SUPABASE_ORIGIN = "https://kootsuhxbtzqfmnokjsx.supabase.co";
+const SUPABASE_WS = "wss://kootsuhxbtzqfmnokjsx.supabase.co";
+
+function buildCsp(): string {
+  const directives: Record<string, string[]> = {
+    "default-src": ["'self'"],
+    // 'unsafe-inline' es necesario porque TanStack Start inyecta payloads de
+    // hidratación inline; 'unsafe-eval' lo requieren algunas libs (zod/jsx-runtime en dev).
+    "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://www.mercadopago.com", "https://sdk.mercadopago.com"],
+    "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+    "font-src": ["'self'", "https://fonts.gstatic.com", "data:"],
+    "img-src": ["'self'", "data:", "blob:", "https:"],
+    "connect-src": [
+      "'self'",
+      SUPABASE_ORIGIN,
+      SUPABASE_WS,
+      "https://api.mercadopago.com",
+      "https://api.mercadolibre.com",
+      "https://www.googleapis.com",
+      "https://oauth2.googleapis.com",
+      "https://generativelanguage.googleapis.com",
+    ],
+    "frame-src": ["'self'", "https://www.mercadopago.com", "https://www.mercadopago.com.mx", "https://accounts.google.com"],
+    "worker-src": ["'self'", "blob:"],
+    "object-src": ["'none'"],
+    "base-uri": ["'self'"],
+    "form-action": ["'self'", "https://www.mercadopago.com", "https://www.mercadopago.com.mx"],
+    "frame-ancestors": ["'self'"],
+    "upgrade-insecure-requests": [],
+  };
+  return Object.entries(directives)
+    .map(([k, v]) => (v.length ? `${k} ${v.join(" ")}` : k))
+    .join("; ");
+}
+
+const CSP_VALUE = buildCsp();
+
+const SECURITY_HEADERS: Record<string, string> = {
+  "content-security-policy": CSP_VALUE,
+  "x-content-type-options": "nosniff",
+  "x-frame-options": "SAMEORIGIN",
+  "referrer-policy": "strict-origin-when-cross-origin",
+  "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=(self)",
+  "strict-transport-security": "max-age=31536000; includeSubDomains",
+};
+
+function applySecurityHeaders(response: Response): Response {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("text/html")) return response;
+  const headers = new Headers(response.headers);
+  for (const [k, v] of Object.entries(SECURITY_HEADERS)) {
+    if (!headers.has(k)) headers.set(k, v);
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
   });
+}
+
+function brandedErrorResponse(): Response {
+  return applySecurityHeaders(
+    new Response(renderErrorPage(), {
+      status: 500,
+      headers: { "content-type": "text/html; charset=utf-8" },
+    }),
+  );
 }
 
 function isCatastrophicSsrErrorBody(body: string, responseStatus: number): boolean {
