@@ -51,9 +51,10 @@ export const exportarExpedienteZip = createServerFn({ method: "POST" })
     // ---- Cliente
     const { data: cli, error: eCli } = await supabase
       .from("clientes")
-      .select("id, nombre, rfc, regimen_fiscal, codigo_postal")
+      .select("id, razon_social, rfc, regimen_fiscal, codigo_postal")
       .eq("id", data.cliente_id)
       .maybeSingle();
+
     if (eCli) throw new Error(eCli.message);
     if (!cli) throw new Error("Cliente no encontrado");
 
