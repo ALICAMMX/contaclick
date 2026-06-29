@@ -365,23 +365,39 @@ export function ExportarTab({ clienteId }: { clienteId: string }) {
 
   const fnXml = useServerFn(exportarAnexo24Polizas);
   const fnTxt = useServerFn(exportarContpaqi);
+  const fnAspel = useServerFn(exportarAspelCoi);
+  const fnCat = useServerFn(exportarAnexo24Catalogo);
+  const fnBal = useServerFn(exportarAnexo24Balanza);
+
+  const dl = (contenido: string, filename: string, type: string) =>
+    triggerFileDownload(new Blob([contenido], { type }), filename);
 
   const xmlMut = useMutation({
     mutationFn: () => fnXml({ data: { cliente_id: clienteId, anio, mes, tipo_solicitud: tipoSol, num_orden: numOrden || undefined, num_tramite: numTramite || undefined } }),
-    onSuccess: (r) => {
-      triggerFileDownload(new Blob([r.contenido], { type: "application/xml" }), r.filename);
-      toast.success(`Anexo 24 generado · ${r.polizas} pólizas`);
-    },
+    onSuccess: (r) => { dl(r.contenido, r.filename, "application/xml"); toast.success(`Anexo 24 Pólizas · ${r.polizas} pólizas`); },
     onError: (e: any) => toast.error(e.message),
   });
   const txtMut = useMutation({
     mutationFn: () => fnTxt({ data: { cliente_id: clienteId, anio, mes } }),
-    onSuccess: (r) => {
-      triggerFileDownload(new Blob([r.contenido], { type: "text/plain" }), r.filename);
-      toast.success(`CONTPAQi generado · ${r.renglones} renglones`);
-    },
+    onSuccess: (r) => { dl(r.contenido, r.filename, "text/plain"); toast.success(`CONTPAQi · ${r.renglones} renglones`); },
     onError: (e: any) => toast.error(e.message),
   });
+  const aspelMut = useMutation({
+    mutationFn: () => fnAspel({ data: { cliente_id: clienteId, anio, mes } }),
+    onSuccess: (r) => { dl(r.contenido, r.filename, "text/plain"); toast.success(`Aspel COI · ${r.renglones} renglones`); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const catMut = useMutation({
+    mutationFn: () => fnCat({ data: { cliente_id: clienteId, anio, mes } }),
+    onSuccess: (r) => { dl(r.contenido, r.filename, "application/xml"); toast.success(`Catálogo Anexo 24 · ${r.cuentas} cuentas`); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const balMut = useMutation({
+    mutationFn: () => fnBal({ data: { cliente_id: clienteId, anio, mes, tipo_envio: "N" } }),
+    onSuccess: (r) => { dl(r.contenido, r.filename, "application/xml"); toast.success(`Balanza Anexo 24 · ${r.cuentas} cuentas`); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
 
   return (
     <Card className="p-4 space-y-4">
