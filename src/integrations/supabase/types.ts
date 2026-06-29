@@ -1138,6 +1138,78 @@ export type Database = {
           },
         ]
       }
+      cumplimiento_items: {
+        Row: {
+          area: string
+          cliente_id: string | null
+          created_at: string
+          created_by: string | null
+          descripcion: string | null
+          despacho_id: string
+          estado: string
+          evidencia_url: string | null
+          frecuencia: string
+          id: string
+          item: string
+          notas: string | null
+          proximo_vencimiento: string | null
+          responsable: string | null
+          ultimo_cumplido: string | null
+          updated_at: string
+        }
+        Insert: {
+          area: string
+          cliente_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          despacho_id: string
+          estado?: string
+          evidencia_url?: string | null
+          frecuencia: string
+          id?: string
+          item: string
+          notas?: string | null
+          proximo_vencimiento?: string | null
+          responsable?: string | null
+          ultimo_cumplido?: string | null
+          updated_at?: string
+        }
+        Update: {
+          area?: string
+          cliente_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          despacho_id?: string
+          estado?: string
+          evidencia_url?: string | null
+          frecuencia?: string
+          id?: string
+          item?: string
+          notas?: string | null
+          proximo_vencimiento?: string | null
+          responsable?: string | null
+          ultimo_cumplido?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cumplimiento_items_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cumplimiento_items_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cupon_redenciones: {
         Row: {
           billing_cycle: string
