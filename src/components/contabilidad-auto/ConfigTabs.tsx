@@ -445,16 +445,34 @@ export function ExportarTab({ clienteId }: { clienteId: string }) {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 pt-2 border-t">
-        <Button onClick={() => xmlMut.mutate()} disabled={xmlMut.isPending}>
-          <FileCode2 className="h-4 w-4 mr-2" />
-          {xmlMut.isPending ? "Generando..." : "Descargar Anexo 24 (XML Pólizas)"}
-        </Button>
-        <Button variant="outline" onClick={() => txtMut.mutate()} disabled={txtMut.isPending}>
-          <Download className="h-4 w-4 mr-2" />
-          {txtMut.isPending ? "Generando..." : "Descargar TXT CONTPAQi"}
-        </Button>
+      <div className="space-y-3 pt-2 border-t">
+        <div>
+          <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Contabilidad Electrónica SAT (Anexo 24 v1.3)</div>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => catMut.mutate()} disabled={catMut.isPending}>
+              <FileCode2 className="h-4 w-4 mr-2" /> {catMut.isPending ? "..." : "Catálogo de cuentas (CT.xml)"}
+            </Button>
+            <Button onClick={() => balMut.mutate()} disabled={balMut.isPending}>
+              <FileCode2 className="h-4 w-4 mr-2" /> {balMut.isPending ? "..." : "Balanza (BN.xml)"}
+            </Button>
+            <Button onClick={() => xmlMut.mutate()} disabled={xmlMut.isPending}>
+              <FileCode2 className="h-4 w-4 mr-2" /> {xmlMut.isPending ? "..." : "Pólizas (PL.xml)"}
+            </Button>
+          </div>
+        </div>
+        <div>
+          <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Importadores a sistemas contables</div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => txtMut.mutate()} disabled={txtMut.isPending}>
+              <Download className="h-4 w-4 mr-2" /> CONTPAQi (.txt)
+            </Button>
+            <Button variant="outline" onClick={() => aspelMut.mutate()} disabled={aspelMut.isPending}>
+              <Download className="h-4 w-4 mr-2" /> Aspel COI (.txt)
+            </Button>
+          </div>
+        </div>
       </div>
     </Card>
   );
 }
+
