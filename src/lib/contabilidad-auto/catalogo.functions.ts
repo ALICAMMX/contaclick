@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
-import { PLANTILLA_IMCP_PM } from "./imcp-catalog";
+import { PLANTILLAS_IMCP, type PlantillaIMCPKey } from "./imcp-catalog";
 
 
 // Catálogo SAT base (Anexo 24) — sembrado inicial editable por cliente
