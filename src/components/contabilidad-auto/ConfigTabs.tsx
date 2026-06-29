@@ -401,6 +401,19 @@ export function ExportarTab({ clienteId }: { clienteId: string }) {
     onSuccess: (r) => { dl(r.contenido, r.filename, "application/xml"); toast.success(`Balanza Anexo 24 · ${r.cuentas} cuentas`); },
     onError: (e: any) => toast.error(e.message),
   });
+  const zipMut = useMutation({
+    mutationFn: () => fnZip({ data: { cliente_id: clienteId, anio, mes } }),
+    onSuccess: (r) => {
+      const bin = atob(r.contenido_b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      triggerFileDownload(new Blob([bytes], { type: "application/zip" }), r.filename);
+      toast.success(`Expediente listo · ${r.stats.cfdi_emitidos + r.stats.cfdi_recibidos} CFDI · ${r.stats.polizas} pólizas · ${r.stats.tamano_kb} KB`);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+
 
 
   return (
