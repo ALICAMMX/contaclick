@@ -370,6 +370,8 @@ export function ExportarTab({ clienteId }: { clienteId: string }) {
   const fnAspel = useServerFn(exportarAspelCoi);
   const fnCat = useServerFn(exportarAnexo24Catalogo);
   const fnBal = useServerFn(exportarAnexo24Balanza);
+  const fnZip = useServerFn(exportarExpedienteZip);
+
 
   const dl = (contenido: string, filename: string, type: string) =>
     triggerFileDownload(new Blob([contenido], { type }), filename);
