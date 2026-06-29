@@ -16,7 +16,7 @@ import {
   listarCatalogo, sembrarCatalogo, sembrarCatalogoIMCP, upsertCuenta, eliminarCuenta,
   listarReglas, upsertRegla, eliminarRegla,
 } from "@/lib/contabilidad-auto/catalogo.functions";
-import { exportarAnexo24Polizas, exportarContpaqi, exportarAspelCoi, exportarAnexo24Catalogo, exportarAnexo24Balanza } from "@/lib/contabilidad-auto/export.functions";
+import { exportarAnexo24Polizas, exportarContpaqi, exportarAspelCoi, exportarAnexo24Catalogo, exportarAnexo24Balanza, exportarAnexo24AuxCuentas, exportarAnexo24AuxFolios } from "@/lib/contabilidad-auto/export.functions";
 import { exportarExpedienteZip } from "@/lib/expedientes/zip-export.functions";
 import { triggerFileDownload } from "@/lib/download";
 
@@ -375,6 +375,7 @@ export function ExportarTab({ clienteId }: { clienteId: string }) {
   const [tipoSol, setTipoSol] = useState<"AF" | "FC" | "DE" | "CO">("AF");
   const [numOrden, setNumOrden] = useState("");
   const [numTramite, setNumTramite] = useState("");
+  const [cuentaFiltro, setCuentaFiltro] = useState("");
 
   const fnXml = useServerFn(exportarAnexo24Polizas);
   const fnTxt = useServerFn(exportarContpaqi);
@@ -382,6 +383,8 @@ export function ExportarTab({ clienteId }: { clienteId: string }) {
   const fnCat = useServerFn(exportarAnexo24Catalogo);
   const fnBal = useServerFn(exportarAnexo24Balanza);
   const fnZip = useServerFn(exportarExpedienteZip);
+  const fnAuxC = useServerFn(exportarAnexo24AuxCuentas);
+  const fnAuxF = useServerFn(exportarAnexo24AuxFolios);
 
 
   const dl = (contenido: string, filename: string, type: string) =>
@@ -423,6 +426,17 @@ export function ExportarTab({ clienteId }: { clienteId: string }) {
     },
     onError: (e: any) => toast.error(e.message),
   });
+  const auxCMut = useMutation({
+    mutationFn: () => fnAuxC({ data: { cliente_id: clienteId, anio, mes, tipo_solicitud: tipoSol, num_orden: numOrden || undefined, num_tramite: numTramite || undefined, cuenta_filtro: cuentaFiltro || undefined } }),
+    onSuccess: (r) => { dl(r.contenido, r.filename, "application/xml"); toast.success(`Auxiliar de cuentas · ${r.cuentas} cuentas · ${r.movimientos} movs`); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const auxFMut = useMutation({
+    mutationFn: () => fnAuxF({ data: { cliente_id: clienteId, anio, mes, tipo_solicitud: tipoSol, num_orden: numOrden || undefined, num_tramite: numTramite || undefined } }),
+    onSuccess: (r) => { dl(r.contenido, r.filename, "application/xml"); toast.success(`Auxiliar de folios · ${r.folios} CFDI`); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
 
 
 
@@ -486,8 +500,19 @@ export function ExportarTab({ clienteId }: { clienteId: string }) {
             <Button onClick={() => xmlMut.mutate()} disabled={xmlMut.isPending}>
               <FileCode2 className="h-4 w-4 mr-2" /> {xmlMut.isPending ? "..." : "Pólizas (PL.xml)"}
             </Button>
+            <Button onClick={() => auxCMut.mutate()} disabled={auxCMut.isPending}>
+              <FileCode2 className="h-4 w-4 mr-2" /> {auxCMut.isPending ? "..." : "Aux. cuentas (XC.xml)"}
+            </Button>
+            <Button onClick={() => auxFMut.mutate()} disabled={auxFMut.isPending}>
+              <FileCode2 className="h-4 w-4 mr-2" /> {auxFMut.isPending ? "..." : "Aux. folios (XF.xml)"}
+            </Button>
+          </div>
+          <div className="mt-2 max-w-xs">
+            <Label className="text-xs text-muted-foreground">Filtrar Aux. cuentas por cuenta (opcional)</Label>
+            <Input placeholder="ej. 601-01" value={cuentaFiltro} onChange={(e) => setCuentaFiltro(e.target.value)} />
           </div>
         </div>
+
         <div>
           <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Importadores a sistemas contables</div>
           <div className="flex flex-wrap gap-2">
