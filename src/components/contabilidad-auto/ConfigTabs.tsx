@@ -13,11 +13,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  listarCatalogo, sembrarCatalogo, upsertCuenta, eliminarCuenta,
+  listarCatalogo, sembrarCatalogo, sembrarCatalogoIMCP, upsertCuenta, eliminarCuenta,
   listarReglas, upsertRegla, eliminarRegla,
 } from "@/lib/contabilidad-auto/catalogo.functions";
-import { exportarAnexo24Polizas, exportarContpaqi } from "@/lib/contabilidad-auto/export.functions";
+import { exportarAnexo24Polizas, exportarContpaqi, exportarAspelCoi, exportarAnexo24Catalogo, exportarAnexo24Balanza } from "@/lib/contabilidad-auto/export.functions";
 import { triggerFileDownload } from "@/lib/download";
+
 
 // ===== Catálogo =====
 export function CatalogoTab({ clienteId }: { clienteId: string }) {
