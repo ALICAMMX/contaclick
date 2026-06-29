@@ -57,3 +57,11 @@
 **Fix:**
 1. `src/routes/auth.tsx`: tras autenticar, hacer hard navigation con `window.location.assign(dest)` para no competir con el ciclo del router.
 2. `src/routes/__root.tsx` (`AuthCacheSync`): ignorar el primer evento (hidratación), y en sign-in fresco usar solo `invalidateQueries()` (no `clear()` ni `router.invalidate()`). El `clear+invalidate` queda reservado para sign-out o cambio de identidad.
+
+## 2026-06-29 · Sprint 1 — Contabilidad Electrónica SAT + Buzón IA + Nómina Auditor
+
+- **Contabilidad Electrónica SAT (Anexo 24 v1.3)**: nuevos exportadores `exportarAnexo24Catalogo` (CT.xml) y `exportarAnexo24Balanza` (BN.xml) en `src/lib/contabilidad-auto/export.functions.ts`. Cierra la objeción "no exporta XML SAT" del veredicto del contador.
+- **Plantilla IMCP PM Régimen General**: `src/lib/contabilidad-auto/imcp-catalog.ts` + `sembrarCatalogoIMCP` con códigos agrupadores oficiales.
+- **Exportador Aspel COI** (`.txt POL`): `exportarAspelCoi` complementa al CONTPAQi existente.
+- **Buzón Tributario IA real**: nueva tabla `buzon_notificaciones`, server fns `registrarNotificacion` + Gemini 2.5 Flash analiza PDF (plazo, fundamento, riesgo, borrador de respuesta). UI `/app/admin/buzon` reescrita.
+- **Nómina · Auditor + Simulador**: server fns `auditarNomina` (revisa CFDI tipo "N" emitidos) y `simularCostoPatronal` (IMSS patrón, INFONAVIT, ISN, provisiones aguinaldo/vac/PTU). Nueva tabla `nomina_simulaciones`. UI `/app/admin/nomina` reescrita con pestañas Auditor/Simulador.
