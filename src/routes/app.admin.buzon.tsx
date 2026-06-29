@@ -34,7 +34,7 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 function BuzonPage() {
-  const { activeCliente } = useActiveCliente();
+  const { cliente: activeCliente } = useActiveCliente();
   const qc = useQueryClient();
   const fnList = useServerFn(listarBuzon);
   const fnReg = useServerFn(registrarNotificacion);
