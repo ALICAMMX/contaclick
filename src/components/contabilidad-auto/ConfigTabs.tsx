@@ -17,7 +17,9 @@ import {
   listarReglas, upsertRegla, eliminarRegla,
 } from "@/lib/contabilidad-auto/catalogo.functions";
 import { exportarAnexo24Polizas, exportarContpaqi, exportarAspelCoi, exportarAnexo24Catalogo, exportarAnexo24Balanza } from "@/lib/contabilidad-auto/export.functions";
+import { exportarExpedienteZip } from "@/lib/expedientes/zip-export.functions";
 import { triggerFileDownload } from "@/lib/download";
+
 
 
 // ===== Catálogo =====
