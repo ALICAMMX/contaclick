@@ -33,9 +33,9 @@ export const auditarNomina = createServerFn({ method: "POST" })
     const fin = `${year}-12-31`;
     const { data: rows, error } = await context.supabase
       .from("cfdi_xml")
-      .select("uuid, fecha, total, receptor_nombre, receptor_rfc, metadata")
+      .select("uuid, fecha, total, subtotal, isr_retenido, nombre_receptor, rfc_receptor")
       .eq("cliente_id", data.cliente_id)
-      .eq("tipo_comprobante", "N")
+      .eq("tipo_cfdi", "N")
       .gte("fecha", ini)
       .lte("fecha", fin)
       .order("fecha", { ascending: false })
@@ -43,52 +43,50 @@ export const auditarNomina = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     const findings: FindingNomina[] = [];
-    const porEmpleado: Map<string, { total: number; cfdi: number; rfc: string }> = new Map();
+    const porEmpleado: Map<string, { total: number; cfdi: number; rfc: string; isr: number }> = new Map();
 
-    for (const r of rows ?? []) {
-      const meta = (r as any).metadata ?? {};
+    for (const r of (rows ?? []) as any[]) {
       const total = Number(r.total ?? 0);
-      const emp = r.receptor_nombre ?? r.receptor_rfc ?? "Sin nombre";
-      const acc = porEmpleado.get(emp) ?? { total: 0, cfdi: 0, rfc: r.receptor_rfc ?? "" };
-      acc.total += total; acc.cfdi++; porEmpleado.set(emp, acc);
+      const subtotal = Number(r.subtotal ?? 0);
+      const isr = Number(r.isr_retenido ?? 0);
+      const emp = r.nombre_receptor ?? r.rfc_receptor ?? "Sin nombre";
+      const acc = porEmpleado.get(emp) ?? { total: 0, cfdi: 0, rfc: r.rfc_receptor ?? "", isr: 0 };
+      acc.total += total; acc.cfdi++; acc.isr += isr; porEmpleado.set(emp, acc);
 
-      // Reglas básicas — extensibles
-      const isr = Number(meta?.nomina?.isr_retenido ?? 0);
-      const subsidio = Number(meta?.nomina?.subsidio ?? 0);
-      const sueldoGravado = Number(meta?.nomina?.sueldo_gravado ?? 0);
-      const prestExentas = Number(meta?.nomina?.prestaciones_exentas ?? 0);
-
-      // 1) ISR retenido = 0 con sueldo gravado > 16,500/mes ⇒ probable error
-      if (sueldoGravado > 16500 && isr === 0) {
+      const fecha = String(r.fecha).slice(0, 10);
+      // 1) ISR retenido = 0 con subtotal mensual > 16,500 ⇒ probable error
+      if (subtotal > 16500 && isr === 0) {
         findings.push({
-          uuid: r.uuid, empleado: emp, fecha: String(r.fecha).slice(0, 10), total,
+          uuid: r.uuid, empleado: emp, fecha, total,
           severidad: "alta",
           titulo: "ISR no retenido con sueldo gravado relevante",
-          detalle: `Sueldo gravado $${sueldoGravado.toFixed(2)} sin retención de ISR. Revisar tabla art. 96 LISR.`,
-          fundamento: "Art. 96 LISR · tarifa mensual ISR sueldos",
+          detalle: `Subtotal $${subtotal.toFixed(2)} sin retención de ISR. Revisar tabla art. 96 LISR.`,
+          fundamento: "Art. 96 LISR · tarifa ISR sueldos",
         });
       }
-      // 2) Subsidio al empleo con sueldo > $10,171/mes ⇒ no aplicable
-      if (sueldoGravado > 10171 && subsidio > 0) {
+      // 2) Tasa efectiva ISR < 1% con subtotal > 25,000 ⇒ revisar subsidio/exentas
+      if (subtotal > 25000 && total > 0 && (isr / subtotal) < 0.01) {
         findings.push({
-          uuid: r.uuid, empleado: emp, fecha: String(r.fecha).slice(0, 10), total,
+          uuid: r.uuid, empleado: emp, fecha, total,
           severidad: "media",
-          titulo: "Subsidio al empleo otorgado fuera de tope",
-          detalle: `Subsidio $${subsidio.toFixed(2)} pero sueldo gravado supera límite ($10,171/mes).`,
-          fundamento: "Decreto subsidio al empleo · Tabla art. tercero",
+          titulo: "Tasa efectiva ISR anormalmente baja",
+          detalle: `Retención $${isr.toFixed(2)} sobre subtotal $${subtotal.toFixed(2)} (${((isr/subtotal)*100).toFixed(2)}%). Verificar subsidio o exenciones aplicadas.`,
+          fundamento: "Art. 96 LISR · Decreto subsidio al empleo",
         });
       }
-      // 3) Prestaciones exentas > 53% del total ⇒ riesgo simulación
-      if (total > 0 && prestExentas / total > 0.53) {
+      // 3) CFDI nómina con total = 0 ⇒ inválido para deducción
+      if (total === 0) {
         findings.push({
-          uuid: r.uuid, empleado: emp, fecha: String(r.fecha).slice(0, 10), total,
-          severidad: "media",
-          titulo: "Proporción de prestaciones exentas anormalmente alta",
-          detalle: `Exentas representan ${((prestExentas / total) * 100).toFixed(0)}% del CFDI. Riesgo de reclasificación SAT.`,
-          fundamento: "Art. 28 fracc. XXX LISR · deducción topada al 53%",
+          uuid: r.uuid, empleado: emp, fecha, total,
+          severidad: "baja",
+          titulo: "CFDI de nómina con total $0",
+          detalle: "No es deducible y puede indicar error de timbrado o cancelación pendiente.",
+          fundamento: "Art. 27 fracc. V LISR",
         });
       }
     }
+
+
 
     return {
       year,
