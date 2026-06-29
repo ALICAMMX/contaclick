@@ -43,9 +43,10 @@ export function CatalogoTab({ clienteId }: { clienteId: string }) {
     onSuccess: (r) => { toast.success(`${r.sembradas} cuentas sembradas`); qc.invalidateQueries({ queryKey: ["catalogo-cuentas"] }); },
     onError: (e: any) => toast.error(e.message),
   });
+  const [plantillaIMCP, setPlantillaIMCP] = useState<"pm_general" | "pf_act_emp" | "pf_resico">("pm_general");
   const seedIMCPMut = useMutation({
-    mutationFn: () => fnSeedIMCP({ data: { cliente_id: clienteId } }),
-    onSuccess: (r) => { toast.success(`${r.sembradas} cuentas IMCP sembradas`); qc.invalidateQueries({ queryKey: ["catalogo-cuentas"] }); },
+    mutationFn: () => fnSeedIMCP({ data: { cliente_id: clienteId, plantilla: plantillaIMCP } }),
+    onSuccess: (r) => { toast.success(`${r.sembradas} cuentas sembradas — ${r.plantilla}`); qc.invalidateQueries({ queryKey: ["catalogo-cuentas"] }); },
     onError: (e: any) => toast.error(e.message),
   });
   const delMut = useMutation({
