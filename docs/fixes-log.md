@@ -50,3 +50,10 @@
 - Síntoma: en `/app/workflows`, el botón **Ver detalle** existía pero el modal podía mostrar "Sin pasos registrados" y ocultar el error real de ejecuciones parciales/fallidas.
 - Causa: `getRunDetalle` ignoraba errores de lectura y devolvía arreglo vacío si la bitácora de pasos no llegaba a la UI; además el modal no mostraba estado de carga/error ni resumen de la ejecución.
 - Corrección: los listados y el detalle ahora reconstruyen el resumen real desde los pasos fallidos (`kind: error`), validan el despacho activo, fallan explícitamente si no pueden leer la bitácora y el modal muestra un bloque **Error detectado** aunque no existan pasos visibles.
+
+## 2026-06-29 — Login rebota al home antes de entrar al panel
+**Síntoma:** Al iniciar sesión con correo/contraseña, la pantalla cambia brevemente pero termina en `/` (landing). Hace falta hacer clic otra vez en "Iniciar sesión" para entrar a `/app`.
+**Causa raíz:** Carrera entre el evento `SIGNED_IN` (que disparaba `qc.clear() + router.invalidate()` en `AuthCacheSync`) y la navegación client-side de `finishAuthenticatedEntry`. El `router.invalidate()` ocurría mientras `bootstrapWorkspace` (server fn) seguía pendiente, interrumpiendo la transición.
+**Fix:**
+1. `src/routes/auth.tsx`: tras autenticar, hacer hard navigation con `window.location.assign(dest)` para no competir con el ciclo del router.
+2. `src/routes/__root.tsx` (`AuthCacheSync`): ignorar el primer evento (hidratación), y en sign-in fresco usar solo `invalidateQueries()` (no `clear()` ni `router.invalidate()`). El `clear+invalidate` queda reservado para sign-out o cambio de identidad.
