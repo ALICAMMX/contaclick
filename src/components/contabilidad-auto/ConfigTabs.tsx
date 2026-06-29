@@ -500,8 +500,19 @@ export function ExportarTab({ clienteId }: { clienteId: string }) {
             <Button onClick={() => xmlMut.mutate()} disabled={xmlMut.isPending}>
               <FileCode2 className="h-4 w-4 mr-2" /> {xmlMut.isPending ? "..." : "Pólizas (PL.xml)"}
             </Button>
+            <Button onClick={() => auxCMut.mutate()} disabled={auxCMut.isPending}>
+              <FileCode2 className="h-4 w-4 mr-2" /> {auxCMut.isPending ? "..." : "Aux. cuentas (XC.xml)"}
+            </Button>
+            <Button onClick={() => auxFMut.mutate()} disabled={auxFMut.isPending}>
+              <FileCode2 className="h-4 w-4 mr-2" /> {auxFMut.isPending ? "..." : "Aux. folios (XF.xml)"}
+            </Button>
+          </div>
+          <div className="mt-2 max-w-xs">
+            <Label className="text-xs text-muted-foreground">Filtrar Aux. cuentas por cuenta (opcional)</Label>
+            <Input placeholder="ej. 601-01" value={cuentaFiltro} onChange={(e) => setCuentaFiltro(e.target.value)} />
           </div>
         </div>
+
         <div>
           <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Importadores a sistemas contables</div>
           <div className="flex flex-wrap gap-2">
