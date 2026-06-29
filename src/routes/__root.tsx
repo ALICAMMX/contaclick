@@ -162,14 +162,32 @@ function AuthCacheSync() {
   const qc = useQueryClient();
   const router = useRouter();
   useEffect(() => {
-    let lastUserId: string | null | undefined;
+    let lastUserId: string | null | undefined = undefined;
+    let initialized = false;
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
       const nextUserId = session?.user?.id ?? null;
+      // Primer evento (hidratación inicial): solo registramos la identidad
+      // sin disparar clear/invalidate, para no interferir con navegaciones
+      // que ocurran justo después del sign-in (p.ej. /auth → /app).
+      if (!initialized) {
+        initialized = true;
+        lastUserId = nextUserId;
+        return;
+      }
       if (nextUserId === lastUserId) return;
+      const prevUserId = lastUserId;
       lastUserId = nextUserId;
-      qc.clear();
-      router.invalidate();
+      // Sign-out o cambio de identidad: limpiamos todo y revalidamos.
+      if (!nextUserId || (prevUserId && prevUserId !== nextUserId)) {
+        qc.clear();
+        router.invalidate();
+        return;
+      }
+      // Sign-in fresco: basta con invalidar queries; no limpiamos cache ni
+      // forzamos router.invalidate() para no chocar con la navegación que
+      // hace la página de login.
+      qc.invalidateQueries();
     });
     return () => sub.subscription.unsubscribe();
   }, [qc, router]);

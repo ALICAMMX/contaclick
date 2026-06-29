@@ -90,7 +90,15 @@ function AuthPage() {
     const entry = await bootstrapWorkspace({ data: payload });
     const isClient = entry.isClient || (await hasClientRoleFallback());
     const fallback = isClient ? "/portal" : "/app";
-    navigate({ to: safeNext(search.next, fallback), replace: true });
+    const dest = safeNext(search.next, fallback);
+    // Hard navigation: evita la carrera entre el evento SIGNED_IN (que dispara
+    // qc.clear() + router.invalidate() en __root.tsx) y la navegación
+    // client-side, que provocaba un rebote al home antes de aterrizar en /app.
+    if (typeof window !== "undefined") {
+      window.location.assign(dest);
+      return;
+    }
+    navigate({ to: dest, replace: true });
   };
 
   const handleDemoLogin = async () => {
