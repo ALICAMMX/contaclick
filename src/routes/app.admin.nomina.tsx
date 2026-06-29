@@ -27,6 +27,7 @@ function NominaPage() {
       title="Nómina · Auditor + Simulador"
       subtitle="No timbra ni sustituye a NOI/CONTPAQi Nóminas. Audita CFDI de nómina ya emitidos y simula el costo patronal total (IMSS, INFONAVIT, ISN, provisiones)."
       icon={<Users className="h-5 w-5" />}
+      badge={null}
       actions={<HerramientaHelp slug="admin-nomina" />}
     >
       {!activeCliente ? (
