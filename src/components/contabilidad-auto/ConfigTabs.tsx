@@ -488,7 +488,15 @@ export function ExportarTab({ clienteId }: { clienteId: string }) {
             </Button>
           </div>
         </div>
+        <div>
+          <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Expediente completo del período</div>
+          <p className="text-sm text-muted-foreground mb-2">Un solo ZIP con XML SAT, importadores, CFDI emitidos/recibidos, pólizas y resumen ejecutivo. Listo para entregar al contador.</p>
+          <Button size="lg" onClick={() => zipMut.mutate()} disabled={zipMut.isPending}>
+            <Download className="h-4 w-4 mr-2" /> {zipMut.isPending ? "Empaquetando..." : "Descargar Expediente ZIP"}
+          </Button>
+        </div>
       </div>
+
     </Card>
   );
 }
