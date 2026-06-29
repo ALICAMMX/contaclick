@@ -17,7 +17,9 @@ import {
   listarReglas, upsertRegla, eliminarRegla,
 } from "@/lib/contabilidad-auto/catalogo.functions";
 import { exportarAnexo24Polizas, exportarContpaqi, exportarAspelCoi, exportarAnexo24Catalogo, exportarAnexo24Balanza } from "@/lib/contabilidad-auto/export.functions";
+import { exportarExpedienteZip } from "@/lib/expedientes/zip-export.functions";
 import { triggerFileDownload } from "@/lib/download";
+
 
 
 // ===== Catálogo =====
@@ -368,6 +370,8 @@ export function ExportarTab({ clienteId }: { clienteId: string }) {
   const fnAspel = useServerFn(exportarAspelCoi);
   const fnCat = useServerFn(exportarAnexo24Catalogo);
   const fnBal = useServerFn(exportarAnexo24Balanza);
+  const fnZip = useServerFn(exportarExpedienteZip);
+
 
   const dl = (contenido: string, filename: string, type: string) =>
     triggerFileDownload(new Blob([contenido], { type }), filename);
@@ -397,6 +401,19 @@ export function ExportarTab({ clienteId }: { clienteId: string }) {
     onSuccess: (r) => { dl(r.contenido, r.filename, "application/xml"); toast.success(`Balanza Anexo 24 · ${r.cuentas} cuentas`); },
     onError: (e: any) => toast.error(e.message),
   });
+  const zipMut = useMutation({
+    mutationFn: () => fnZip({ data: { cliente_id: clienteId, anio, mes } }),
+    onSuccess: (r) => {
+      const bin = atob(r.contenido_b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      triggerFileDownload(new Blob([bytes], { type: "application/zip" }), r.filename);
+      toast.success(`Expediente listo · ${r.stats.cfdi_emitidos + r.stats.cfdi_recibidos} CFDI · ${r.stats.polizas} pólizas · ${r.stats.tamano_kb} KB`);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+
 
 
   return (
@@ -471,7 +488,15 @@ export function ExportarTab({ clienteId }: { clienteId: string }) {
             </Button>
           </div>
         </div>
+        <div>
+          <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Expediente completo del período</div>
+          <p className="text-sm text-muted-foreground mb-2">Un solo ZIP con XML SAT, importadores, CFDI emitidos/recibidos, pólizas y resumen ejecutivo. Listo para entregar al contador.</p>
+          <Button size="lg" onClick={() => zipMut.mutate()} disabled={zipMut.isPending}>
+            <Download className="h-4 w-4 mr-2" /> {zipMut.isPending ? "Empaquetando..." : "Descargar Expediente ZIP"}
+          </Button>
+        </div>
       </div>
+
     </Card>
   );
 }

@@ -65,3 +65,9 @@
 - **Exportador Aspel COI** (`.txt POL`): `exportarAspelCoi` complementa al CONTPAQi existente.
 - **Buzón Tributario IA real**: nueva tabla `buzon_notificaciones`, server fns `registrarNotificacion` + Gemini 2.5 Flash analiza PDF (plazo, fundamento, riesgo, borrador de respuesta). UI `/app/admin/buzon` reescrita.
 - **Nómina · Auditor + Simulador**: server fns `auditarNomina` (revisa CFDI tipo "N" emitidos) y `simularCostoPatronal` (IMSS patrón, INFONAVIT, ISN, provisiones aguinaldo/vac/PTU). Nueva tabla `nomina_simulaciones`. UI `/app/admin/nomina` reescrita con pestañas Auditor/Simulador.
+
+## 2026-06-29 · Sprint 2 #3 — Expediente ZIP completo
+
+- Nuevo server fn `exportarExpedienteZip` (`src/lib/expedientes/zip-export.functions.ts`) que empaqueta en un único ZIP por cliente+periodo: XML Anexo 24 (CT/BN/PL), importadores CONTPAQi y Aspel COI, CFDI emitidos/recibidos/todos en CSV, detalle de pólizas y resumen ejecutivo TXT.
+- Botón "Descargar Expediente ZIP" en `/app/contabilidad-auto → Configuración → Exportar`.
+- Usa JSZip; respuesta como base64 para mantener el contrato JSON de createServerFn.
