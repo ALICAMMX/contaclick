@@ -67,7 +67,7 @@ export const exportarExpedienteZip = createServerFn({ method: "POST" })
       [
         `EXPEDIENTE CONTACLICK`,
         `=====================`,
-        `Cliente : ${cli.nombre}`,
+        `Cliente : ${cli.razon_social}`,
         `RFC     : ${cli.rfc ?? "(sin RFC)"}`,
         `Régimen : ${cli.regimen_fiscal ?? "-"}`,
         `Período : ${data.anio}-${mm}  (${ini} a ${fin})`,
@@ -240,7 +240,7 @@ export const exportarExpedienteZip = createServerFn({ method: "POST" })
 
     // ---- Resumen ejecutivo
     const resumen = [
-      `RESUMEN EJECUTIVO · ${cli.nombre} (${cli.rfc ?? "sin RFC"})`,
+      `RESUMEN EJECUTIVO · ${cli.razon_social} (${cli.rfc ?? "sin RFC"})`,
       `Período: ${data.anio}-${mm}`,
       ``,
       `INGRESOS (CFDI emitidos)`,
