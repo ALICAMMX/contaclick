@@ -41,11 +41,17 @@ export function CatalogoTab({ clienteId }: { clienteId: string }) {
     onSuccess: (r) => { toast.success(`${r.sembradas} cuentas sembradas`); qc.invalidateQueries({ queryKey: ["catalogo-cuentas"] }); },
     onError: (e: any) => toast.error(e.message),
   });
+  const seedIMCPMut = useMutation({
+    mutationFn: () => fnSeedIMCP({ data: { cliente_id: clienteId } }),
+    onSuccess: (r) => { toast.success(`${r.sembradas} cuentas IMCP sembradas`); qc.invalidateQueries({ queryKey: ["catalogo-cuentas"] }); },
+    onError: (e: any) => toast.error(e.message),
+  });
   const delMut = useMutation({
     mutationFn: (id: string) => fnDel({ data: { id } }),
     onSuccess: () => { toast.success("Cuenta eliminada"); qc.invalidateQueries({ queryKey: ["catalogo-cuentas"] }); },
     onError: (e: any) => toast.error(e.message),
   });
+
 
   return (
     <Card className="p-4 space-y-3">
@@ -56,17 +62,23 @@ export function CatalogoTab({ clienteId }: { clienteId: string }) {
             Cuentas usadas por el motor para generar pólizas. Si está vacío, siembra el catálogo SAT base.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {(q.data ?? []).length === 0 && (
-            <Button onClick={() => seedMut.mutate()} disabled={seedMut.isPending}>
-              <Sparkles className="h-4 w-4 mr-2" /> Sembrar catálogo SAT base
-            </Button>
+            <>
+              <Button onClick={() => seedIMCPMut.mutate()} disabled={seedIMCPMut.isPending}>
+                <Sparkles className="h-4 w-4 mr-2" /> Sembrar plantilla IMCP (PM)
+              </Button>
+              <Button variant="outline" onClick={() => seedMut.mutate()} disabled={seedMut.isPending}>
+                Catálogo SAT mínimo
+              </Button>
+            </>
           )}
           <Button variant="outline" onClick={() => setEditing({})}>
             <Plus className="h-4 w-4 mr-2" /> Nueva cuenta
           </Button>
         </div>
       </div>
+
 
       <div className="rounded border overflow-auto max-h-[600px]">
         <Table>
