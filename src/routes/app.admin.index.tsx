@@ -20,7 +20,7 @@ const TOOLS: Tool[] = [
   { name: "Cumplimiento Laboral", desc: "Checklist IMSS/INFONAVIT/SAT/STPS con vencimientos, semáforos y evidencia.", icon: ShieldCheck, href: "/app/admin/cumplimiento", status: "live", group: "3 · Personal & RH" },
 
   // Patrimonio
-  { name: "Activos Fijos", desc: "MOI, depreciación fiscal y contable automática.", icon: Building, href: "/app/admin/activos", status: "soon", group: "4 · Patrimonio" },
+  { name: "Activos Fijos", desc: "MOI, depreciación lineal fiscal y contable con tasas LISR, cédula CSV anual.", icon: Building, href: "/app/admin/activos", status: "live", group: "4 · Patrimonio" },
   { name: "Inventarios", desc: "Kardex derivado de CFDI emitidos y recibidos.", icon: Boxes, href: "/app/admin/inventarios", status: "soon", group: "4 · Patrimonio" },
 ];
 

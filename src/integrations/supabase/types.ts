@@ -14,6 +14,102 @@ export type Database = {
   }
   public: {
     Tables: {
+      activos_fijos: {
+        Row: {
+          baja_fecha: string | null
+          baja_motivo: string | null
+          categoria: string
+          cliente_id: string | null
+          codigo: string | null
+          created_at: string
+          created_by: string | null
+          descripcion: string
+          despacho_id: string
+          estado: string
+          factura_uuid: string | null
+          fecha_adquisicion: string
+          fecha_inicio_uso: string | null
+          id: string
+          metodo: string
+          moi: number
+          notas: string | null
+          proveedor: string | null
+          responsable: string | null
+          tasa_contable_anual: number | null
+          tasa_fiscal_anual: number
+          ubicacion: string | null
+          updated_at: string
+          valor_residual: number
+        }
+        Insert: {
+          baja_fecha?: string | null
+          baja_motivo?: string | null
+          categoria?: string
+          cliente_id?: string | null
+          codigo?: string | null
+          created_at?: string
+          created_by?: string | null
+          descripcion: string
+          despacho_id: string
+          estado?: string
+          factura_uuid?: string | null
+          fecha_adquisicion: string
+          fecha_inicio_uso?: string | null
+          id?: string
+          metodo?: string
+          moi: number
+          notas?: string | null
+          proveedor?: string | null
+          responsable?: string | null
+          tasa_contable_anual?: number | null
+          tasa_fiscal_anual?: number
+          ubicacion?: string | null
+          updated_at?: string
+          valor_residual?: number
+        }
+        Update: {
+          baja_fecha?: string | null
+          baja_motivo?: string | null
+          categoria?: string
+          cliente_id?: string | null
+          codigo?: string | null
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string
+          despacho_id?: string
+          estado?: string
+          factura_uuid?: string | null
+          fecha_adquisicion?: string
+          fecha_inicio_uso?: string | null
+          id?: string
+          metodo?: string
+          moi?: number
+          notas?: string | null
+          proveedor?: string | null
+          responsable?: string | null
+          tasa_contable_anual?: number | null
+          tasa_fiscal_anual?: number
+          ubicacion?: string | null
+          updated_at?: string
+          valor_residual?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activos_fijos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activos_fijos_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       alertas: {
         Row: {
           accion_sugerida: string | null
