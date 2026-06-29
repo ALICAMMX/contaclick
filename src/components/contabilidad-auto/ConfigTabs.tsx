@@ -425,7 +425,17 @@ export function ExportarTab({ clienteId }: { clienteId: string }) {
       toast.success(`Expediente listo · ${r.stats.cfdi_emitidos + r.stats.cfdi_recibidos} CFDI · ${r.stats.polizas} pólizas · ${r.stats.tamano_kb} KB`);
     },
     onError: (e: any) => toast.error(e.message),
+  const auxCMut = useMutation({
+    mutationFn: () => fnAuxC({ data: { cliente_id: clienteId, anio, mes, tipo_solicitud: tipoSol, num_orden: numOrden || undefined, num_tramite: numTramite || undefined, cuenta_filtro: cuentaFiltro || undefined } }),
+    onSuccess: (r) => { dl(r.contenido, r.filename, "application/xml"); toast.success(`Auxiliar de cuentas · ${r.cuentas} cuentas · ${r.movimientos} movs`); },
+    onError: (e: any) => toast.error(e.message),
   });
+  const auxFMut = useMutation({
+    mutationFn: () => fnAuxF({ data: { cliente_id: clienteId, anio, mes, tipo_solicitud: tipoSol, num_orden: numOrden || undefined, num_tramite: numTramite || undefined } }),
+    onSuccess: (r) => { dl(r.contenido, r.filename, "application/xml"); toast.success(`Auxiliar de folios · ${r.folios} CFDI`); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
 
 
 
