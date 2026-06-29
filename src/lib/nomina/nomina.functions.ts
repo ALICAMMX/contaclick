@@ -128,7 +128,9 @@ export const simularCostoPatronal = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: cli } = await supabase.from("clientes").select("despacho_id").eq("id", data.cliente_id).maybeSingle();
-    if (!cli) throw new Error("Cliente no encontrado");
+    if (!cli?.despacho_id) throw new Error("Cliente sin despacho asignado");
+    const despachoId = cli.despacho_id;
+
 
     const topeSDI = data.tope_sdi_imss > 0 ? data.tope_sdi_imss : data.uma_diaria * 25;
 
@@ -216,7 +218,7 @@ export const simularCostoPatronal = createServerFn({ method: "POST" })
     const id = crypto.randomUUID();
     const { error } = await supabase.from("nomina_simulaciones").insert({
       id,
-      despacho_id: cli.despacho_id,
+      despacho_id: despachoId,
       cliente_id: data.cliente_id,
       nombre: data.nombre,
       entrada: data as any,
