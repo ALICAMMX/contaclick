@@ -25,6 +25,8 @@ export function CatalogoTab({ clienteId }: { clienteId: string }) {
   const qc = useQueryClient();
   const fnList = useServerFn(listarCatalogo);
   const fnSeed = useServerFn(sembrarCatalogo);
+  const fnSeedIMCP = useServerFn(sembrarCatalogoIMCP);
+
   const fnUp = useServerFn(upsertCuenta);
   const fnDel = useServerFn(eliminarCuenta);
 
