@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
+import { PLANTILLA_IMCP_PM } from "./imcp-catalog";
+
 
 // Catálogo SAT base (Anexo 24) — sembrado inicial editable por cliente
 const SEED: Array<{ codigo: string; nombre: string; naturaleza: "deudora" | "acreedora"; tipo_sat: string }> = [
@@ -65,6 +67,32 @@ export const sembrarCatalogo = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { sembradas: rows.length };
   });
+
+// Plantilla IMCP (PM régimen general) — usa códigos agrupadores oficiales SAT Anexo 24.
+export const sembrarCatalogoIMCP = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ cliente_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const cli = await getClienteDespacho(supabase, data.cliente_id);
+    const rows = PLANTILLA_IMCP_PM.map((c) => ({
+      id: crypto.randomUUID(),
+      cliente_id: data.cliente_id,
+      despacho_id: cli.despacho_id,
+      codigo: c.codigo,
+      nombre: c.nombre,
+      naturaleza: c.naturaleza === "D" ? "deudora" : "acreedora",
+      tipo_sat: c.agrupador_sat,
+      activa: true,
+      created_by: userId,
+    }));
+    const { error } = await supabase
+      .from("catalogo_cuentas")
+      .upsert(rows, { onConflict: "cliente_id,codigo", ignoreDuplicates: true });
+    if (error) throw new Error(error.message);
+    return { sembradas: rows.length, plantilla: "IMCP PM Régimen General" };
+  });
+
 
 export const upsertCuenta = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])

@@ -199,6 +199,81 @@ export type Database = {
         }
         Relationships: []
       }
+      buzon_notificaciones: {
+        Row: {
+          asunto: string
+          cliente_id: string | null
+          created_at: string
+          created_by: string | null
+          despacho_id: string
+          estado: string
+          fecha_recibida: string
+          folio: string | null
+          ia_analisis: Json
+          id: string
+          origen: string
+          pdf_base64: string | null
+          pdf_filename: string | null
+          plazo_dias: number | null
+          resumen: string | null
+          updated_at: string
+          vence_at: string | null
+        }
+        Insert: {
+          asunto: string
+          cliente_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          despacho_id: string
+          estado?: string
+          fecha_recibida?: string
+          folio?: string | null
+          ia_analisis?: Json
+          id?: string
+          origen?: string
+          pdf_base64?: string | null
+          pdf_filename?: string | null
+          plazo_dias?: number | null
+          resumen?: string | null
+          updated_at?: string
+          vence_at?: string | null
+        }
+        Update: {
+          asunto?: string
+          cliente_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          despacho_id?: string
+          estado?: string
+          fecha_recibida?: string
+          folio?: string | null
+          ia_analisis?: Json
+          id?: string
+          origen?: string
+          pdf_base64?: string | null
+          pdf_filename?: string | null
+          plazo_dias?: number | null
+          resumen?: string | null
+          updated_at?: string
+          vence_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "buzon_notificaciones_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "buzon_notificaciones_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       catalogo_cuentas: {
         Row: {
           activa: boolean
@@ -1920,6 +1995,57 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "mp_subscriptions_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nomina_simulaciones: {
+        Row: {
+          cliente_id: string | null
+          created_at: string
+          created_by: string | null
+          despacho_id: string
+          entrada: Json
+          id: string
+          nombre: string
+          resultado: Json
+          updated_at: string
+        }
+        Insert: {
+          cliente_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          despacho_id: string
+          entrada?: Json
+          id?: string
+          nombre: string
+          resultado?: Json
+          updated_at?: string
+        }
+        Update: {
+          cliente_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          despacho_id?: string
+          entrada?: Json
+          id?: string
+          nombre?: string
+          resultado?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nomina_simulaciones_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nomina_simulaciones_despacho_id_fkey"
             columns: ["despacho_id"]
             isOneToOne: false
             referencedRelation: "despachos"

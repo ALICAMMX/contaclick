@@ -128,3 +128,182 @@ export const exportarContpaqi = createServerFn({ method: "POST" })
     const txt = lines.join("\r\n");
     return { filename: `polizas_${data.anio}${String(data.mes).padStart(2, "0")}_contpaqi.txt`, contenido: txt, renglones: lines.length };
   });
+
+// ===== Aspel COI — TXT importable (formato POL) =====
+// Una línea por movimiento. Campos típicos:
+// Tipo|NumPoliza|Fecha|Concepto|Cuenta|Cargo|Abono|Referencia|Diario
+export const exportarAspelCoi = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      cliente_id: z.string().uuid(),
+      anio: z.number().int().min(2018).max(2100),
+      mes: z.number().int().min(1).max(12),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const polizas = await fetchPolizas(context.supabase, data.cliente_id, data.anio, data.mes);
+    if (polizas.length === 0) throw new Error("No hay pólizas confirmadas en el período");
+    const tipoMap: Record<string, string> = { ingreso: "Ig", egreso: "Eg", diario: "Dr" };
+    const lines: string[] = [];
+    let cons = 0;
+    for (const p of polizas as any[]) {
+      const asientos: Asiento[] = (p.metadata?.asientos ?? []) as Asiento[];
+      if (!asientos.length) continue;
+      cons++;
+      const tp = tipoMap[p.tipo] ?? "Dr";
+      for (const a of asientos) {
+        lines.push([
+          tp,
+          cons,
+          String(p.fecha).slice(0, 10),
+          (p.concepto || "").replace(/\|/g, " ").slice(0, 60),
+          a.cuenta,
+          a.debe.toFixed(2),
+          a.haber.toFixed(2),
+          p.uuid_cfdi || p.referencia || "",
+          "1",
+        ].join("|"));
+      }
+    }
+    return {
+      filename: `polizas_${data.anio}${String(data.mes).padStart(2, "0")}_aspel_coi.txt`,
+      contenido: lines.join("\r\n"),
+      renglones: lines.length,
+    };
+  });
+
+// ===== Anexo 24 — Catálogo de cuentas (RFC, Anio, Mes) =====
+export const exportarAnexo24Catalogo = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      cliente_id: z.string().uuid(),
+      anio: z.number().int().min(2018).max(2100),
+      mes: z.number().int().min(1).max(12),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: cli } = await supabase.from("clientes").select("rfc").eq("id", data.cliente_id).maybeSingle();
+    if (!cli?.rfc) throw new Error("Cliente sin RFC configurado");
+    const { data: cuentas, error } = await supabase
+      .from("catalogo_cuentas")
+      .select("codigo, nombre, naturaleza, tipo_sat")
+      .eq("cliente_id", data.cliente_id)
+      .eq("activa", true)
+      .order("codigo");
+    if (error) throw new Error(error.message);
+    if (!cuentas || cuentas.length === 0) throw new Error("No hay cuentas activas en el catálogo");
+
+    const lines: string[] = [];
+    lines.push(`<?xml version="1.0" encoding="UTF-8"?>`);
+    lines.push(
+      `<catalogocuentas:Catalogo xmlns:catalogocuentas="http://www.sat.gob.mx/esquemas/ContabilidadE/1_3/CatalogoCuentas" ` +
+        `xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ` +
+        `xsi:schemaLocation="http://www.sat.gob.mx/esquemas/ContabilidadE/1_3/CatalogoCuentas http://www.sat.gob.mx/esquemas/ContabilidadE/1_3/CatalogoCuentas/CatalogoCuentas_1_3.xsd" ` +
+        `Version="1.3" RFC="${xmlEsc(cli.rfc)}" Mes="${String(data.mes).padStart(2, "0")}" Anio="${data.anio}">`,
+    );
+    for (const c of cuentas as any[]) {
+      // Nivel se infiere del número de segmentos del código.
+      const nivel = String(c.codigo).split(/[.\-]/).length;
+      const natur = (c.naturaleza === "deudora") ? "D" : "A";
+      lines.push(
+        `  <catalogocuentas:Ctas CodAgrup="${xmlEsc(c.tipo_sat || c.codigo)}" NumCta="${xmlEsc(c.codigo)}" Desc="${xmlEsc(c.nombre)}" Nivel="${nivel}" Natur="${natur}"/>`,
+      );
+    }
+    lines.push(`</catalogocuentas:Catalogo>`);
+    return {
+      filename: `${cli.rfc}${data.anio}${String(data.mes).padStart(2, "0")}CT.xml`,
+      contenido: lines.join("\n"),
+      cuentas: cuentas.length,
+    };
+  });
+
+// ===== Anexo 24 — Balanza de comprobación =====
+// Calcula saldos a partir de pólizas confirmadas del período.
+export const exportarAnexo24Balanza = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      cliente_id: z.string().uuid(),
+      anio: z.number().int().min(2018).max(2100),
+      mes: z.number().int().min(1).max(12),
+      tipo_envio: z.enum(["N", "C"]).default("N"), // N = Normal, C = Complementaria
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: cli } = await supabase.from("clientes").select("rfc").eq("id", data.cliente_id).maybeSingle();
+    if (!cli?.rfc) throw new Error("Cliente sin RFC configurado");
+
+    const { data: cuentas, error: eCat } = await supabase
+      .from("catalogo_cuentas")
+      .select("codigo, nombre, naturaleza")
+      .eq("cliente_id", data.cliente_id)
+      .eq("activa", true);
+    if (eCat) throw new Error(eCat.message);
+    const cuentasMap = new Map<string, { naturaleza: string; nombre: string }>();
+    for (const c of cuentas ?? []) cuentasMap.set(c.codigo, c as any);
+
+    // Saldo inicial: suma de movimientos de pólizas anteriores al período
+    const iniDate = `${data.anio}-${String(data.mes).padStart(2, "0")}-01`;
+    const finDate = new Date(data.anio, data.mes, 0);
+    const finStr = `${data.anio}-${String(data.mes).padStart(2, "0")}-${String(finDate.getDate()).padStart(2, "0")}`;
+
+    const { data: prev } = await supabase
+      .from("polizas")
+      .select("metadata")
+      .eq("cliente_id", data.cliente_id)
+      .eq("estado", "confirmada")
+      .lt("fecha", iniDate);
+
+    const periodo = await fetchPolizas(supabase, data.cliente_id, data.anio, data.mes);
+
+    type Acc = { debe: number; haber: number };
+    const ini: Map<string, Acc> = new Map();
+    const per: Map<string, Acc> = new Map();
+    const sum = (m: Map<string, Acc>, k: string, d: number, h: number) => {
+      const cur = m.get(k) ?? { debe: 0, haber: 0 };
+      cur.debe += d; cur.haber += h;
+      m.set(k, cur);
+    };
+    for (const p of (prev ?? []) as any[]) {
+      const arr: Asiento[] = (p.metadata?.asientos ?? []) as Asiento[];
+      for (const a of arr) sum(ini, a.cuenta, a.debe || 0, a.haber || 0);
+    }
+    for (const p of periodo as any[]) {
+      const arr: Asiento[] = (p.metadata?.asientos ?? []) as Asiento[];
+      for (const a of arr) sum(per, a.cuenta, a.debe || 0, a.haber || 0);
+    }
+
+    const codigos = new Set<string>([...ini.keys(), ...per.keys()]);
+    const lines: string[] = [];
+    lines.push(`<?xml version="1.0" encoding="UTF-8"?>`);
+    lines.push(
+      `<BCE:Balanza xmlns:BCE="http://www.sat.gob.mx/esquemas/ContabilidadE/1_3/BalanzaComprobacion" ` +
+        `xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ` +
+        `xsi:schemaLocation="http://www.sat.gob.mx/esquemas/ContabilidadE/1_3/BalanzaComprobacion http://www.sat.gob.mx/esquemas/ContabilidadE/1_3/BalanzaComprobacion/BalanzaComprobacion_1_3.xsd" ` +
+        `Version="1.3" RFC="${xmlEsc(cli.rfc)}" Mes="${String(data.mes).padStart(2, "0")}" Anio="${data.anio}" TipoEnvio="${data.tipo_envio}">`,
+    );
+    const codigosOrdenados = Array.from(codigos).sort();
+    for (const codigo of codigosOrdenados) {
+      const meta = cuentasMap.get(codigo);
+      const naturaleza = meta?.naturaleza ?? "deudora";
+      const i = ini.get(codigo) ?? { debe: 0, haber: 0 };
+      const p = per.get(codigo) ?? { debe: 0, haber: 0 };
+      const saldoIni = naturaleza === "deudora" ? i.debe - i.haber : i.haber - i.debe;
+      const saldoFin = saldoIni + (naturaleza === "deudora" ? p.debe - p.haber : p.haber - p.debe);
+      lines.push(
+        `  <BCE:Ctas NumCta="${xmlEsc(codigo)}" SaldoIni="${saldoIni.toFixed(2)}" Debe="${p.debe.toFixed(2)}" Haber="${p.haber.toFixed(2)}" SaldoFin="${saldoFin.toFixed(2)}"/>`,
+      );
+    }
+    lines.push(`</BCE:Balanza>`);
+
+    return {
+      filename: `${cli.rfc}${data.anio}${String(data.mes).padStart(2, "0")}B${data.tipo_envio}.xml`,
+      contenido: lines.join("\n"),
+      cuentas: codigosOrdenados.length,
+    };
+  });
+

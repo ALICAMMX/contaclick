@@ -13,17 +13,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  listarCatalogo, sembrarCatalogo, upsertCuenta, eliminarCuenta,
+  listarCatalogo, sembrarCatalogo, sembrarCatalogoIMCP, upsertCuenta, eliminarCuenta,
   listarReglas, upsertRegla, eliminarRegla,
 } from "@/lib/contabilidad-auto/catalogo.functions";
-import { exportarAnexo24Polizas, exportarContpaqi } from "@/lib/contabilidad-auto/export.functions";
+import { exportarAnexo24Polizas, exportarContpaqi, exportarAspelCoi, exportarAnexo24Catalogo, exportarAnexo24Balanza } from "@/lib/contabilidad-auto/export.functions";
 import { triggerFileDownload } from "@/lib/download";
+
 
 // ===== Catálogo =====
 export function CatalogoTab({ clienteId }: { clienteId: string }) {
   const qc = useQueryClient();
   const fnList = useServerFn(listarCatalogo);
   const fnSeed = useServerFn(sembrarCatalogo);
+  const fnSeedIMCP = useServerFn(sembrarCatalogoIMCP);
+
   const fnUp = useServerFn(upsertCuenta);
   const fnDel = useServerFn(eliminarCuenta);
 
@@ -38,11 +41,17 @@ export function CatalogoTab({ clienteId }: { clienteId: string }) {
     onSuccess: (r) => { toast.success(`${r.sembradas} cuentas sembradas`); qc.invalidateQueries({ queryKey: ["catalogo-cuentas"] }); },
     onError: (e: any) => toast.error(e.message),
   });
+  const seedIMCPMut = useMutation({
+    mutationFn: () => fnSeedIMCP({ data: { cliente_id: clienteId } }),
+    onSuccess: (r) => { toast.success(`${r.sembradas} cuentas IMCP sembradas`); qc.invalidateQueries({ queryKey: ["catalogo-cuentas"] }); },
+    onError: (e: any) => toast.error(e.message),
+  });
   const delMut = useMutation({
     mutationFn: (id: string) => fnDel({ data: { id } }),
     onSuccess: () => { toast.success("Cuenta eliminada"); qc.invalidateQueries({ queryKey: ["catalogo-cuentas"] }); },
     onError: (e: any) => toast.error(e.message),
   });
+
 
   return (
     <Card className="p-4 space-y-3">
@@ -53,17 +62,23 @@ export function CatalogoTab({ clienteId }: { clienteId: string }) {
             Cuentas usadas por el motor para generar pólizas. Si está vacío, siembra el catálogo SAT base.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {(q.data ?? []).length === 0 && (
-            <Button onClick={() => seedMut.mutate()} disabled={seedMut.isPending}>
-              <Sparkles className="h-4 w-4 mr-2" /> Sembrar catálogo SAT base
-            </Button>
+            <>
+              <Button onClick={() => seedIMCPMut.mutate()} disabled={seedIMCPMut.isPending}>
+                <Sparkles className="h-4 w-4 mr-2" /> Sembrar plantilla IMCP (PM)
+              </Button>
+              <Button variant="outline" onClick={() => seedMut.mutate()} disabled={seedMut.isPending}>
+                Catálogo SAT mínimo
+              </Button>
+            </>
           )}
           <Button variant="outline" onClick={() => setEditing({})}>
             <Plus className="h-4 w-4 mr-2" /> Nueva cuenta
           </Button>
         </div>
       </div>
+
 
       <div className="rounded border overflow-auto max-h-[600px]">
         <Table>
@@ -350,23 +365,39 @@ export function ExportarTab({ clienteId }: { clienteId: string }) {
 
   const fnXml = useServerFn(exportarAnexo24Polizas);
   const fnTxt = useServerFn(exportarContpaqi);
+  const fnAspel = useServerFn(exportarAspelCoi);
+  const fnCat = useServerFn(exportarAnexo24Catalogo);
+  const fnBal = useServerFn(exportarAnexo24Balanza);
+
+  const dl = (contenido: string, filename: string, type: string) =>
+    triggerFileDownload(new Blob([contenido], { type }), filename);
 
   const xmlMut = useMutation({
     mutationFn: () => fnXml({ data: { cliente_id: clienteId, anio, mes, tipo_solicitud: tipoSol, num_orden: numOrden || undefined, num_tramite: numTramite || undefined } }),
-    onSuccess: (r) => {
-      triggerFileDownload(new Blob([r.contenido], { type: "application/xml" }), r.filename);
-      toast.success(`Anexo 24 generado · ${r.polizas} pólizas`);
-    },
+    onSuccess: (r) => { dl(r.contenido, r.filename, "application/xml"); toast.success(`Anexo 24 Pólizas · ${r.polizas} pólizas`); },
     onError: (e: any) => toast.error(e.message),
   });
   const txtMut = useMutation({
     mutationFn: () => fnTxt({ data: { cliente_id: clienteId, anio, mes } }),
-    onSuccess: (r) => {
-      triggerFileDownload(new Blob([r.contenido], { type: "text/plain" }), r.filename);
-      toast.success(`CONTPAQi generado · ${r.renglones} renglones`);
-    },
+    onSuccess: (r) => { dl(r.contenido, r.filename, "text/plain"); toast.success(`CONTPAQi · ${r.renglones} renglones`); },
     onError: (e: any) => toast.error(e.message),
   });
+  const aspelMut = useMutation({
+    mutationFn: () => fnAspel({ data: { cliente_id: clienteId, anio, mes } }),
+    onSuccess: (r) => { dl(r.contenido, r.filename, "text/plain"); toast.success(`Aspel COI · ${r.renglones} renglones`); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const catMut = useMutation({
+    mutationFn: () => fnCat({ data: { cliente_id: clienteId, anio, mes } }),
+    onSuccess: (r) => { dl(r.contenido, r.filename, "application/xml"); toast.success(`Catálogo Anexo 24 · ${r.cuentas} cuentas`); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const balMut = useMutation({
+    mutationFn: () => fnBal({ data: { cliente_id: clienteId, anio, mes, tipo_envio: "N" } }),
+    onSuccess: (r) => { dl(r.contenido, r.filename, "application/xml"); toast.success(`Balanza Anexo 24 · ${r.cuentas} cuentas`); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
 
   return (
     <Card className="p-4 space-y-4">
@@ -414,16 +445,34 @@ export function ExportarTab({ clienteId }: { clienteId: string }) {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 pt-2 border-t">
-        <Button onClick={() => xmlMut.mutate()} disabled={xmlMut.isPending}>
-          <FileCode2 className="h-4 w-4 mr-2" />
-          {xmlMut.isPending ? "Generando..." : "Descargar Anexo 24 (XML Pólizas)"}
-        </Button>
-        <Button variant="outline" onClick={() => txtMut.mutate()} disabled={txtMut.isPending}>
-          <Download className="h-4 w-4 mr-2" />
-          {txtMut.isPending ? "Generando..." : "Descargar TXT CONTPAQi"}
-        </Button>
+      <div className="space-y-3 pt-2 border-t">
+        <div>
+          <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Contabilidad Electrónica SAT (Anexo 24 v1.3)</div>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => catMut.mutate()} disabled={catMut.isPending}>
+              <FileCode2 className="h-4 w-4 mr-2" /> {catMut.isPending ? "..." : "Catálogo de cuentas (CT.xml)"}
+            </Button>
+            <Button onClick={() => balMut.mutate()} disabled={balMut.isPending}>
+              <FileCode2 className="h-4 w-4 mr-2" /> {balMut.isPending ? "..." : "Balanza (BN.xml)"}
+            </Button>
+            <Button onClick={() => xmlMut.mutate()} disabled={xmlMut.isPending}>
+              <FileCode2 className="h-4 w-4 mr-2" /> {xmlMut.isPending ? "..." : "Pólizas (PL.xml)"}
+            </Button>
+          </div>
+        </div>
+        <div>
+          <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Importadores a sistemas contables</div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => txtMut.mutate()} disabled={txtMut.isPending}>
+              <Download className="h-4 w-4 mr-2" /> CONTPAQi (.txt)
+            </Button>
+            <Button variant="outline" onClick={() => aspelMut.mutate()} disabled={aspelMut.isPending}>
+              <Download className="h-4 w-4 mr-2" /> Aspel COI (.txt)
+            </Button>
+          </div>
+        </div>
       </div>
     </Card>
   );
 }
+
