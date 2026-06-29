@@ -13,11 +13,11 @@ const TOOLS: Tool[] = [
 
   // Comunicaciones
   { name: "Bandeja de Notificaciones IA", desc: "Sube PDFs de notificaciones SAT/IMSS/INFONAVIT y la IA extrae plazos, fundamento y riesgo. No se conecta al Buzón oficial.", icon: Mail, href: "/app/admin/buzon", status: "live", group: "2 · Comunicaciones" },
-  { name: "Correspondencia", desc: "Generador de minutas, oficios y respuestas.", icon: MessageSquare, href: "/app/admin/correspondencia", status: "soon", group: "2 · Comunicaciones" },
+  { name: "Correspondencia & Minutas", desc: "Generador IA de oficios, minutas y respuestas formales con tono ajustable.", icon: MessageSquare, href: "/app/admin/correspondencia", status: "live", group: "2 · Comunicaciones" },
 
   // Personal & RH (quincenal / mensual)
   { name: "Auditor de Nómina + Simulador", desc: "Audita CFDI de nómina emitidos y simula costo patronal. Sin cálculo de timbrado.", icon: Users, href: "/app/admin/nomina", status: "live", group: "3 · Personal & RH" },
-  { name: "Cumplimiento Laboral", desc: "Checklist IMSS / INFONAVIT / SAT con semáforos.", icon: ShieldCheck, href: "/app/admin/cumplimiento", status: "soon", group: "3 · Personal & RH" },
+  { name: "Cumplimiento Laboral", desc: "Checklist IMSS/INFONAVIT/SAT/STPS con vencimientos, semáforos y evidencia.", icon: ShieldCheck, href: "/app/admin/cumplimiento", status: "live", group: "3 · Personal & RH" },
 
   // Patrimonio
   { name: "Activos Fijos", desc: "MOI, depreciación fiscal y contable automática.", icon: Building, href: "/app/admin/activos", status: "soon", group: "4 · Patrimonio" },
