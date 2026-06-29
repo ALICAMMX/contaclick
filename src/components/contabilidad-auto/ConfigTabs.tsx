@@ -375,6 +375,7 @@ export function ExportarTab({ clienteId }: { clienteId: string }) {
   const [tipoSol, setTipoSol] = useState<"AF" | "FC" | "DE" | "CO">("AF");
   const [numOrden, setNumOrden] = useState("");
   const [numTramite, setNumTramite] = useState("");
+  const [cuentaFiltro, setCuentaFiltro] = useState("");
 
   const fnXml = useServerFn(exportarAnexo24Polizas);
   const fnTxt = useServerFn(exportarContpaqi);
