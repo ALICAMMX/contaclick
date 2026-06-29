@@ -71,3 +71,4 @@
 - Nuevo server fn `exportarExpedienteZip` (`src/lib/expedientes/zip-export.functions.ts`) que empaqueta en un único ZIP por cliente+periodo: XML Anexo 24 (CT/BN/PL), importadores CONTPAQi y Aspel COI, CFDI emitidos/recibidos/todos en CSV, detalle de pólizas y resumen ejecutivo TXT.
 - Botón "Descargar Expediente ZIP" en `/app/contabilidad-auto → Configuración → Exportar`.
 - Usa JSZip; respuesta como base64 para mantener el contrato JSON de createServerFn.
+- 2026-06-29: Sprint 3 #5 — Plantillas IMCP PF Actividad Empresarial y PF RESICO añadidas a imcp-catalog.ts. sembrarCatalogoIMCP ahora acepta {plantilla: pm_general|pf_act_emp|pf_resico}. UI en ConfigTabs muestra Select para elegir régimen antes de sembrar.

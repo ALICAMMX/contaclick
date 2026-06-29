@@ -43,9 +43,10 @@ export function CatalogoTab({ clienteId }: { clienteId: string }) {
     onSuccess: (r) => { toast.success(`${r.sembradas} cuentas sembradas`); qc.invalidateQueries({ queryKey: ["catalogo-cuentas"] }); },
     onError: (e: any) => toast.error(e.message),
   });
+  const [plantillaIMCP, setPlantillaIMCP] = useState<"pm_general" | "pf_act_emp" | "pf_resico">("pm_general");
   const seedIMCPMut = useMutation({
-    mutationFn: () => fnSeedIMCP({ data: { cliente_id: clienteId } }),
-    onSuccess: (r) => { toast.success(`${r.sembradas} cuentas IMCP sembradas`); qc.invalidateQueries({ queryKey: ["catalogo-cuentas"] }); },
+    mutationFn: () => fnSeedIMCP({ data: { cliente_id: clienteId, plantilla: plantillaIMCP } }),
+    onSuccess: (r) => { toast.success(`${r.sembradas} cuentas sembradas — ${r.plantilla}`); qc.invalidateQueries({ queryKey: ["catalogo-cuentas"] }); },
     onError: (e: any) => toast.error(e.message),
   });
   const delMut = useMutation({
@@ -67,8 +68,18 @@ export function CatalogoTab({ clienteId }: { clienteId: string }) {
         <div className="flex gap-2 flex-wrap">
           {(q.data ?? []).length === 0 && (
             <>
+              <Select value={plantillaIMCP} onValueChange={(v) => setPlantillaIMCP(v as any)}>
+                <SelectTrigger className="w-[260px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pm_general">PM Régimen General</SelectItem>
+                  <SelectItem value="pf_act_emp">PF Actividad Empresarial</SelectItem>
+                  <SelectItem value="pf_resico">PF RESICO</SelectItem>
+                </SelectContent>
+              </Select>
               <Button onClick={() => seedIMCPMut.mutate()} disabled={seedIMCPMut.isPending}>
-                <Sparkles className="h-4 w-4 mr-2" /> Sembrar plantilla IMCP (PM)
+                <Sparkles className="h-4 w-4 mr-2" /> Sembrar plantilla IMCP
               </Button>
               <Button variant="outline" onClick={() => seedMut.mutate()} disabled={seedMut.isPending}>
                 Catálogo SAT mínimo

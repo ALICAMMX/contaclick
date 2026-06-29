@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
-import { PLANTILLA_IMCP_PM } from "./imcp-catalog";
+import { PLANTILLAS_IMCP, type PlantillaIMCPKey } from "./imcp-catalog";
 
 
 // Catálogo SAT base (Anexo 24) — sembrado inicial editable por cliente
@@ -68,14 +68,21 @@ export const sembrarCatalogo = createServerFn({ method: "POST" })
     return { sembradas: rows.length };
   });
 
-// Plantilla IMCP (PM régimen general) — usa códigos agrupadores oficiales SAT Anexo 24.
+// Plantilla IMCP — usa códigos agrupadores oficiales SAT Anexo 24.
+// Soporta PM Régimen General, PF Actividad Empresarial y PF RESICO.
 export const sembrarCatalogoIMCP = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ cliente_id: z.string().uuid() }).parse(d))
+  .inputValidator((d: unknown) =>
+    z.object({
+      cliente_id: z.string().uuid(),
+      plantilla: z.enum(["pm_general", "pf_act_emp", "pf_resico"]).default("pm_general"),
+    }).parse(d),
+  )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const cli = await getClienteDespacho(supabase, data.cliente_id);
-    const rows = PLANTILLA_IMCP_PM.map((c) => ({
+    const plantilla = PLANTILLAS_IMCP[data.plantilla as PlantillaIMCPKey];
+    const rows = plantilla.cuentas.map((c) => ({
       id: crypto.randomUUID(),
       cliente_id: data.cliente_id,
       despacho_id: cli.despacho_id,
@@ -90,7 +97,7 @@ export const sembrarCatalogoIMCP = createServerFn({ method: "POST" })
       .from("catalogo_cuentas")
       .upsert(rows, { onConflict: "cliente_id,codigo", ignoreDuplicates: true });
     if (error) throw new Error(error.message);
-    return { sembradas: rows.length, plantilla: "IMCP PM Régimen General" };
+    return { sembradas: rows.length, plantilla: plantilla.nombre };
   });
 
 
