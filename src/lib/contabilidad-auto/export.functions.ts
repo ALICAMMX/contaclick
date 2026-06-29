@@ -307,3 +307,171 @@ export const exportarAnexo24Balanza = createServerFn({ method: "POST" })
     };
   });
 
+// ===== Anexo 24 — Auxiliar de cuentas (XC) =====
+// Detalle por cuenta de TODOS los movimientos del período + saldo inicial.
+// El SAT lo solicita cuando abre revisión sobre una cuenta específica.
+export const exportarAnexo24AuxCuentas = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      cliente_id: z.string().uuid(),
+      anio: z.number().int().min(2018).max(2100),
+      mes: z.number().int().min(1).max(12),
+      tipo_solicitud: z.enum(["AF", "FC", "DE", "CO"]).default("AF"),
+      num_orden: z.string().optional(),
+      num_tramite: z.string().optional(),
+      cuenta_filtro: z.string().optional(), // limitar a una sola cuenta
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: cli } = await supabase.from("clientes").select("rfc").eq("id", data.cliente_id).maybeSingle();
+    if (!cli?.rfc) throw new Error("Cliente sin RFC configurado");
+
+    const { data: cuentas } = await supabase
+      .from("catalogo_cuentas")
+      .select("codigo, nombre, naturaleza")
+      .eq("cliente_id", data.cliente_id);
+    const cuentasMap = new Map<string, { naturaleza: string; nombre: string }>();
+    for (const c of cuentas ?? []) cuentasMap.set((c as any).codigo, c as any);
+
+    const iniDate = `${data.anio}-${String(data.mes).padStart(2, "0")}-01`;
+
+    // Saldos iniciales (movimientos previos al período)
+    const { data: prev } = await supabase
+      .from("polizas")
+      .select("metadata")
+      .eq("cliente_id", data.cliente_id)
+      .eq("estado", "confirmada")
+      .lt("fecha", iniDate);
+
+    type Acc = { debe: number; haber: number };
+    const saldosIni = new Map<string, Acc>();
+    for (const p of (prev ?? []) as any[]) {
+      const arr: Asiento[] = (p.metadata?.asientos ?? []) as Asiento[];
+      for (const a of arr) {
+        const cur = saldosIni.get(a.cuenta) ?? { debe: 0, haber: 0 };
+        cur.debe += a.debe || 0; cur.haber += a.haber || 0;
+        saldosIni.set(a.cuenta, cur);
+      }
+    }
+
+    // Movimientos del período agrupados por cuenta
+    const polizas = await fetchPolizas(supabase, data.cliente_id, data.anio, data.mes);
+    type Mov = { fecha: string; numUnIdenPol: string; concepto: string; debe: number; haber: number };
+    const movsPorCuenta = new Map<string, Mov[]>();
+    for (const p of polizas as any[]) {
+      const arr: Asiento[] = (p.metadata?.asientos ?? []) as Asiento[];
+      for (const a of arr) {
+        if (data.cuenta_filtro && a.cuenta !== data.cuenta_filtro) continue;
+        const list = movsPorCuenta.get(a.cuenta) ?? [];
+        list.push({
+          fecha: String(p.fecha).slice(0, 10),
+          numUnIdenPol: String(p.id).slice(0, 12),
+          concepto: p.concepto || "",
+          debe: a.debe || 0,
+          haber: a.haber || 0,
+        });
+        movsPorCuenta.set(a.cuenta, list);
+      }
+    }
+
+    if (movsPorCuenta.size === 0) throw new Error("No hay movimientos en el período" + (data.cuenta_filtro ? ` para la cuenta ${data.cuenta_filtro}` : ""));
+
+    const lines: string[] = [];
+    lines.push(`<?xml version="1.0" encoding="UTF-8"?>`);
+    lines.push(
+      `<AuxiliarCtas:AuxiliarCtas xmlns:AuxiliarCtas="http://www.sat.gob.mx/esquemas/ContabilidadE/1_3/AuxiliarCtas" ` +
+        `xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ` +
+        `xsi:schemaLocation="http://www.sat.gob.mx/esquemas/ContabilidadE/1_3/AuxiliarCtas http://www.sat.gob.mx/esquemas/ContabilidadE/1_3/AuxiliarCtas/AuxiliarCtas_1_3.xsd" ` +
+        `Version="1.3" RFC="${xmlEsc(cli.rfc)}" Mes="${String(data.mes).padStart(2, "0")}" Anio="${data.anio}" ` +
+        `TipoSolicitud="${data.tipo_solicitud}"` +
+        (data.num_orden ? ` NumOrden="${xmlEsc(data.num_orden)}"` : "") +
+        (data.num_tramite ? ` NumTramite="${xmlEsc(data.num_tramite)}"` : "") +
+        `>`,
+    );
+
+    const codigosOrdenados = Array.from(movsPorCuenta.keys()).sort();
+    let totalMovs = 0;
+    for (const codigo of codigosOrdenados) {
+      const meta = cuentasMap.get(codigo);
+      const naturaleza = meta?.naturaleza ?? "deudora";
+      const i = saldosIni.get(codigo) ?? { debe: 0, haber: 0 };
+      const saldoIni = naturaleza === "deudora" ? i.debe - i.haber : i.haber - i.debe;
+      lines.push(
+        `  <AuxiliarCtas:Cuenta NumCta="${xmlEsc(codigo)}" DesCta="${xmlEsc(meta?.nombre || codigo)}" SaldoIni="${saldoIni.toFixed(2)}">`,
+      );
+      for (const m of movsPorCuenta.get(codigo)!) {
+        totalMovs++;
+        lines.push(
+          `    <AuxiliarCtas:DetalleAux Fecha="${m.fecha}" NumUnIdenPol="${xmlEsc(m.numUnIdenPol)}" Concepto="${xmlEsc(m.concepto)}" Debe="${m.debe.toFixed(2)}" Haber="${m.haber.toFixed(2)}"/>`,
+        );
+      }
+      lines.push(`  </AuxiliarCtas:Cuenta>`);
+    }
+    lines.push(`</AuxiliarCtas:AuxiliarCtas>`);
+
+    return {
+      filename: `${cli.rfc}${data.anio}${String(data.mes).padStart(2, "0")}XC.xml`,
+      contenido: lines.join("\n"),
+      cuentas: codigosOrdenados.length,
+      movimientos: totalMovs,
+    };
+  });
+
+// ===== Anexo 24 — Auxiliar de folios fiscales (XF) =====
+// Relación de pólizas con sus UUID de CFDI. Solicitado en revisiones electrónicas
+// para cruzar una factura específica contra su asiento contable.
+export const exportarAnexo24AuxFolios = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      cliente_id: z.string().uuid(),
+      anio: z.number().int().min(2018).max(2100),
+      mes: z.number().int().min(1).max(12),
+      tipo_solicitud: z.enum(["AF", "FC", "DE", "CO"]).default("AF"),
+      num_orden: z.string().optional(),
+      num_tramite: z.string().optional(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: cli } = await supabase.from("clientes").select("rfc").eq("id", data.cliente_id).maybeSingle();
+    if (!cli?.rfc) throw new Error("Cliente sin RFC configurado");
+
+    const polizas = await fetchPolizas(supabase, data.cliente_id, data.anio, data.mes);
+    const conFolio = (polizas as any[]).filter((p) => p.uuid_cfdi);
+    if (conFolio.length === 0) throw new Error("No hay pólizas con UUID de CFDI en el período");
+
+    const lines: string[] = [];
+    lines.push(`<?xml version="1.0" encoding="UTF-8"?>`);
+    lines.push(
+      `<AuxiliarFolios:AuxiliarFolios xmlns:AuxiliarFolios="http://www.sat.gob.mx/esquemas/ContabilidadE/1_3/AuxiliarFolios" ` +
+        `xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ` +
+        `xsi:schemaLocation="http://www.sat.gob.mx/esquemas/ContabilidadE/1_3/AuxiliarFolios http://www.sat.gob.mx/esquemas/ContabilidadE/1_3/AuxiliarFolios/AuxiliarFolios_1_3.xsd" ` +
+        `Version="1.3" RFC="${xmlEsc(cli.rfc)}" Mes="${String(data.mes).padStart(2, "0")}" Anio="${data.anio}" ` +
+        `TipoSolicitud="${data.tipo_solicitud}"` +
+        (data.num_orden ? ` NumOrden="${xmlEsc(data.num_orden)}"` : "") +
+        (data.num_tramite ? ` NumTramite="${xmlEsc(data.num_tramite)}"` : "") +
+        `>`,
+    );
+
+    for (const p of conFolio) {
+      lines.push(
+        `  <AuxiliarFolios:DetAuxFol NumUnIdenPol="${xmlEsc(String(p.id).slice(0, 12))}" Fecha="${String(p.fecha).slice(0, 10)}">`,
+      );
+      lines.push(
+        `    <AuxiliarFolios:ComprNal UUID_CFDI="${xmlEsc(p.uuid_cfdi)}" RFC="${xmlEsc(cli.rfc)}" MontoTotal="${Number(p.monto ?? 0).toFixed(2)}"/>`,
+      );
+      lines.push(`  </AuxiliarFolios:DetAuxFol>`);
+    }
+    lines.push(`</AuxiliarFolios:AuxiliarFolios>`);
+
+    return {
+      filename: `${cli.rfc}${data.anio}${String(data.mes).padStart(2, "0")}XF.xml`,
+      contenido: lines.join("\n"),
+      folios: conFolio.length,
+    };
+  });
+
+
