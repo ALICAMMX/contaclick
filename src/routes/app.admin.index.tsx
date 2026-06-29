@@ -12,7 +12,7 @@ const TOOLS: Tool[] = [
   { name: "Gestor de Trámites", desc: "Kanban con semáforo por vencimiento.", icon: FileText, href: "/app/admin/tramites", status: "live", group: "1 · Operación diaria" },
 
   // Comunicaciones
-  { name: "Buzón IA", desc: "Sube PDFs de notificaciones SAT y Gemini extrae plazos, monto y nivel de riesgo.", icon: Mail, href: "/app/admin/buzon", status: "live", group: "2 · Comunicaciones" },
+  { name: "Bandeja de Notificaciones IA", desc: "Sube PDFs de notificaciones SAT/IMSS/INFONAVIT y la IA extrae plazos, fundamento y riesgo. No se conecta al Buzón oficial.", icon: Mail, href: "/app/admin/buzon", status: "live", group: "2 · Comunicaciones" },
   { name: "Correspondencia", desc: "Generador de minutas, oficios y respuestas.", icon: MessageSquare, href: "/app/admin/correspondencia", status: "soon", group: "2 · Comunicaciones" },
 
   // Personal & RH (quincenal / mensual)

@@ -63,9 +63,10 @@ function BuzonPage() {
 
   return (
     <ModuleScaffold
-      title="Buzón Tributario · Bandeja IA"
-      subtitle="Registra notificaciones SAT/IMSS/INFONAVIT. Sube el PDF y la IA extrae plazo, fundamento, riesgo y borrador de respuesta."
+      title="Bandeja de Notificaciones IA"
+      subtitle="Sube manualmente los PDFs de notificaciones SAT/IMSS/INFONAVIT. La IA extrae plazo, fundamento, riesgo y un borrador de respuesta. No se conecta al Buzón Tributario oficial."
       icon={<Mail className="h-5 w-5" />}
+      badge={null}
       actions={
         <>
           <HerramientaHelp slug="admin-buzon" />
