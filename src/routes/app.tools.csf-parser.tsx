@@ -277,6 +277,7 @@ function CsfParser() {
   const [data, setData] = useState<CsfData | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<string>("");
   const [result, setResult] = useState<UpsertResult | null>(null);
   const [acting, setActing] = useState<null | "cliente" | "proveedor" | "acreedor">(null);
   const save = useServerFn(saveToolRun);
@@ -288,9 +289,10 @@ function CsfParser() {
   const onFile = async (file: File) => {
     setFileName(file.name);
     setBusy(true);
+    setProgress("Leyendo PDF…");
     setResult(null);
     try {
-      const text = await extractPdfText(file);
+      const text = await extractPdfText(file, (msg) => setProgress(msg));
       setData(parseCsf(text));
     } catch (e: any) {
       toast.error(e?.message ?? "No se pudo leer el PDF");
