@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
+import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
 import { FileBadge, Upload, Save, CheckCircle2, AlertTriangle, Eye, FolderOpen, UserPlus, Truck, Receipt, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -31,9 +32,6 @@ type CsfData = {
   rawTextSample?: string;
   warnings: string[];
 };
-
-const PDFJS_VERSION = "4.0.379";
-const TESSERACT_VERSION = "5.1.0";
 
 // Reconstruye el texto de una página respetando líneas (Y) y orden de lectura (X).
 // En CSF del SAT muchos valores están a la derecha de su etiqueta en el mismo renglón;
@@ -74,22 +72,15 @@ function reconstructPageText(items: any[]): string {
 }
 
 async function loadPdfjs(): Promise<any> {
-  const pdfjs: any = await import(
-    /* @vite-ignore */ `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.min.mjs`
-  );
-  pdfjs.GlobalWorkerOptions.workerSrc =
-    `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.min.mjs`;
+  const pdfjs: any = await import("pdfjs-dist/build/pdf.mjs");
+  pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
   return pdfjs;
 }
 
 // OCR fallback for scanned CSF: renders each PDF page to canvas and runs Tesseract (spa+eng)
 async function ocrPdf(pdfjs: any, doc: any, onProgress?: (msg: string) => void): Promise<string> {
-  const Tesseract: any = await import(
-    /* @vite-ignore */ `https://cdn.jsdelivr.net/npm/tesseract.js@${TESSERACT_VERSION}/dist/tesseract.esm.min.js`
-  );
-  const worker = await Tesseract.createWorker(["spa", "eng"], 1, {
-    workerPath: `https://cdn.jsdelivr.net/npm/tesseract.js@${TESSERACT_VERSION}/dist/worker.min.js`,
-    corePath: `https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1`,
+  const { createWorker } = await import("tesseract.js");
+  const worker = await createWorker("spa+eng", 1, {
     langPath: "https://tessdata.projectnaptha.com/4.0.0",
   });
   let text = "";
