@@ -36,7 +36,8 @@ const PDFJS_VERSION = "4.0.379";
 const TESSERACT_VERSION = "5.1.0";
 
 // Reconstruye el texto de una página respetando líneas (Y) y orden de lectura (X).
-// Detecta layout de 2 columnas y las procesa por separado para no interleavear.
+// En CSF del SAT muchos valores están a la derecha de su etiqueta en el mismo renglón;
+// por eso NO separamos columnas: hacerlo deja etiquetas y valores en bloques distintos.
 function reconstructPageText(items: any[]): string {
   if (!items?.length) return "";
   const rows = items
@@ -44,44 +45,30 @@ function reconstructPageText(items: any[]): string {
     .map((it) => ({ x: it.transform[4] as number, y: it.transform[5] as number, w: (it.width as number) || 0, s: it.str as string }));
   if (!rows.length) return "";
 
-  const xs = rows.map((r) => r.x);
-  const minX = Math.min(...xs);
-  const maxX = Math.max(...xs.map((x, i) => x + rows[i].w));
-  const midX = (minX + maxX) / 2;
-  // Detecta 2 columnas: cuenta ítems claramente a la izquierda vs derecha del centro
-  const leftCount = rows.filter((r) => r.x + r.w < midX - 10).length;
-  const rightCount = rows.filter((r) => r.x > midX + 10).length;
-  const twoCols = leftCount > 5 && rightCount > 5 && Math.abs(leftCount - rightCount) < Math.max(leftCount, rightCount);
-
-  const columns = twoCols
-    ? [rows.filter((r) => r.x < midX), rows.filter((r) => r.x >= midX)]
-    : [rows];
+  // Agrupa por Y (tolerancia ±3pt)
+  const lines: { y: number; items: typeof rows }[] = [];
+  for (const r of rows) {
+    const line = lines.find((l) => Math.abs(l.y - r.y) < 3);
+    if (line) line.items.push(r);
+    else lines.push({ y: r.y, items: [r] });
+  }
+  lines.sort((a, b) => b.y - a.y); // top -> bottom
 
   const out: string[] = [];
-  for (const col of columns) {
-    // Agrupa por Y (tolerancia ±3pt)
-    const lines: { y: number; items: typeof col }[] = [];
-    for (const r of col) {
-      const line = lines.find((l) => Math.abs(l.y - r.y) < 3);
-      if (line) line.items.push(r);
-      else lines.push({ y: r.y, items: [r] });
-    }
-    lines.sort((a, b) => b.y - a.y); // top -> bottom
-    for (const l of lines) {
-      l.items.sort((a, b) => a.x - b.x);
-      // Une con espacio; añade doble espacio cuando hay gap grande (etiqueta/valor)
-      let lineStr = "";
-      for (let i = 0; i < l.items.length; i++) {
-        const cur = l.items[i];
-        if (i === 0) lineStr = cur.s;
-        else {
-          const prev = l.items[i - 1];
-          const gap = cur.x - (prev.x + prev.w);
-          lineStr += gap > 8 ? "  " + cur.s : (cur.s.startsWith(" ") || lineStr.endsWith(" ") ? cur.s : " " + cur.s);
-        }
+  for (const l of lines) {
+    l.items.sort((a, b) => a.x - b.x);
+    // Une con espacio; añade doble espacio cuando hay gap grande (etiqueta/valor)
+    let lineStr = "";
+    for (let i = 0; i < l.items.length; i++) {
+      const cur = l.items[i];
+      if (i === 0) lineStr = cur.s;
+      else {
+        const prev = l.items[i - 1];
+        const gap = cur.x - (prev.x + prev.w);
+        lineStr += gap > 8 ? "  " + cur.s : (cur.s.startsWith(" ") || lineStr.endsWith(" ") ? cur.s : " " + cur.s);
       }
-      out.push(lineStr.trim());
     }
+    out.push(lineStr.trim());
   }
   return out.filter(Boolean).join("\n");
 }
@@ -159,19 +146,103 @@ async function extractPdfText(file: File, onProgress?: (msg: string) => void): P
   }
 }
 
+const FIELD_STOP_RE = /^\s*(?:RFC\b|CURP\b|Nombre\s*\(?s\)?\b|Primer\s+Apellido\b|Segundo\s+Apellido\b|Denominaci[oó]n\b|Raz[oó]n\s+Social\b|R[ée]gimen\b|Fecha\b|Estatus\b|Nombre\s+Comercial\b|Domicilio\b|Actividades\b|Obligaciones\b|C[oó]digo\s+Postal\b|Tipo\s+de\s+Vialidad\b|Nombre\s+de\s+(?:la\s+)?(?:Vialidad|Colonia|Localidad|Entidad)\b|Nombre\s+del?\s+Municipio\b|N[uú]mero\s+(?:Exterior|Interior)\b|Entre\s+Calle\b|Y\s+Calle\b|Correo\b|Tel[eé]fono\b|Datos\s+de\b|C[eé]dula\b|CONSTANCIA\b)/i;
+
+function cleanExtractedValue(value: string): string {
+  return value
+    .replace(/^[\s:;\-–—]+/, "")
+    .replace(/\s+(?:Primer\s+Apellido|Segundo\s+Apellido|RFC|CURP|R[ée]gimen\s+(?:Capital|Fiscal)|Fecha\s+(?:de\s+)?(?:inicio|[úu]ltimo|emisi[oó]n)|Estatus|Nombre\s+Comercial|Domicilio|Actividades|Obligaciones|Datos\s+de\b|Lugar\s+y\s+Fecha)\b.*$/i, "")
+    .replace(/\s+/g, " ")
+    .replace(/[,;:.\-–—\s]+$/, "")
+    .trim();
+}
+
+function hasUsefulLetters(value: string): boolean {
+  return /[A-ZÁÉÍÓÚÑ&]{2,}/i.test(value) && !/^(?:RFC|CURP|FECHA|ESTATUS|R[ÉE]GIMEN|DATOS|CONSTANCIA)$/i.test(value.trim());
+}
+
+function getLabelValue(lines: string[], labels: RegExp[], maxFollowingLines = 2): string | undefined {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]?.trim() ?? "";
+    if (!line) continue;
+    for (const label of labels) {
+      const m = line.match(label);
+      if (!m) continue;
+
+      const inline = cleanExtractedValue(line.slice((m.index ?? 0) + m[0].length));
+      if (inline && hasUsefulLetters(inline) && !FIELD_STOP_RE.test(inline)) return inline;
+
+      const pieces: string[] = [];
+      for (let j = i + 1; j < lines.length && pieces.length < maxFollowingLines; j++) {
+        const next = lines[j]?.trim() ?? "";
+        if (!next) continue;
+        if (FIELD_STOP_RE.test(next)) break;
+        if (/^(?:SAT|Servicio\s+de\s+Administraci[oó]n|CONSTANCIA|C[eé]dula|Lugar\s+y\s+Fecha|VALIDA\s+TU)/i.test(next)) continue;
+        pieces.push(next);
+      }
+      const fromNextLines = cleanExtractedValue(pieces.join(" "));
+      if (fromNextLines && hasUsefulLetters(fromNextLines)) return fromNextLines;
+    }
+  }
+  return undefined;
+}
+
+function findCurp(text: string): string | undefined {
+  const flat = text.replace(/\s+/g, " ").toUpperCase();
+  const direct = flat.match(/\b(?:CURP[:\s]*)?([A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d)\b/);
+  if (direct) return direct[1];
+  for (const line of text.split(/\r?\n/)) {
+    const compact = line.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const m = compact.match(/[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d/);
+    if (m) return m[0];
+  }
+  return undefined;
+}
+
+function findBestRfc(text: string, curp?: string): string | undefined {
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const candidates: { rfc: string; score: number }[] = [];
+  const add = (raw: string | undefined, score: number) => {
+    if (!raw) return;
+    const rfc = raw.toUpperCase().replace(/[^A-ZÑ&0-9]/g, "");
+    if (!/^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/.test(rfc)) return;
+    // Evita confundir los primeros 13 caracteres de la CURP con el RFC, salvo si venía de una línea etiquetada como RFC.
+    if (curp && rfc === curp.slice(0, 13) && score < 50) return;
+    candidates.push({ rfc, score });
+  };
+
+  const flat = text.replace(/\s+/g, " ").toUpperCase();
+  for (const m of flat.matchAll(/\b([A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3})\b/g)) add(m[1], 20);
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const labelled = /\b(?:RFC|Registro\s+Federal\s+de\s+Contribuyentes)\b/i.test(line);
+    const valuePart = labelled
+      ? line.replace(/^.*?\b(?:RFC|Registro\s+Federal\s+de\s+Contribuyentes)\b\s*[:\-–—]?\s*/i, "")
+      : line;
+    const compact = valuePart.toUpperCase().replace(/[^A-ZÑ&0-9]/g, "");
+    for (const m of compact.matchAll(/[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}/g)) add(m[0], labelled ? 100 : 10);
+    if (labelled) {
+      add(lines[i + 1], 90);
+      add(lines[i + 2], 70);
+    }
+  }
+
+  return candidates.sort((a, b) => b.score - a.score)[0]?.rfc;
+}
+
 function parseCsf(text: string): CsfData {
   // Preserve newlines; collapse only multiple spaces
   const t = text.replace(/[ \t\f\v]+/g, " ").replace(/\n{2,}/g, "\n").trim();
   const flat = t.replace(/\s+/g, " ");
+  const lines = t.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const out: CsfData = { regimenes: [], obligaciones: [], rawTextSample: t.slice(0, 4000), warnings: [] };
 
-  // RFC
-  const rfc = flat.match(/\b([A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3})\b/);
-  if (rfc) out.rfc = rfc[1];
-
   // CURP (sólo Persona Física). Acepta etiqueta pegada al valor: "CURPABCD..."
-  const curp = flat.match(/\b(?:CURP[:\s]*)?([A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d)\b/);
-  if (curp) out.curp = curp[1];
+  out.curp = findCurp(t);
+
+  // RFC. Soporta líneas separadas como "RFC:" + valor en el renglón siguiente y texto con espacios entre caracteres.
+  out.rfc = findBestRfc(t, out.curp);
 
   // Tipo de persona: PM si RFC tiene 3 letras iniciales, PF si tiene 4
   if (out.rfc) {
@@ -180,20 +251,37 @@ function parseCsf(text: string): CsfData {
   }
 
   // Nombre / Razón social
-  // PM: "Denominación o Razón Social: XXX"
-  const razonPM = flat.match(/Denominaci[oó]n\s*\/?\s*o?\s*Raz[oó]n\s+Social[:\s]+([A-ZÁÉÍÓÚÑ0-9&.,\-\s]{3,120}?)\s+(?:R[ée]gimen|RFC|CURP|Fecha|Nombre\s+Comercial|Estatus|Domicilio)/i);
-  if (razonPM) out.nombre = razonPM[1].replace(/\s+/g, " ").trim();
+  // PM: "Denominación/Razón Social", "Denominación o Razón Social" o "Nombre, denominación o razón social".
+  out.nombre = getLabelValue(lines, [
+    /(?:Nombre,?\s*)?Denominaci[oó]n\s*\/?\s*(?:o\s*)?Raz[oó]n\s+Social\s*:?/i,
+    /Nombre,?\s*denominaci[oó]n\s*o\s*raz[oó]n\s+social\s*:?/i,
+  ], 3);
+
+  if (!out.nombre) {
+    const razonPM = flat.match(/(?:Nombre,?\s*)?Denominaci[oó]n\s*\/?\s*(?:o\s*)?Raz[oó]n\s+Social[:\s]+([A-ZÁÉÍÓÚÑ0-9&.,\-\s]{3,160}?)\s+(?:R[ée]gimen|RFC|CURP|Fecha|Nombre\s+Comercial|Estatus|Domicilio|Actividades|Obligaciones)/i);
+    if (razonPM) out.nombre = cleanExtractedValue(razonPM[1]);
+  }
 
   // PF: "Nombre(s): X  Primer Apellido: Y  Segundo Apellido: Z"
   if (!out.nombre) {
-    const n = flat.match(/Nombre\s*\(s\)\s*:?\s*([A-ZÁÉÍÓÚÑ\s]{2,60}?)\s+Primer\s+Apellido[:\s]+([A-ZÁÉÍÓÚÑ\s]{2,40}?)\s+Segundo\s+Apellido[:\s]*([A-ZÁÉÍÓÚÑ\s]{0,40}?)\s+(?:Fecha|CURP|RFC|R[ée]gimen|Estatus|Domicilio)/i);
+    const nombre = getLabelValue(lines, [/Nombre\s*\(?s\)?\s*:?/i], 2);
+    const primerApellido = getLabelValue(lines, [/Primer\s+Apellido\s*:?/i], 1);
+    const segundoApellido = getLabelValue(lines, [/Segundo\s+Apellido\s*:?/i], 1);
+    if (nombre && primerApellido) {
+      out.nombre = [nombre, primerApellido, segundoApellido].map(s => s?.trim()).filter(Boolean).join(" ").replace(/\s+/g, " ");
+    }
+  }
+
+  if (!out.nombre) {
+    const n = flat.match(/Nombre\s*\(?s\)?\s*:?\s*([A-ZÁÉÍÓÚÑ\s]{2,80}?)\s+Primer\s+Apellido[:\s]+([A-ZÁÉÍÓÚÑ\s]{2,50}?)\s+Segundo\s+Apellido[:\s]*([A-ZÁÉÍÓÚÑ\s]{0,50}?)\s+(?:Fecha|CURP|RFC|R[ée]gimen|Estatus|Domicilio)/i);
     if (n) out.nombre = [n[1], n[2], n[3]].map(s => s.trim()).filter(Boolean).join(" ").replace(/\s+/g, " ");
   }
 
-  // Validar nombre: rechazar si contiene dígitos o frases de plantilla
+  // Validar nombre: no bloquear dígitos porque muchas razones sociales legítimas los contienen.
   if (out.nombre) {
-    const bad = /\d|VALIDA\s+TU|CONSTANCIA\s+DE\s+SITUACI[OÓ]N|INFORMACI[OÓ]N\s+FISCAL|Lugar\s+y\s+Fecha/i;
-    if (bad.test(out.nombre) || out.nombre.length < 3) {
+    out.nombre = cleanExtractedValue(out.nombre);
+    const bad = /VALIDA\s+TU|CONSTANCIA\s+DE\s+SITUACI[OÓ]N|INFORMACI[OÓ]N\s+FISCAL|Lugar\s+y\s+Fecha|C[eé]dula\s+de\s+Identificaci[oó]n|Servicio\s+de\s+Administraci[oó]n/i;
+    if (bad.test(out.nombre) || !hasUsefulLetters(out.nombre) || out.nombre.length < 3) {
       out.warnings.push("No se pudo identificar con certeza el nombre o razón social (formato de CSF no reconocido).");
       out.nombre = undefined;
     }
