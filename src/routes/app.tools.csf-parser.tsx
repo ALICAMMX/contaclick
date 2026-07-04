@@ -35,6 +35,57 @@ type CsfData = {
 const PDFJS_VERSION = "4.0.379";
 const TESSERACT_VERSION = "5.1.0";
 
+// Reconstruye el texto de una página respetando líneas (Y) y orden de lectura (X).
+// Detecta layout de 2 columnas y las procesa por separado para no interleavear.
+function reconstructPageText(items: any[]): string {
+  if (!items?.length) return "";
+  const rows = items
+    .filter((it) => typeof it?.str === "string" && it.str.length > 0 && it.transform)
+    .map((it) => ({ x: it.transform[4] as number, y: it.transform[5] as number, w: (it.width as number) || 0, s: it.str as string }));
+  if (!rows.length) return "";
+
+  const xs = rows.map((r) => r.x);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs.map((x, i) => x + rows[i].w));
+  const midX = (minX + maxX) / 2;
+  // Detecta 2 columnas: cuenta ítems claramente a la izquierda vs derecha del centro
+  const leftCount = rows.filter((r) => r.x + r.w < midX - 10).length;
+  const rightCount = rows.filter((r) => r.x > midX + 10).length;
+  const twoCols = leftCount > 5 && rightCount > 5 && Math.abs(leftCount - rightCount) < Math.max(leftCount, rightCount);
+
+  const columns = twoCols
+    ? [rows.filter((r) => r.x < midX), rows.filter((r) => r.x >= midX)]
+    : [rows];
+
+  const out: string[] = [];
+  for (const col of columns) {
+    // Agrupa por Y (tolerancia ±3pt)
+    const lines: { y: number; items: typeof col }[] = [];
+    for (const r of col) {
+      const line = lines.find((l) => Math.abs(l.y - r.y) < 3);
+      if (line) line.items.push(r);
+      else lines.push({ y: r.y, items: [r] });
+    }
+    lines.sort((a, b) => b.y - a.y); // top -> bottom
+    for (const l of lines) {
+      l.items.sort((a, b) => a.x - b.x);
+      // Une con espacio; añade doble espacio cuando hay gap grande (etiqueta/valor)
+      let lineStr = "";
+      for (let i = 0; i < l.items.length; i++) {
+        const cur = l.items[i];
+        if (i === 0) lineStr = cur.s;
+        else {
+          const prev = l.items[i - 1];
+          const gap = cur.x - (prev.x + prev.w);
+          lineStr += gap > 8 ? "  " + cur.s : (cur.s.startsWith(" ") || lineStr.endsWith(" ") ? cur.s : " " + cur.s);
+        }
+      }
+      out.push(lineStr.trim());
+    }
+  }
+  return out.filter(Boolean).join("\n");
+}
+
 async function loadPdfjs(): Promise<any> {
   const pdfjs: any = await import(
     /* @vite-ignore */ `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.min.mjs`
@@ -85,7 +136,7 @@ async function extractPdfText(file: File, onProgress?: (msg: string) => void): P
     for (let i = 1; i <= doc.numPages; i++) {
       const page = await doc.getPage(i);
       const content = await page.getTextContent();
-      text += content.items.map((it: any) => it.str).join(" ") + "\n";
+      text += reconstructPageText(content.items) + "\n";
     }
     // Heurística: si el texto extraído es muy corto o no contiene un RFC candidato,
     // el PDF probablemente es escaneado -> intentar OCR.
