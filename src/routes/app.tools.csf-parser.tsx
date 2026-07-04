@@ -33,15 +33,52 @@ type CsfData = {
 };
 
 const PDFJS_VERSION = "4.0.379";
+const TESSERACT_VERSION = "5.1.0";
 
-// Lightweight PDF text extraction loaded from the browser only, else fallback
-async function extractPdfText(file: File): Promise<string> {
+async function loadPdfjs(): Promise<any> {
+  const pdfjs: any = await import(
+    /* @vite-ignore */ `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.min.mjs`
+  );
+  pdfjs.GlobalWorkerOptions.workerSrc =
+    `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.min.mjs`;
+  return pdfjs;
+}
+
+// OCR fallback for scanned CSF: renders each PDF page to canvas and runs Tesseract (spa+eng)
+async function ocrPdf(pdfjs: any, doc: any, onProgress?: (msg: string) => void): Promise<string> {
+  const Tesseract: any = await import(
+    /* @vite-ignore */ `https://cdn.jsdelivr.net/npm/tesseract.js@${TESSERACT_VERSION}/dist/tesseract.esm.min.js`
+  );
+  const worker = await Tesseract.createWorker(["spa", "eng"], 1, {
+    workerPath: `https://cdn.jsdelivr.net/npm/tesseract.js@${TESSERACT_VERSION}/dist/worker.min.js`,
+    corePath: `https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1`,
+    langPath: "https://tessdata.projectnaptha.com/4.0.0",
+  });
+  let text = "";
   try {
-    const pdfjs: any = await import(
-      /* @vite-ignore */ `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.min.mjs`
-    );
-    pdfjs.GlobalWorkerOptions.workerSrc =
-      `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.min.mjs`;
+    const maxPages = Math.min(doc.numPages, 3); // CSF suele ser 1-2 páginas
+    for (let i = 1; i <= maxPages; i++) {
+      onProgress?.(`OCR página ${i} de ${maxPages}…`);
+      const page = await doc.getPage(i);
+      const viewport = page.getViewport({ scale: 2 });
+      const canvas = document.createElement("canvas");
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext("2d")!;
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      const { data } = await worker.recognize(canvas);
+      text += data.text + "\n";
+    }
+  } finally {
+    await worker.terminate();
+  }
+  return text;
+}
+
+// Devuelve texto extraído. Si el PDF no tiene capa de texto útil, cae a OCR.
+async function extractPdfText(file: File, onProgress?: (msg: string) => void): Promise<string> {
+  try {
+    const pdfjs = await loadPdfjs();
     const buf = await file.arrayBuffer();
     const doc = await pdfjs.getDocument({ data: new Uint8Array(buf) }).promise;
     let text = "";
@@ -50,9 +87,21 @@ async function extractPdfText(file: File): Promise<string> {
       const content = await page.getTextContent();
       text += content.items.map((it: any) => it.str).join(" ") + "\n";
     }
+    // Heurística: si el texto extraído es muy corto o no contiene un RFC candidato,
+    // el PDF probablemente es escaneado -> intentar OCR.
+    const clean = text.replace(/\s+/g, " ").trim();
+    const hasRfc = /\b[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}\b/.test(clean);
+    if (clean.length < 200 || !hasRfc) {
+      onProgress?.("PDF sin texto — iniciando OCR (puede tardar 10-30s)…");
+      try {
+        const ocrText = await ocrPdf(pdfjs, doc, onProgress);
+        if (ocrText.replace(/\s+/g, " ").trim().length > clean.length) return ocrText;
+      } catch (e) {
+        console.warn("OCR fallback falló:", e);
+      }
+    }
     return text;
   } catch {
-    // Fallback: read as text and strip non-printables (works for some PDFs)
     const buf = await file.arrayBuffer();
     const decoder = new TextDecoder("utf-8", { fatal: false });
     return decoder.decode(buf).replace(/[^\x20-\x7EáéíóúÁÉÍÓÚñÑüÜ\n]/g, " ");
@@ -228,6 +277,7 @@ function CsfParser() {
   const [data, setData] = useState<CsfData | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<string>("");
   const [result, setResult] = useState<UpsertResult | null>(null);
   const [acting, setActing] = useState<null | "cliente" | "proveedor" | "acreedor">(null);
   const save = useServerFn(saveToolRun);
@@ -239,14 +289,16 @@ function CsfParser() {
   const onFile = async (file: File) => {
     setFileName(file.name);
     setBusy(true);
+    setProgress("Leyendo PDF…");
     setResult(null);
     try {
-      const text = await extractPdfText(file);
+      const text = await extractPdfText(file, (msg) => setProgress(msg));
       setData(parseCsf(text));
     } catch (e: any) {
       toast.error(e?.message ?? "No se pudo leer el PDF");
     } finally {
       setBusy(false);
+      setProgress("");
     }
   };
 
@@ -311,7 +363,7 @@ function CsfParser() {
         <div className="h-12 w-12 rounded-xl mx-auto flex items-center justify-center mb-3" style={{ background: "var(--gradient-primary)" }}>
           <Upload className="h-5 w-5 text-primary-foreground" />
         </div>
-        <div className="font-medium">{busy ? "Procesando…" : "Selecciona la CSF (PDF)"}</div>
+        <div className="font-medium">{busy ? (progress || "Procesando…") : "Selecciona la CSF (PDF)"}</div>
         <div className="text-xs text-muted-foreground mt-1">{fileName ?? "Procesamiento local del documento."}</div>
       </label>
 
