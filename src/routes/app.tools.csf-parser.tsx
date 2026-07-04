@@ -363,7 +363,7 @@ function CsfParser() {
         <div className="h-12 w-12 rounded-xl mx-auto flex items-center justify-center mb-3" style={{ background: "var(--gradient-primary)" }}>
           <Upload className="h-5 w-5 text-primary-foreground" />
         </div>
-        <div className="font-medium">{busy ? "Procesando…" : "Selecciona la CSF (PDF)"}</div>
+        <div className="font-medium">{busy ? (progress || "Procesando…") : "Selecciona la CSF (PDF)"}</div>
         <div className="text-xs text-muted-foreground mt-1">{fileName ?? "Procesamiento local del documento."}</div>
       </label>
 
