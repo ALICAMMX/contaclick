@@ -298,6 +298,7 @@ function CsfParser() {
       toast.error(e?.message ?? "No se pudo leer el PDF");
     } finally {
       setBusy(false);
+      setProgress("");
     }
   };
 
