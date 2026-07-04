@@ -85,7 +85,7 @@ async function extractPdfText(file: File, onProgress?: (msg: string) => void): P
     for (let i = 1; i <= doc.numPages; i++) {
       const page = await doc.getPage(i);
       const content = await page.getTextContent();
-      text += content.items.map((it: any) => it.str).join(" ") + "\n";
+      text += reconstructPageText(content.items) + "\n";
     }
     // Heurística: si el texto extraído es muy corto o no contiene un RFC candidato,
     // el PDF probablemente es escaneado -> intentar OCR.
