@@ -229,8 +229,11 @@ function findBestRfc(text: string, curp?: string): string | undefined {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    const compact = line.toUpperCase().replace(/[^A-ZÑ&0-9]/g, "");
     const labelled = /\b(?:RFC|Registro\s+Federal\s+de\s+Contribuyentes)\b/i.test(line);
+    const valuePart = labelled
+      ? line.replace(/^.*?\b(?:RFC|Registro\s+Federal\s+de\s+Contribuyentes)\b\s*[:\-–—]?\s*/i, "")
+      : line;
+    const compact = valuePart.toUpperCase().replace(/[^A-ZÑ&0-9]/g, "");
     for (const m of compact.matchAll(/[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}/g)) add(m[0], labelled ? 100 : 10);
     if (labelled) {
       add(lines[i + 1], 90);
