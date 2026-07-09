@@ -100,6 +100,7 @@ import { Route as AppReportesResumenFiscalRouteImport } from './routes/app.repor
 import { Route as AppLegalRedactorRouteImport } from './routes/app.legal.redactor'
 import { Route as AppLegalMarketplaceRouteImport } from './routes/app.legal.marketplace'
 import { Route as AppLegalLagunasRouteImport } from './routes/app.legal.lagunas'
+import { Route as AppLegalConsultaIaRouteImport } from './routes/app.legal.consulta-ia'
 import { Route as AppContableHerramientasRouteImport } from './routes/app.contable.herramientas'
 import { Route as AppContableAgentesRouteImport } from './routes/app.contable.agentes'
 import { Route as AppContableAgenteConciliacionRouteImport } from './routes/app.contable.agente-conciliacion'
@@ -586,6 +587,11 @@ const AppLegalLagunasRoute = AppLegalLagunasRouteImport.update({
   path: '/lagunas',
   getParentRoute: () => AppLegalRoute,
 } as any)
+const AppLegalConsultaIaRoute = AppLegalConsultaIaRouteImport.update({
+  id: '/consulta-ia',
+  path: '/consulta-ia',
+  getParentRoute: () => AppLegalRoute,
+} as any)
 const AppContableHerramientasRoute = AppContableHerramientasRouteImport.update({
   id: '/herramientas',
   path: '/herramientas',
@@ -805,6 +811,7 @@ export interface FileRoutesByFullPath {
   '/app/contable/agente-conciliacion': typeof AppContableAgenteConciliacionRoute
   '/app/contable/agentes': typeof AppContableAgentesRoute
   '/app/contable/herramientas': typeof AppContableHerramientasRoute
+  '/app/legal/consulta-ia': typeof AppLegalConsultaIaRoute
   '/app/legal/lagunas': typeof AppLegalLagunasRoute
   '/app/legal/marketplace': typeof AppLegalMarketplaceRoute
   '/app/legal/redactor': typeof AppLegalRedactorRoute
@@ -914,6 +921,7 @@ export interface FileRoutesByTo {
   '/app/contable/agente-conciliacion': typeof AppContableAgenteConciliacionRoute
   '/app/contable/agentes': typeof AppContableAgentesRoute
   '/app/contable/herramientas': typeof AppContableHerramientasRoute
+  '/app/legal/consulta-ia': typeof AppLegalConsultaIaRoute
   '/app/legal/lagunas': typeof AppLegalLagunasRoute
   '/app/legal/marketplace': typeof AppLegalMarketplaceRoute
   '/app/legal/redactor': typeof AppLegalRedactorRoute
@@ -1034,6 +1042,7 @@ export interface FileRoutesById {
   '/app/contable/agente-conciliacion': typeof AppContableAgenteConciliacionRoute
   '/app/contable/agentes': typeof AppContableAgentesRoute
   '/app/contable/herramientas': typeof AppContableHerramientasRoute
+  '/app/legal/consulta-ia': typeof AppLegalConsultaIaRoute
   '/app/legal/lagunas': typeof AppLegalLagunasRoute
   '/app/legal/marketplace': typeof AppLegalMarketplaceRoute
   '/app/legal/redactor': typeof AppLegalRedactorRoute
@@ -1155,6 +1164,7 @@ export interface FileRouteTypes {
     | '/app/contable/agente-conciliacion'
     | '/app/contable/agentes'
     | '/app/contable/herramientas'
+    | '/app/legal/consulta-ia'
     | '/app/legal/lagunas'
     | '/app/legal/marketplace'
     | '/app/legal/redactor'
@@ -1264,6 +1274,7 @@ export interface FileRouteTypes {
     | '/app/contable/agente-conciliacion'
     | '/app/contable/agentes'
     | '/app/contable/herramientas'
+    | '/app/legal/consulta-ia'
     | '/app/legal/lagunas'
     | '/app/legal/marketplace'
     | '/app/legal/redactor'
@@ -1383,6 +1394,7 @@ export interface FileRouteTypes {
     | '/app/contable/agente-conciliacion'
     | '/app/contable/agentes'
     | '/app/contable/herramientas'
+    | '/app/legal/consulta-ia'
     | '/app/legal/lagunas'
     | '/app/legal/marketplace'
     | '/app/legal/redactor'
@@ -2089,6 +2101,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppLegalLagunasRouteImport
       parentRoute: typeof AppLegalRoute
     }
+    '/app/legal/consulta-ia': {
+      id: '/app/legal/consulta-ia'
+      path: '/consulta-ia'
+      fullPath: '/app/legal/consulta-ia'
+      preLoaderRoute: typeof AppLegalConsultaIaRouteImport
+      parentRoute: typeof AppLegalRoute
+    }
     '/app/contable/herramientas': {
       id: '/app/contable/herramientas'
       path: '/herramientas'
@@ -2356,6 +2375,7 @@ const AppContableRouteWithChildren = AppContableRoute._addFileChildren(
 )
 
 interface AppLegalRouteChildren {
+  AppLegalConsultaIaRoute: typeof AppLegalConsultaIaRoute
   AppLegalLagunasRoute: typeof AppLegalLagunasRoute
   AppLegalMarketplaceRoute: typeof AppLegalMarketplaceRoute
   AppLegalRedactorRoute: typeof AppLegalRedactorRoute
@@ -2363,6 +2383,7 @@ interface AppLegalRouteChildren {
 }
 
 const AppLegalRouteChildren: AppLegalRouteChildren = {
+  AppLegalConsultaIaRoute: AppLegalConsultaIaRoute,
   AppLegalLagunasRoute: AppLegalLagunasRoute,
   AppLegalMarketplaceRoute: AppLegalMarketplaceRoute,
   AppLegalRedactorRoute: AppLegalRedactorRoute,
