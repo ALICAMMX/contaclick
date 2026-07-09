@@ -133,12 +133,13 @@ export const indexarLey = createServerFn({ method: "POST" })
       try {
         const chunk = art.texto.slice(0, 6000);
         const vec = padTo3072(await embed(chunk, apiKey));
+        const vecLiteral = `[${vec.join(",")}]`;
         const { error: eErr } = await (supabase as any).from("ley_embeddings").insert({
           articulo_id: art.id,
           ley_id: data.ley_id,
           chunk_index: 0,
           chunk_text: chunk,
-          embedding: vec as unknown as string, // pgvector acepta array literal
+          embedding: vecLiteral,
           model: EMBED_MODEL,
         });
         if (!eErr) embCount++;
