@@ -113,6 +113,7 @@ import { Route as AppCfdiIdRouteImport } from './routes/app.cfdi.$id'
 import { Route as AppAdminTramitesRouteImport } from './routes/app.admin.tramites'
 import { Route as AppAdminTesoreriaRouteImport } from './routes/app.admin.tesoreria'
 import { Route as AppAdminNominaRouteImport } from './routes/app.admin.nomina'
+import { Route as AppAdminLeyesIaRouteImport } from './routes/app.admin.leyes-ia'
 import { Route as AppAdminInventariosRouteImport } from './routes/app.admin.inventarios'
 import { Route as AppAdminCuponesRouteImport } from './routes/app.admin.cupones'
 import { Route as AppAdminCumplimientoRouteImport } from './routes/app.admin.cumplimiento'
@@ -655,6 +656,11 @@ const AppAdminNominaRoute = AppAdminNominaRouteImport.update({
   path: '/nomina',
   getParentRoute: () => AppAdminRoute,
 } as any)
+const AppAdminLeyesIaRoute = AppAdminLeyesIaRouteImport.update({
+  id: '/leyes-ia',
+  path: '/leyes-ia',
+  getParentRoute: () => AppAdminRoute,
+} as any)
 const AppAdminInventariosRoute = AppAdminInventariosRouteImport.update({
   id: '/inventarios',
   path: '/inventarios',
@@ -799,6 +805,7 @@ export interface FileRoutesByFullPath {
   '/app/admin/cumplimiento': typeof AppAdminCumplimientoRoute
   '/app/admin/cupones': typeof AppAdminCuponesRoute
   '/app/admin/inventarios': typeof AppAdminInventariosRoute
+  '/app/admin/leyes-ia': typeof AppAdminLeyesIaRoute
   '/app/admin/nomina': typeof AppAdminNominaRoute
   '/app/admin/tesoreria': typeof AppAdminTesoreriaRoute
   '/app/admin/tramites': typeof AppAdminTramitesRoute
@@ -909,6 +916,7 @@ export interface FileRoutesByTo {
   '/app/admin/cumplimiento': typeof AppAdminCumplimientoRoute
   '/app/admin/cupones': typeof AppAdminCuponesRoute
   '/app/admin/inventarios': typeof AppAdminInventariosRoute
+  '/app/admin/leyes-ia': typeof AppAdminLeyesIaRoute
   '/app/admin/nomina': typeof AppAdminNominaRoute
   '/app/admin/tesoreria': typeof AppAdminTesoreriaRoute
   '/app/admin/tramites': typeof AppAdminTramitesRoute
@@ -1030,6 +1038,7 @@ export interface FileRoutesById {
   '/app/admin/cumplimiento': typeof AppAdminCumplimientoRoute
   '/app/admin/cupones': typeof AppAdminCuponesRoute
   '/app/admin/inventarios': typeof AppAdminInventariosRoute
+  '/app/admin/leyes-ia': typeof AppAdminLeyesIaRoute
   '/app/admin/nomina': typeof AppAdminNominaRoute
   '/app/admin/tesoreria': typeof AppAdminTesoreriaRoute
   '/app/admin/tramites': typeof AppAdminTramitesRoute
@@ -1152,6 +1161,7 @@ export interface FileRouteTypes {
     | '/app/admin/cumplimiento'
     | '/app/admin/cupones'
     | '/app/admin/inventarios'
+    | '/app/admin/leyes-ia'
     | '/app/admin/nomina'
     | '/app/admin/tesoreria'
     | '/app/admin/tramites'
@@ -1262,6 +1272,7 @@ export interface FileRouteTypes {
     | '/app/admin/cumplimiento'
     | '/app/admin/cupones'
     | '/app/admin/inventarios'
+    | '/app/admin/leyes-ia'
     | '/app/admin/nomina'
     | '/app/admin/tesoreria'
     | '/app/admin/tramites'
@@ -1382,6 +1393,7 @@ export interface FileRouteTypes {
     | '/app/admin/cumplimiento'
     | '/app/admin/cupones'
     | '/app/admin/inventarios'
+    | '/app/admin/leyes-ia'
     | '/app/admin/nomina'
     | '/app/admin/tesoreria'
     | '/app/admin/tramites'
@@ -2192,6 +2204,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminNominaRouteImport
       parentRoute: typeof AppAdminRoute
     }
+    '/app/admin/leyes-ia': {
+      id: '/app/admin/leyes-ia'
+      path: '/leyes-ia'
+      fullPath: '/app/admin/leyes-ia'
+      preLoaderRoute: typeof AppAdminLeyesIaRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
     '/app/admin/inventarios': {
       id: '/app/admin/inventarios'
       path: '/inventarios'
@@ -2300,6 +2319,7 @@ interface AppAdminRouteChildren {
   AppAdminCumplimientoRoute: typeof AppAdminCumplimientoRoute
   AppAdminCuponesRoute: typeof AppAdminCuponesRoute
   AppAdminInventariosRoute: typeof AppAdminInventariosRoute
+  AppAdminLeyesIaRoute: typeof AppAdminLeyesIaRoute
   AppAdminNominaRoute: typeof AppAdminNominaRoute
   AppAdminTesoreriaRoute: typeof AppAdminTesoreriaRoute
   AppAdminTramitesRoute: typeof AppAdminTramitesRoute
@@ -2313,6 +2333,7 @@ const AppAdminRouteChildren: AppAdminRouteChildren = {
   AppAdminCumplimientoRoute: AppAdminCumplimientoRoute,
   AppAdminCuponesRoute: AppAdminCuponesRoute,
   AppAdminInventariosRoute: AppAdminInventariosRoute,
+  AppAdminLeyesIaRoute: AppAdminLeyesIaRoute,
   AppAdminNominaRoute: AppAdminNominaRoute,
   AppAdminTesoreriaRoute: AppAdminTesoreriaRoute,
   AppAdminTramitesRoute: AppAdminTramitesRoute,
