@@ -100,6 +100,7 @@ import { Route as AppReportesResumenFiscalRouteImport } from './routes/app.repor
 import { Route as AppLegalRedactorRouteImport } from './routes/app.legal.redactor'
 import { Route as AppLegalMarketplaceRouteImport } from './routes/app.legal.marketplace'
 import { Route as AppLegalLagunasRouteImport } from './routes/app.legal.lagunas'
+import { Route as AppLegalConsultaIaRouteImport } from './routes/app.legal.consulta-ia'
 import { Route as AppContableHerramientasRouteImport } from './routes/app.contable.herramientas'
 import { Route as AppContableAgentesRouteImport } from './routes/app.contable.agentes'
 import { Route as AppContableAgenteConciliacionRouteImport } from './routes/app.contable.agente-conciliacion'
@@ -112,6 +113,7 @@ import { Route as AppCfdiIdRouteImport } from './routes/app.cfdi.$id'
 import { Route as AppAdminTramitesRouteImport } from './routes/app.admin.tramites'
 import { Route as AppAdminTesoreriaRouteImport } from './routes/app.admin.tesoreria'
 import { Route as AppAdminNominaRouteImport } from './routes/app.admin.nomina'
+import { Route as AppAdminLeyesIaRouteImport } from './routes/app.admin.leyes-ia'
 import { Route as AppAdminInventariosRouteImport } from './routes/app.admin.inventarios'
 import { Route as AppAdminCuponesRouteImport } from './routes/app.admin.cupones'
 import { Route as AppAdminCumplimientoRouteImport } from './routes/app.admin.cumplimiento'
@@ -586,6 +588,11 @@ const AppLegalLagunasRoute = AppLegalLagunasRouteImport.update({
   path: '/lagunas',
   getParentRoute: () => AppLegalRoute,
 } as any)
+const AppLegalConsultaIaRoute = AppLegalConsultaIaRouteImport.update({
+  id: '/consulta-ia',
+  path: '/consulta-ia',
+  getParentRoute: () => AppLegalRoute,
+} as any)
 const AppContableHerramientasRoute = AppContableHerramientasRouteImport.update({
   id: '/herramientas',
   path: '/herramientas',
@@ -647,6 +654,11 @@ const AppAdminTesoreriaRoute = AppAdminTesoreriaRouteImport.update({
 const AppAdminNominaRoute = AppAdminNominaRouteImport.update({
   id: '/nomina',
   path: '/nomina',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminLeyesIaRoute = AppAdminLeyesIaRouteImport.update({
+  id: '/leyes-ia',
+  path: '/leyes-ia',
   getParentRoute: () => AppAdminRoute,
 } as any)
 const AppAdminInventariosRoute = AppAdminInventariosRouteImport.update({
@@ -793,6 +805,7 @@ export interface FileRoutesByFullPath {
   '/app/admin/cumplimiento': typeof AppAdminCumplimientoRoute
   '/app/admin/cupones': typeof AppAdminCuponesRoute
   '/app/admin/inventarios': typeof AppAdminInventariosRoute
+  '/app/admin/leyes-ia': typeof AppAdminLeyesIaRoute
   '/app/admin/nomina': typeof AppAdminNominaRoute
   '/app/admin/tesoreria': typeof AppAdminTesoreriaRoute
   '/app/admin/tramites': typeof AppAdminTramitesRoute
@@ -805,6 +818,7 @@ export interface FileRoutesByFullPath {
   '/app/contable/agente-conciliacion': typeof AppContableAgenteConciliacionRoute
   '/app/contable/agentes': typeof AppContableAgentesRoute
   '/app/contable/herramientas': typeof AppContableHerramientasRoute
+  '/app/legal/consulta-ia': typeof AppLegalConsultaIaRoute
   '/app/legal/lagunas': typeof AppLegalLagunasRoute
   '/app/legal/marketplace': typeof AppLegalMarketplaceRoute
   '/app/legal/redactor': typeof AppLegalRedactorRoute
@@ -902,6 +916,7 @@ export interface FileRoutesByTo {
   '/app/admin/cumplimiento': typeof AppAdminCumplimientoRoute
   '/app/admin/cupones': typeof AppAdminCuponesRoute
   '/app/admin/inventarios': typeof AppAdminInventariosRoute
+  '/app/admin/leyes-ia': typeof AppAdminLeyesIaRoute
   '/app/admin/nomina': typeof AppAdminNominaRoute
   '/app/admin/tesoreria': typeof AppAdminTesoreriaRoute
   '/app/admin/tramites': typeof AppAdminTramitesRoute
@@ -914,6 +929,7 @@ export interface FileRoutesByTo {
   '/app/contable/agente-conciliacion': typeof AppContableAgenteConciliacionRoute
   '/app/contable/agentes': typeof AppContableAgentesRoute
   '/app/contable/herramientas': typeof AppContableHerramientasRoute
+  '/app/legal/consulta-ia': typeof AppLegalConsultaIaRoute
   '/app/legal/lagunas': typeof AppLegalLagunasRoute
   '/app/legal/marketplace': typeof AppLegalMarketplaceRoute
   '/app/legal/redactor': typeof AppLegalRedactorRoute
@@ -1022,6 +1038,7 @@ export interface FileRoutesById {
   '/app/admin/cumplimiento': typeof AppAdminCumplimientoRoute
   '/app/admin/cupones': typeof AppAdminCuponesRoute
   '/app/admin/inventarios': typeof AppAdminInventariosRoute
+  '/app/admin/leyes-ia': typeof AppAdminLeyesIaRoute
   '/app/admin/nomina': typeof AppAdminNominaRoute
   '/app/admin/tesoreria': typeof AppAdminTesoreriaRoute
   '/app/admin/tramites': typeof AppAdminTramitesRoute
@@ -1034,6 +1051,7 @@ export interface FileRoutesById {
   '/app/contable/agente-conciliacion': typeof AppContableAgenteConciliacionRoute
   '/app/contable/agentes': typeof AppContableAgentesRoute
   '/app/contable/herramientas': typeof AppContableHerramientasRoute
+  '/app/legal/consulta-ia': typeof AppLegalConsultaIaRoute
   '/app/legal/lagunas': typeof AppLegalLagunasRoute
   '/app/legal/marketplace': typeof AppLegalMarketplaceRoute
   '/app/legal/redactor': typeof AppLegalRedactorRoute
@@ -1143,6 +1161,7 @@ export interface FileRouteTypes {
     | '/app/admin/cumplimiento'
     | '/app/admin/cupones'
     | '/app/admin/inventarios'
+    | '/app/admin/leyes-ia'
     | '/app/admin/nomina'
     | '/app/admin/tesoreria'
     | '/app/admin/tramites'
@@ -1155,6 +1174,7 @@ export interface FileRouteTypes {
     | '/app/contable/agente-conciliacion'
     | '/app/contable/agentes'
     | '/app/contable/herramientas'
+    | '/app/legal/consulta-ia'
     | '/app/legal/lagunas'
     | '/app/legal/marketplace'
     | '/app/legal/redactor'
@@ -1252,6 +1272,7 @@ export interface FileRouteTypes {
     | '/app/admin/cumplimiento'
     | '/app/admin/cupones'
     | '/app/admin/inventarios'
+    | '/app/admin/leyes-ia'
     | '/app/admin/nomina'
     | '/app/admin/tesoreria'
     | '/app/admin/tramites'
@@ -1264,6 +1285,7 @@ export interface FileRouteTypes {
     | '/app/contable/agente-conciliacion'
     | '/app/contable/agentes'
     | '/app/contable/herramientas'
+    | '/app/legal/consulta-ia'
     | '/app/legal/lagunas'
     | '/app/legal/marketplace'
     | '/app/legal/redactor'
@@ -1371,6 +1393,7 @@ export interface FileRouteTypes {
     | '/app/admin/cumplimiento'
     | '/app/admin/cupones'
     | '/app/admin/inventarios'
+    | '/app/admin/leyes-ia'
     | '/app/admin/nomina'
     | '/app/admin/tesoreria'
     | '/app/admin/tramites'
@@ -1383,6 +1406,7 @@ export interface FileRouteTypes {
     | '/app/contable/agente-conciliacion'
     | '/app/contable/agentes'
     | '/app/contable/herramientas'
+    | '/app/legal/consulta-ia'
     | '/app/legal/lagunas'
     | '/app/legal/marketplace'
     | '/app/legal/redactor'
@@ -2089,6 +2113,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppLegalLagunasRouteImport
       parentRoute: typeof AppLegalRoute
     }
+    '/app/legal/consulta-ia': {
+      id: '/app/legal/consulta-ia'
+      path: '/consulta-ia'
+      fullPath: '/app/legal/consulta-ia'
+      preLoaderRoute: typeof AppLegalConsultaIaRouteImport
+      parentRoute: typeof AppLegalRoute
+    }
     '/app/contable/herramientas': {
       id: '/app/contable/herramientas'
       path: '/herramientas'
@@ -2171,6 +2202,13 @@ declare module '@tanstack/react-router' {
       path: '/nomina'
       fullPath: '/app/admin/nomina'
       preLoaderRoute: typeof AppAdminNominaRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/app/admin/leyes-ia': {
+      id: '/app/admin/leyes-ia'
+      path: '/leyes-ia'
+      fullPath: '/app/admin/leyes-ia'
+      preLoaderRoute: typeof AppAdminLeyesIaRouteImport
       parentRoute: typeof AppAdminRoute
     }
     '/app/admin/inventarios': {
@@ -2281,6 +2319,7 @@ interface AppAdminRouteChildren {
   AppAdminCumplimientoRoute: typeof AppAdminCumplimientoRoute
   AppAdminCuponesRoute: typeof AppAdminCuponesRoute
   AppAdminInventariosRoute: typeof AppAdminInventariosRoute
+  AppAdminLeyesIaRoute: typeof AppAdminLeyesIaRoute
   AppAdminNominaRoute: typeof AppAdminNominaRoute
   AppAdminTesoreriaRoute: typeof AppAdminTesoreriaRoute
   AppAdminTramitesRoute: typeof AppAdminTramitesRoute
@@ -2294,6 +2333,7 @@ const AppAdminRouteChildren: AppAdminRouteChildren = {
   AppAdminCumplimientoRoute: AppAdminCumplimientoRoute,
   AppAdminCuponesRoute: AppAdminCuponesRoute,
   AppAdminInventariosRoute: AppAdminInventariosRoute,
+  AppAdminLeyesIaRoute: AppAdminLeyesIaRoute,
   AppAdminNominaRoute: AppAdminNominaRoute,
   AppAdminTesoreriaRoute: AppAdminTesoreriaRoute,
   AppAdminTramitesRoute: AppAdminTramitesRoute,
@@ -2356,6 +2396,7 @@ const AppContableRouteWithChildren = AppContableRoute._addFileChildren(
 )
 
 interface AppLegalRouteChildren {
+  AppLegalConsultaIaRoute: typeof AppLegalConsultaIaRoute
   AppLegalLagunasRoute: typeof AppLegalLagunasRoute
   AppLegalMarketplaceRoute: typeof AppLegalMarketplaceRoute
   AppLegalRedactorRoute: typeof AppLegalRedactorRoute
@@ -2363,6 +2404,7 @@ interface AppLegalRouteChildren {
 }
 
 const AppLegalRouteChildren: AppLegalRouteChildren = {
+  AppLegalConsultaIaRoute: AppLegalConsultaIaRoute,
   AppLegalLagunasRoute: AppLegalLagunasRoute,
   AppLegalMarketplaceRoute: AppLegalMarketplaceRoute,
   AppLegalRedactorRoute: AppLegalRedactorRoute,
@@ -2584,13 +2626,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

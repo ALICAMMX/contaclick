@@ -1,125 +1,76 @@
-# Plan: Demo Showroom Completo de ContaClick
 
-## Alcance
+# Análisis: Chat RAG de Leyes Fiscales Mexicanas
 
-Sembrar en la **cuenta DEMO** (`demo@contaclick.mx`) un escenario completo con **5 expedientes diferenciados** por nivel de cumplimiento, más botones **"Cargar datos demo"** dentro de cada herramienta para que el usuario vea en vivo qué pasa con casos buenos y casos en riesgo.
+## Resumen
+**Es 100% viable e integrable a ContaClick.** El documento propone un chat con IA que responde preguntas fiscales citando el artículo exacto de ley (LISR, LIVA, CFF, IEPS, RMF, etc.) usando RAG + pgvector. Lovable Cloud + Lovable AI Gateway ya nos dan todo lo necesario — no requiere Claude Code ni infraestructura externa.
 
----
+## Qué ya tenemos en ContaClick (no reinventar)
 
-## 1. Los 5 expedientes (perfiles diferenciados)
+| Componente del proyecto | Estado en ContaClick |
+|---|---|
+| Backend (Lovable Cloud = Supabase) | ✅ Ya instalado y operando |
+| Autenticación con niveles (equipo vs clientes) | ✅ `user_roles`, `has_role`, portal cliente ya existen |
+| Frontend chat con IA | ✅ `HelpBot.tsx`, `bot-ayuda.functions.ts`, `chat.functions.ts` |
+| Redactor legal con citas de ley | ✅ `src/lib/legal/redactor.*` (LISR, CFF, LFPCA, RMF 2026) |
+| Catálogo de referencias legales | ✅ `src/lib/legal/referencias.ts` |
+| Modelos LLM sin API key propia | ✅ Lovable AI Gateway (Gemini, GPT) |
 
-| # | Cliente | Régimen | Perfil | Semáforo | Score Salud |
-|---|---|---|---|---|---|
-| 1 | **Constructora Ejemplar SA de CV** | 601 General PM | Cumplido modelo: 100% CFDI conciliados, declaraciones al día, sin alertas | 🟢 Verde | 95/100 |
-| 2 | **Ana García Rodríguez** | 626 RESICO PF | Buen contribuyente con detalles menores (1-2 CFDI sin conciliar) | 🟢 Verde | 82/100 |
-| 3 | **Comercializadora Norte SA** | 601 General PM | Regular: declaración del mes pendiente, varios pagos sin complemento | 🟡 Amarillo | 65/100 |
-| 4 | **Servicios López y Asociados** | 612 PF Act. Empresarial | En problemas: gastos no deducibles, nómina oculta detectada, CFDI con EFOS demo | 🟠 Naranja | 42/100 |
-| 5 | **Transportes Riesgo Alto SA** | 601 General PM | Crítico: declaraciones omitidas, listas 69-B, opinión negativa, diferencias graves | 🔴 Rojo | 18/100 |
+**Lo único que NO tenemos:** la base vectorial (`pgvector`) con el corpus legal indexado por artículo y el pipeline de embeddings + búsqueda semántica.
 
-### Datos por cada cliente
+## Qué falta construir (el delta real)
 
-- **CFDI**: 20-50 emitidos + 10-30 recibidos (CFDI 4.0 bien formados, sello dummy, marcados como demo).
-- **Complementos de Pago**: 3-8 por cliente (excepto #5 que tiene faltantes intencionales).
-- **Notas de crédito**: 1-3.
-- **Nómina**: 1-2 CFDI (excepto #4 con "nómina oculta" detectable).
-- **Movimientos bancarios**: 60-100 por cliente, distribución de match calibrada al perfil:
-  - #1: 100% conciliado.
-  - #2: 95% conciliado.
-  - #3: 70% (huérfanos visibles).
-  - #4: 50% (muchos sin CFDI).
-  - #5: 30% (caos bancario).
-- **Conciliación Integral**: snapshot con score histórico de 3 meses.
-- **Pólizas contables**: 30-60 generadas con catálogo estándar.
-- **Salud Fiscal**: snapshot con findings específicos al perfil.
-- **Alertas**: niveles graduados según perfil (#1 ninguna → #5 múltiples críticas).
-- **Mensajes WhatsApp/email**: hilos demo (recordatorios, reportes enviados, alertas).
-- **Reportes Ejecutivos IA**: pre-generados como texto fijo (sin gastar tokens).
-- **Tareas Kanban**: 3-8 por cliente.
-- **CxC / CxP**: pendientes diferenciados.
-- **Defensa fiscal**: #4 y #5 con casos abiertos.
-- **Trámites**: 1-2 en curso por cliente.
-- **Calendario**: vencimientos próximos.
+### Fase A — Infraestructura vectorial (1 migración)
+- Habilitar extensión `pgvector` en Lovable Cloud
+- Tabla `leyes` (ley, versión vigente, fecha_publicacion_dof, url_fuente)
+- Tabla `ley_articulos` (ley_id, numero_articulo, fraccion, texto, capitulo, titulo)
+- Tabla `ley_embeddings` (articulo_id, embedding vector(1536), chunk_text, tokens)
+- Índice IVFFlat / HNSW sobre embedding
+- RLS: lectura pública para artículos "públicos" (RMF, leyes), lectura autenticada para notas internas
+- Función SQL `match_articulos(query_embedding, threshold, count)` para búsqueda por similitud
 
----
+### Fase B — Pipeline de indexación
+- Server function `indexarLey` (admin-only): recibe texto limpio de una ley + metadatos, la parte por artículo con regex fiscal mexicana estándar (`Artículo N.-` / `Art. N`), genera embeddings vía Lovable AI Gateway (`text-embedding-3-small` u `openai/text-embedding-3-small`), guarda en lote
+- UI en `/app/admin` (solo owner) para subir/actualizar leyes y ver estado del corpus
+- Reindexación por ley cuando cambia versión
 
-## 2. Botones "Cargar datos demo" por herramienta
+### Fase C — Chat legal con citas
+- Nueva ruta `/app/legal/consulta-ia` (o integrar dentro de `app.legal.index.tsx`)
+- Server function `consultarLey`: embedding de la pregunta → `match_articulos` → top-K artículos → prompt al LLM con instrucción estricta de citar textualmente + `[LISR art. 27 fracc. V]`
+- Componente de chat reusando patrón de `HelpBot` + `RichMarkdown`
+- Panel lateral: artículos citados (colapsables, con link a fuente DOF)
 
-En cada herramienta principal, agregar (solo visible si el usuario es la cuenta `demo@contaclick.mx`) un botón que precarga un caso de muestra **bueno** y otro **en riesgo** para mostrar el output de la herramienta.
+### Fase D — Control de acceso por rol
+- `admin/despacho`: acceso total, ve prompts internos, puede indexar
+- `contador`: consulta libre, ve citas y notas del despacho
+- `cliente_final` (portal): consulta limitada — solo leyes públicas, sin criterios internos, con disclaimer "no constituye asesoría"
+- Rate limit por rol usando `rate_limits` que ya existe
+- Contabilizar en `uso_eventos` para métricas y límites de plan
 
-| Herramienta | Botón "Caso OK" | Botón "Caso en riesgo" |
-|---|---|---|
-| Validador CFDI | XML perfectamente válido | XML con sello inválido / RFC ajeno |
-| Verificador SAT | CFDI Vigente | CFDI Cancelado |
-| Validador EFOS | RFC limpio | RFC en lista 69-B demo |
-| Auditor Express | Cliente #1 (todo OK) | Cliente #5 (múltiples findings) |
-| Deducibilidad | Gasto deducible típico | Comida/gasolina sin requisitos |
-| Conciliador Bancario | Match 100% | 40% huérfanos |
-| Conciliación Integral | Score 95 | Score 22 con incidencias |
-| Salud Fiscal | Cliente #1 | Cliente #5 |
-| Calculadora ISR/IVA | Periodo estándar | Periodo con diferencias |
-| Nómina Oculta | Sin hallazgos | Patrón sospechoso detectado |
-| Lagunas Legales | Defensa sólida | Posición vulnerable |
-| Importador CFDI | Lote limpio | Lote con duplicados + RFC ajeno |
-| Contabilidad Auto | Genera pólizas correctas | Detecta CFDI sin clasificar |
-| Reporte Ejecutivo IA | Reporte favorable | Reporte con recomendaciones urgentes |
+### Fase E — Fuentes y mantenimiento
+- Job semanal (`workflow-cron`) que verifica DOF por reformas fiscales publicadas
+- Marcar artículos como "derogado" / "reformado" con `vigente_desde` / `vigente_hasta` para respuestas históricas
+- Registro de auditoría en `audit_logs` de cada consulta con las citas devueltas (defendibilidad)
 
-Todos los botones llaman a un nuevo helper `loadDemoCase(toolKey, variant)` que rellena el formulario de la herramienta con datos de muestra. **Cero costo real** (no consume PAC, no llama a IA, no envía mensajes).
+## Corpus mínimo recomendado para arrancar
+CFF, LISR, RLISR, LIVA, RLIVA, LIEPS, LFD, LFPCA, LA (Ley Aduanera), RMF 2026 + Anexos 1-A y 20, criterios normativos SAT, jurisprudencias 2a./J. y 1a./J. clave. ~15,000-25,000 artículos/fragmentos = ~50-100 MB de embeddings.
 
----
+## Costos y límites técnicos
+- Embeddings: ~$0.02 USD por millón de tokens (indexación única) → corpus completo <$5 USD
+- Consultas: ~$0.001 USD por pregunta (Lovable AI Gateway con Gemini Flash)
+- pgvector en Lovable Cloud: sin costo extra, escala hasta millones de vectores en el plan actual
+- Latencia esperada: 800-1500 ms por consulta
 
-## 3. UX
+## Riesgos y mitigaciones
+1. **Alucinaciones legales** → prompt con instrucción "solo cita literal de los fragmentos recuperados; si no hay match, di 'no encontré fundamento'"
+2. **Versiones desactualizadas** → columna `vigente_desde/hasta` obligatoria + badge en la UI
+3. **Responsabilidad profesional** → disclaimer visible + `audit_logs` de cada respuesta
+4. **RMF cambia cada año** → workflow de reindexación anual documentado
 
-- **Banner global** en la cuenta demo: "Estás en modo DEMO — todos los datos son ficticios."
-- **En `/app/configuracion`** (solo cuenta demo y admin del despacho demo):
-  - Botón **"Cargar showroom completo"** → siembra los 5 expedientes.
-  - Botón **"Restablecer demo"** → borra y vuelve a sembrar.
-- **Etiqueta visible** en cada cliente demo: badge "DEMO" junto al nombre.
-- **En selector de expediente**: agrupar los 5 demo bajo la sección "Expedientes demo".
+## Diferencia vs propuesta original
+La propuesta original planteaba construir todo desde cero en Claude Code + Supabase Pro por separado. **En ContaClick ya tienes 70% construido** (auth, roles, portal, chat UI, IA gateway, patrón de server functions, redactor con citas). El trabajo real son ~4-6 días: la migración vectorial, el indexador y la ruta de consulta.
 
----
+## Recomendación
+**Sí, hacerlo — como módulo nativo dentro de `app.legal`**, no como app separada. Se convierte en un diferenciador enorme frente a COI/CONTPAQi (ninguno tiene esto) y complementa directamente el Redactor Legal, el Auditor y el módulo de Defensa que ya existen.
 
-## 4. Detalles técnicos
-
-### Backend
-- Ampliar `src/lib/demo/demo.functions.ts`:
-  - `seedDemoShowroom`: nuevo serverFn que crea los 5 clientes con sus datasets calibrados por perfil. Usa tag `__DEMO__` + `perfil:n` en `notas` para limpieza limpia.
-  - `clearDemoShowroom`: reutiliza la lógica existente extendida a las tablas nuevas (pólizas, salud, defensa, tareas, cxc/cxp, trámites, reportes ejecutivos, conciliación integral).
-  - `loadDemoCase({ toolKey, variant })`: devuelve payload sintético sin escribir a BD (solo para precargar la UI de la herramienta).
-
-### Generación de XMLs ficticios
-- Helper `src/lib/demo/cfdi-generator.server.ts`: template CFDI 4.0 parametrizado (Emisor/Receptor/Conceptos/Impuestos/TFD) con sello y certificado dummy claramente marcados (`SELLO_DEMO_NO_VALIDO`). UUID generado con `crypto.randomUUID()`. Hash SHA-256 real para evitar duplicados.
-- Distribuciones aleatorias **deterministas** (seed por RFC) para que la demo sea reproducible.
-
-### Restricción de acceso
-- `seedDemoShowroom` valida que `auth.email() = 'demo@contaclick.mx'` **o** que el caller sea super-admin. Cualquier otro usuario recibe error.
-- Los botones de "Cargar caso demo" en herramientas solo se renderizan si `useAuth().user?.email === DEMO_EMAIL`.
-
-### Reportes pre-generados
-- Texto markdown estático por perfil en `src/lib/demo/reportes-precargados.ts` para evitar llamadas reales a Gemini.
-
-### Datos sensibles
-- Todos los RFC son ficticios con patrón visible (`DEMO______`).
-- Bancos: "BBVA Demo", "Banorte Demo", etc.
-- Sin emails ni teléfonos reales (todos `@correo.demo` / `555-DEMO-xxx`).
-
-### Tablas tocadas (insert-only, sin schema changes)
-clientes, rfcs, cfdi_xml, cfdi_conceptos, cfdi_relaciones, cuentas_bancarias, movimientos_bancarios, conciliaciones, conciliacion_integral_runs, conciliacion_incidencias, conciliacion_score_historico, alertas, mensajes, reportes, reportes_ejecutivos, obligaciones_fiscales, tareas, polizas, catalogo_cuentas, salud_fiscal_snapshots, semaforo_fiscal, defensas, tramites, cxc, cxp, recomendaciones_ia, sat_sync_runs, sat_sync_eventos.
-
-### Volumen estimado
-~3,500-5,000 filas en total. Tiempo de carga: 10-20s. Reversible 100%.
-
----
-
-## 5. Lo que NO incluye
-
-- No timbra CFDI reales (sello dummy — el validador los marcará como "no verificable contra SAT", que es lo esperado en demo).
-- No consume saldo PAC.
-- No llama a APIs externas (SW Sapien, Lovable AI).
-- No envía mensajes reales (WhatsApp/email quedan en estado "simulado").
-- No modifica el schema de la BD.
-
----
-
-## Confirmación
-
-¿Apruebo y procedo? ¿O quieres ajustar algo (más/menos clientes, otros perfiles, distinto set de herramientas con botones demo)?
+## Siguiente paso propuesto
+Si apruebas, arranco por Fase A + B: migración con `pgvector`, tablas, función `match_articulos` y el indexador admin — para poder cargar CFF y LISR primero y probar la calidad de las respuestas antes de invertir en la UI final.

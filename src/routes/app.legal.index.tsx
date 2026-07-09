@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Scale, FileSignature, Store, Gavel, Bell } from "lucide-react";
+import { FileSignature, Store, Gavel, Bell, MessagesSquare } from "lucide-react";
 
 export const Route = createFileRoute("/app/legal/")({ component: LegalCatalog });
 
 const TOOLS = [
+  { t: "Consulta a la Ley (IA)", d: "Pregunta en lenguaje natural y recibe respuesta con cita del artículo exacto (CFF, LISR, LIVA, RMF).", icon: MessagesSquare, href: "/app/legal/consulta-ia", group: "Análisis" },
   { t: "Mapa de Lagunas Legales", d: "Detecta huecos normativos y conflictos entre LISR, LIVA y CFF.", icon: Gavel, href: "/app/legal/lagunas", group: "Análisis" },
   { t: "Redactor de Escritos", d: "Genera escritos de defensa con fundamento TFJA y SCJN.", icon: FileSignature, href: "/app/legal/redactor", group: "Redacción" },
   { t: "Marketplace Legal", d: "Conecta con despachos especializados que validan y firman estrategias.", icon: Store, href: "/app/legal/marketplace", group: "Red profesional" },
