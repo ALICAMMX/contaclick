@@ -192,7 +192,7 @@ export const consultarLey = createServerFn({ method: "POST" })
     }
 
     const { data: matches, error: mErr } = await (supabase as any).rpc("match_ley_articulos", {
-      query_embedding: qVec as unknown as string,
+      query_embedding: `[${qVec.join(",")}]`,
       match_count: 6,
       min_similarity: 0.25,
       filter_ley_claves: data.leyes ?? null,
