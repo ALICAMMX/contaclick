@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Scale, FileSignature, Store, Gavel, Bell, MessagesSquare } from "lucide-react";
+import { FileSignature, Store, Gavel, Bell, MessagesSquare } from "lucide-react";
 
 export const Route = createFileRoute("/app/legal/")({ component: LegalCatalog });
 
