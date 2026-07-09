@@ -1984,6 +1984,164 @@ export type Database = {
           },
         ]
       }
+      ley_articulos: {
+        Row: {
+          created_at: string
+          derogado: boolean
+          fraccion: string | null
+          id: string
+          ley_id: string
+          numero: string
+          orden: number
+          texto: string
+          titulo: string | null
+          updated_at: string
+          vigente_desde: string | null
+          vigente_hasta: string | null
+        }
+        Insert: {
+          created_at?: string
+          derogado?: boolean
+          fraccion?: string | null
+          id?: string
+          ley_id: string
+          numero: string
+          orden?: number
+          texto: string
+          titulo?: string | null
+          updated_at?: string
+          vigente_desde?: string | null
+          vigente_hasta?: string | null
+        }
+        Update: {
+          created_at?: string
+          derogado?: boolean
+          fraccion?: string | null
+          id?: string
+          ley_id?: string
+          numero?: string
+          orden?: number
+          texto?: string
+          titulo?: string | null
+          updated_at?: string
+          vigente_desde?: string | null
+          vigente_hasta?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ley_articulos_ley_id_fkey"
+            columns: ["ley_id"]
+            isOneToOne: false
+            referencedRelation: "leyes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ley_embeddings: {
+        Row: {
+          articulo_id: string
+          chunk_index: number
+          chunk_text: string
+          created_at: string
+          embedding: string
+          id: string
+          ley_id: string
+          model: string
+          tokens: number | null
+        }
+        Insert: {
+          articulo_id: string
+          chunk_index?: number
+          chunk_text: string
+          created_at?: string
+          embedding: string
+          id?: string
+          ley_id: string
+          model?: string
+          tokens?: number | null
+        }
+        Update: {
+          articulo_id?: string
+          chunk_index?: number
+          chunk_text?: string
+          created_at?: string
+          embedding?: string
+          id?: string
+          ley_id?: string
+          model?: string
+          tokens?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ley_embeddings_articulo_id_fkey"
+            columns: ["articulo_id"]
+            isOneToOne: false
+            referencedRelation: "ley_articulos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ley_embeddings_ley_id_fkey"
+            columns: ["ley_id"]
+            isOneToOne: false
+            referencedRelation: "leyes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leyes: {
+        Row: {
+          clave: string
+          created_at: string
+          fecha_publicacion_dof: string | null
+          id: string
+          nombre: string
+          notas: string | null
+          publicado: boolean
+          tipo: string
+          total_articulos: number
+          total_embeddings: number
+          updated_at: string
+          url_fuente: string | null
+          version: string | null
+          vigente_desde: string | null
+          vigente_hasta: string | null
+        }
+        Insert: {
+          clave: string
+          created_at?: string
+          fecha_publicacion_dof?: string | null
+          id?: string
+          nombre: string
+          notas?: string | null
+          publicado?: boolean
+          tipo?: string
+          total_articulos?: number
+          total_embeddings?: number
+          updated_at?: string
+          url_fuente?: string | null
+          version?: string | null
+          vigente_desde?: string | null
+          vigente_hasta?: string | null
+        }
+        Update: {
+          clave?: string
+          created_at?: string
+          fecha_publicacion_dof?: string | null
+          id?: string
+          nombre?: string
+          notas?: string | null
+          publicado?: boolean
+          tipo?: string
+          total_articulos?: number
+          total_embeddings?: number
+          updated_at?: string
+          url_fuente?: string | null
+          version?: string | null
+          vigente_desde?: string | null
+          vigente_hasta?: string | null
+        }
+        Relationships: []
+      }
       mensajes: {
         Row: {
           asunto: string | null
@@ -4391,6 +4549,26 @@ export type Database = {
       is_despacho_admin: { Args: { _despacho: string }; Returns: boolean }
       is_member_of: { Args: { _despacho: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
+      match_ley_articulos: {
+        Args: {
+          filter_ley_claves?: string[]
+          match_count?: number
+          min_similarity?: number
+          query_embedding: string
+        }
+        Returns: {
+          articulo_id: string
+          chunk_text: string
+          fraccion: string
+          ley_clave: string
+          ley_id: string
+          ley_nombre: string
+          numero: string
+          similarity: number
+          texto: string
+          titulo: string
+        }[]
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string
