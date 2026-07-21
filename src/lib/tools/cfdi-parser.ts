@@ -83,7 +83,12 @@ export function parseCfdi(xml: string): CfdiParsed {
     claveProdServ: attr(t, "ClaveProdServ"),
   }));
 
-  const impuestosTag = findOpenTag(xml, "Impuestos");
+  // Puede haber varios <Impuestos>: uno por Concepto y el resumen a nivel Comprobante.
+  // Elegimos el que trae los totales (TotalImpuestosTrasladados/Retenidos).
+  const impuestosTags = findAllOpenTags(xml, "Impuestos");
+  const impuestosTag =
+    impuestosTags.find((t) => /TotalImpuestos(Trasladados|Retenidos)=/.test(t)) ??
+    impuestosTags[impuestosTags.length - 1];
 
   const result: CfdiParsed = {
     version: attr(comprobante, "Version"),
