@@ -138,7 +138,7 @@ function CfdiVerifier() {
     }
   };
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState<string | null>(null);
 
   const ensureBelongsToCliente = (em: string, rc: string, filename: string): boolean => {
     if (!cliente) return true;
