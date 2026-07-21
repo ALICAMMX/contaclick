@@ -72,3 +72,11 @@
 - Botón "Descargar Expediente ZIP" en `/app/contabilidad-auto → Configuración → Exportar`.
 - Usa JSZip; respuesta como base64 para mantener el contrato JSON de createServerFn.
 - 2026-06-29: Sprint 3 #5 — Plantillas IMCP PF Actividad Empresarial y PF RESICO añadidas a imcp-catalog.ts. sembrarCatalogoIMCP ahora acepta {plantilla: pm_general|pf_act_emp|pf_resico}. UI en ConfigTabs muestra Select para elegir régimen antes de sembrar.
+
+## 2026-07-21 — CFDI: IVA trasladado mostrando $0 y "DIF_MATEMATICA" falsa
+**Síntoma:** Detalle de CFDI mostraba `IVA traslado $0.00` aunque el XML lo trajera; el analizador marcaba "Riesgo alto — Inconsistencia aritmética".
+**Causa:** `parseCfdi` usaba `findOpenTag("Impuestos")` que devuelve la PRIMERA coincidencia — el `<cfdi:Impuestos>` anidado dentro de `<cfdi:Concepto>`, que no lleva `TotalImpuestosTrasladados`. El resumen a nivel Comprobante quedaba fuera.
+**Fix:**
+- `src/lib/tools/cfdi-parser.ts`: se buscan TODOS los `<Impuestos>` y se toma el que sí trae `TotalImpuestosTrasladados|Retenidos` (o el último como fallback).
+- Migración de backfill: 15,009 filas históricas con `iva_trasladado = 0` recalculadas desde la identidad aritmética `trasladados = total - subtotal + descuento + retenidos - ieps`.
+**Impacto:** Reportes de IVA, Salud Fiscal, Conciliación, Contabilidad Auto y Reporte Ejecutivo quedan consistentes sin cambios de código adicionales.
