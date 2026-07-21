@@ -216,11 +216,17 @@ function CfdiVerifier() {
         return;
       }
       if (name.endsWith(".pdf") || file.type === "application/pdf") {
-        // Leemos el binario como latin1 para conservar los streams de texto del PDF
-        const buf = new Uint8Array(await file.arrayBuffer());
-        let text = "";
-        for (let i = 0; i < buf.length; i++) text += String.fromCharCode(buf[i]);
-        autoFillFromText(text, "PDF", file.name);
+        setBusy("Leyendo PDF…");
+        try {
+          const text = await extractPdfText(file, (m) => setBusy(m));
+          if (!text || text.trim().length < 20) {
+            toast.error("No se pudo leer texto del PDF. Sube el XML o captura los datos a mano.");
+          } else {
+            autoFillFromText(text, "PDF", file.name);
+          }
+        } finally {
+          setBusy(null);
+        }
         return;
       }
       // Cualquier otro: intenta como texto plano
