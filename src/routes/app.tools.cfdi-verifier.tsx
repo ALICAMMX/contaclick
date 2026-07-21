@@ -255,11 +255,12 @@ function CfdiVerifier() {
             e.target.value = "";
           }}
         />
-        <Button variant="hero" size="sm" onClick={() => fileInputRef.current?.click()}>
-          <Upload className="h-3.5 w-3.5" /> Subir XML o PDF para autollenar
+        <Button variant="hero" size="sm" onClick={() => fileInputRef.current?.click()} disabled={!!busy}>
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+          {busy ?? "Subir XML o PDF para autollenar"}
         </Button>
         <p className="text-xs text-muted-foreground">
-          Soporta XML CFDI 4.0 y PDFs con QR del SAT o texto seleccionable. Los datos se leen en tu navegador.
+          Soporta XML CFDI 4.0 y PDFs con QR del SAT o texto seleccionable (con OCR de respaldo). Los datos se leen en tu navegador.
         </p>
       </div>
 
