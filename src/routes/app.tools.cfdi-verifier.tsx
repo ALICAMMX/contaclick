@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ShieldCheck, ExternalLink, Save, CheckCircle2, AlertTriangle, Upload } from "lucide-react";
+import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
+import { ShieldCheck, ExternalLink, Save, CheckCircle2, AlertTriangle, Upload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,63 @@ import { saveToolRun } from "@/lib/tool-runs.functions";
 import { parseCfdi } from "@/lib/tools/cfdi-parser";
 import { RejectModal } from "@/components/RejectModal";
 import { emptyReport, type RejectReport } from "@/lib/cfdi/dedup-xml";
+
+async function loadPdfjs(): Promise<any> {
+  const pdfjs: any = await import("pdfjs-dist/build/pdf.mjs");
+  pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+  return pdfjs;
+}
+
+async function ocrPdfPages(pdfjs: any, doc: any, onProgress?: (m: string) => void): Promise<string> {
+  const { createWorker } = await import("tesseract.js");
+  const worker = await createWorker("spa+eng", 1, {
+    langPath: "https://tessdata.projectnaptha.com/4.0.0",
+  });
+  let text = "";
+  try {
+    const maxPages = Math.min(doc.numPages, 3);
+    for (let i = 1; i <= maxPages; i++) {
+      onProgress?.(`OCR página ${i} de ${maxPages}…`);
+      const page = await doc.getPage(i);
+      const viewport = page.getViewport({ scale: 2 });
+      const canvas = document.createElement("canvas");
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext("2d")!;
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      const { data } = await worker.recognize(canvas);
+      text += data.text + "\n";
+    }
+  } finally {
+    await worker.terminate();
+  }
+  return text;
+}
+
+async function extractPdfText(file: File, onProgress?: (m: string) => void): Promise<string> {
+  const pdfjs = await loadPdfjs();
+  const buf = await file.arrayBuffer();
+  const doc = await pdfjs.getDocument({ data: new Uint8Array(buf) }).promise;
+  let text = "";
+  for (let i = 1; i <= doc.numPages; i++) {
+    const page = await doc.getPage(i);
+    const content = await page.getTextContent();
+    text += (content.items as any[]).map((it) => it.str).join(" ") + "\n";
+  }
+  const clean = text.replace(/\s+/g, " ").trim();
+  const hasUuid = /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/.test(clean);
+  const hasRfc = /\b[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}\b/.test(clean);
+  if (clean.length < 150 || (!hasUuid && !hasRfc)) {
+    onProgress?.("PDF sin texto — iniciando OCR (puede tardar 10-30s)…");
+    try {
+      const ocr = await ocrPdfPages(pdfjs, doc, onProgress);
+      if (ocr.replace(/\s+/g, " ").trim().length > clean.length) return ocr;
+    } catch (e) {
+      console.warn("OCR falló:", e);
+    }
+  }
+  return text;
+}
 
 export const Route = createFileRoute("/app/tools/cfdi-verifier")({
   component: CfdiVerifier,
@@ -81,6 +139,7 @@ function CfdiVerifier() {
   };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState<string | null>(null);
 
   const ensureBelongsToCliente = (em: string, rc: string, filename: string): boolean => {
     if (!cliente) return true;
@@ -157,11 +216,17 @@ function CfdiVerifier() {
         return;
       }
       if (name.endsWith(".pdf") || file.type === "application/pdf") {
-        // Leemos el binario como latin1 para conservar los streams de texto del PDF
-        const buf = new Uint8Array(await file.arrayBuffer());
-        let text = "";
-        for (let i = 0; i < buf.length; i++) text += String.fromCharCode(buf[i]);
-        autoFillFromText(text, "PDF", file.name);
+        setBusy("Leyendo PDF…");
+        try {
+          const text = await extractPdfText(file, (m) => setBusy(m));
+          if (!text || text.trim().length < 20) {
+            toast.error("No se pudo leer texto del PDF. Sube el XML o captura los datos a mano.");
+          } else {
+            autoFillFromText(text, "PDF", file.name);
+          }
+        } finally {
+          setBusy(null);
+        }
         return;
       }
       // Cualquier otro: intenta como texto plano
@@ -190,11 +255,12 @@ function CfdiVerifier() {
             e.target.value = "";
           }}
         />
-        <Button variant="hero" size="sm" onClick={() => fileInputRef.current?.click()}>
-          <Upload className="h-3.5 w-3.5" /> Subir XML o PDF para autollenar
+        <Button variant="hero" size="sm" onClick={() => fileInputRef.current?.click()} disabled={!!busy}>
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+          {busy ?? "Subir XML o PDF para autollenar"}
         </Button>
         <p className="text-xs text-muted-foreground">
-          Soporta XML CFDI 4.0 y PDFs con QR del SAT o texto seleccionable. Los datos se leen en tu navegador.
+          Soporta XML CFDI 4.0 y PDFs con QR del SAT o texto seleccionable (con OCR de respaldo). Los datos se leen en tu navegador.
         </p>
       </div>
 
