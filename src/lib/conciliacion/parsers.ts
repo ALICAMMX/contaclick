@@ -304,6 +304,15 @@ export async function extractBankFileText(file: File): Promise<string> {
     }
     return parts.join("\n");
   }
+  if (name.endsWith(".pdf") || file.type === "application/pdf") {
+    try {
+      const text = await extractPdfText(file);
+      return text.slice(0, 200_000);
+    } catch (e) {
+      console.warn("extractPdfText falló:", e);
+      return "";
+    }
+  }
   return "";
 }
 
