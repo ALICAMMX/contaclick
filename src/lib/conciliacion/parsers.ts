@@ -274,8 +274,15 @@ export async function parseBankFile(file: File): Promise<ParsedMovimiento[]> {
     const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, raw: true, defval: null });
     return rowsToMovimientos(rows);
   }
-  if (name.endsWith(".pdf")) {
-    throw new Error("PDF: convierte el estado de cuenta a Excel/CSV antes de subirlo (la mayoría de bancos lo permiten desde su portal).");
+  if (name.endsWith(".pdf") || file.type === "application/pdf") {
+    const text = await extractPdfText(file);
+    const rows = parsePdfMovimientos(text);
+    if (rows.length === 0) {
+      throw new Error(
+        "No pudimos detectar movimientos en el PDF. Descarga el estado de cuenta en formato CSV o Excel (.xlsx) desde tu banca en línea para una lectura más precisa.",
+      );
+    }
+    return rows;
   }
   throw new Error(`Formato no soportado: ${file.name}`);
 }
