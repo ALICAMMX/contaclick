@@ -15,7 +15,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Info } from "lucide-react";
 import { fmtFechaMx } from "@/lib/utils";
 import { useActiveCliente } from "@/lib/active-cliente";
-import { parseBankFile, extractBankFileText, bankFileMatchesContribuyente, type ParsedMovimiento } from "@/lib/conciliacion/parsers";
+import { parseBankFileWithText, bankFileMatchesContribuyente, type ParsedMovimiento } from "@/lib/conciliacion/parsers";
 import {
   uploadMovimientos, listMovimientos, runReconciliation,
   getReconciliationStats, analyzeReconciliationAI, updateConciliacion,
@@ -45,6 +45,7 @@ function ConciliacionPage() {
   const [filterCuenta, setFilterCuenta] = useState<string>("__all__");
   const [parsed, setParsed] = useState<ParsedMovimiento[]>([]);
   const [parsingErr, setParsingErr] = useState<string | null>(null);
+  const [isParsing, setIsParsing] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiContent, setAiContent] = useState<string>("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -165,17 +166,17 @@ function ConciliacionPage() {
     const frozenRfc = cliente.rfc;
     const frozenRazon = cliente.razon_social;
     setParsingErr(null);
+    setIsParsing(true);
     const all: ParsedMovimiento[] = [];
     try {
       for (const f of Array.from(files)) {
-        const text = await extractBankFileText(f);
+        const { movimientos, text } = await parseBankFileWithText(f);
         const check = bankFileMatchesContribuyente(text, { rfc: frozenRfc, razon_social: frozenRazon });
         if (!check.match) {
           setBankReject({ archivo: f.name, razon: check.reason ?? "El archivo no coincide con el contribuyente del expediente." });
           return; // no procesamos NINGÚN archivo del lote para evitar conciliaciones cruzadas
         }
-        const rows = await parseBankFile(f);
-        all.push(...rows);
+        all.push(...movimientos);
       }
       if (!all.length) throw new Error("No se detectaron movimientos. Verifica que el archivo tenga columnas Fecha, Descripción y Cargo/Abono o Monto.");
       if (cliente?.id !== frozenId) {
@@ -188,6 +189,9 @@ function ConciliacionPage() {
       const msg = (e as Error).message;
       setParsingErr(msg);
       toast.error(msg);
+    } finally {
+      setIsParsing(false);
+      if (inputRef.current) inputRef.current.value = "";
     }
   }
 
@@ -352,13 +356,13 @@ function ConciliacionPage() {
           </div>
           <div
             className="md:col-span-2 rounded-lg border-2 border-dashed border-border hover:border-primary/50 transition-colors p-6 text-center cursor-pointer"
-            onClick={() => inputRef.current?.click()}
+            onClick={() => !isParsing && inputRef.current?.click()}
             onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => { e.preventDefault(); onPickFiles(e.dataTransfer.files); }}
+            onDrop={(e) => { e.preventDefault(); if (!isParsing) onPickFiles(e.dataTransfer.files); }}
           >
             <input ref={inputRef} type="file" accept=".csv,.xlsx,.xls,.pdf,application/pdf" multiple className="hidden" onChange={(e) => onPickFiles(e.target.files)} />
-            <Upload className="h-6 w-6 mx-auto text-muted-foreground" />
-            <div className="mt-2 text-sm font-medium">Arrastra tu estado de cuenta o haz click</div>
+            {isParsing ? <Loader2 className="h-6 w-6 mx-auto text-primary animate-spin" /> : <Upload className="h-6 w-6 mx-auto text-muted-foreground" />}
+            <div className="mt-2 text-sm font-medium">{isParsing ? "Leyendo estado de cuenta…" : "Arrastra tu estado de cuenta o haz click"}</div>
             <div className="text-xs text-muted-foreground mt-1">Acepta múltiples archivos · auto-detecta columnas Fecha, Descripción, Cargo/Abono</div>
           </div>
         </div>
