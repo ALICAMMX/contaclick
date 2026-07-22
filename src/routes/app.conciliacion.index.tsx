@@ -309,7 +309,7 @@ function ConciliacionPage() {
         <div className="flex items-center gap-3 mb-4">
           <FileSpreadsheet className="h-4 w-4 text-primary" />
           <div className="font-medium">Subir estado de cuenta</div>
-          <span className="text-xs text-muted-foreground ml-auto">CSV · XLSX</span>
+          <span className="text-xs text-muted-foreground ml-auto">CSV · XLSX · PDF (beta)</span>
         </div>
         <div className="grid md:grid-cols-3 gap-4">
           <div className="md:col-span-1 space-y-3">
