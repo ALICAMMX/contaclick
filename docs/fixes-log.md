@@ -80,3 +80,12 @@
 - `src/lib/tools/cfdi-parser.ts`: se buscan TODOS los `<Impuestos>` y se toma el que sí trae `TotalImpuestosTrasladados|Retenidos` (o el último como fallback).
 - Migración de backfill: 15,009 filas históricas con `iva_trasladado = 0` recalculadas desde la identidad aritmética `trasladados = total - subtotal + descuento + retenidos - ieps`.
 **Impacto:** Reportes de IVA, Salud Fiscal, Conciliación, Contabilidad Auto y Reporte Ejecutivo quedan consistentes sin cambios de código adicionales.
+
+## 2026-07-22 — Conciliación bancaria: PDF bancario no se cargaba ni se leía
+**Síntoma:** al subir estados de cuenta PDF de banco, la herramienta rechazaba el archivo antes de cargar movimientos o permitía quedarse sin respuesta visible al reintentar el mismo PDF.
+**Causa:** la validación de titularidad leía texto por separado antes del parseo; si el PDF no exponía RFC/razón social aunque sí tuviera tabla bancaria, se bloqueaba antes de aprovechar los movimientos detectados. Además, el input de archivo no se limpiaba tras errores, por lo que seleccionar el mismo PDF no siempre disparaba otra lectura.
+**Fix:**
+- El conciliador ahora parsea el PDF una sola vez y usa el mismo texto para validar titularidad.
+- Si un PDF sí contiene movimientos pero no permite confirmar RFC/razón social, ya no se bloquea automáticamente; muestra advertencia para revisión humana y permite continuar.
+- El parser PDF agrupa movimientos multilínea, soporta fechas con mes en texto y detecta columnas cargo/abono/saldo más comunes en estados de cuenta mexicanos.
+- El input se resetea al finalizar y muestra estado "Leyendo estado de cuenta…" para evitar la sensación de que no hace nada.
