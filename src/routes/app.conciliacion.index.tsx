@@ -356,7 +356,7 @@ function ConciliacionPage() {
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => { e.preventDefault(); onPickFiles(e.dataTransfer.files); }}
           >
-            <input ref={inputRef} type="file" accept=".csv,.xlsx,.xls" multiple className="hidden" onChange={(e) => onPickFiles(e.target.files)} />
+            <input ref={inputRef} type="file" accept=".csv,.xlsx,.xls,.pdf,application/pdf" multiple className="hidden" onChange={(e) => onPickFiles(e.target.files)} />
             <Upload className="h-6 w-6 mx-auto text-muted-foreground" />
             <div className="mt-2 text-sm font-medium">Arrastra tu estado de cuenta o haz click</div>
             <div className="text-xs text-muted-foreground mt-1">Acepta múltiples archivos · auto-detecta columnas Fecha, Descripción, Cargo/Abono</div>
