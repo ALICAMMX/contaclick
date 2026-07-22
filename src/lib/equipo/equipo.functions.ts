@@ -69,7 +69,7 @@ async function getMembersLimit(supabaseAdmin: any, despachoId: string): Promise<
       .maybeSingle();
     const lim = (p?.limites as any)?.max_miembros;
     if (lim === null) return null;
-    if (typeof lim === "number") return lim;
+    if (typeof lim === "number") return lim < 0 ? null : lim;
   }
   // Default by estado
   return d?.estado === "trial" ? 2 : 5;
