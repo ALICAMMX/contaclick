@@ -17,7 +17,10 @@ export function TrialGate({ children }: { children: ReactNode }) {
   const location = useLocation();
 
   const expired = (() => {
-    if (!despacho || despacho.estado !== "trial") return false;
+    if (!despacho) return false;
+    // Si ya tiene un plan asignado, nunca bloquear (aunque el estado esté mal cacheado)
+    if (despacho.plan_id) return false;
+    if (despacho.estado !== "trial") return false;
     if (!despacho.trial_ends_at) return false;
     return new Date(despacho.trial_ends_at).getTime() <= Date.now();
   })();
