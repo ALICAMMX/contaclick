@@ -10,7 +10,9 @@ export function useDespacho() {
     enabled: !!user,
     queryKey: ["my-despacho", user?.id],
     queryFn: () => fn(),
-    staleTime: 60_000,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
   return {
     despacho: q.data?.despacho ?? null,
