@@ -14,7 +14,7 @@ export function TrialBanner() {
     }
   }, []);
 
-  if (!despacho || despacho.estado !== "trial") return null;
+  if (!despacho || despacho.plan_id || despacho.estado !== "trial") return null;
 
   const trialEnd = despacho.trial_ends_at ? new Date(despacho.trial_ends_at) : null;
   if (!trialEnd) return null;
