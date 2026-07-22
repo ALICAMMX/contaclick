@@ -94,13 +94,28 @@ function parsePdfMovimientos(text: string): ParsedMovimiento[] {
 
   const out: ParsedMovimiento[] = [];
   const dateRe = new RegExp(
-    // dd/mm/yyyy | dd-mm-yyyy | dd/MES(/yyyy)?
-    "^(?:(\\d{1,2})[\\/-](\\d{1,2})(?:[\\/-](\\d{2,4}))?|(\\d{1,2})[\\/-]([A-Za-zÁÉÍÓÚáéíóú]{3,10})(?:[\\/-](\\d{2,4}))?)\\b",
+    // dd/mm/yyyy | dd-mm-yyyy | dd/MES(/yyyy)? | dd MES yyyy
+    "^(?:(\\d{1,2})[\\/\\-.](\\d{1,2})(?:[\\/\\-.](\\d{2,4}))?|(\\d{1,2})[\\/\\-.\\s]([A-Za-zÁÉÍÓÚáéíóú]{3,10})(?:[\\/\\-.\\s](\\d{2,4}))?)\\b",
   );
-  const amountRe = /-?\$?\s*\d{1,3}(?:,\d{3})*\.\d{2}/g;
+  const amountRe = /\(?-?\$?\s*(?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2}\)?/g;
+  const firstAmountRe = /\(?-?\$?\s*(?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2}\)?/;
 
+  // Muchos PDFs bancarios separan concepto, cargo/abono y saldo en líneas distintas.
+  // Agrupamos desde una línea con fecha hasta antes de la siguiente fecha.
+  const entries: string[] = [];
+  let current = "";
   for (const raw of lines) {
-    const line = raw.replace(/\s+/g, " ");
+    const line = raw.replace(/\s+/g, " ").trim();
+    if (dateRe.test(line)) {
+      if (current) entries.push(current);
+      current = line;
+    } else if (current) {
+      current += ` ${line}`;
+    }
+  }
+  if (current) entries.push(current);
+
+  for (const line of entries) {
     const dm = line.match(dateRe);
     if (!dm) continue;
     let fecha: string | null = null;
@@ -120,12 +135,28 @@ function parsePdfMovimientos(text: string): ParsedMovimiento[] {
 
     const amounts = line.match(amountRe);
     if (!amounts || amounts.length === 0) continue;
-    // Toma los últimos 2 números como monto y saldo (patrón común en estados de cuenta)
+    // En PDFs mexicanos suelen aparecer: cargo, abono, saldo. Si no, toma monto + saldo.
     const nums = amounts.map((a) => parseAmount(a));
     let monto: number;
     let saldo: number | null = null;
+    let forcedCargo: boolean | null = null;
     if (nums.length >= 2) {
-      monto = nums[nums.length - 2];
+      saldo = nums[nums.length - 1];
+      if (nums.length >= 3) {
+        const cargoCol = Math.abs(nums[nums.length - 3]);
+        const abonoCol = Math.abs(nums[nums.length - 2]);
+        if (cargoCol > 0 && abonoCol === 0) {
+          monto = cargoCol;
+          forcedCargo = true;
+        } else if (abonoCol > 0 && cargoCol === 0) {
+          monto = abonoCol;
+          forcedCargo = false;
+        } else {
+          monto = nums[nums.length - 2] || nums[nums.length - 3];
+        }
+      } else {
+        monto = nums[0];
+      }
       saldo = nums[nums.length - 1];
     } else {
       monto = nums[0];
@@ -133,11 +164,11 @@ function parsePdfMovimientos(text: string): ParsedMovimiento[] {
 
     // Descripción = texto entre la fecha y el primer número
     const afterDate = line.slice(dm[0].length).trim();
-    const firstAmountIdx = afterDate.search(amountRe);
+    const firstAmountIdx = afterDate.search(firstAmountRe);
     const desc = (firstAmountIdx > 0 ? afterDate.slice(0, firstAmountIdx) : afterDate).trim();
 
     // Determina cargo/abono: si hay marca de retiro/cargo o signo, se toma como cargo.
-    const isCargo = /(-\s*\$|\bretiro\b|\bcargo\b|\bdebito\b|\bdébito\b|\bpago\b|\btransferencia enviada\b|\bcompra\b|\bcomision\b|\bcomisión\b|\biva com\b)/i.test(line) || monto < 0;
+    const isCargo = forcedCargo ?? (/(-\s*\$|\bretiro\b|\bcargo\b|\bcargos\b|\bdebito\b|\bdébito\b|\bpago\b|\btransferencia enviada\b|\bcompra\b|\bcomision\b|\bcomisión\b|\biva com\b|\bdisposicion\b|\bdisposición\b)/i.test(line) || monto < 0);
     const abs = Math.abs(monto);
     if (abs === 0) continue;
     out.push({
@@ -159,6 +190,11 @@ export type ParsedMovimiento = {
   cargo: number;
   abono: number;
   saldo: number | null;
+};
+
+export type ParsedBankFileResult = {
+  movimientos: ParsedMovimiento[];
+  text: string;
 };
 
 const HEADER_ALIASES: Record<keyof Omit<ParsedMovimiento, "saldo"> | "saldo" | "monto", string[]> = {
@@ -210,7 +246,7 @@ function parseDate(v: unknown): string | null {
 function parseAmount(v: unknown): number {
   if (v == null || v === "") return 0;
   if (typeof v === "number") return v;
-  let s = String(v).trim().replace(/[$\s]/g, "");
+  let s = String(v).trim().replace(/[+$\s]/g, "");
   // (123.45) → -123.45
   const neg = /^\(.*\)$/.test(s);
   s = s.replace(/[()]/g, "");
@@ -260,19 +296,20 @@ function rowsToMovimientos(rows: unknown[][]): ParsedMovimiento[] {
   return out;
 }
 
-export async function parseBankFile(file: File): Promise<ParsedMovimiento[]> {
+export async function parseBankFileWithText(file: File): Promise<ParsedBankFileResult> {
   const name = file.name.toLowerCase();
   if (name.endsWith(".csv") || file.type === "text/csv") {
     const text = await file.text();
     const res = Papa.parse<string[]>(text, { skipEmptyLines: true });
-    return rowsToMovimientos(res.data as unknown[][]);
+    return { movimientos: rowsToMovimientos(res.data as unknown[][]), text: text.slice(0, 200_000) };
   }
   if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf, { type: "array", cellDates: false });
     const ws = wb.Sheets[wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, raw: true, defval: null });
-    return rowsToMovimientos(rows);
+    const text = rows.slice(0, 80).map((r) => (r ?? []).map((c) => String(c ?? "")).join(" ")).join("\n");
+    return { movimientos: rowsToMovimientos(rows), text };
   }
   if (name.endsWith(".pdf") || file.type === "application/pdf") {
     const text = await extractPdfText(file);
@@ -282,9 +319,13 @@ export async function parseBankFile(file: File): Promise<ParsedMovimiento[]> {
         "No pudimos detectar movimientos en el PDF. Descarga el estado de cuenta en formato CSV o Excel (.xlsx) desde tu banca en línea para una lectura más precisa.",
       );
     }
-    return rows;
+    return { movimientos: rows, text: text.slice(0, 200_000) };
   }
   throw new Error(`Formato no soportado: ${file.name}`);
+}
+
+export async function parseBankFile(file: File): Promise<ParsedMovimiento[]> {
+  return (await parseBankFileWithText(file)).movimientos;
 }
 
 /** Extrae todo el texto plano del archivo (encabezado + filas) para validar titularidad. */
