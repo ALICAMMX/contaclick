@@ -174,8 +174,7 @@ function ConciliacionPage() {
         const check = bankFileMatchesContribuyente(text, { rfc: frozenRfc, razon_social: frozenRazon });
         if (!check.match) {
           const isPdf = f.name.toLowerCase().endsWith(".pdf") || f.type === "application/pdf";
-          const hasOtherRfc = /\b[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}\b/.test(text.toUpperCase());
-          if (isPdf && movimientos.length > 0 && !hasOtherRfc) {
+          if (isPdf && movimientos.length > 0) {
             toast.warning("PDF bancario leído, pero no se pudo confirmar RFC en el estado de cuenta.", {
               description: "Verifica que pertenezca al expediente activo antes de cargarlo.",
             });
