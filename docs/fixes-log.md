@@ -89,3 +89,14 @@
 - Si un PDF sí contiene movimientos pero no permite confirmar RFC/razón social, ya no se bloquea automáticamente; muestra advertencia para revisión humana y permite continuar.
 - El parser PDF agrupa movimientos multilínea, soporta fechas con mes en texto y detecta columnas cargo/abono/saldo más comunes en estados de cuenta mexicanos.
 - El input se resetea al finalizar y muestra estado "Leyendo estado de cuenta…" para evitar la sensación de que no hace nada.
+
+## 2026-07-24 — Auditoría de clasificación fiscal CFDI (cascada)
+Bug raíz: se clasificaba por `tipo_cfdi` (I/E del SAT) sin comparar contra el RFC del cliente activo. Un CFDI recibido de un proveedor también es tipo "I" desde su emisor, por lo que se contaba como ingreso propio.
+
+Impacto detectado y corregido:
+1. `getCfdiStats` (KPIs del módulo Comprobantes fiscales): "Ingresos" incluía gastos; "Egresos" solo notas de crédito. Fix: separar por `rfc_emisor === cliente.rfc` (emitidos) vs `rfc_receptor === cliente.rfc` (recibidos). IVA acreditable ahora solo de recibidos.
+2. `reportes-ejecutivos.recolectarDatos`: mismo bug — utilidad, margen, ISR estimado, IVA neto y saldo a favor/cargo estaban inflados. Ahora resta notas de crédito emitidas/recibidas y descarta cancelados.
+3. `app.cfdi.index.tsx` — columna Contraparte: mostraba emisor cuando tipo=I sin importar dirección. Ahora muestra la contraparte real (receptor si es emitido, emisor si es recibido) con marca de dirección.
+4. `nomina.functions.ts` — Auditor ahora filtra `rfc_emisor = cliente.rfc` para no auditar recibos donde el cliente es empleado.
+
+Módulos verificados sanos: `salud/salud.functions.ts`, `reportes/reportes.functions.ts`, `riesgo/riesgo.functions.ts`, `auditor/auditor.functions.ts`, `contabilidad-auto/engine.ts`, `isr-iva-calculator` — ya comparaban contra el RFC del cliente.
