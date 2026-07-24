@@ -100,3 +100,8 @@ Impacto detectado y corregido:
 4. `nomina.functions.ts` — Auditor ahora filtra `rfc_emisor = cliente.rfc` para no auditar recibos donde el cliente es empleado.
 
 Módulos verificados sanos: `salud/salud.functions.ts`, `reportes/reportes.functions.ts`, `riesgo/riesgo.functions.ts`, `auditor/auditor.functions.ts`, `contabilidad-auto/engine.ts`, `isr-iva-calculator` — ya comparaban contra el RFC del cliente.
+
+## 2026-07-24 · Conciliación · PDF BBVA rechazado por RFC con guión
+- **Reporte:** usuario cpdafico@gmail.com (cliente TOGL790615PW3, Lizette) no podía subir el estado de cuenta BBVA enero 2022.
+- **Causa:** `bankFileMatchesContribuyente` normalizaba el texto reemplazando símbolos por espacios. El PDF imprime el RFC como `TOGL790615-PW3`, con guión, que quedaba como `togl790615 pw3` y nunca hacía match con `togl790615pw3`.
+- **Fix:** en `src/lib/conciliacion/parsers.ts` la validación ahora también compara contra una versión compacta (sin espacios) del texto y limpia el RFC del cliente. Cualquier banco que imprima el RFC separado por guión, puntos o espacios queda cubierto.
