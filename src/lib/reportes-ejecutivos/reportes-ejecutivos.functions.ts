@@ -126,9 +126,9 @@ async function recolectarDatos(sb: any, cliente_id: string, periodo: string) {
   const { data: cli } = await sb.from("clientes").select("id, despacho_id, rfc, razon_social, regimen_fiscal").eq("id", cliente_id).maybeSingle();
   if (!cli) throw new Error("Cliente no encontrado");
 
-  const [cfdiIng, cfdiEgr, salud, incidencias, obligaciones, riesgoSat, polizas, movs] = await Promise.all([
-    sb.from("cfdi_xml").select("subtotal, total, iva_trasladado, iva_retenido, isr_retenido, estatus_sat").eq("cliente_id", cliente_id).eq("tipo_cfdi", "I").gte("fecha", desde).lte("fecha", hasta),
-    sb.from("cfdi_xml").select("subtotal, total, iva_trasladado, iva_retenido, isr_retenido, estatus_sat").eq("cliente_id", cliente_id).eq("tipo_cfdi", "E").gte("fecha", desde).lte("fecha", hasta),
+  const rfcCli = String(cli.rfc ?? "").toUpperCase();
+  const [cfdiRows, salud, incidencias, obligaciones, riesgoSat, polizas, movs] = await Promise.all([
+    sb.from("cfdi_xml").select("subtotal, total, iva_trasladado, iva_retenido, isr_retenido, estatus_sat, tipo_cfdi, rfc_emisor, rfc_receptor").eq("cliente_id", cliente_id).in("tipo_cfdi", ["I", "E"]).gte("fecha", desde).lte("fecha", hasta),
     sb.from("salud_fiscal_snapshots").select("score, semaforo, subscores").eq("cliente_id", cliente_id).order("periodo", { ascending: false }).limit(1).maybeSingle(),
     sb.from("conciliacion_incidencias").select("tipo, gravedad, estatus, monto, impacto_isr, impacto_iva").eq("cliente_id", cliente_id),
     sb.from("obligaciones_fiscales").select("nombre, fecha_vencimiento, estatus").eq("cliente_id", cliente_id).gte("fecha_vencimiento", new Date().toISOString().slice(0, 10)).order("fecha_vencimiento").limit(10),
@@ -137,10 +137,23 @@ async function recolectarDatos(sb: any, cliente_id: string, periodo: string) {
     sb.from("movimientos_bancarios").select("tipo, monto").eq("cliente_id", cliente_id).gte("fecha", desde.slice(0, 10)).lte("fecha", hasta.slice(0, 10)),
   ]);
 
-  const ingresosCfdi = (cfdiIng.data ?? []).reduce((a: number, r: any) => a + Number(r.subtotal ?? 0), 0);
-  const ivaTras = (cfdiIng.data ?? []).reduce((a: number, r: any) => a + Number(r.iva_trasladado ?? 0), 0);
-  const gastosCfdi = (cfdiEgr.data ?? []).reduce((a: number, r: any) => a + Number(r.subtotal ?? 0), 0);
-  const ivaAcr = (cfdiEgr.data ?? []).reduce((a: number, r: any) => a + Number(r.iva_trasladado ?? 0), 0);
+  type CfdiRow = { subtotal: number; total: number; iva_trasladado: number; iva_retenido: number; isr_retenido: number; estatus_sat: string | null; tipo_cfdi: string; rfc_emisor: string; rfc_receptor: string };
+  const all = (cfdiRows.data ?? []) as CfdiRow[];
+  const vigentes = all.filter((r) => r.estatus_sat !== "cancelado");
+  const emitidosI = vigentes.filter((r) => r.tipo_cfdi === "I" && String(r.rfc_emisor ?? "").toUpperCase() === rfcCli);
+  const recibidosI = vigentes.filter((r) => r.tipo_cfdi === "I" && String(r.rfc_receptor ?? "").toUpperCase() === rfcCli);
+  const notasCreditoEmitidas = vigentes.filter((r) => r.tipo_cfdi === "E" && String(r.rfc_emisor ?? "").toUpperCase() === rfcCli);
+  const notasCreditoRecibidas = vigentes.filter((r) => r.tipo_cfdi === "E" && String(r.rfc_receptor ?? "").toUpperCase() === rfcCli);
+
+  const sumSub = (rs: CfdiRow[]) => rs.reduce((a, r) => a + Number(r.subtotal ?? 0), 0);
+  const sumIva = (rs: CfdiRow[]) => rs.reduce((a, r) => a + Number(r.iva_trasladado ?? 0), 0);
+
+  // Ingresos netos = emitidos tipo I − notas de crédito emitidas
+  const ingresosCfdi = sumSub(emitidosI) - sumSub(notasCreditoEmitidas);
+  const ivaTras = sumIva(emitidosI) - sumIva(notasCreditoEmitidas);
+  // Gastos netos = recibidos tipo I − notas de crédito recibidas
+  const gastosCfdi = sumSub(recibidosI) - sumSub(notasCreditoRecibidas);
+  const ivaAcr = sumIva(recibidosI) - sumIva(notasCreditoRecibidas);
   const utilidad = ingresosCfdi - gastosCfdi;
   const margen = ingresosCfdi > 0 ? utilidad / ingresosCfdi : 0;
   const isrEst = Math.max(0, utilidad * 0.30);
