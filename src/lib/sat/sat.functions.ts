@@ -254,7 +254,8 @@ export const sincronizarCfdis = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!cli || !cli.despacho_id) throw new Error("Expediente no encontrado");
 
-    const isMock = cred.pac_token.startsWith("mock_") || !process.env.SW_USER;
+    const hasPacConfig = Boolean(process.env.SW_SAPIEN_API_TOKEN || process.env.SW_USER);
+    const isMock = cred.pac_token.startsWith("mock_") || !hasPacConfig;
     let descargados = 0;
     let ya_existian = 0;
     const errores: string[] = [];
