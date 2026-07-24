@@ -369,26 +369,34 @@ export const getCfdiStats = createServerFn({ method: "POST" })
     if (!UUID_RE.test(data.cliente_id)) {
       return { total: 0, ingresos: 0, egresos: 0, ivaTrasladado: 0, ivaAcreditable: 0, cancelados: 0, topProveedores: [] };
     }
-    const { data: rows, error } = await supabase
-      .from("cfdi_xml")
-      .select("tipo_cfdi, total, iva_trasladado, iva_retenido, estatus_sat, fecha, rfc_emisor, rfc_receptor")
-      .eq("cliente_id", data.cliente_id);
+    const [{ data: rows, error }, { data: cli }] = await Promise.all([
+      supabase
+        .from("cfdi_xml")
+        .select("tipo_cfdi, total, iva_trasladado, iva_retenido, estatus_sat, fecha, rfc_emisor, rfc_receptor")
+        .eq("cliente_id", data.cliente_id),
+      supabase.from("clientes").select("rfc").eq("id", data.cliente_id).maybeSingle(),
+    ]);
     if (error) throw new Error(error.message);
 
     const r = rows ?? [];
+    const rfcCli = ((cli?.rfc as string | undefined) ?? "").toUpperCase();
+    const isEmitido = (x: typeof r[number]) => !!rfcCli && String(x.rfc_emisor ?? "").toUpperCase() === rfcCli;
+    const isRecibido = (x: typeof r[number]) => !!rfcCli && String(x.rfc_receptor ?? "").toUpperCase() === rfcCli;
+
     const sum = (k: "total" | "iva_trasladado" | "iva_retenido", filter?: (x: typeof r[number]) => boolean) =>
       r.filter((x) => filter ? filter(x) : true).reduce((a, b) => a + Number(b[k] ?? 0), 0);
 
-    const ingresos = sum("total", (x) => x.tipo_cfdi === "I");
-    const egresos = sum("total", (x) => x.tipo_cfdi === "E");
-    const ivaTrasladado = sum("iva_trasladado", (x) => x.tipo_cfdi === "I");
-    const ivaAcreditable = sum("iva_trasladado", (x) => x.tipo_cfdi === "E" || x.tipo_cfdi === "I");
+    // Ingresos = CFDI tipo I EMITIDOS por el cliente. Egresos = gastos (tipo I RECIBIDOS) + notas de crédito (tipo E).
+    const ingresos = sum("total", (x) => x.tipo_cfdi === "I" && isEmitido(x));
+    const egresos = sum("total", (x) => (x.tipo_cfdi === "I" && isRecibido(x)) || x.tipo_cfdi === "E");
+    const ivaTrasladado = sum("iva_trasladado", (x) => x.tipo_cfdi === "I" && isEmitido(x));
+    const ivaAcreditable = sum("iva_trasladado", (x) => isRecibido(x) && (x.tipo_cfdi === "I" || x.tipo_cfdi === "E"));
     const cancelados = r.filter((x) => x.estatus_sat === "cancelado").length;
 
     // Top proveedores por monto (cuando el cliente es receptor — gastos)
     const proveedores = new Map<string, number>();
     r.forEach((x) => {
-      if (x.tipo_cfdi === "I") {
+      if (x.tipo_cfdi === "I" && isRecibido(x)) {
         const k = x.rfc_emisor as string;
         proveedores.set(k, (proveedores.get(k) ?? 0) + Number(x.total ?? 0));
       }
