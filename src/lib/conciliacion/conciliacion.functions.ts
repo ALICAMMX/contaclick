@@ -154,10 +154,11 @@ export const uploadMovimientos = createServerFn({ method: "POST" })
     duplicates = rows.length - fresh.length;
 
     if (fresh.length) {
-      // insert in chunks
       for (let i = 0; i < fresh.length; i += 500) {
         const chunk = fresh.slice(i, i + 500);
-        const { error } = await supabase.from("movimientos_bancarios").insert(chunk);
+        const { error } = await supabase
+          .from("movimientos_bancarios")
+          .upsert(chunk, { onConflict: "cuenta_id,hash", ignoreDuplicates: true });
         if (error) throw new Error(error.message);
         inserted += chunk.length;
       }
