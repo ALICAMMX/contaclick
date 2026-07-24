@@ -1,0 +1,1 @@
+DELETE FROM public.sat_credenciales WHERE cliente_id = '7578b3e8-5da9-4d64-a411-040f54d2fbfd';
