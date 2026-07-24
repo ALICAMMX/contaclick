@@ -373,8 +373,11 @@ export function bankFileMatchesContribuyente(
     return { match: false, reason: "El archivo está vacío o no se pudo leer texto." };
   }
   const haystack = normalizeForMatch(text);
-  const rfc = cliente.rfc.toUpperCase();
-  if (haystack.includes(rfc.toLowerCase())) return { match: true };
+  // Versión compacta (sin separadores) para tolerar RFC impresos como "TOGL790615-PW3"
+  const compact = haystack.replace(/\s+/g, "");
+  const rfc = cliente.rfc.toUpperCase().replace(/[^A-Z0-9Ñ&]/g, "");
+  const rfcLower = rfc.toLowerCase();
+  if (haystack.includes(rfcLower) || compact.includes(rfcLower)) return { match: true };
   // Razón social: requiere al menos 2 palabras significativas (>3 letras) presentes
   const palabras = normalizeForMatch(cliente.razon_social)
     .split(" ")
