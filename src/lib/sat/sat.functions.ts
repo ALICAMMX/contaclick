@@ -271,7 +271,8 @@ export const sincronizarCfdis = createServerFn({ method: "POST" })
       try {
         // SW Sapien: solicitud de descarga masiva
         // Ver https://developers.sw.com.mx/  →  /cfdi/descargamasiva
-        const res = await fetch("https://services.sw.com.mx/cfdi/descargamasiva/solicitud", {
+        const SW_BASE = (process.env.SW_SAPIEN_API_URL || "https://services.sw.com.mx/").replace(/\/$/, "");
+        const res = await fetch(`${SW_BASE}/cfdi/descargamasiva/solicitud`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${cred.pac_token}`,
