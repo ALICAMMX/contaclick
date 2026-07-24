@@ -1,0 +1,2 @@
+ALTER TABLE public.polizas DROP CONSTRAINT IF EXISTS polizas_origen_check;
+ALTER TABLE public.polizas ADD CONSTRAINT polizas_origen_check CHECK (origen = ANY (ARRAY['manual','import','workflow','api','auto_sat','auto_banco']));
