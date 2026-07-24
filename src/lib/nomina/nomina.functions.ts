@@ -31,15 +31,18 @@ export const auditarNomina = createServerFn({ method: "POST" })
     const year = data.year ?? new Date().getFullYear();
     const ini = `${year}-01-01`;
     const fin = `${year}-12-31`;
-    const { data: rows, error } = await context.supabase
+    const { data: cli } = await context.supabase.from("clientes").select("rfc").eq("id", data.cliente_id).maybeSingle();
+    const rfcCli = String((cli as { rfc?: string } | null)?.rfc ?? "").toUpperCase();
+    let q = context.supabase
       .from("cfdi_xml")
-      .select("uuid, fecha, total, subtotal, isr_retenido, nombre_receptor, rfc_receptor")
+      .select("uuid, fecha, total, subtotal, isr_retenido, nombre_receptor, rfc_receptor, rfc_emisor")
       .eq("cliente_id", data.cliente_id)
       .eq("tipo_cfdi", "N")
       .gte("fecha", ini)
-      .lte("fecha", fin)
-      .order("fecha", { ascending: false })
-      .limit(2000);
+      .lte("fecha", fin);
+    // Solo nóminas EMITIDAS por el patrón (cliente activo). Evita auditar recibos donde el cliente es empleado.
+    if (rfcCli) q = q.eq("rfc_emisor", rfcCli);
+    const { data: rows, error } = await q.order("fecha", { ascending: false }).limit(2000);
     if (error) throw new Error(error.message);
 
     const findings: FindingNomina[] = [];

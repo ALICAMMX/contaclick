@@ -335,10 +335,21 @@ function CfdiDashboard() {
                   <td className="px-4 py-3"><TipoBadge tipo={r.tipo_cfdi} /></td>
                   <td className="px-4 py-3"><UuidCell uuid={r.uuid} /></td>
                   <td className="px-4 py-3">
-                    <div className="font-medium truncate max-w-[280px]">{r.tipo_cfdi === "I" ? r.nombre_emisor : r.nombre_receptor}</div>
-                    <div className="text-xs text-muted-foreground font-mono">
-                      {r.tipo_cfdi === "I" ? r.rfc_emisor : r.rfc_receptor}
-                    </div>
+                    {(() => {
+                      const rfcCli = String(cliente?.rfc ?? "").toUpperCase();
+                      const emitido = String(r.rfc_emisor ?? "").toUpperCase() === rfcCli;
+                      const nombre = emitido ? r.nombre_receptor : r.nombre_emisor;
+                      const rfc = emitido ? r.rfc_receptor : r.rfc_emisor;
+                      return (
+                        <>
+                          <div className="font-medium truncate max-w-[280px]">{nombre}</div>
+                          <div className="text-xs text-muted-foreground font-mono">
+                            {rfc}
+                            <span className="ml-1.5 uppercase tracking-wider text-[10px] opacity-70">{emitido ? "· cliente → " : "· → cliente"}</span>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </td>
                   <td className="px-4 py-3 text-xs">
                     <span className="px-1.5 py-0.5 rounded bg-muted/40">{r.metodo_pago ?? "—"}</span>
