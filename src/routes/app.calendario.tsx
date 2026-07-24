@@ -611,9 +611,7 @@ function ObligacionFormDialog({
       if (!clienteId) throw new Error("Selecciona un expediente");
       if (!nombre.trim()) throw new Error("El nombre es obligatorio");
       if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) throw new Error("Fecha límite inválida (AAAA-MM-DD)");
-      if (!editing && new Date(fecha) < new Date(new Date().toDateString())) {
-        throw new Error("La fecha debe ser hoy o en el futuro");
-      }
+      // Nota: se permiten fechas pasadas (registro histórico de obligaciones ya vencidas / cumplidas).
       return upsertFn({
         data: {
           id: editing?.id,
