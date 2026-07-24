@@ -52,27 +52,31 @@ function extraerRfcsDeCer(cer_b64: string): string[] {
 
 
 async function obtainSwToken(args: { cer_b64: string; key_b64: string; password: string }) {
+  const SW_BASE = (process.env.SW_SAPIEN_API_URL || "https://services.sw.com.mx/").replace(/\/$/, "");
+  const SW_TOKEN = process.env.SW_SAPIEN_API_TOKEN;
   const SW_USER = process.env.SW_USER;
   const SW_PASSWORD = process.env.SW_PASSWORD;
-  // Modo simulado si no hay credenciales del PAC configuradas
-  if (!SW_USER || !SW_PASSWORD) {
+
+  // Sin credenciales ni token → modo simulado
+  if (!SW_TOKEN && (!SW_USER || !SW_PASSWORD)) {
     return { token: `mock_${crypto.randomUUID()}`, simulated: true as const };
   }
-  // Autenticación contra SW Sapien (https://services.sw.com.mx)
-  const auth = await fetch("https://services.sw.com.mx/security/authenticate", {
-    method: "POST",
-    headers: {
-      user: SW_USER,
-      password: SW_PASSWORD,
-    },
-  });
-  if (!auth.ok) throw new Error(`PAC auth falló (${auth.status})`);
-  const authJson = (await auth.json()) as { data?: { token?: string } };
-  const masterToken = authJson?.data?.token;
-  if (!masterToken) throw new Error("PAC no devolvió token maestro");
+
+  // Token maestro: preconfigurado (sandbox SW Sapien) o vía user/password
+  let masterToken: string | undefined = SW_TOKEN;
+  if (!masterToken) {
+    const auth = await fetch(`${SW_BASE}/security/authenticate`, {
+      method: "POST",
+      headers: { user: SW_USER!, password: SW_PASSWORD! },
+    });
+    if (!auth.ok) throw new Error(`PAC auth falló (${auth.status})`);
+    const authJson = (await auth.json()) as { data?: { token?: string } };
+    masterToken = authJson?.data?.token;
+    if (!masterToken) throw new Error("PAC no devolvió token maestro");
+  }
 
   // Registrar e.firma del cliente para descargas
-  const reg = await fetch("https://services.sw.com.mx/cfdi/efirma/register", {
+  const reg = await fetch(`${SW_BASE}/cfdi/efirma/register`, {
     method: "POST",
     headers: { Authorization: `Bearer ${masterToken}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -250,7 +254,8 @@ export const sincronizarCfdis = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!cli || !cli.despacho_id) throw new Error("Expediente no encontrado");
 
-    const isMock = cred.pac_token.startsWith("mock_") || !process.env.SW_USER;
+    const hasPacConfig = Boolean(process.env.SW_SAPIEN_API_TOKEN || process.env.SW_USER);
+    const isMock = cred.pac_token.startsWith("mock_") || !hasPacConfig;
     let descargados = 0;
     let ya_existian = 0;
     const errores: string[] = [];
@@ -266,7 +271,8 @@ export const sincronizarCfdis = createServerFn({ method: "POST" })
       try {
         // SW Sapien: solicitud de descarga masiva
         // Ver https://developers.sw.com.mx/  →  /cfdi/descargamasiva
-        const res = await fetch("https://services.sw.com.mx/cfdi/descargamasiva/solicitud", {
+        const SW_BASE = (process.env.SW_SAPIEN_API_URL || "https://services.sw.com.mx/").replace(/\/$/, "");
+        const res = await fetch(`${SW_BASE}/cfdi/descargamasiva/solicitud`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${cred.pac_token}`,
