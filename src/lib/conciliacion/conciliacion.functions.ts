@@ -132,22 +132,33 @@ export const uploadMovimientos = createServerFn({ method: "POST" })
       });
     }
 
-    // dedupe by checking existing hashes
-    const hashes = rows.map((r) => r.hash);
-    const { data: dups } = await supabase
-      .from("movimientos_bancarios")
-      .select("hash")
-      .eq("cuenta_id", cuentaId)
-      .in("hash", hashes);
+    // dedupe within batch first (varios renglones idénticos en el mismo PDF)
+    const seenLocal = new Set<string>();
+    const uniqueRows = rows.filter((r) => {
+      if (seenLocal.has(r.hash)) return false;
+      seenLocal.add(r.hash);
+      return true;
+    });
+
+    // dedupe contra lo ya guardado en BD
+    const hashes = uniqueRows.map((r) => r.hash);
+    const { data: dups } = hashes.length
+      ? await supabase
+          .from("movimientos_bancarios")
+          .select("hash")
+          .eq("cuenta_id", cuentaId)
+          .in("hash", hashes)
+      : { data: [] as { hash: string }[] };
     const dupSet = new Set((dups ?? []).map((d) => d.hash as string));
-    const fresh = rows.filter((r) => !dupSet.has(r.hash));
+    const fresh = uniqueRows.filter((r) => !dupSet.has(r.hash));
     duplicates = rows.length - fresh.length;
 
     if (fresh.length) {
-      // insert in chunks
       for (let i = 0; i < fresh.length; i += 500) {
         const chunk = fresh.slice(i, i + 500);
-        const { error } = await supabase.from("movimientos_bancarios").insert(chunk);
+        const { error } = await supabase
+          .from("movimientos_bancarios")
+          .upsert(chunk, { onConflict: "cuenta_id,hash", ignoreDuplicates: true });
         if (error) throw new Error(error.message);
         inserted += chunk.length;
       }
