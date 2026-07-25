@@ -37,6 +37,16 @@ import {
 import { triggerFileDownload } from "@/lib/download";
 
 export const Route = createFileRoute("/app/polizas")({
+  head: () => ({
+    meta: [
+      { title: "Pólizas automáticas | ContaClick" },
+      { name: "description", content: "Genera pólizas automáticas desde CFDI y bancos, aprueba borradores e importa pólizas manuales por CSV." },
+      { property: "og:title", content: "Pólizas automáticas | ContaClick" },
+      { property: "og:description", content: "Genera pólizas automáticas desde CFDI y bancos, aprueba borradores e importa pólizas manuales por CSV." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: PolizasPage,
 });
 
@@ -49,6 +59,12 @@ type ParsedRow = PolizaInput & { _error?: string };
 
 const mxn = (n: number) =>
   new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(Number(n || 0));
+
+function toggleSet(current: Set<string>, id: string) {
+  const next = new Set(current);
+  next.has(id) ? next.delete(id) : next.add(id);
+  return next;
+}
 
 function parseCSV(text: string): ParsedRow[] {
   const lines = text.replace(/\r/g, "").split("\n").filter((l) => l.trim());
