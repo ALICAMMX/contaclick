@@ -2,6 +2,25 @@ import * as XLSX from "xlsx";
 import Papa from "papaparse";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
 
+const MAX_BANK_DESCRIPTION_LENGTH = 480;
+const MAX_BANK_REFERENCE_LENGTH = 120;
+
+function normalizeBankDescription(value: unknown): string {
+  const text = String(value ?? "")
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return (text || "(sin descripción)").slice(0, MAX_BANK_DESCRIPTION_LENGTH);
+}
+
+function normalizeBankReference(value: unknown): string | null {
+  const text = String(value ?? "")
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text ? text.slice(0, MAX_BANK_REFERENCE_LENGTH) : null;
+}
+
 async function loadPdfjs(): Promise<any> {
   const pdfjs: any = await import("pdfjs-dist/build/pdf.mjs");
   pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
@@ -173,7 +192,7 @@ function parsePdfMovimientos(text: string): ParsedMovimiento[] {
     if (abs === 0) continue;
     out.push({
       fecha,
-      descripcion: desc || "(sin descripción)",
+      descripcion: normalizeBankDescription(desc),
       referencia: null,
       cargo: isCargo ? abs : 0,
       abono: isCargo ? 0 : abs,
@@ -281,8 +300,8 @@ function rowsToMovimientos(rows: unknown[][]): ParsedMovimiento[] {
     const r = rows[i] ?? [];
     const fecha = parseDate(r[colFecha]);
     if (!fecha) continue;
-    const desc = colDesc >= 0 ? String(r[colDesc] ?? "").trim() : "";
-    const ref = colRef >= 0 ? (String(r[colRef] ?? "").trim() || null) : null;
+    const desc = colDesc >= 0 ? normalizeBankDescription(r[colDesc]) : "(sin descripción)";
+    const ref = colRef >= 0 ? normalizeBankReference(r[colRef]) : null;
     let cargo = colCargo >= 0 ? Math.abs(parseAmount(r[colCargo])) : 0;
     let abono = colAbono >= 0 ? Math.abs(parseAmount(r[colAbono])) : 0;
     if (cargo === 0 && abono === 0 && colMonto >= 0) {
