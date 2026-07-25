@@ -205,9 +205,17 @@ function ReporteEjecutivoPage() {
                     <SelectItem key={c.id} value={c.id}>{c.razon_social ?? c.rfc} · {c.rfc}</SelectItem>
                   ))}</SelectContent>
                 </Select>
+                <label className="text-sm font-medium">Periodo (mes)</label>
+                <input
+                  type="month"
+                  value={periodoSel}
+                  onChange={(e) => setPeriodoSel(e.target.value)}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                />
+                <p className="text-xs text-muted-foreground">Elige el mes con datos cargados (CFDI, bancos, conciliación). Si el mes está vacío, el reporte saldrá en ceros.</p>
               </div>
               <DialogFooter>
-                <Button disabled={!clienteSel || mGenerar.isPending} onClick={() => mGenerar.mutate(clienteSel)}>
+                <Button disabled={!clienteSel || !periodoSel || mGenerar.isPending} onClick={() => mGenerar.mutate({ cliente_id: clienteSel, periodo: periodoSel })}>
                   {mGenerar.isPending ? "Analizando con IA..." : "Generar"}
                 </Button>
               </DialogFooter>
