@@ -105,3 +105,8 @@ Módulos verificados sanos: `salud/salud.functions.ts`, `reportes/reportes.funct
 - **Reporte:** usuario cpdafico@gmail.com (cliente TOGL790615PW3, Lizette) no podía subir el estado de cuenta BBVA enero 2022.
 - **Causa:** `bankFileMatchesContribuyente` normalizaba el texto reemplazando símbolos por espacios. El PDF imprime el RFC como `TOGL790615-PW3`, con guión, que quedaba como `togl790615 pw3` y nunca hacía match con `togl790615pw3`.
 - **Fix:** en `src/lib/conciliacion/parsers.ts` la validación ahora también compara contra una versión compacta (sin espacios) del texto y limpia el RFC del cliente. Cualquier banco que imprima el RFC separado por guión, puntos o espacios queda cubierto.
+
+## 2026-07-25 · Conciliación bancaria · Error Zod `descripcion` mayor a 500
+- **Reporte:** al cargar estado de cuenta, varios movimientos fallaban con `too_big` porque el concepto/descripción venía pegado y excedía el límite anterior de 500 caracteres.
+- **Causa:** algunos PDFs bancarios unen varias líneas del estado de cuenta en una sola descripción; aunque el servidor ya aceptaba recorte, el payload podía llegar con conceptos largos desde el navegador o desde bundles publicados anteriores.
+- **Fix:** normalización defensiva en tres puntos: parser bancario, payload de `/app/conciliacion` y validador del servidor. La descripción se limpia y recorta a 480 caracteres; referencia a 120. Así evita el límite histórico y mantiene la carga estable.

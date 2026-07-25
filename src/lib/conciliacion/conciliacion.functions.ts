@@ -49,11 +49,27 @@ async function ensureCuenta(
   return data.id as string;
 }
 
+function normalizeBankDescription(value: unknown): string {
+  const text = String(value ?? "")
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return (text || "(sin descripción)").slice(0, 480);
+}
+
+function normalizeBankReference(value: unknown): string | null {
+  const text = String(value ?? "")
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text ? text.slice(0, 120) : null;
+}
+
 // ---- schemas ----
 const MovimientoSchema = z.object({
   fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  descripcion: z.string().default("").transform((s) => (s ?? "").slice(0, 2000)),
-  referencia: z.string().max(120).nullable().default(null),
+  descripcion: z.preprocess(normalizeBankDescription, z.string()),
+  referencia: z.preprocess(normalizeBankReference, z.string().nullable()),
   cargo: z.number().min(0).default(0),
   abono: z.number().min(0).default(0),
   saldo: z.number().nullable().default(null),

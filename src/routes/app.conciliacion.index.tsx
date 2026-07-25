@@ -24,6 +24,18 @@ import { listCuentas, createCuenta, BANCOS } from "@/lib/cuentas/cuentas.functio
 import { exportXlsx, buildFilename } from "@/lib/export/xlsx";
 import { safeFilename, triggerFileDownload } from "@/lib/download";
 
+function normalizeMovimientoForUpload(m: ParsedMovimiento): ParsedMovimiento {
+  const descripcion = String(m.descripcion ?? "")
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 480) || "(sin descripción)";
+  const referencia = m.referencia
+    ? String(m.referencia).replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 120) || null
+    : null;
+  return { ...m, descripcion, referencia };
+}
+
 export const Route = createFileRoute("/app/conciliacion/")({
   component: ConciliacionPage,
 });
@@ -80,7 +92,7 @@ function ConciliacionPage() {
       // CANDADO: congelar expediente al ejecutar la carga
       const frozenId = cliente.id;
       const frozenRfc = cliente.rfc;
-      const payload: Record<string, unknown> = { cliente_id: frozenId, movimientos: parsed };
+      const payload: Record<string, unknown> = { cliente_id: frozenId, movimientos: parsed.map(normalizeMovimientoForUpload) };
       if (cuentaSel && cuentaSel !== "__nueva__") {
         payload.cuenta_id = cuentaSel;
       } else {
@@ -183,7 +195,7 @@ function ConciliacionPage() {
             return; // no procesamos NINGÚN archivo del lote para evitar conciliaciones cruzadas
           }
         }
-        all.push(...movimientos);
+        all.push(...movimientos.map(normalizeMovimientoForUpload));
       }
       if (!all.length) throw new Error("No se detectaron movimientos. Verifica que el archivo tenga columnas Fecha, Descripción y Cargo/Abono o Monto.");
       if (cliente?.id !== frozenId) {
