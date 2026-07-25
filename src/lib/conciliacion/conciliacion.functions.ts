@@ -84,10 +84,28 @@ const UploadSchema = z.object({
   movimientos: z.array(MovimientoSchema).min(1).max(5000),
 });
 
+function normalizeUploadPayload(value: unknown) {
+  if (!value || typeof value !== "object") return value;
+  const payload = value as Record<string, unknown>;
+  const movimientos = Array.isArray(payload.movimientos)
+    ? payload.movimientos.map((item) => {
+        if (!item || typeof item !== "object") return item;
+        const movimiento = item as Record<string, unknown>;
+        return {
+          ...movimiento,
+          descripcion: normalizeBankDescription(movimiento.descripcion),
+          referencia: normalizeBankReference(movimiento.referencia),
+        };
+      })
+    : payload.movimientos;
+
+  return { ...payload, movimientos };
+}
+
 // ---- upload movimientos ----
 export const uploadMovimientos = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
-  .inputValidator((d: unknown) => UploadSchema.parse(d))
+  .inputValidator((d: unknown) => UploadSchema.parse(normalizeUploadPayload(d)))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const despachoId = await ensureDespacho(supabase, userId);

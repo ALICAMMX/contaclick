@@ -29,7 +29,7 @@ function normalizeMovimientoForUpload(m: ParsedMovimiento): ParsedMovimiento {
     .replace(/[\r\n\t]+/g, " ")
     .replace(/\s+/g, " ")
     .trim()
-    .slice(0, 480) || "(sin descripción)";
+    .slice(0, 450) || "(sin descripción)";
   const referencia = m.referencia
     ? String(m.referencia).replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 120) || null
     : null;

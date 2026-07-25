@@ -110,3 +110,4 @@ Módulos verificados sanos: `salud/salud.functions.ts`, `reportes/reportes.funct
 - **Reporte:** al cargar estado de cuenta, varios movimientos fallaban con `too_big` porque el concepto/descripción venía pegado y excedía el límite anterior de 500 caracteres.
 - **Causa:** algunos PDFs bancarios unen varias líneas del estado de cuenta en una sola descripción; aunque el servidor ya aceptaba recorte, el payload podía llegar con conceptos largos desde el navegador o desde bundles publicados anteriores.
 - **Fix:** normalización defensiva en tres puntos: parser bancario, payload de `/app/conciliacion` y validador del servidor. La descripción se limpia y recorta a 480 caracteres; referencia a 120. Así evita el límite histórico y mantiene la carga estable.
+- **Refuerzo:** el validador de servidor ahora normaliza el payload completo antes de ejecutar Zod y el cliente recorta a 450 caracteres para quedar por debajo de cualquier bundle antiguo que aún aplique máximo 500.
