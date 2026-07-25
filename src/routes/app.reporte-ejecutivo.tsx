@@ -64,6 +64,10 @@ function ReporteEjecutivoPage() {
   const [openSim, setOpenSim] = useState(false);
   const [openReporte, setOpenReporte] = useState<string | null>(null);
   const [clienteSel, setClienteSel] = useState<string>("");
+  const [periodoSel, setPeriodoSel] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
   const [escenario, setEscenario] = useState("");
   const [paramsTexto, setParamsTexto] = useState("");
 
