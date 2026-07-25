@@ -1,93 +1,23 @@
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
-import type { SupabaseClient } from "@supabase/supabase-js";
-
-// ---- helpers ----
-async function sha256Hex(text: string): Promise<string> {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-async function ensureDespacho(supabase: SupabaseClient, userId: string): Promise<string> {
-  const { data: m } = await supabase.from("user_memberships").select("despacho_id").eq("user_id", userId).limit(1).maybeSingle();
-  if (m?.despacho_id) return m.despacho_id as string;
-  const { data: d, error } = await supabase.from("despachos").insert({ nombre: "Mi despacho", owner_user_id: userId }).select("id").single();
-  if (error || !d) throw new Error(`No se pudo crear despacho: ${error?.message}`);
-  await supabase.from("user_memberships").insert({ user_id: userId, despacho_id: d.id });
-  await supabase.from("user_roles").insert({ user_id: userId, role: "despacho", despacho_id: d.id });
-  return d.id as string;
-}
-
-async function ensureCuenta(
-  supabase: SupabaseClient,
-  args: { despachoId: string; clienteId: string; banco: string; alias?: string | null; mask?: string | null },
-): Promise<string> {
-  const { data: existing } = await supabase
-    .from("cuentas_bancarias")
-    .select("id")
-    .eq("despacho_id", args.despachoId)
-    .eq("cliente_id", args.clienteId)
-    .eq("banco", args.banco)
-    .eq("alias", args.alias ?? "Principal")
-    .maybeSingle();
-  if (existing?.id) return existing.id as string;
-  const { data, error } = await supabase
-    .from("cuentas_bancarias")
-    .insert({
-      despacho_id: args.despachoId,
-      cliente_id: args.clienteId,
-      banco: args.banco,
-      alias: args.alias ?? "Principal",
-      numero_cuenta_mask: args.mask ?? null,
-      moneda: "MXN",
-    })
-    .select("id")
-    .single();
-  if (error || !data) throw new Error(`No se pudo crear cuenta: ${error?.message}`);
-  return data.id as string;
-}
-
-function normalizeBankDescription(value: unknown): string {
-  const text = String(value ?? "")
-    .replace(/[\r\n\t]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  return (text || "(sin descripción)").slice(0, 480);
-}
-
-function normalizeBankReference(value: unknown): string | null {
-  const text = String(value ?? "")
-    .replace(/[\r\n\t]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  return text ? text.slice(0, 120) : null;
-}
-
-// ---- schemas ----
-const MovimientoSchema = z.object({
-  fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  descripcion: z.preprocess(normalizeBankDescription, z.string()),
-  referencia: z.preprocess(normalizeBankReference, z.string().nullable()),
-  cargo: z.number().min(0).default(0),
-  abono: z.number().min(0).default(0),
-  saldo: z.number().nullable().default(null),
-});
-
-const UploadSchema = z.object({
-  cliente_id: z.string().uuid(),
-  cuenta_id: z.string().uuid().optional(),
-  banco: z.string().min(1).max(60).optional(),
-  alias: z.string().max(80).optional(),
-  mask: z.string().max(40).optional(),
-  movimientos: z.array(MovimientoSchema).min(1).max(5000),
-});
+import {
+  ensureCuenta,
+  ensureDespacho,
+  sha256Hex,
+} from "@/lib/conciliacion/conciliacion.server";
+import {
+  parseClienteInput,
+  parseListMovimientosInput,
+  parseRunReconciliationInput,
+  parseUpdateConciliacionInput,
+  parseUploadMovimientosInput,
+} from "@/lib/conciliacion/conciliacion.validators";
 
 // ---- upload movimientos ----
 export const uploadMovimientos = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
-  .inputValidator((d: unknown) => UploadSchema.parse(d))
+  .inputValidator(parseUploadMovimientosInput)
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const despachoId = await ensureDespacho(supabase, userId);
@@ -186,11 +116,7 @@ export const uploadMovimientos = createServerFn({ method: "POST" })
 // ---- listing ----
 export const listMovimientos = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({
-    cliente_id: z.string().uuid(),
-    cuenta_id: z.string().uuid().optional(),
-    limit: z.number().min(1).max(1000).default(500),
-  }).parse(d))
+  .inputValidator(parseListMovimientosInput)
   .handler(async ({ data, context }) => {
     let q = context.supabase
       .from("movimientos_bancarios")
@@ -217,15 +143,9 @@ export const listMovimientos = createServerFn({ method: "POST" })
   });
 
 // ---- run reconciliation engine ----
-const RunSchema = z.object({
-  cliente_id: z.string().uuid(),
-  tolerancia_pct: z.number().min(0).max(5).default(0.5),
-  dias_ventana: z.number().min(0).max(30).default(5),
-});
-
 export const runReconciliation = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
-  .inputValidator((d: unknown) => RunSchema.parse(d))
+  .inputValidator(parseRunReconciliationInput)
   .handler(async ({ data, context }) => {
     const { supabase } = context;
     const cliente_id = data.cliente_id;
@@ -350,7 +270,7 @@ export const runReconciliation = createServerFn({ method: "POST" })
 // ---- KPIs ----
 export const getReconciliationStats = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ cliente_id: z.string().uuid() }).parse(d))
+  .inputValidator(parseClienteInput)
   .handler(async ({ data, context }) => {
     const { supabase } = context;
     const [{ data: movs }, { data: cfdis }, { data: conc }] = await Promise.all([
@@ -387,7 +307,7 @@ export const getReconciliationStats = createServerFn({ method: "POST" })
 // ---- AI analysis ----
 export const analyzeReconciliationAI = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ cliente_id: z.string().uuid() }).parse(d))
+  .inputValidator(parseClienteInput)
   .handler(async ({ data, context }) => {
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) return { error: "IA no configurada", content: "" };
@@ -440,10 +360,7 @@ Responde en español, formato markdown, conciso.`;
 // ---- delete a manual match / mark ignored ----
 export const updateConciliacion = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({
-    id: z.string().uuid(),
-    estatus: z.enum(["propuesto", "confirmado", "rechazado", "ignorado"]),
-  }).parse(d))
+  .inputValidator(parseUpdateConciliacionInput)
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.from("conciliaciones").update({ estatus: data.estatus, confirmado_at: new Date().toISOString() }).eq("id", data.id);
     if (error) throw new Error(error.message);

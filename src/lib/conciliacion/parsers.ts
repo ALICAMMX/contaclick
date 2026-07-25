@@ -2,7 +2,7 @@ import * as XLSX from "xlsx";
 import Papa from "papaparse";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
 
-const MAX_BANK_DESCRIPTION_LENGTH = 480;
+const MAX_BANK_DESCRIPTION_LENGTH = 450;
 const MAX_BANK_REFERENCE_LENGTH = 120;
 
 function normalizeBankDescription(value: unknown): string {
