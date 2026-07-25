@@ -64,6 +64,10 @@ function ReporteEjecutivoPage() {
   const [openSim, setOpenSim] = useState(false);
   const [openReporte, setOpenReporte] = useState<string | null>(null);
   const [clienteSel, setClienteSel] = useState<string>("");
+  const [periodoSel, setPeriodoSel] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
   const [escenario, setEscenario] = useState("");
   const [paramsTexto, setParamsTexto] = useState("");
 
@@ -74,7 +78,8 @@ function ReporteEjecutivoPage() {
   const sims = useQuery({ queryKey: ["re-sims"], queryFn: () => listarSimulaciones({ data: {} }) });
 
   const mGenerar = useMutation({
-    mutationFn: (cliente_id: string) => generarReporte({ data: { cliente_id, tipo: "mensual" } }),
+    mutationFn: (v: { cliente_id: string; periodo: string }) =>
+      generarReporte({ data: { cliente_id: v.cliente_id, periodo: v.periodo, tipo: "mensual" } }),
     onSuccess: (r) => {
       toast.success(`Reporte listo · ${r.hallazgos_count} hallazgos · ${r.recomendaciones_count} recomendaciones`);
       qc.invalidateQueries({ queryKey: ["re-list"] });
@@ -200,9 +205,17 @@ function ReporteEjecutivoPage() {
                     <SelectItem key={c.id} value={c.id}>{c.razon_social ?? c.rfc} · {c.rfc}</SelectItem>
                   ))}</SelectContent>
                 </Select>
+                <label className="text-sm font-medium">Periodo (mes)</label>
+                <input
+                  type="month"
+                  value={periodoSel}
+                  onChange={(e) => setPeriodoSel(e.target.value)}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                />
+                <p className="text-xs text-muted-foreground">Elige el mes con datos cargados (CFDI, bancos, conciliación). Si el mes está vacío, el reporte saldrá en ceros.</p>
               </div>
               <DialogFooter>
-                <Button disabled={!clienteSel || mGenerar.isPending} onClick={() => mGenerar.mutate(clienteSel)}>
+                <Button disabled={!clienteSel || !periodoSel || mGenerar.isPending} onClick={() => mGenerar.mutate({ cliente_id: clienteSel, periodo: periodoSel })}>
                   {mGenerar.isPending ? "Analizando con IA..." : "Generar"}
                 </Button>
               </DialogFooter>
