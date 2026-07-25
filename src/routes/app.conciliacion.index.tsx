@@ -24,6 +24,36 @@ import { listCuentas, createCuenta, BANCOS } from "@/lib/cuentas/cuentas.functio
 import { exportXlsx, buildFilename } from "@/lib/export/xlsx";
 import { safeFilename, triggerFileDownload } from "@/lib/download";
 
+type ConciliacionRow = {
+  id: string;
+  movimiento_id: string | null;
+  cfdi_id?: string | null;
+  tipo_match: string;
+  probabilidad: number | null;
+  estatus: string;
+  motivo?: string | null;
+  diferencia?: number | null;
+};
+
+type CuentaRow = {
+  id: string;
+  banco: string;
+  alias: string | null;
+  numero_cuenta_mask?: string | null;
+  movimientos?: number;
+};
+
+type MovimientoRow = {
+  id: string;
+  fecha: string;
+  descripcion: string | null;
+  referencia: string | null;
+  cargo: number | null;
+  abono: number | null;
+  saldo?: number | null;
+  cuenta_id: string | null;
+};
+
 function normalizeMovimientoForUpload(m: ParsedMovimiento): ParsedMovimiento {
   const descripcion = String(m.descripcion ?? "")
     .replace(/[\r\n\t]+/g, " ")
@@ -153,15 +183,15 @@ function ConciliacionPage() {
   });
 
   const concById = useMemo(() => {
-    const map = new Map<string, NonNullable<typeof list.data>["conciliaciones"][number]>();
-    list.data?.conciliaciones.forEach((c) => { if (c.movimiento_id) map.set(c.movimiento_id, c); });
+    const map = new Map<string, ConciliacionRow>();
+    ((list.data?.conciliaciones ?? []) as ConciliacionRow[]).forEach((c: ConciliacionRow) => { if (c.movimiento_id) map.set(c.movimiento_id, c); });
     return map;
   }, [list.data]);
 
   const cuentaById = useMemo(() => {
     const map = new Map<string, { banco: string; alias: string | null }>();
-    (cuentas.data?.cuentas ?? []).forEach((c) => map.set(c.id, { banco: c.banco, alias: c.alias }));
-    (list.data?.cuentas ?? []).forEach((c) => { if (!map.has(c.id)) map.set(c.id, { banco: c.banco, alias: c.alias }); });
+    ((cuentas.data?.cuentas ?? []) as CuentaRow[]).forEach((c: CuentaRow) => map.set(c.id, { banco: c.banco, alias: c.alias }));
+    ((list.data?.cuentas ?? []) as CuentaRow[]).forEach((c: CuentaRow) => { if (!map.has(c.id)) map.set(c.id, { banco: c.banco, alias: c.alias }); });
     return map;
   }, [cuentas.data, list.data]);
 
@@ -218,7 +248,7 @@ function ConciliacionPage() {
 
   function exportCsv() {
     if (!list.data) return;
-    const rows = list.data.movimientos.map((m) => {
+    const rows = ((list.data.movimientos ?? []) as MovimientoRow[]).map((m: MovimientoRow) => {
       const c = concById.get(m.id);
       return {
         fecha: m.fecha,
@@ -232,14 +262,14 @@ function ConciliacionPage() {
       };
     });
     const headers = Object.keys(rows[0] ?? { fecha: "" });
-    const csv = [headers.join(","), ...rows.map((r) => headers.map((h) => (r as any)[h]).join(","))].join("\n");
+    const csv = [headers.join(","), ...rows.map((r: Record<string, string | number>) => headers.map((h) => r[h]).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     triggerFileDownload(blob, safeFilename(`conciliacion-${cliente?.rfc}-${new Date().toISOString().slice(0, 10)}.csv`, "conciliacion.csv"));
   }
 
   function exportExcel() {
     if (!list.data || !cliente) return;
-    const movs = list.data.movimientos.map((m) => {
+    const movs = ((list.data.movimientos ?? []) as MovimientoRow[]).map((m: MovimientoRow) => {
       const c = concById.get(m.id);
       return {
         Fecha: m.fecha,
@@ -452,7 +482,7 @@ function ConciliacionPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/40">
-              {(list.data?.movimientos ?? []).map((m) => {
+              {((list.data?.movimientos ?? []) as MovimientoRow[]).map((m: MovimientoRow) => {
                 const c = concById.get(m.id);
                 const monto = Number(m.abono ?? 0) > 0 ? Number(m.abono) : -Number(m.cargo ?? 0);
                 return (
