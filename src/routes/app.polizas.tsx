@@ -34,6 +34,15 @@ import {
   listarMovimientosSinPoliza,
   generarPolizasDesdeMovimientos,
 } from "@/lib/contabilidad-auto/bancos.functions";
+import {
+  exportarContpaqi,
+  exportarAspelCoi,
+  exportarAnexo24Polizas,
+  exportarAnexo24Catalogo,
+  exportarAnexo24Balanza,
+  exportarAnexo24AuxCuentas,
+  exportarAnexo24AuxFolios,
+} from "@/lib/contabilidad-auto/export.functions";
 import { triggerFileDownload } from "@/lib/download";
 
 export const Route = createFileRoute("/app/polizas")({
