@@ -54,6 +54,15 @@ type MovimientoRow = {
   cuenta_id: string | null;
 };
 
+function isValidIsoDate(s: string): boolean {
+  const m = (s ?? "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return false;
+  const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+  if (mo < 1 || mo > 12) return false;
+  const lastDay = new Date(y, mo, 0).getDate();
+  return d >= 1 && d <= lastDay;
+}
+
 function normalizeMovimientoForUpload(m: ParsedMovimiento): ParsedMovimiento {
   const descripcion = String(m.descripcion ?? "")
     .replace(/[\r\n\t]+/g, " ")
@@ -64,6 +73,10 @@ function normalizeMovimientoForUpload(m: ParsedMovimiento): ParsedMovimiento {
     ? String(m.referencia).replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 120) || null
     : null;
   return { ...m, descripcion, referencia };
+}
+
+function prepararMovimientos(list: ParsedMovimiento[]): ParsedMovimiento[] {
+  return list.filter((m) => isValidIsoDate(m.fecha)).map(normalizeMovimientoForUpload);
 }
 
 export const Route = createFileRoute("/app/conciliacion/")({
