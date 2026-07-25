@@ -54,6 +54,15 @@ type MovimientoRow = {
   cuenta_id: string | null;
 };
 
+function isValidIsoDate(s: string): boolean {
+  const m = (s ?? "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return false;
+  const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+  if (mo < 1 || mo > 12) return false;
+  const lastDay = new Date(y, mo, 0).getDate();
+  return d >= 1 && d <= lastDay;
+}
+
 function normalizeMovimientoForUpload(m: ParsedMovimiento): ParsedMovimiento {
   const descripcion = String(m.descripcion ?? "")
     .replace(/[\r\n\t]+/g, " ")
@@ -64,6 +73,10 @@ function normalizeMovimientoForUpload(m: ParsedMovimiento): ParsedMovimiento {
     ? String(m.referencia).replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 120) || null
     : null;
   return { ...m, descripcion, referencia };
+}
+
+function prepararMovimientos(list: ParsedMovimiento[]): ParsedMovimiento[] {
+  return list.filter((m) => isValidIsoDate(m.fecha)).map(normalizeMovimientoForUpload);
 }
 
 export const Route = createFileRoute("/app/conciliacion/")({
@@ -122,7 +135,7 @@ function ConciliacionPage() {
       // CANDADO: congelar expediente al ejecutar la carga
       const frozenId = cliente.id;
       const frozenRfc = cliente.rfc;
-      const payload: Record<string, unknown> = { cliente_id: frozenId, movimientos: parsed.map(normalizeMovimientoForUpload) };
+      const payload: Record<string, unknown> = { cliente_id: frozenId, movimientos: prepararMovimientos(parsed) };
       if (cuentaSel && cuentaSel !== "__nueva__") {
         payload.cuenta_id = cuentaSel;
       } else {
@@ -225,7 +238,7 @@ function ConciliacionPage() {
             return; // no procesamos NINGÚN archivo del lote para evitar conciliaciones cruzadas
           }
         }
-        all.push(...movimientos.map(normalizeMovimientoForUpload));
+        all.push(...prepararMovimientos(movimientos));
       }
       if (!all.length) throw new Error("No se detectaron movimientos. Verifica que el archivo tenga columnas Fecha, Descripción y Cargo/Abono o Monto.");
       if (cliente?.id !== frozenId) {

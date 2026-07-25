@@ -16,8 +16,17 @@ export function normalizeBankReference(value: unknown): string | null {
   return text ? text.slice(0, 120) : null;
 }
 
+function isValidIsoDate(s: string): boolean {
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return false;
+  const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+  if (mo < 1 || mo > 12) return false;
+  const lastDay = new Date(y, mo, 0).getDate();
+  return d >= 1 && d <= lastDay;
+}
+
 const MovimientoSchema = z.object({
-  fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(isValidIsoDate, { message: "Fecha inválida" }),
   descripcion: z.preprocess(normalizeBankDescription, z.string()),
   referencia: z.preprocess(normalizeBankReference, z.string().nullable()),
   cargo: z.number().min(0).default(0),
