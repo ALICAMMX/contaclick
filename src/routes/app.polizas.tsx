@@ -643,6 +643,67 @@ function PolizasPage() {
             )}
           </Card>
         </TabsContent>
+
+        <TabsContent value="exportar" className="space-y-4">
+          <Card className="p-4 space-y-4">
+            <div>
+              <h2 className="font-semibold">Exportar pólizas del período</h2>
+              <p className="text-xs text-muted-foreground">Genera los archivos para importar en tu sistema contable o entregar al SAT (Anexo 24). Solo se incluyen pólizas <b>confirmadas</b>.</p>
+            </div>
+            <div className="flex items-end gap-3 flex-wrap">
+              <div>
+                <Label>Año</Label>
+                <Input type="number" min={2018} max={2100} value={expAnio} onChange={(e) => setExpAnio(Number(e.target.value))} className="w-28" />
+              </div>
+              <div>
+                <Label>Mes</Label>
+                <Select value={String(expMes)} onValueChange={(v) => setExpMes(Number(v))}>
+                  <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                      <SelectItem key={m} value={String(m)}>{String(m).padStart(2, "0")}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded border p-3 space-y-2">
+                <h3 className="font-medium text-sm">Sistemas contables</h3>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" disabled={exporting === "contpaqi"} onClick={() => ejecutarExport("contpaqi", contpaqiFn, "text/plain;charset=utf-8")}>
+                    <Download className="h-4 w-4 mr-2" />{exporting === "contpaqi" ? "Generando..." : "CONTPAQi (TXT)"}
+                  </Button>
+                  <Button variant="outline" size="sm" disabled={exporting === "aspel"} onClick={() => ejecutarExport("aspel", aspelFn, "text/plain;charset=utf-8")}>
+                    <Download className="h-4 w-4 mr-2" />{exporting === "aspel" ? "Generando..." : "Aspel COI (TXT)"}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="rounded border p-3 space-y-2">
+                <h3 className="font-medium text-sm">SAT · Anexo 24 (XML)</h3>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" disabled={exporting === "a24pol"} onClick={() => ejecutarExport("a24pol", a24PolFn, "application/xml")}>
+                    <Download className="h-4 w-4 mr-2" />Pólizas
+                  </Button>
+                  <Button variant="outline" size="sm" disabled={exporting === "a24cat"} onClick={() => ejecutarExport("a24cat", a24CatFn, "application/xml")}>
+                    <Download className="h-4 w-4 mr-2" />Catálogo
+                  </Button>
+                  <Button variant="outline" size="sm" disabled={exporting === "a24bal"} onClick={() => ejecutarExport("a24bal", a24BalFn, "application/xml")}>
+                    <Download className="h-4 w-4 mr-2" />Balanza
+                  </Button>
+                  <Button variant="outline" size="sm" disabled={exporting === "a24xc"} onClick={() => ejecutarExport("a24xc", a24XcFn, "application/xml")}>
+                    <Download className="h-4 w-4 mr-2" />Aux. Cuentas
+                  </Button>
+                  <Button variant="outline" size="sm" disabled={exporting === "a24xf"} onClick={() => ejecutarExport("a24xf", a24XfFn, "application/xml")}>
+                    <Download className="h-4 w-4 mr-2" />Aux. Folios
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </TabsContent>
       </Tabs>
     </div>
   );
