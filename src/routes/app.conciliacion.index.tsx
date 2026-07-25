@@ -135,7 +135,7 @@ function ConciliacionPage() {
       // CANDADO: congelar expediente al ejecutar la carga
       const frozenId = cliente.id;
       const frozenRfc = cliente.rfc;
-      const payload: Record<string, unknown> = { cliente_id: frozenId, movimientos: parsed.map(normalizeMovimientoForUpload) };
+      const payload: Record<string, unknown> = { cliente_id: frozenId, movimientos: prepararMovimientos(parsed) };
       if (cuentaSel && cuentaSel !== "__nueva__") {
         payload.cuenta_id = cuentaSel;
       } else {
@@ -238,7 +238,7 @@ function ConciliacionPage() {
             return; // no procesamos NINGÚN archivo del lote para evitar conciliaciones cruzadas
           }
         }
-        all.push(...movimientos.map(normalizeMovimientoForUpload));
+        all.push(...prepararMovimientos(movimientos));
       }
       if (!all.length) throw new Error("No se detectaron movimientos. Verifica que el archivo tenga columnas Fecha, Descripción y Cargo/Abono o Monto.");
       if (cliente?.id !== frozenId) {
