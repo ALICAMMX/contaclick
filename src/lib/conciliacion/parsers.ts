@@ -150,7 +150,7 @@ function parsePdfMovimientos(text: string): ParsedMovimiento[] {
       const y = (dm[6] && dm[6].length === 4) ? dm[6] : dm[6] ? "20" + dm[6] : defaultYear;
       fecha = `${y}-${mo}-${d}`;
     }
-    if (!fecha) continue;
+    if (!fecha || !isValidIsoDate(fecha)) continue;
 
     const amounts = line.match(amountRe);
     if (!amounts || amounts.length === 0) continue;
