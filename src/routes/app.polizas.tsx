@@ -163,6 +163,34 @@ function PolizasPage() {
   const [selMovs, setSelMovs] = useState<Set<string>>(new Set());
   const [selBorradores, setSelBorradores] = useState<Set<string>>(new Set());
 
+  const hoy = new Date();
+  const [expAnio, setExpAnio] = useState<number>(hoy.getFullYear());
+  const [expMes, setExpMes] = useState<number>(hoy.getMonth() + 1);
+  const [exporting, setExporting] = useState<string | null>(null);
+
+  const contpaqiFn = useServerFn(exportarContpaqi);
+  const aspelFn = useServerFn(exportarAspelCoi);
+  const a24PolFn = useServerFn(exportarAnexo24Polizas);
+  const a24CatFn = useServerFn(exportarAnexo24Catalogo);
+  const a24BalFn = useServerFn(exportarAnexo24Balanza);
+  const a24XcFn = useServerFn(exportarAnexo24AuxCuentas);
+  const a24XfFn = useServerFn(exportarAnexo24AuxFolios);
+
+  async function ejecutarExport(key: string, fn: (arg: any) => Promise<any>, mime: string) {
+    if (!clienteId) return toast.error("Selecciona un cliente activo");
+    try {
+      setExporting(key);
+      const r = await fn({ data: { cliente_id: clienteId, anio: expAnio, mes: expMes } });
+      const blob = new Blob([r.contenido], { type: mime });
+      triggerFileDownload(blob, r.filename);
+      toast.success(`Descargado ${r.filename}`);
+    } catch (e: any) {
+      toast.error(e.message ?? "Error al exportar");
+    } finally {
+      setExporting(null);
+    }
+  }
+
   const [manual, setManual] = useState<PolizaInput>({
     fecha: new Date().toISOString().slice(0, 10),
     tipo: "ingreso",
