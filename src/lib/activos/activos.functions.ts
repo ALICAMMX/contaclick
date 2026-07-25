@@ -64,7 +64,7 @@ export const listarActivos = createServerFn({ method: "POST" })
     z.object({ cliente_id: z.string().uuid().optional() }).parse(d ?? {}),
   )
   .handler(async ({ data, context }) => {
-    let q = context.supabase.from("activos_fijos").select("*").order("fecha_adquisicion", { ascending: false });
+    let q = context.supabase.from("activos_fijos").select("*").order("fecha_adquisicion", { ascending: false }).limit(2000);
     if (data.cliente_id) q = q.eq("cliente_id", data.cliente_id);
     const { data: rows, error } = await q;
     if (error) throw error;
