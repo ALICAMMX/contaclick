@@ -52,7 +52,7 @@ async function ensureCuenta(
 // ---- schemas ----
 const MovimientoSchema = z.object({
   fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  descripcion: z.string().max(500).default(""),
+  descripcion: z.string().default("").transform((s) => (s ?? "").slice(0, 2000)),
   referencia: z.string().max(120).nullable().default(null),
   cargo: z.number().min(0).default(0),
   abono: z.number().min(0).default(0),
