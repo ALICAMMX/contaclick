@@ -93,9 +93,6 @@ export const adminListUsers = createServerFn({ method: "GET" })
       rfcsByDespacho.set(c.despacho_id, (rfcsByDespacho.get(c.despacho_id) ?? 0) + 1);
     }
 
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
 
     const rows: AdminUserRow[] = (profilesRes.data ?? []).map((p: any) => {
       // Despacho prioridad: owner > membership
