@@ -262,7 +262,7 @@ function ConciliacionPage() {
       };
     });
     const headers = Object.keys(rows[0] ?? { fecha: "" });
-    const csv = [headers.join(","), ...rows.map((r: Record<string, string | number>) => headers.map((h) => r[h]).join(","))].join("\n");
+    const csv = [headers.join(","), ...rows.map((r) => headers.map((h) => String(r[h as keyof typeof r] ?? "")).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     triggerFileDownload(blob, safeFilename(`conciliacion-${cliente?.rfc}-${new Date().toISOString().slice(0, 10)}.csv`, "conciliacion.csv"));
   }
