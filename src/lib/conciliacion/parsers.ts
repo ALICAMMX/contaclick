@@ -239,12 +239,25 @@ function findCol(headers: string[], key: keyof typeof HEADER_ALIASES) {
   return -1;
 }
 
+function isValidIsoDate(iso: string): boolean {
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return false;
+  const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+  if (y < 1900 || y > 2999) return false;
+  if (mo < 1 || mo > 12) return false;
+  const lastDay = new Date(y, mo, 0).getDate();
+  return d >= 1 && d <= lastDay;
+}
+
 function parseDate(v: unknown): string | null {
   if (v == null || v === "") return null;
   if (typeof v === "number") {
     // Excel serial date
     const d = XLSX.SSF.parse_date_code(v);
-    if (d) return `${d.y.toString().padStart(4, "0")}-${String(d.m).padStart(2, "0")}-${String(d.d).padStart(2, "0")}`;
+    if (d) {
+      const iso = `${d.y.toString().padStart(4, "0")}-${String(d.m).padStart(2, "0")}-${String(d.d).padStart(2, "0")}`;
+      return isValidIsoDate(iso) ? iso : null;
+    }
   }
   const s = String(v).trim();
   // dd/mm/yyyy or dd-mm-yyyy
@@ -252,13 +265,20 @@ function parseDate(v: unknown): string | null {
   if (m1) {
     let [, d, mo, y] = m1;
     if (y.length === 2) y = (Number(y) > 50 ? "19" : "20") + y;
-    return `${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
+    const iso = `${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
+    return isValidIsoDate(iso) ? iso : null;
   }
   // yyyy-mm-dd
   const m2 = s.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/);
-  if (m2) return `${m2[1]}-${m2[2].padStart(2, "0")}-${m2[3].padStart(2, "0")}`;
+  if (m2) {
+    const iso = `${m2[1]}-${m2[2].padStart(2, "0")}-${m2[3].padStart(2, "0")}`;
+    return isValidIsoDate(iso) ? iso : null;
+  }
   const d = new Date(s);
-  if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  if (!isNaN(d.getTime())) {
+    const iso = d.toISOString().slice(0, 10);
+    return isValidIsoDate(iso) ? iso : null;
+  }
   return null;
 }
 
