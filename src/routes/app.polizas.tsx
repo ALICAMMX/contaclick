@@ -34,6 +34,15 @@ import {
   listarMovimientosSinPoliza,
   generarPolizasDesdeMovimientos,
 } from "@/lib/contabilidad-auto/bancos.functions";
+import {
+  exportarContpaqi,
+  exportarAspelCoi,
+  exportarAnexo24Polizas,
+  exportarAnexo24Catalogo,
+  exportarAnexo24Balanza,
+  exportarAnexo24AuxCuentas,
+  exportarAnexo24AuxFolios,
+} from "@/lib/contabilidad-auto/export.functions";
 import { triggerFileDownload } from "@/lib/download";
 
 export const Route = createFileRoute("/app/polizas")({
@@ -153,6 +162,34 @@ function PolizasPage() {
   const [selCfdi, setSelCfdi] = useState<Set<string>>(new Set());
   const [selMovs, setSelMovs] = useState<Set<string>>(new Set());
   const [selBorradores, setSelBorradores] = useState<Set<string>>(new Set());
+
+  const hoy = new Date();
+  const [expAnio, setExpAnio] = useState<number>(hoy.getFullYear());
+  const [expMes, setExpMes] = useState<number>(hoy.getMonth() + 1);
+  const [exporting, setExporting] = useState<string | null>(null);
+
+  const contpaqiFn = useServerFn(exportarContpaqi);
+  const aspelFn = useServerFn(exportarAspelCoi);
+  const a24PolFn = useServerFn(exportarAnexo24Polizas);
+  const a24CatFn = useServerFn(exportarAnexo24Catalogo);
+  const a24BalFn = useServerFn(exportarAnexo24Balanza);
+  const a24XcFn = useServerFn(exportarAnexo24AuxCuentas);
+  const a24XfFn = useServerFn(exportarAnexo24AuxFolios);
+
+  async function ejecutarExport(key: string, fn: (arg: any) => Promise<any>, mime: string) {
+    if (!clienteId) return toast.error("Selecciona un cliente activo");
+    try {
+      setExporting(key);
+      const r = await fn({ data: { cliente_id: clienteId, anio: expAnio, mes: expMes } });
+      const blob = new Blob([r.contenido], { type: mime });
+      triggerFileDownload(blob, r.filename);
+      toast.success(`Descargado ${r.filename}`);
+    } catch (e: any) {
+      toast.error(e.message ?? "Error al exportar");
+    } finally {
+      setExporting(null);
+    }
+  }
 
   const [manual, setManual] = useState<PolizaInput>({
     fecha: new Date().toISOString().slice(0, 10),
@@ -289,6 +326,7 @@ function PolizasPage() {
           <TabsTrigger value="csv"><Upload className="h-4 w-4 mr-2" />Importar CSV</TabsTrigger>
           <TabsTrigger value="manual"><FilePlus2 className="h-4 w-4 mr-2" />Alta manual</TabsTrigger>
           <TabsTrigger value="historial">Historial</TabsTrigger>
+          <TabsTrigger value="exportar"><Download className="h-4 w-4 mr-2" />Exportar</TabsTrigger>
         </TabsList>
 
         <TabsContent value="automaticas" className="space-y-4">
@@ -603,6 +641,67 @@ function PolizasPage() {
                 </Table>
               </div>
             )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="exportar" className="space-y-4">
+          <Card className="p-4 space-y-4">
+            <div>
+              <h2 className="font-semibold">Exportar pólizas del período</h2>
+              <p className="text-xs text-muted-foreground">Genera los archivos para importar en tu sistema contable o entregar al SAT (Anexo 24). Solo se incluyen pólizas <b>confirmadas</b>.</p>
+            </div>
+            <div className="flex items-end gap-3 flex-wrap">
+              <div>
+                <Label>Año</Label>
+                <Input type="number" min={2018} max={2100} value={expAnio} onChange={(e) => setExpAnio(Number(e.target.value))} className="w-28" />
+              </div>
+              <div>
+                <Label>Mes</Label>
+                <Select value={String(expMes)} onValueChange={(v) => setExpMes(Number(v))}>
+                  <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                      <SelectItem key={m} value={String(m)}>{String(m).padStart(2, "0")}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded border p-3 space-y-2">
+                <h3 className="font-medium text-sm">Sistemas contables</h3>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" disabled={exporting === "contpaqi"} onClick={() => ejecutarExport("contpaqi", contpaqiFn, "text/plain;charset=utf-8")}>
+                    <Download className="h-4 w-4 mr-2" />{exporting === "contpaqi" ? "Generando..." : "CONTPAQi (TXT)"}
+                  </Button>
+                  <Button variant="outline" size="sm" disabled={exporting === "aspel"} onClick={() => ejecutarExport("aspel", aspelFn, "text/plain;charset=utf-8")}>
+                    <Download className="h-4 w-4 mr-2" />{exporting === "aspel" ? "Generando..." : "Aspel COI (TXT)"}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="rounded border p-3 space-y-2">
+                <h3 className="font-medium text-sm">SAT · Anexo 24 (XML)</h3>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" disabled={exporting === "a24pol"} onClick={() => ejecutarExport("a24pol", a24PolFn, "application/xml")}>
+                    <Download className="h-4 w-4 mr-2" />Pólizas
+                  </Button>
+                  <Button variant="outline" size="sm" disabled={exporting === "a24cat"} onClick={() => ejecutarExport("a24cat", a24CatFn, "application/xml")}>
+                    <Download className="h-4 w-4 mr-2" />Catálogo
+                  </Button>
+                  <Button variant="outline" size="sm" disabled={exporting === "a24bal"} onClick={() => ejecutarExport("a24bal", a24BalFn, "application/xml")}>
+                    <Download className="h-4 w-4 mr-2" />Balanza
+                  </Button>
+                  <Button variant="outline" size="sm" disabled={exporting === "a24xc"} onClick={() => ejecutarExport("a24xc", a24XcFn, "application/xml")}>
+                    <Download className="h-4 w-4 mr-2" />Aux. Cuentas
+                  </Button>
+                  <Button variant="outline" size="sm" disabled={exporting === "a24xf"} onClick={() => ejecutarExport("a24xf", a24XfFn, "application/xml")}>
+                    <Download className="h-4 w-4 mr-2" />Aux. Folios
+                  </Button>
+                </div>
+              </div>
+            </div>
           </Card>
         </TabsContent>
       </Tabs>
