@@ -111,3 +111,9 @@ Módulos verificados sanos: `salud/salud.functions.ts`, `reportes/reportes.funct
 - **Causa:** algunos PDFs bancarios unen varias líneas del estado de cuenta en una sola descripción; aunque el servidor ya aceptaba recorte, el payload podía llegar con conceptos largos desde el navegador o desde bundles publicados anteriores.
 - **Fix:** normalización defensiva en tres puntos: parser bancario, payload de `/app/conciliacion` y validador del servidor. La descripción se limpia y recorta a 480 caracteres; referencia a 120. Así evita el límite histórico y mantiene la carga estable.
 - **Refuerzo:** el validador de servidor ahora normaliza el payload completo antes de ejecutar Zod y el cliente recorta a 450 caracteres para quedar por debajo de cualquier bundle antiguo que aún aplique máximo 500.
+
+## 2026-07-25 · Pólizas automáticas escondidas en otro módulo
+- **Reporte:** el guion hablaba de pólizas automáticas, pero en la pantalla visible de `/app/polizas` sólo aparecían carga CSV, alta manual e historial; eso hacía parecer que la funcionalidad no existía.
+- **Causa:** la generación automática sí existía en `/app/contabilidad-auto`, pero estaba separada del módulo de “Pólizas contables”, por lo que el flujo comercial y operativo no coincidía con lo mostrado al usuario.
+- **Fix:** `/app/polizas` ahora abre con la pestaña **Automáticas**, permite generar pólizas desde CFDI pendientes y movimientos bancarios sin póliza, y permite aprobar borradores automáticos desde la misma pantalla.
+- **Resultado:** el módulo de pólizas ya no depende sólo de importación manual/CSV; integra el flujo automático que se había descrito y mantiene manual/CSV como alternativas.
