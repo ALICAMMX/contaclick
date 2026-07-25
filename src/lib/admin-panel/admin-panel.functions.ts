@@ -52,17 +52,22 @@ export const adminListUsers = createServerFn({ method: "GET" })
     await assertSuperAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+    const startOfMonthIso = startOfMonth.toISOString();
+
     const [profilesRes, despachosRes, subsRes, pagosRes, iaRes, rolesRes, membRes, planesRes, authRes, clientesRes] = await Promise.all([
-      supabaseAdmin.from("profiles").select("*"),
-      supabaseAdmin.from("despachos").select("*"),
-      supabaseAdmin.from("suscripciones").select("*").order("created_at", { ascending: false }),
-      supabaseAdmin.from("pagos").select("*").order("pagado_at", { ascending: false }),
-      supabaseAdmin.from("ia_historial").select("user_id, despacho_id, tokens_in, tokens_out, costo_usd, created_at"),
-      supabaseAdmin.from("user_roles").select("*"),
-      supabaseAdmin.from("user_memberships").select("*"),
-      supabaseAdmin.from("planes").select("*"),
+      supabaseAdmin.from("profiles").select("id, email, full_name, telefono, activo, created_at"),
+      supabaseAdmin.from("despachos").select("id, nombre, owner_user_id, estado, trial_ends_at, plan_id"),
+      supabaseAdmin.from("suscripciones").select("id, despacho_id, plan_id, estatus, current_period_end, proveedor, created_at").order("created_at", { ascending: false }),
+      supabaseAdmin.from("pagos").select("id, despacho_id, suscripcion_id, monto_mxn, estatus, pagado_at").order("pagado_at", { ascending: false }).limit(5000),
+      supabaseAdmin.from("ia_historial").select("user_id, despacho_id, tokens_in, tokens_out, costo_usd, created_at").gte("created_at", startOfMonthIso),
+      supabaseAdmin.from("user_roles").select("user_id, role, despacho_id, cliente_id"),
+      supabaseAdmin.from("user_memberships").select("user_id, despacho_id, estado"),
+      supabaseAdmin.from("planes").select("id, clave, nombre, precio_mxn, limites"),
       supabaseAdmin.auth.admin.listUsers({ perPage: 1000 }),
-      supabaseAdmin.from("clientes").select("despacho_id, tipo_relacion"),
+      supabaseAdmin.from("clientes").select("despacho_id, tipo_relacion").eq("tipo_relacion", "cliente"),
     ]);
 
     if (profilesRes.error) throw new Error(profilesRes.error.message);
