@@ -3,12 +3,13 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
-import { Upload, FilePlus2, Trash2, Download, BookOpen, ArrowLeft } from "lucide-react";
+import { Upload, FilePlus2, Trash2, Download, BookOpen, ArrowLeft, Sparkles, Wand2, CheckCircle2, Banknote, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -23,6 +24,16 @@ import {
   eliminarPoliza,
   type PolizaInput,
 } from "@/lib/polizas/polizas.functions";
+import {
+  listarCfdiPendientes,
+  generarPolizasDesdeCfdi,
+  listarPolizasBorrador,
+  cambiarEstadoPoliza,
+} from "@/lib/contabilidad-auto/contabilizar.functions";
+import {
+  listarMovimientosSinPoliza,
+  generarPolizasDesdeMovimientos,
+} from "@/lib/contabilidad-auto/bancos.functions";
 import { triggerFileDownload } from "@/lib/download";
 
 export const Route = createFileRoute("/app/polizas")({
@@ -35,6 +46,9 @@ const PLANTILLA_CSV = `fecha,tipo,monto,concepto,cuenta,referencia,uuid_cfdi
 `;
 
 type ParsedRow = PolizaInput & { _error?: string };
+
+const mxn = (n: number) =>
+  new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(Number(n || 0));
 
 function parseCSV(text: string): ParsedRow[] {
   const lines = text.replace(/\r/g, "").split("\n").filter((l) => l.trim());
@@ -68,21 +82,61 @@ function parseCSV(text: string): ParsedRow[] {
 
 function PolizasPage() {
   const { cliente } = useActiveCliente();
+  const clienteId = cliente?.id ?? "";
   const qc = useQueryClient();
   const listFn = useServerFn(listarPolizas);
   const importFn = useServerFn(importarPolizas);
   const crearFn = useServerFn(crearPoliza);
   const delFn = useServerFn(eliminarPoliza);
+  const cfdiPendientesFn = useServerFn(listarCfdiPendientes);
+  const generarDesdeCfdiFn = useServerFn(generarPolizasDesdeCfdi);
+  const movsPendientesFn = useServerFn(listarMovimientosSinPoliza);
+  const generarDesdeMovsFn = useServerFn(generarPolizasDesdeMovimientos);
+  const borradoresFn = useServerFn(listarPolizasBorrador);
+  const estadoFn = useServerFn(cambiarEstadoPoliza);
 
   const list = useQuery({
-    queryKey: ["polizas", cliente?.id],
-    queryFn: () => listFn({ data: { cliente_id: cliente!.id, limit: 200 } }),
-    enabled: !!cliente?.id,
+    queryKey: ["polizas", clienteId],
+    queryFn: () => {
+      if (!clienteId) throw new Error("Selecciona un cliente activo");
+      return listFn({ data: { cliente_id: clienteId, limit: 200 } });
+    },
+    enabled: Boolean(clienteId),
+  });
+
+  const cfdiPendientes = useQuery({
+    queryKey: ["polizas-auto-cfdi", clienteId],
+    queryFn: () => {
+      if (!clienteId) throw new Error("Selecciona un cliente activo");
+      return cfdiPendientesFn({ data: { cliente_id: clienteId, limit: 300 } });
+    },
+    enabled: Boolean(clienteId),
+  });
+
+  const movsPendientes = useQuery({
+    queryKey: ["polizas-auto-bancos", clienteId],
+    queryFn: () => {
+      if (!clienteId) throw new Error("Selecciona un cliente activo");
+      return movsPendientesFn({ data: { cliente_id: clienteId, limit: 300 } });
+    },
+    enabled: Boolean(clienteId),
+  });
+
+  const borradoresAuto = useQuery({
+    queryKey: ["polizas-auto-borrador", clienteId],
+    queryFn: () => {
+      if (!clienteId) throw new Error("Selecciona un cliente activo");
+      return borradoresFn({ data: { cliente_id: clienteId, estado: "borrador", limit: 300 } });
+    },
+    enabled: Boolean(clienteId),
   });
 
   const [parsed, setParsed] = useState<ParsedRow[]>([]);
   const validCount = useMemo(() => parsed.filter((p) => !p._error).length, [parsed]);
   const errCount = parsed.length - validCount;
+  const [selCfdi, setSelCfdi] = useState<Set<string>>(new Set());
+  const [selMovs, setSelMovs] = useState<Set<string>>(new Set());
+  const [selBorradores, setSelBorradores] = useState<Set<string>>(new Set());
 
   const [manual, setManual] = useState<PolizaInput>({
     fecha: new Date().toISOString().slice(0, 10),
@@ -96,8 +150,9 @@ function PolizasPage() {
 
   const importMut = useMutation({
     mutationFn: async () => {
+      if (!clienteId) throw new Error("Selecciona un cliente activo");
       const rows = parsed.filter((p) => !p._error).map(({ _error, ...r }) => r);
-      return importFn({ data: { cliente_id: cliente!.id, polizas: rows } });
+      return importFn({ data: { cliente_id: clienteId, polizas: rows } });
     },
     onSuccess: (r) => {
       toast.success(`${r.insertadas} pólizas importadas`);
@@ -108,7 +163,10 @@ function PolizasPage() {
   });
 
   const crearMut = useMutation({
-    mutationFn: async () => crearFn({ data: { cliente_id: cliente!.id, poliza: manual } }),
+    mutationFn: async () => {
+      if (!clienteId) throw new Error("Selecciona un cliente activo");
+      return crearFn({ data: { cliente_id: clienteId, poliza: manual } });
+    },
     onSuccess: () => {
       toast.success("Póliza registrada");
       setManual({ ...manual, monto: 0, concepto: "", referencia: "", uuid_cfdi: "" });
@@ -123,6 +181,47 @@ function PolizasPage() {
       toast.success("Póliza eliminada");
       qc.invalidateQueries({ queryKey: ["polizas"] });
     },
+  });
+
+  const genCfdiMut = useMutation({
+    mutationFn: async () => {
+      if (!clienteId) throw new Error("Selecciona un cliente activo");
+      return generarDesdeCfdiFn({ data: { cliente_id: clienteId, cfdi_ids: Array.from(selCfdi) } });
+    },
+    onSuccess: (r) => {
+      toast.success(`${r.insertadas} pólizas automáticas desde CFDI${r.omitidos ? `, ${r.omitidos} omitidas` : ""}`);
+      setSelCfdi(new Set());
+      qc.invalidateQueries({ queryKey: ["polizas-auto-cfdi"] });
+      qc.invalidateQueries({ queryKey: ["polizas-auto-borrador"] });
+      qc.invalidateQueries({ queryKey: ["polizas"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error generando pólizas desde CFDI"),
+  });
+
+  const genMovsMut = useMutation({
+    mutationFn: async () => {
+      if (!clienteId) throw new Error("Selecciona un cliente activo");
+      return generarDesdeMovsFn({ data: { cliente_id: clienteId, movimiento_ids: Array.from(selMovs) } });
+    },
+    onSuccess: (r) => {
+      toast.success(`${r.insertadas} pólizas automáticas desde bancos${r.omitidos ? `, ${r.omitidos} omitidas` : ""}`);
+      setSelMovs(new Set());
+      qc.invalidateQueries({ queryKey: ["polizas-auto-bancos"] });
+      qc.invalidateQueries({ queryKey: ["polizas-auto-borrador"] });
+      qc.invalidateQueries({ queryKey: ["polizas"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error generando pólizas desde bancos"),
+  });
+
+  const aprobarMut = useMutation({
+    mutationFn: async () => estadoFn({ data: { ids: Array.from(selBorradores), estado: "confirmada" } }),
+    onSuccess: () => {
+      toast.success("Pólizas automáticas aprobadas");
+      setSelBorradores(new Set());
+      qc.invalidateQueries({ queryKey: ["polizas-auto-borrador"] });
+      qc.invalidateQueries({ queryKey: ["polizas"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error al aprobar pólizas"),
   });
 
   function descargarPlantilla() {
@@ -162,18 +261,177 @@ function PolizasPage() {
             <BookOpen className="h-6 w-6" /> Pólizas contables · {cliente.razon_social ?? cliente.rfc}
           </h1>
           <p className="text-muted-foreground text-sm">
-            Carga tus pólizas manualmente o por CSV para alimentar el motor de conciliación.
+            Genera pólizas automáticas desde CFDI y bancos, o carga pólizas manuales cuando sea necesario.
           </p>
         </div>
         <HerramientaHelp slug="polizas" />
       </div>
 
-      <Tabs defaultValue="csv">
+      <Tabs defaultValue="automaticas">
         <TabsList>
+          <TabsTrigger value="automaticas"><Sparkles className="h-4 w-4 mr-2" />Automáticas</TabsTrigger>
           <TabsTrigger value="csv"><Upload className="h-4 w-4 mr-2" />Importar CSV</TabsTrigger>
           <TabsTrigger value="manual"><FilePlus2 className="h-4 w-4 mr-2" />Alta manual</TabsTrigger>
           <TabsTrigger value="historial">Historial</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="automaticas" className="space-y-4">
+          <Card className="p-4 space-y-4">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <h2 className="font-semibold flex items-center gap-2"><FileText className="h-4 w-4" />CFDI sin póliza</h2>
+                <p className="text-xs text-muted-foreground">{selCfdi.size ? `${selCfdi.size} CFDI seleccionados` : `${cfdiPendientes.data?.length ?? 0} CFDI pendientes`}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => {
+                  const rows = cfdiPendientes.data ?? [];
+                  setSelCfdi(selCfdi.size === rows.length ? new Set() : new Set(rows.map((r: any) => r.id)));
+                }} disabled={!cfdiPendientes.data?.length}>
+                  {selCfdi.size === (cfdiPendientes.data?.length ?? 0) && selCfdi.size > 0 ? "Quitar selección" : "Seleccionar todos"}
+                </Button>
+                <Button onClick={() => genCfdiMut.mutate()} disabled={selCfdi.size === 0 || genCfdiMut.isPending}>
+                  <Wand2 className="h-4 w-4 mr-2" />{genCfdiMut.isPending ? "Generando..." : `Generar ${selCfdi.size || ""}`}
+                </Button>
+              </div>
+            </div>
+            <div className="rounded border overflow-auto max-h-[320px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10"></TableHead>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Contraparte</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead>UUID</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(cfdiPendientes.data ?? []).map((c: any) => {
+                    const esEmitido = String(c.rfc_emisor ?? "").toUpperCase() === String(cliente.rfc ?? "").toUpperCase();
+                    return (
+                      <TableRow key={c.id} className="cursor-pointer" onClick={() => setSelCfdi(toggleSet(selCfdi, c.id))}>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox checked={selCfdi.has(c.id)} onCheckedChange={() => setSelCfdi(toggleSet(selCfdi, c.id))} />
+                        </TableCell>
+                        <TableCell className="text-xs">{String(c.fecha).slice(0, 10)}</TableCell>
+                        <TableCell><Badge variant="outline" className="text-xs">{c.tipo_cfdi} · {esEmitido ? "emitido" : "recibido"}</Badge></TableCell>
+                        <TableCell className="truncate max-w-[240px]">{esEmitido ? c.nombre_receptor : c.nombre_emisor}</TableCell>
+                        <TableCell className="text-right font-medium">{mxn(c.total)}</TableCell>
+                        <TableCell className="text-xs font-mono truncate max-w-[160px]">{c.uuid}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {cfdiPendientes.data && cfdiPendientes.data.length === 0 && (
+                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No hay CFDI pendientes de póliza.</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
+
+          <Card className="p-4 space-y-4">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <h2 className="font-semibold flex items-center gap-2"><Banknote className="h-4 w-4" />Movimientos bancarios sin póliza</h2>
+                <p className="text-xs text-muted-foreground">{selMovs.size ? `${selMovs.size} movimientos seleccionados` : `${movsPendientes.data?.length ?? 0} movimientos pendientes`}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => {
+                  const rows = movsPendientes.data ?? [];
+                  setSelMovs(selMovs.size === rows.length ? new Set() : new Set(rows.map((r: any) => r.id)));
+                }} disabled={!movsPendientes.data?.length}>
+                  {selMovs.size === (movsPendientes.data?.length ?? 0) && selMovs.size > 0 ? "Quitar selección" : "Seleccionar todos"}
+                </Button>
+                <Button onClick={() => genMovsMut.mutate()} disabled={selMovs.size === 0 || genMovsMut.isPending}>
+                  <Wand2 className="h-4 w-4 mr-2" />{genMovsMut.isPending ? "Generando..." : `Generar ${selMovs.size || ""}`}
+                </Button>
+              </div>
+            </div>
+            <div className="rounded border overflow-auto max-h-[320px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10"></TableHead>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Descripción</TableHead>
+                    <TableHead>Referencia</TableHead>
+                    <TableHead className="text-right">Cargo</TableHead>
+                    <TableHead className="text-right">Abono</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(movsPendientes.data ?? []).map((m: any) => (
+                    <TableRow key={m.id} className="cursor-pointer" onClick={() => setSelMovs(toggleSet(selMovs, m.id))}>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Checkbox checked={selMovs.has(m.id)} onCheckedChange={() => setSelMovs(toggleSet(selMovs, m.id))} />
+                      </TableCell>
+                      <TableCell className="text-xs">{String(m.fecha).slice(0, 10)}</TableCell>
+                      <TableCell className="truncate max-w-[320px]">{m.descripcion ?? "—"}</TableCell>
+                      <TableCell className="text-xs">{m.referencia ?? ""}</TableCell>
+                      <TableCell className="text-right font-mono">{Number(m.cargo) > 0 ? mxn(m.cargo) : ""}</TableCell>
+                      <TableCell className="text-right font-mono">{Number(m.abono) > 0 ? mxn(m.abono) : ""}</TableCell>
+                    </TableRow>
+                  ))}
+                  {movsPendientes.data && movsPendientes.data.length === 0 && (
+                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No hay movimientos bancarios pendientes de póliza.</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
+
+          <Card className="p-4 space-y-4">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <h2 className="font-semibold flex items-center gap-2"><CheckCircle2 className="h-4 w-4" />Borradores automáticos</h2>
+                <p className="text-xs text-muted-foreground">{selBorradores.size ? `${selBorradores.size} borradores seleccionados` : `${borradoresAuto.data?.length ?? 0} borradores por aprobar`}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => {
+                  const rows = borradoresAuto.data ?? [];
+                  setSelBorradores(selBorradores.size === rows.length ? new Set() : new Set(rows.map((r: any) => r.id)));
+                }} disabled={!borradoresAuto.data?.length}>
+                  {selBorradores.size === (borradoresAuto.data?.length ?? 0) && selBorradores.size > 0 ? "Quitar selección" : "Seleccionar todos"}
+                </Button>
+                <Button onClick={() => aprobarMut.mutate()} disabled={selBorradores.size === 0 || aprobarMut.isPending}>
+                  <CheckCircle2 className="h-4 w-4 mr-2" />{aprobarMut.isPending ? "Aprobando..." : `Aprobar ${selBorradores.size || ""}`}
+                </Button>
+              </div>
+            </div>
+            <div className="rounded border overflow-auto max-h-[360px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10"></TableHead>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead className="text-right">Monto</TableHead>
+                    <TableHead>Concepto</TableHead>
+                    <TableHead>Origen</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(borradoresAuto.data ?? []).map((p: any) => (
+                    <TableRow key={p.id} className="cursor-pointer" onClick={() => setSelBorradores(toggleSet(selBorradores, p.id))}>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Checkbox checked={selBorradores.has(p.id)} onCheckedChange={() => setSelBorradores(toggleSet(selBorradores, p.id))} />
+                      </TableCell>
+                      <TableCell className="text-xs">{String(p.fecha).slice(0, 10)}</TableCell>
+                      <TableCell><Badge variant="outline" className="text-xs">{p.tipo}</Badge></TableCell>
+                      <TableCell className="text-right font-medium">{mxn(p.monto)}</TableCell>
+                      <TableCell className="truncate max-w-[360px]">{p.concepto}</TableCell>
+                      <TableCell><Badge variant="secondary" className="text-xs">{p.origen}</Badge></TableCell>
+                    </TableRow>
+                  ))}
+                  {borradoresAuto.data && borradoresAuto.data.length === 0 && (
+                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Sin borradores automáticos por aprobar.</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="csv" className="space-y-4">
           <Card className="p-4 space-y-4">
