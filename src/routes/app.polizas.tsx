@@ -326,6 +326,7 @@ function PolizasPage() {
           <TabsTrigger value="csv"><Upload className="h-4 w-4 mr-2" />Importar CSV</TabsTrigger>
           <TabsTrigger value="manual"><FilePlus2 className="h-4 w-4 mr-2" />Alta manual</TabsTrigger>
           <TabsTrigger value="historial">Historial</TabsTrigger>
+          <TabsTrigger value="exportar"><Download className="h-4 w-4 mr-2" />Exportar</TabsTrigger>
         </TabsList>
 
         <TabsContent value="automaticas" className="space-y-4">
