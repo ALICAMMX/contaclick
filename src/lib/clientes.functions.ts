@@ -169,6 +169,24 @@ export const createCliente = createServerFn({ method: "POST" })
       }
     }
 
+    // Candado anti-duplicados: bloquea alta si ya existe el RFC como expediente
+    // (tipo_relacion=cliente sin padre) en el mismo despacho o para el mismo usuario.
+    let dupQ = supabase
+      .from("clientes")
+      .select("id, razon_social, rfc")
+      .eq("rfc", data.rfc)
+      .eq("tipo_relacion", "cliente")
+      .is("cliente_padre_id", null)
+      .limit(1);
+    if (despachoId) dupQ = dupQ.eq("despacho_id", despachoId);
+    else dupQ = dupQ.eq("user_id", userId);
+    const { data: dup } = await dupQ.maybeSingle();
+    if (dup) {
+      throw new Error(
+        `El RFC ${data.rfc} ya está registrado como expediente (${dup.razon_social ?? "sin nombre"}). No se creó un duplicado.`,
+      );
+    }
+
     const clienteId = crypto.randomUUID();
     const row = {
       id: clienteId,
