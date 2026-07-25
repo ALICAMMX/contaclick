@@ -78,7 +78,8 @@ function ReporteEjecutivoPage() {
   const sims = useQuery({ queryKey: ["re-sims"], queryFn: () => listarSimulaciones({ data: {} }) });
 
   const mGenerar = useMutation({
-    mutationFn: (cliente_id: string) => generarReporte({ data: { cliente_id, tipo: "mensual" } }),
+    mutationFn: (v: { cliente_id: string; periodo: string }) =>
+      generarReporte({ data: { cliente_id: v.cliente_id, periodo: v.periodo, tipo: "mensual" } }),
     onSuccess: (r) => {
       toast.success(`Reporte listo · ${r.hallazgos_count} hallazgos · ${r.recomendaciones_count} recomendaciones`);
       qc.invalidateQueries({ queryKey: ["re-list"] });
