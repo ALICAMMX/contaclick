@@ -1,0 +1,1 @@
+ALTER TABLE public.despachos ADD COLUMN IF NOT EXISTS limites_override jsonb;
