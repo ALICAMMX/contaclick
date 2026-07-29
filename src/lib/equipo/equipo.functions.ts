@@ -55,12 +55,17 @@ async function resolveAdminDespacho(supabase: any, userId: string) {
 }
 
 async function getMembersLimit(supabaseAdmin: any, despachoId: string): Promise<number | null> {
-  // Read plan from despacho. If no plan, default to trial=2.
+  // Read plan + override from despacho. If no plan, default to trial=2.
   const { data: d } = await supabaseAdmin
     .from("despachos")
-    .select("plan_id, estado")
+    .select("plan_id, estado, limites_override")
     .eq("id", despachoId)
     .maybeSingle();
+  // Override tiene prioridad si define max_miembros
+  const ov = (d?.limites_override as any)?.max_miembros;
+  if (ov !== undefined && ov !== null) {
+    if (typeof ov === "number") return ov < 0 ? null : ov;
+  }
   if (d?.plan_id) {
     const { data: p } = await supabaseAdmin
       .from("planes")
