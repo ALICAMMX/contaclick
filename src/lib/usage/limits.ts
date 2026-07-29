@@ -56,11 +56,12 @@ export async function getPlanLimites(
 ): Promise<Limites> {
   const { data } = await supabase
     .from("despachos")
-    .select("plan_id, planes(limites)")
+    .select("plan_id, limites_override, planes(limites)")
     .eq("id", despachoId)
     .maybeSingle();
   const lim = (data as any)?.planes?.limites as Limites | undefined;
-  return { ...DEFAULT_LIMITS, ...(lim ?? {}) };
+  const override = (data as any)?.limites_override as Partial<Limites> | null | undefined;
+  return { ...DEFAULT_LIMITS, ...(lim ?? {}), ...(override ?? {}) };
 }
 
 export async function getUsoPeriodo(
