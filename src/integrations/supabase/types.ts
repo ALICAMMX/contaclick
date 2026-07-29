@@ -1665,6 +1665,7 @@ export type Database = {
           created_at: string
           estado: string
           id: string
+          limites_override: Json | null
           nombre: string
           owner_user_id: string
           plan_id: string | null
@@ -1677,6 +1678,7 @@ export type Database = {
           created_at?: string
           estado?: string
           id?: string
+          limites_override?: Json | null
           nombre: string
           owner_user_id: string
           plan_id?: string | null
@@ -1689,6 +1691,7 @@ export type Database = {
           created_at?: string
           estado?: string
           id?: string
+          limites_override?: Json | null
           nombre?: string
           owner_user_id?: string
           plan_id?: string | null
