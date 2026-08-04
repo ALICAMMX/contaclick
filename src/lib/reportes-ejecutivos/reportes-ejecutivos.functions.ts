@@ -413,14 +413,22 @@ export const actualizarRecomendacion = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     z.object({
       id: z.string().uuid(),
+      cliente_id: z.string().uuid(),
       estado: z.enum(["pendiente", "en_proceso", "implementada", "descartada"]),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
     const sb = context.supabase as any;
+    const scope = await assertClienteScope(sb, context.userId, data.cliente_id);
+    await assertRecordScope(sb, context.userId, "recomendaciones_ia", data.id, scope.cliente_id);
     const upd: Record<string, unknown> = { estado: data.estado };
     if (data.estado === "implementada") upd.implementada_at = new Date().toISOString();
-    const { error } = await sb.from("recomendaciones_ia").update(upd).eq("id", data.id);
+    const { error } = await sb
+      .from("recomendaciones_ia")
+      .update(upd)
+      .eq("id", data.id)
+      .eq("cliente_id", scope.cliente_id)
+      .eq("despacho_id", scope.despacho_id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -428,15 +436,23 @@ export const actualizarRecomendacion = createServerFn({ method: "POST" })
 // ============ Crear tarea desde recomendación ============
 export const crearTareaDesdeRecomendacion = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid(), cliente_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const sb = context.supabase as any;
     const userId = context.userId;
-    const { data: rec } = await sb.from("recomendaciones_ia").select("*").eq("id", data.id).maybeSingle();
-    if (!rec) throw new Error("Recomendación no encontrada");
+    const scope = await assertClienteScope(sb, context.userId, data.cliente_id);
+    await assertRecordScope(sb, context.userId, "recomendaciones_ia", data.id, scope.cliente_id);
+    const { data: rec } = await sb
+      .from("recomendaciones_ia")
+      .select("*")
+      .eq("id", data.id)
+      .eq("cliente_id", scope.cliente_id)
+      .eq("despacho_id", scope.despacho_id)
+      .maybeSingle();
+    if (!rec) throw new Error("Recomendación no encontrada en el expediente activo");
     const { data: t, error } = await sb.from("tareas").insert({
-      despacho_id: rec.despacho_id,
-      cliente_id: rec.cliente_id,
+      despacho_id: scope.despacho_id,
+      cliente_id: scope.cliente_id,
       titulo: rec.titulo,
       descripcion: `${rec.descripcion}\n\nAcción sugerida: ${rec.accion_sugerida ?? "-"}`,
       prioridad: rec.prioridad === "alta" ? "alta" : rec.prioridad === "baja" ? "baja" : "media",
@@ -445,9 +461,14 @@ export const crearTareaDesdeRecomendacion = createServerFn({ method: "POST" })
       created_by: userId,
     }).select("id").maybeSingle();
     if (error) throw new Error(error.message);
-    await sb.from("recomendaciones_ia").update({ tarea_id: t?.id, estado: "en_proceso" }).eq("id", data.id);
+    await sb
+      .from("recomendaciones_ia")
+      .update({ tarea_id: t?.id, estado: "en_proceso" })
+      .eq("id", data.id)
+      .eq("cliente_id", scope.cliente_id);
     return { tarea_id: t?.id as string | undefined };
   });
+
 
 // ============ Simulador estratégico ============
 export const simularEscenario = createServerFn({ method: "POST" })
