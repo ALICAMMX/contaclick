@@ -164,7 +164,13 @@ function RiesgoPage() {
             </div>
           </div>
 
-
+          <div className="rounded-xl border border-border/60 bg-muted/20 p-4 text-xs text-muted-foreground space-y-1">
+            <div className="font-medium text-foreground">
+              Metodología v{data.meta.metodologia.version} · actualizada al {data.meta.metodologia.actualizadoAl}
+            </div>
+            <p>{data.meta.metodologia.descripcion}</p>
+            <p className="italic">{data.meta.metodologia.advertencia}</p>
+          </div>
 
           <div className="grid md:grid-cols-2 gap-4">
             {data.criterios.map((c) => <CriterioCard key={c.id} c={c} />)}
