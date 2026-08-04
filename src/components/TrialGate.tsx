@@ -1,9 +1,9 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { Lock, ArrowRight } from "lucide-react";
-import { useDespacho } from "@/lib/despacho/use-despacho";
+import { useEntitlements } from "@/lib/entitlements/use-entitlements";
 import type { ReactNode } from "react";
 
-// Rutas permitidas aunque el trial haya vencido (para que el usuario pueda pagar / cerrar sesión / ver equipo).
+// Rutas permitidas aunque la cuenta esté bloqueada (para pagar, ver equipo o salir).
 const ALLOWED_PREFIXES = [
   "/app/checkout",
   "/app/configuracion",
@@ -12,20 +12,16 @@ const ALLOWED_PREFIXES = [
   "/precios",
 ];
 
+/**
+ * Candado de acceso. NO decide nada por su cuenta: refleja el entitlement
+ * calculado en el servidor (estado, trial, plan y excepciones comerciales).
+ * El backend vuelve a validar en cada operación, así que esto es sólo UX.
+ */
 export function TrialGate({ children }: { children: ReactNode }) {
-  const { despacho } = useDespacho();
+  const { bloqueada, motivoBloqueo, isLoading } = useEntitlements();
   const location = useLocation();
 
-  const expired = (() => {
-    if (!despacho) return false;
-    // Si ya tiene un plan asignado, nunca bloquear (aunque el estado esté mal cacheado)
-    if (despacho.plan_id) return false;
-    if (despacho.estado !== "trial") return false;
-    if (!despacho.trial_ends_at) return false;
-    return new Date(despacho.trial_ends_at).getTime() <= Date.now();
-  })();
-
-  if (!expired) return <>{children}</>;
+  if (isLoading || !bloqueada) return <>{children}</>;
 
   const onAllowed = ALLOWED_PREFIXES.some((p) => location.pathname.startsWith(p));
   if (onAllowed) return <>{children}</>;
@@ -36,10 +32,12 @@ export function TrialGate({ children }: { children: ReactNode }) {
         <div className="h-14 w-14 rounded-full bg-destructive/15 grid place-items-center mx-auto mb-4">
           <Lock className="h-7 w-7 text-destructive" />
         </div>
-        <h1 className="text-2xl font-bold mb-2">Tu prueba gratuita ha vencido</h1>
+        <h1 className="text-2xl font-bold mb-2">Tu acceso está pausado</h1>
         <p className="text-sm text-muted-foreground mb-6">
-          Para seguir usando las herramientas de ContaClick necesitas elegir un plan. Tus datos y expedientes
-          siguen seguros y estarán disponibles en cuanto actives tu suscripción.
+          {motivoBloqueo ??
+            "Para seguir usando las herramientas de ContaClick necesitas elegir un plan."}{" "}
+          Tus datos y expedientes siguen seguros y estarán disponibles en cuanto actives tu
+          suscripción.
         </p>
         <div className="flex flex-col sm:flex-row gap-2 justify-center">
           <Link

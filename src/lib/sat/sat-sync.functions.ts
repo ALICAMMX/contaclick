@@ -16,12 +16,12 @@ import { scanClienteEfos } from "@/lib/efos/efos.functions";
 import { assertClienteScope } from "@/lib/despacho/scope";
 import {
   assertSatRunPermitido,
-  assertFrecuenciaPermitida,
   contarSolicitudesPrevistas,
+  devolverReservaPac,
   registrarConsumoSat,
   type FrecuenciaSat,
 } from "@/lib/usage/sat-quota";
-import { getPlanLimites } from "@/lib/usage/limits";
+import { assertFrecuencia, getEntitlements } from "@/lib/entitlements/service";
 
 
 export type Frecuencia = "manual" | "diaria" | "semanal" | "mensual";
@@ -89,9 +89,9 @@ export const upsertSatSyncConfig = createServerFn({ method: "POST" })
     const { supabase } = context;
     const { data: cli } = await supabase.from("clientes").select("despacho_id").eq("id", data.cliente_id).maybeSingle();
     if (!cli?.despacho_id) throw new Error("Expediente no encontrado");
-    // Candado: la frecuencia debe estar permitida por el plan
-    const limites = await getPlanLimites(supabase, cli.despacho_id);
-    assertFrecuenciaPermitida(limites, data.frecuencia as FrecuenciaSat);
+    // Candado: la cuenta debe estar vigente y la frecuencia permitida por el plan
+    const ent = await getEntitlements(supabase, cli.despacho_id);
+    assertFrecuencia(ent, data.frecuencia as FrecuenciaSat);
     const proxima = calcularProxima(data.frecuencia);
 
     const { error } = await supabase.from("sat_sync_config").upsert(
@@ -249,41 +249,45 @@ export const runSyncNow = createServerFn({ method: "POST" })
 
     let solicitudesPrevistas = 0;
     let esMockRun = false;
-    if (!cred || cred.estatus !== "activo" || (!usaSatDirecto && !cred.pac_token)) {
-      errores.push({ fase: "auth", mensaje: "Expediente no conectado al SAT (sin e.firma cargada)" });
+    let reservaKey: string | null = null;
+
+    if (!cred || cred.estatus !== "activo") {
+      errores.push({
+        fase: "credencial",
+        mensaje: "El expediente no tiene credenciales SAT activas (e.firma o CIEC).",
+      });
     } else {
-      // Con e.firma propia la descarga es directa contra el SAT: costo $0, sin PAC.
-      const isMock = !usaSatDirecto && (cred.pac_token?.startsWith("mock_") || !process.env.SW_USER);
-      esMockRun = !!isMock;
-      // ===== Candados de uso (cuota del plan; el saldo PAC no aplica en SAT directo) =====
-      try {
+    // Con e.firma propia la descarga es directa contra el SAT: costo $0, sin PAC.
+    const isMock = !usaSatDirecto && (cred.pac_token?.startsWith("mock_") || !process.env.SW_USER);
+    esMockRun = !!isMock;
 
-        solicitudesPrevistas = contarSolicitudesPrevistas({
-          emitidos: !!cfg?.emitidos,
-          recibidos: !!cfg?.recibidos,
-          nomina: !!cfg?.nomina,
-          pagos: !!cfg?.pagos,
-          retenciones: !!cfg?.retenciones,
-          fecha_desde: desde,
-          fecha_hasta: hasta,
-        });
-        if (solicitudesPrevistas === 0) solicitudesPrevistas = 1; // sin tipos: al menos 1
-        let supabaseAdmin: any = null;
-        if (!isMock && !usaSatDirecto) {
-          const mod = await import("@/integrations/supabase/client.server");
-          supabaseAdmin = mod.supabaseAdmin;
-        }
+    // ===== Candados de uso: acceso, frecuencia, cuota del plan y saldo del PAC =====
+    try {
+      solicitudesPrevistas = contarSolicitudesPrevistas({
+        emitidos: !!cfg?.emitidos,
+        recibidos: !!cfg?.recibidos,
+        nomina: !!cfg?.nomina,
+        pagos: !!cfg?.pagos,
+        retenciones: !!cfg?.retenciones,
+        fecha_desde: desde,
+        fecha_hasta: hasta,
+      });
+      if (solicitudesPrevistas === 0) solicitudesPrevistas = 1; // sin tipos: al menos 1
 
-        await assertSatRunPermitido({
-          supabase,
-          supabaseAdmin,
-          despachoId: cli.despacho_id,
-          frecuencia: (cfg?.frecuencia ?? "manual") as FrecuenciaSat,
-          previstas: solicitudesPrevistas,
-        });
-      } catch (e: any) {
-        errores.push({ fase: "cuota", mensaje: String(e?.message ?? e).slice(0, 300) });
-      }
+      const res = await assertSatRunPermitido({
+        supabase,
+        despachoId: cli.despacho_id,
+        frecuencia: (cfg?.frecuencia ?? "manual") as FrecuenciaSat,
+        previstas: solicitudesPrevistas,
+        runId,
+        // SAT directo (e.firma) y demo no consumen saldo del proveedor.
+        esMock: !!isMock || usaSatDirecto,
+      });
+      reservaKey = res.reservaKey;
+    } catch (e: any) {
+      errores.push({ fase: "cuota", mensaje: String(e?.message ?? e).slice(0, 300) });
+    }
+
       try {
         if (errores.length > 0) {
           // hubo error de cuota: no llamamos al PAC
@@ -410,19 +414,21 @@ export const runSyncNow = createServerFn({ method: "POST" })
     }).eq("id", runId);
 
 
-    // Registro de consumo SAT (cuota despacho + saldo PAC si es real)
-    if (solicitudesPrevistas > 0 && estatus !== "error") {
+    // Liquidación: consumo real del despacho + cierre de la reserva del PAC.
+    // Si la corrida falló, se devuelve la reserva completa (no se cobra nada).
+    if (estatus === "error") {
+      if (reservaKey) {
+        await devolverReservaPac(supabase, reservaKey, "Corrida SAT fallida");
+      }
+    } else if (solicitudesPrevistas > 0) {
       try {
-        let supabaseAdmin: any = null;
-        if (!esMockRun) {
-          const mod = await import("@/integrations/supabase/client.server");
-          supabaseAdmin = mod.supabaseAdmin;
-        }
         await registrarConsumoSat({
-          supabase, supabaseAdmin,
+          supabase,
           despachoId: cli.despacho_id,
           solicitudes: solicitudesPrevistas,
-          esMock: esMockRun,
+          esMock: esMockRun || usaSatDirecto,
+          reservaKey,
+          runId,
         });
       } catch (e: any) {
         console.warn("[sat-sync] registrar consumo falló:", e?.message ?? e);
