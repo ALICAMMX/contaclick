@@ -168,9 +168,9 @@ export const ajustarSaldoPac = createServerFn({ method: "POST" })
     await assertSuperAdmin(context.supabase, context.userId);
     if (data.solicitudes === 0) throw new Error("El ajuste no puede ser cero.");
     const { data: row, error } = await context.supabase.rpc("pac_ajustar", {
-      _solicitudes: data.solicitudes,
+      _delta: data.solicitudes,
       _motivo: data.motivo,
-      _referencia: data.referencia ?? null,
+      _key: `ajuste:${data.referencia ?? `${Date.now()}`}`,
     });
     if (error) throw new Error(error.message);
     await evaluarAlertasSaldoPac(context.supabase);
