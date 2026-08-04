@@ -4835,6 +4835,7 @@ export type Database = {
         }[]
       }
       pac_selftest_lock: { Args: { _segundos?: number }; Returns: string }
+      pac_selftest_try_lock: { Args: { _ms?: number }; Returns: string }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {
