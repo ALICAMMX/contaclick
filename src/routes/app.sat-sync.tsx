@@ -7,9 +7,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import {
   RefreshCw, ShieldCheck, AlertTriangle, FileStack, Clock, PlugZap, Loader2,
-  Pause, Play, Settings as SettingsIcon, ArrowLeft,
+  Pause, Play, Settings as SettingsIcon, ArrowLeft, Ban, Wallet,
 } from "lucide-react";
-import { dashboardSatSync, runSyncNow, listSyncRuns, listSyncEventos, setSyncActivo, getSatSyncConfig, upsertSatSyncConfig } from "@/lib/sat/sat-sync.functions";
+import { dashboardSatSync, runSyncNow, listSyncRuns, listSyncEventos, setSyncActivo, getSatSyncConfig, upsertSatSyncConfig, estadoServicioSat } from "@/lib/sat/sat-sync.functions";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -272,6 +272,52 @@ function ConfigTab() {
   return <ConfigExpediente clienteId={cliente.id} rfc={cliente.rfc} />;
 }
 
+function EstadoServicio({ q }: { q: any }) {
+  if (q.isLoading) {
+    return (
+      <div className="mt-4 rounded-lg border border-border bg-muted/20 p-3 animate-pulse space-y-2">
+        <div className="h-3 w-48 bg-muted rounded" />
+        <div className="h-3 w-72 bg-muted rounded" />
+      </div>
+    );
+  }
+  const e = q.data;
+  if (!e) return null;
+  const ok = e.puede_ejecutar;
+  return (
+    <div
+      className={`mt-4 rounded-lg border p-3 text-xs space-y-1.5 ${
+        ok ? "border-border bg-muted/20" : "border-destructive/40 bg-destructive/10"
+      }`}
+    >
+      <div className="flex items-center gap-2 font-medium text-foreground">
+        <Wallet className="h-3.5 w-3.5" />
+        Costo estimado de esta corrida: {e.previstas} solicitud(es) SAT
+        <span className="text-muted-foreground font-normal">
+          · {e.rango.desde} → {e.rango.hasta}
+        </span>
+      </div>
+      <div className="text-muted-foreground">
+        Cuota del plan: {e.cuota.usado}
+        {e.cuota.ilimitado ? " (ilimitada)" : ` de ${e.cuota.limite} · quedan ${e.cuota.restante}`}
+        {e.es_sandbox && " · expediente de demostración (no consume saldo real)"}
+      </div>
+      {e.servicio && (
+        <div className="text-muted-foreground">
+          Servicio PAC (visible sólo para administración): {e.servicio.disponible} disponibles ·{" "}
+          {e.servicio.reservado} reservadas · nivel {e.servicio.nivel}
+        </div>
+      )}
+      {!ok && (
+        <div className="flex items-start gap-2 text-destructive pt-1">
+          <Ban className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          <span>{e.motivo}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: string }) {
   const qc = useQueryClient();
   const fnGet = useServerFn(getSatSyncConfig);
@@ -280,7 +326,20 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
   const fnPause = useServerFn(setSyncActivo);
   const fnRuns = useServerFn(listSyncRuns);
 
+  const fnEstado = useServerFn(estadoServicioSat);
   const cfgQ = useQuery({ queryKey: ["sat-sync", "cfg", clienteId], enabled: !!clienteId, queryFn: () => fnGet({ data: { cliente_id: clienteId } }) });
+  // Superficie única del candado: la UI refleja el estado que calcula el backend
+  // (cuota del plan + saldo operativo del servicio). Se refresca sola tras recargas.
+  const estadoQ = useQuery({
+    queryKey: ["sat-sync", "estado", clienteId],
+    enabled: !!clienteId,
+    queryFn: () => fnEstado({ data: { cliente_id: clienteId } }),
+    staleTime: 15_000,
+    refetchOnWindowFocus: true,
+    refetchInterval: 60_000,
+  });
+  const estado = estadoQ.data;
+  const bloqueado = !!estado && !estado.puede_ejecutar;
   const runsQ = useQuery({ queryKey: ["sat-sync", "runs-cli", clienteId], enabled: !!clienteId, queryFn: () => fnRuns({ data: { cliente_id: clienteId, limit: 10 } }) });
 
   const cfg = cfgQ.data;
@@ -299,6 +358,7 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
   const runNow = useMutation({
     mutationFn: () => fnRun({ data: { cliente_id: clienteId, origen: "expediente", cascade: true } }),
     onSuccess: (r) => { toast.success(`Sincronización ${r.estatus}: ${r.descargados} XML, ${r.nuevos} nuevos`); qc.invalidateQueries({ queryKey: ["sat-sync"] }); },
+    onSettled: () => { qc.invalidateQueries({ queryKey: ["sat-sync", "estado", clienteId] }); },
     onError: (e: any) => toast.error(e?.message ?? "Error"),
   });
 
@@ -321,8 +381,16 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="hero" onClick={() => runNow.mutate()} disabled={runNow.isPending}>
-              {runNow.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+            <Button
+              size="sm"
+              variant="hero"
+              onClick={() => runNow.mutate()}
+              disabled={runNow.isPending || estadoQ.isLoading || bloqueado}
+              title={estado?.motivo ?? undefined}
+            >
+              {runNow.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                : bloqueado ? <Ban className="h-4 w-4 mr-2" />
+                : <RefreshCw className="h-4 w-4 mr-2" />}
               Sincronizar ahora
             </Button>
             <Button size="sm" variant="outline" onClick={() => togglePause.mutate()} disabled={togglePause.isPending || !cfg}>
@@ -331,6 +399,8 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
             </Button>
           </div>
         </div>
+
+        <EstadoServicio q={estadoQ} />
       </div>
 
       <div className="rounded-xl border border-border bg-card p-4 space-y-4">
