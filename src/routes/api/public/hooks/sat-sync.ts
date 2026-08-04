@@ -129,9 +129,19 @@ export const Route = createFileRoute("/api/public/hooks/sat-sync")({
           if (estatus === "exitoso") exitosos++; else errores++;
         }
 
-        return Response.json({ ok: true, procesados, exitosos, errores });
+        // Cosecha de solicitudes que el SAT ya liberó (corridas en_curso)
+        let cosecha = { revisadas: 0, nuevos: 0 };
+        try {
+          const { cosecharPendientes } = await import("@/lib/sat/sat-directo-runner.server");
+          cosecha = await cosecharPendientes(supabase, 20);
+        } catch {
+          // no bloquea el cron
+        }
+
+        return Response.json({ ok: true, procesados, exitosos, errores, cosecha });
       },
       GET: async () => Response.json({ ok: true, info: "POST con apikey para procesar sincronizaciones SAT pendientes" }),
+
     },
   },
 });
