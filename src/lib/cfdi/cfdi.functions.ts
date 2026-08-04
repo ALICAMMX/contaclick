@@ -138,7 +138,7 @@ async function ingestOne(supabase: SupabaseClient, userId: string, clienteId: st
   return ingestOneInternal(supabase, despachoId, clienteId, filename, xml);
 }
 
-async function ingestOneInternal(
+export async function ingestOneInternal(
   supabase: SupabaseClient,
   despachoId: string,
   clienteId: string,
