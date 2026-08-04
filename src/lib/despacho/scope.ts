@@ -90,3 +90,48 @@ export async function assertClienteScope(
     razon_social: (target.razon_social ?? null) as string | null,
   };
 }
+
+// ---------------------------------------------------------------------
+// Candado por REGISTRO (id de reporte, corrida SAT, movimiento, etc.)
+// ---------------------------------------------------------------------
+
+export const REGISTRO_FUERA_DE_ALCANCE =
+  "El registro no existe en el expediente activo.";
+
+/**
+ * Resuelve el expediente dueño de un registro y valida el alcance del usuario.
+ * Nunca devuelve el registro: sólo el scope. Si el registro pertenece a otro
+ * expediente/despacho, o el usuario no tiene acceso, lanza un error genérico
+ * sin filtrar ningún dato parcial del registro.
+ *
+ * @param expectedClienteId cuando se envía, el registro DEBE pertenecer a ese
+ *        expediente (el activo). Evita confiar en el id enviado por el cliente.
+ */
+export async function assertRecordScope(
+  supabase: SupabaseClient,
+  userId: string,
+  table: string,
+  recordId: string,
+  expectedClienteId?: string | null,
+): Promise<ClienteScope> {
+  if (!recordId) throw new Error(REGISTRO_FUERA_DE_ALCANCE);
+  const { data: row, error } = await supabase
+    .from(table)
+    .select("id, cliente_id, despacho_id")
+    .eq("id", recordId)
+    .maybeSingle();
+  if (error) throw new Error(REGISTRO_FUERA_DE_ALCANCE);
+  if (!row || !(row as any).cliente_id) throw new Error(REGISTRO_FUERA_DE_ALCANCE);
+
+  const scope = await assertClienteScope(supabase, userId, (row as any).cliente_id).catch(() => {
+    throw new Error(REGISTRO_FUERA_DE_ALCANCE);
+  });
+
+  if (expectedClienteId && scope.cliente_id !== expectedClienteId) {
+    throw new Error(REGISTRO_FUERA_DE_ALCANCE);
+  }
+  if ((row as any).despacho_id && (row as any).despacho_id !== scope.despacho_id) {
+    throw new Error(REGISTRO_FUERA_DE_ALCANCE);
+  }
+  return scope;
+}
