@@ -18,10 +18,11 @@ import {
   assertSatRunPermitido,
   contarSolicitudesPrevistas,
   devolverReservaPac,
+  leerSaldoPac,
   registrarConsumoSat,
   type FrecuenciaSat,
 } from "@/lib/usage/sat-quota";
-import { assertFrecuencia, getEntitlements } from "@/lib/entitlements/service";
+import { assertFrecuencia, getEntitlements, limiteDe, usadoDe } from "@/lib/entitlements/service";
 
 
 export type Frecuencia = "manual" | "diaria" | "semanal" | "mensual";
