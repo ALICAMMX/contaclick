@@ -113,19 +113,20 @@ export const autogenerarObligaciones = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const despachoId = await resolveActiveDespachoId(supabase, userId);
+    const scope = await assertClienteScope(supabase as any, userId, data.clienteId);
+    const despachoId = scope.despacho_id;
 
     const { data: cliente } = await supabase
       .from("clientes")
       .select("id, alert_days_default, alert_channels_default")
-      .eq("id", data.clienteId)
+      .eq("id", scope.cliente_id)
       .maybeSingle();
     if (!cliente) throw new Error("Expediente no encontrado");
 
     const { data: rfcs } = await supabase
       .from("rfcs")
       .select("id, tipo_persona, regimen_fiscal")
-      .eq("cliente_id", data.clienteId);
+      .eq("cliente_id", scope.cliente_id);
     if (!rfcs || rfcs.length === 0) {
       throw new Error("El expediente no tiene RFCs registrados. Agrega la CSF primero.");
     }
@@ -210,14 +211,15 @@ export const upsertObligacion = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => upsertSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const despachoId = await resolveActiveDespachoId(supabase, userId);
+    const scope = await assertClienteScope(supabase as any, userId, data.clienteId);
+    const despachoId = scope.despacho_id;
 
     let rfcId = data.rfcId;
     if (!rfcId) {
       const { data: rfc } = await supabase
         .from("rfcs")
         .select("id")
-        .eq("cliente_id", data.clienteId)
+        .eq("cliente_id", scope.cliente_id)
         .limit(1)
         .maybeSingle();
       if (!rfc) throw new Error("El expediente no tiene RFCs registrados.");
@@ -226,7 +228,7 @@ export const upsertObligacion = createServerFn({ method: "POST" })
 
     const payload: any = {
       despacho_id: despachoId,
-      cliente_id: data.clienteId,
+      cliente_id: scope.cliente_id,
       rfc_id: rfcId,
       clave: data.clave,
       nombre: data.nombre,
@@ -242,7 +244,13 @@ export const upsertObligacion = createServerFn({ method: "POST" })
 
     let savedId: string;
     if (data.id) {
-      const { error } = await supabase.from("obligaciones_fiscales").update(payload).eq("id", data.id);
+      await assertRecordScope(supabase as any, userId, "obligaciones_fiscales", data.id, scope.cliente_id);
+      const { error } = await supabase
+        .from("obligaciones_fiscales")
+        .update(payload)
+        .eq("id", data.id)
+        .eq("cliente_id", scope.cliente_id)
+        .eq("despacho_id", scope.despacho_id);
       if (error) throw new Error(error.message);
       savedId = data.id;
     } else {
@@ -265,11 +273,14 @@ export const setEstatusObligacion = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     z.object({
       id: z.string().uuid(),
+      clienteId: z.string().uuid(),
       estatus: z.enum(["pendiente", "presentada"]),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    const scope = await assertClienteScope(supabase as any, userId, data.clienteId);
+    await assertRecordScope(supabase as any, userId, "obligaciones_fiscales", data.id, scope.cliente_id);
     const update: any = { estatus: data.estatus };
     if (data.estatus === "presentada") {
       update.completada_at = new Date().toISOString();
@@ -278,7 +289,12 @@ export const setEstatusObligacion = createServerFn({ method: "POST" })
       update.completada_at = null;
       update.completada_by = null;
     }
-    const { error } = await supabase.from("obligaciones_fiscales").update(update).eq("id", data.id);
+    const { error } = await supabase
+      .from("obligaciones_fiscales")
+      .update(update)
+      .eq("id", data.id)
+      .eq("cliente_id", scope.cliente_id)
+      .eq("despacho_id", scope.despacho_id);
     if (error) throw new Error(error.message);
     try {
       const { data: row } = await supabase.from("obligaciones_fiscales").select("despacho_id").eq("id", data.id).maybeSingle();
@@ -297,15 +313,20 @@ export const posponerObligacion = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     z.object({
       id: z.string().uuid(),
+      clienteId: z.string().uuid(),
       nuevaFecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
+    const scope = await assertClienteScope(supabase as any, userId, data.clienteId);
+    await assertRecordScope(supabase as any, userId, "obligaciones_fiscales", data.id, scope.cliente_id);
     const { error } = await supabase
       .from("obligaciones_fiscales")
       .update({ proximo_vencimiento: data.nuevaFecha, estatus: "pendiente" })
-      .eq("id", data.id);
+      .eq("id", data.id)
+      .eq("cliente_id", scope.cliente_id)
+      .eq("despacho_id", scope.despacho_id);
     if (error) throw new Error(error.message);
     try {
       const { data: row } = await supabase.from("obligaciones_fiscales").select("despacho_id").eq("id", data.id).maybeSingle();
@@ -321,10 +342,17 @@ export const posponerObligacion = createServerFn({ method: "POST" })
 
 export const eliminarObligacion = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid(), clienteId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { data: row } = await context.supabase.from("obligaciones_fiscales").select("despacho_id").eq("id", data.id).maybeSingle();
-    const { error } = await context.supabase.from("obligaciones_fiscales").delete().eq("id", data.id);
+    const scope = await assertClienteScope(context.supabase as any, context.userId, data.clienteId);
+    await assertRecordScope(context.supabase as any, context.userId, "obligaciones_fiscales", data.id, scope.cliente_id);
+    const row = { despacho_id: scope.despacho_id };
+    const { error } = await context.supabase
+      .from("obligaciones_fiscales")
+      .delete()
+      .eq("id", data.id)
+      .eq("cliente_id", scope.cliente_id)
+      .eq("despacho_id", scope.despacho_id);
     if (error) throw new Error(error.message);
     try {
       if (row?.despacho_id) {
@@ -341,10 +369,11 @@ export const getAlertConfig = createServerFn({ method: "GET" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ clienteId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
+    const scope = await assertClienteScope(context.supabase as any, context.userId, data.clienteId);
     const { data: row, error } = await context.supabase
       .from("clientes")
       .select("alert_days_default, alert_channels_default")
-      .eq("id", data.clienteId)
+      .eq("id", scope.cliente_id)
       .maybeSingle();
     if (error) throw new Error(error.message);
     return {
@@ -363,13 +392,15 @@ export const updateAlertConfig = createServerFn({ method: "POST" })
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
+    const scope = await assertClienteScope(context.supabase as any, context.userId, data.clienteId);
     const { error } = await context.supabase
       .from("clientes")
       .update({
         alert_days_default: data.alert_days_default,
         alert_channels_default: data.alert_channels_default,
       })
-      .eq("id", data.clienteId);
+      .eq("id", scope.cliente_id)
+      .eq("despacho_id", scope.despacho_id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });

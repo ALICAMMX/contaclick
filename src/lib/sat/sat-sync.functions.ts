@@ -87,17 +87,16 @@ export const upsertSatSyncConfig = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => ConfigSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
-    const { data: cli } = await supabase.from("clientes").select("despacho_id").eq("id", data.cliente_id).maybeSingle();
-    if (!cli?.despacho_id) throw new Error("Expediente no encontrado");
+    const scope = await assertClienteScope(supabase as any, context.userId, data.cliente_id);
     // Candado: la cuenta debe estar vigente y la frecuencia permitida por el plan
-    const ent = await getEntitlements(supabase, cli.despacho_id);
+    const ent = await getEntitlements(supabase, scope.despacho_id);
     assertFrecuencia(ent, data.frecuencia as FrecuenciaSat);
     const proxima = calcularProxima(data.frecuencia);
 
     const { error } = await supabase.from("sat_sync_config").upsert(
       {
-        cliente_id: data.cliente_id,
-        despacho_id: cli.despacho_id,
+        cliente_id: scope.cliente_id,
+        despacho_id: scope.despacho_id,
         emitidos: data.emitidos,
         recibidos: data.recibidos,
         nomina: data.nomina,
@@ -506,7 +505,12 @@ export const setSyncActivo = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ cliente_id: z.string().uuid(), activo: z.boolean() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.from("sat_sync_config").update({ activo: data.activo }).eq("cliente_id", data.cliente_id);
+    const scope = await assertClienteScope(context.supabase as any, context.userId, data.cliente_id);
+    const { error } = await context.supabase
+      .from("sat_sync_config")
+      .update({ activo: data.activo })
+      .eq("cliente_id", scope.cliente_id)
+      .eq("despacho_id", scope.despacho_id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
