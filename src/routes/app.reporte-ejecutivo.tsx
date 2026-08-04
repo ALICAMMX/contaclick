@@ -72,7 +72,7 @@ function ReporteEjecutivoPage() {
   const [escenario, setEscenario] = useState("");
   const [paramsTexto, setParamsTexto] = useState("");
 
-  const scoped = { enabled: !!clienteSel } as const;
+  const scoped = { enabled: !hydrating && !!clienteSel } as const;
   const kpis = useQuery({ ...scoped, queryKey: ["re-kpis", clienteSel], queryFn: () => obtenerKpisReportes({ data: { cliente_id: clienteSel } }) });
   const reportes = useQuery({ ...scoped, queryKey: ["re-list", clienteSel], queryFn: () => listarReportes({ data: { cliente_id: clienteSel } }) });
   const recs = useQuery({ ...scoped, queryKey: ["re-recs", clienteSel], queryFn: () => listarRecomendaciones({ data: { cliente_id: clienteSel } }) });
@@ -93,21 +93,22 @@ function ReporteEjecutivoPage() {
   });
 
   const mEnviar = useMutation({
-    mutationFn: (id: string) => marcarReporteEnviado({ data: { id } }),
+    mutationFn: (id: string) => marcarReporteEnviado({ data: { id, cliente_id: clienteSel } }),
     onSuccess: () => { toast.success("Reporte marcado como enviado"); qc.invalidateQueries({ queryKey: ["re-list"] }); qc.invalidateQueries({ queryKey: ["re-kpis"] }); },
   });
 
   const mActualizarRec = useMutation({
     mutationFn: (v: { id: string; estado: "pendiente" | "en_proceso" | "implementada" | "descartada" }) =>
-      actualizarRecomendacion({ data: v }),
+      actualizarRecomendacion({ data: { ...v, cliente_id: clienteSel } }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["re-recs"] }); qc.invalidateQueries({ queryKey: ["re-kpis"] }); },
   });
 
   const mCrearTarea = useMutation({
-    mutationFn: (id: string) => crearTareaDesdeRecomendacion({ data: { id } }),
+    mutationFn: (id: string) => crearTareaDesdeRecomendacion({ data: { id, cliente_id: clienteSel } }),
     onSuccess: () => { toast.success("Tarea creada"); qc.invalidateQueries({ queryKey: ["re-recs"] }); },
     onError: (e: any) => toast.error(e?.message ?? "Error"),
   });
+
 
   const mSimular = useMutation({
     mutationFn: (v: { cliente_id: string; escenario: string; parametros: Record<string, string | number> }) =>

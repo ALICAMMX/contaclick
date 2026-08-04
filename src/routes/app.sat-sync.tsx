@@ -32,7 +32,7 @@ function SatSyncPage() {
   const { cliente, hydrating } = useActiveCliente();
   const fnDash = useServerFn(dashboardSatSync);
   const dash = useQuery({
-    enabled: !!cliente?.id,
+    enabled: !hydrating && !!cliente?.id,
     queryKey: ["sat-sync", "dash", cliente?.id],
     queryFn: () => fnDash({ data: { cliente_id: cliente!.id } }),
   });
@@ -199,7 +199,7 @@ function DashboardTab({ d, loading }: { d: any; loading: boolean }) {
 
 function ActividadTab({ clienteId }: { clienteId: string }) {
   const fn = useServerFn(listSyncRuns);
-  const q = useQuery({ queryKey: ["sat-sync", "runs", clienteId], queryFn: () => fn({ data: { cliente_id: clienteId, limit: 100 } }) });
+  const q = useQuery({ queryKey: ["sat-sync", "runs", clienteId], enabled: !!clienteId, queryFn: () => fn({ data: { cliente_id: clienteId, limit: 100 } }) });
   const rows = q.data ?? [];
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -240,7 +240,7 @@ function ActividadTab({ clienteId }: { clienteId: string }) {
 
 function NovedadesTab({ clienteId }: { clienteId: string }) {
   const fn = useServerFn(listSyncEventos);
-  const q = useQuery({ queryKey: ["sat-sync", "eventos", clienteId], queryFn: () => fn({ data: { cliente_id: clienteId, limit: 100 } }) });
+  const q = useQuery({ queryKey: ["sat-sync", "eventos", clienteId], enabled: !!clienteId, queryFn: () => fn({ data: { cliente_id: clienteId, limit: 100 } }) });
   const rows = q.data ?? [];
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -280,8 +280,8 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
   const fnPause = useServerFn(setSyncActivo);
   const fnRuns = useServerFn(listSyncRuns);
 
-  const cfgQ = useQuery({ queryKey: ["sat-sync", "cfg", clienteId], queryFn: () => fnGet({ data: { cliente_id: clienteId } }) });
-  const runsQ = useQuery({ queryKey: ["sat-sync", "runs-cli", clienteId], queryFn: () => fnRuns({ data: { cliente_id: clienteId, limit: 10 } }) });
+  const cfgQ = useQuery({ queryKey: ["sat-sync", "cfg", clienteId], enabled: !!clienteId, queryFn: () => fnGet({ data: { cliente_id: clienteId } }) });
+  const runsQ = useQuery({ queryKey: ["sat-sync", "runs-cli", clienteId], enabled: !!clienteId, queryFn: () => fnRuns({ data: { cliente_id: clienteId, limit: 10 } }) });
 
   const cfg = cfgQ.data;
   const [form, setForm] = useState<any>(null);

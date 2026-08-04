@@ -6,7 +6,7 @@ import {
   ensureDespacho,
   sha256Hex,
 } from "@/lib/conciliacion/conciliacion.server";
-import { assertClienteScope } from "@/lib/despacho/scope";
+import { assertClienteScope, assertRecordScope } from "@/lib/despacho/scope";
 import {
   parseClienteInput,
 
@@ -22,18 +22,10 @@ export const uploadMovimientos = createServerFn({ method: "POST" })
   .inputValidator(parseUploadMovimientosInput)
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const despachoId = await ensureDespacho(supabase, userId);
-
-    // CANDADO: el expediente debe pertenecer al despacho del usuario
-    const { data: cli, error: cliErr } = await supabase
-      .from("clientes")
-      .select("id, rfc, despacho_id")
-      .eq("id", data.cliente_id)
-      .maybeSingle();
-    if (cliErr || !cli) throw new Error("Expediente no encontrado");
-    if (cli.despacho_id !== despachoId) {
-      throw new Error("El expediente no pertenece a tu despacho. Operación cancelada.");
-    }
+    // CANDADO: expediente activo válido para este usuario (tenant + rol + cliente)
+    const scope = await assertClienteScope(supabase as any, userId, data.cliente_id);
+    const despachoId = scope.despacho_id;
+    const cli = { id: scope.cliente_id, rfc: scope.rfc, despacho_id: scope.despacho_id };
 
     let cuentaId: string;
     if (data.cuenta_id) {
@@ -151,13 +143,10 @@ export const runReconciliation = createServerFn({ method: "POST" })
   .inputValidator(parseRunReconciliationInput)
   .handler(async ({ data, context }) => {
     const { supabase } = context;
-    const cliente_id = data.cliente_id;
-
-    // Despacho id (needed for inserts)
-    const { data: cli } = await supabase.from("clientes").select("despacho_id, rfc").eq("id", cliente_id).single();
-    if (!cli?.despacho_id) throw new Error("Cliente sin despacho asignado.");
-    const despachoId = cli.despacho_id as string;
-    const rfcCliente = (cli.rfc as string).toUpperCase();
+    const scope = await assertClienteScope(supabase as any, context.userId, data.cliente_id);
+    const cliente_id = scope.cliente_id;
+    const despachoId = scope.despacho_id;
+    const rfcCliente = scope.rfc.toUpperCase();
 
     // Fetch movimientos & cfdis
     const [{ data: movs }, { data: cfdis }, { data: existing }] = await Promise.all([
@@ -317,8 +306,9 @@ export const analyzeReconciliationAI = createServerFn({ method: "POST" })
     if (!apiKey) return { error: "IA no configurada", content: "" };
 
     const { supabase } = context;
+    const scope = await assertClienteScope(supabase as any, context.userId, data.cliente_id);
     const [{ data: movs }, { data: cfdis }, { data: conc }] = await Promise.all([
-      supabase.from("movimientos_bancarios").select("fecha, descripcion, cargo, abono").eq("cliente_id", data.cliente_id).limit(50),
+      supabase.from("movimientos_bancarios").select("fecha, descripcion, cargo, abono").eq("cliente_id", scope.cliente_id).limit(50),
       supabase.from("cfdi_xml").select("uuid, tipo_cfdi, fecha, total, rfc_emisor, rfc_receptor").eq("cliente_id", data.cliente_id).limit(50),
       supabase.from("conciliaciones").select("tipo_match, probabilidad, diferencia, motivo").eq("cliente_id", data.cliente_id).limit(100),
     ]);
@@ -366,7 +356,13 @@ export const updateConciliacion = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator(parseUpdateConciliacionInput)
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.from("conciliaciones").update({ estatus: data.estatus, confirmado_at: new Date().toISOString() }).eq("id", data.id);
+    const scope = await assertRecordScope(context.supabase as any, context.userId, "conciliaciones", data.id);
+    const { error } = await context.supabase
+      .from("conciliaciones")
+      .update({ estatus: data.estatus, confirmado_at: new Date().toISOString() })
+      .eq("id", data.id)
+      .eq("cliente_id", scope.cliente_id)
+      .eq("despacho_id", scope.despacho_id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });

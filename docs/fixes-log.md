@@ -155,3 +155,42 @@ tras cambiar de selección.
   `hydrating` para evitar el falso "no hay expediente" durante la carga.
 - Reporte Ejecutivo ya no tiene selector de cliente propio: usa siempre el
   expediente activo de la barra superior.
+
+---
+
+## Candado por registro y pruebas de regresión de aislamiento
+**Fecha:** validación exhaustiva del aislamiento entre expedientes
+
+**Problema detectado en la auditoría:**
+- Varias mutaciones actualizaban/eliminaban por `id` sin comprobar a qué
+  expediente pertenecía el registro. Un `id` manipulado desde el cliente podía
+  modificar datos de OTRO expediente del mismo despacho.
+  Afectaba: `marcarReporteEnviado`, `actualizarRecomendacion`,
+  `crearTareaDesdeRecomendacion`, `setEstatusObligacion`, `posponerObligacion`,
+  `eliminarObligacion`, `upsertObligacion`, `setSyncActivo`,
+  `updateConciliacion`, `getAlertConfig` / `updateAlertConfig`.
+- `analyzeReconciliationAI` y `procesarEstadoDeCuenta` resolvían el despacho por
+  el usuario y no por el expediente.
+- Consultas de calendario, conciliación, SAT sync e import-prices podían
+  dispararse mientras el expediente activo aún se rehidrataba.
+
+**Solución:**
+- Nuevo candado `assertRecordScope` en `src/lib/despacho/scope.ts`: resuelve el
+  expediente dueño del registro, valida el alcance del usuario y exige que
+  coincida con el expediente activo. Devuelve un error genérico (sin filtrar
+  datos parciales del registro).
+- Todas las mutaciones anteriores exigen ahora `cliente_id` y filtran por
+  `id` + `cliente_id` + `despacho_id`.
+- Las pantallas (`app.calendario`, `app.sat-sync`, `app.conciliacion.index`,
+  `app.tools.import-prices`, `app.reporte-ejecutivo`) envían el expediente
+  activo en cada mutación y esperan a `!hydrating` antes de consultar.
+
+**Pruebas ejecutadas:** `src/lib/despacho/scope.test.ts` (11 casos, en verde)
+- Sin expediente activo → falla cerrado.
+- Expediente propio → resuelve tenant y RFC correctos.
+- Expediente de otro despacho → bloqueado.
+- Usuario sin membresía activa → bloqueado.
+- `has_cliente_access = false` → bloqueado.
+- Tercero (proveedor) → resuelve al expediente padre.
+- Registro de OTRO expediente del MISMO despacho → bloqueado.
+- Registro de otro despacho, id inexistente e id vacío → bloqueados sin fuga.
