@@ -9,7 +9,7 @@ export type CriterioScoreable = {
   id: number;
   nombre: string;
   evaluable: boolean;
-  puntos?: number;
+  puntos?: number | null;
 };
 
 export function nivelPorScore(score: number): "verde" | "amarillo" | "rojo" {
