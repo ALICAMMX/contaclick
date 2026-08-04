@@ -364,16 +364,36 @@ export const runSyncNow = createServerFn({ method: "POST" })
     }
 
     const fin = Date.now();
-    const estatus = errores.length === 0 ? "exitoso" : descargados > 0 ? "parcial" : "error";
+    // Si el SAT dejó solicitudes en proceso, la corrida sigue "en_curso": el cron la cosecha.
+    const { data: runActual } = await supabase
+      .from("sat_sync_runs")
+      .select("solicitudes")
+      .eq("id", runId)
+      .maybeSingle();
+    const esperandoSat = ((runActual?.solicitudes ?? []) as any[]).some(
+      (s) => s?.estado === "pendiente",
+    );
+    const estatus = esperandoSat
+      ? "en_curso"
+      : errores.length === 0
+        ? "exitoso"
+        : descargados > 0
+          ? "parcial"
+          : "error";
 
     await supabase.from("sat_sync_runs").update({
-      finalizado_at: new Date(fin).toISOString(),
+      finalizado_at: esperandoSat ? null : new Date(fin).toISOString(),
       duracion_ms: fin - inicio,
       estatus,
       descargados, nuevos, cancelados, duplicados,
       errores: errores as any,
-      detalle: estatus === "error" ? "La corrida no pudo completarse" : `Descargados: ${descargados}, nuevos: ${nuevos}, cancelados: ${cancelados}`,
+      detalle: esperandoSat
+        ? "Solicitud enviada al SAT. Se completará automáticamente al liberar los paquetes."
+        : estatus === "error"
+          ? "La corrida no pudo completarse"
+          : `Descargados: ${descargados}, nuevos: ${nuevos}, cancelados: ${cancelados}`,
     }).eq("id", runId);
+
 
     // Registro de consumo SAT (cuota despacho + saldo PAC si es real)
     if (solicitudesPrevistas > 0 && estatus !== "error") {
