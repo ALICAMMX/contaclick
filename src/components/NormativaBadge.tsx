@@ -14,7 +14,18 @@ export function NormativaBadge({ sello }: { sello: SelloNormativo }) {
       </div>
       <div className="text-muted-foreground">Vigencia {sello.vigencia} · DOF {sello.publicacionDOF} · en vigor desde {sello.entradaVigor}</div>
       <div className="text-muted-foreground">Tabla verificada al {sello.actualizadoAl}</div>
+      <div className="text-muted-foreground break-all">Sello de integridad: {sello.hash}</div>
+      {sello.verificacion === "pendiente_cotejo" && (
+        <div className="flex items-start gap-1.5 text-warning">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          <span>
+            Algún parámetro de esta regla está <strong>pendiente de cotejo</strong> contra la publicación oficial.
+            Confírmalo antes de presentar o timbrar.
+          </span>
+        </div>
+      )}
       {sello.notas && <div className="text-muted-foreground italic">{sello.notas}</div>}
+
       <a
         href={sello.url}
         target="_blank"

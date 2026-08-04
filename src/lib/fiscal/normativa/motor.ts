@@ -33,6 +33,8 @@ export type SelloNormativo = {
   hash: string;
   /** Fecha/hora en que se ejecutó el cálculo (ISO) */
   calculadoEn: string;
+  /** Estado de cotejo del conjunto contra la publicación oficial */
+  verificacion: "verificado" | "pendiente_cotejo";
   ejercicio: number;
   version: string;
   vigencia: string;
@@ -117,6 +119,7 @@ export function sello(c: ConjuntoNormativo): SelloNormativo {
     conjuntoId: c.id,
     hash: hashConjunto(c),
     calculadoEn: new Date().toISOString(),
+    verificacion: c.verificacion.estado,
     ejercicio: c.ejercicio,
     version: c.version,
     vigencia: `${c.vigenteDesde} → ${c.vigenteHasta ?? "vigente"}`,
@@ -163,7 +166,10 @@ export function aplicarTarifa(base: number, tramos: TramoTarifa[]) {
 // ── ISR Persona Física (pagos provisionales / actividad empresarial) ─────────
 
 export type IsrPfInput = {
-  periodo: string; // AAAA-MM
+  /** AAAA-MM para pago provisional mensual, AAAA para el cálculo anual */
+  periodo: string;
+  /** Fuerza la tarifa anual (art. 152 LISR). Se infiere si el periodo es AAAA. */
+  anual?: boolean;
   ingresos: number;
   deducciones?: number;
   retenciones?: number;
@@ -171,7 +177,14 @@ export type IsrPfInput = {
 };
 
 export function calcularIsrPf(input: IsrPfInput) {
-  const conjunto = resolverNormativa("ISR", "PF_GENERAL_MENSUAL", input.periodo);
+  // La tarifa anual es un conjunto normativo INDEPENDIENTE publicado por el
+  // Anexo 8; jamás se obtiene multiplicando la tarifa mensual por 12.
+  const esAnual = input.anual === true || /^\d{4}$/.test(input.periodo);
+  const conjunto = resolverNormativa(
+    "ISR",
+    esAnual ? "PF_GENERAL_ANUAL" : "PF_GENERAL_MENSUAL",
+    input.periodo,
+  );
   if (conjunto.cuerpo.tipo !== "tarifa") throw new Error("Conjunto normativo inválido para ISR PF.");
 
   const ingresos = validarMonto("Ingresos", input.ingresos);
@@ -187,6 +200,7 @@ export function calcularIsrPf(input: IsrPfInput) {
 
   return {
     periodo: input.periodo,
+    anual: esAnual,
     base,
     limiteInferior: t.tramo.limiteInferior,
     excedente: t.excedente,
@@ -358,13 +372,120 @@ export function inventarioNormativo() {
 }
 
 
-// ── Subsidio para el empleo (sólo ingresos por salarios) ─────────────────────
+// ── Subsidio para el empleo (Decreto DOF 31/12/2025) ─────────────────────────
+// El subsidio NO proviene del Anexo 8 de la RMF: tiene conjunto normativo,
+// fuente y versión propios. Enero 2026 = 15.59% de la UMA mensual 2025;
+// febrero a diciembre 2026 = 15.02% de la UMA mensual 2026.
+
+export type SubsidioInput = {
+  /** Mes del pago, AAAA-MM. En pagos multi-mes, el primer mes cubierto. */
+  periodo: string;
+  ingresoGravable: number;
+  /** Días pagados cuando el periodo es menor a un mes (prorrateo del decreto). */
+  dias?: number;
+  /** Número de meses completos que comprende el pago (>= 1). */
+  mesesCubiertos?: number;
+};
+
+function siguienteMes(periodo: string): string {
+  const [y, m] = periodo.split("-").map(Number);
+  const d = new Date(Date.UTC(y!, m!, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+function subsidioDeUnMes(periodo: string, ingresoDelMes: number) {
+  const c = resolverNormativa("ISR", "PF_SUBSIDIO_MENSUAL", periodo);
+  if (c.cuerpo.tipo !== "subsidio_porcentaje") {
+    throw new Error("Conjunto normativo inválido para subsidio para el empleo.");
+  }
+  const sp = c.cuerpo.subsidio;
+  const conDerecho = ingresoDelMes <= sp.limiteIngresoMensual;
+  const monto = conDerecho ? round2((sp.umaMensual * sp.porcentaje) / 100) : 0;
+  return { conjunto: c, sp, conDerecho, monto };
+}
+
+/**
+ * Subsidio para el empleo del periodo. Devuelve el desglose por mes cubierto,
+ * el sello normativo de cada conjunto aplicado y una advertencia cuando algún
+ * parámetro (p. ej. la UMA 2026) aún está pendiente de cotejo oficial.
+ */
+export function calcularSubsidioEmpleo(input: SubsidioInput) {
+  const ingreso = round2(validarMonto("Ingreso gravable", input.ingresoGravable));
+  const meses = input.mesesCubiertos ?? 1;
+  if (!Number.isInteger(meses) || meses < 1) {
+    throw new Error("Meses cubiertos: debe ser un entero mayor o igual a 1.");
+  }
+  if (input.dias !== undefined) {
+    if (meses > 1) throw new Error("Un pago no puede ser a la vez por días sueltos y por varios meses.");
+    if (!(input.dias > 0)) throw new Error("Días: debe ser mayor a cero.");
+  }
+
+  const detalle: Array<{
+    periodo: string;
+    ingresoDelMes: number;
+    porcentaje: number;
+    umaMensual: number;
+    umaEjercicio: number;
+    limiteIngresoMensual: number;
+    conDerecho: boolean;
+    monto: number;
+    normativa: SelloNormativo;
+  }> = [];
+
+  // Pago que comprende dos o más meses: el ingreso se distribuye entre los
+  // meses cubiertos y el subsidio se determina mes por mes, con la norma de
+  // cada mes (así el cruce enero→febrero 2026 aplica dos porcentajes).
+  const ingresoPorMes = round2(ingreso / meses);
+  let periodo = input.periodo;
+  let total = 0;
+  let pendienteCotejo = false;
+
+  for (let k = 0; k < meses; k++) {
+    const { conjunto, sp, conDerecho, monto } = subsidioDeUnMes(periodo, ingresoPorMes);
+    if (conjunto.verificacion.estado !== "verificado") pendienteCotejo = true;
+    let montoMes = monto;
+    if (input.dias !== undefined) {
+      // Periodos menores a un mes: proporción diaria del decreto.
+      montoMes = round2((monto / sp.diasMesComercial) * input.dias);
+    }
+    total = round2(total + montoMes);
+    detalle.push({
+      periodo,
+      ingresoDelMes: ingresoPorMes,
+      porcentaje: sp.porcentaje,
+      umaMensual: sp.umaMensual,
+      umaEjercicio: sp.umaEjercicio,
+      limiteIngresoMensual: sp.limiteIngresoMensual,
+      conDerecho,
+      monto: montoMes,
+      normativa: sello(conjunto),
+    });
+    periodo = siguienteMes(periodo);
+  }
+
+  return {
+    periodo: input.periodo,
+    mesesCubiertos: meses,
+    dias: input.dias ?? null,
+    ingresoGravable: ingreso,
+    subsidio: total,
+    detalle,
+    pendienteCotejo,
+    advertencia: pendienteCotejo
+      ? "Uno de los parámetros del subsidio (UMA 2026) está pendiente de cotejo contra el aviso oficial del INEGI publicado en el DOF. Verifica antes de timbrar la nómina."
+      : null,
+  };
+}
+
+// ── ISR de salarios con subsidio ─────────────────────────────────────────────
 
 export type IsrSalariosInput = {
   periodo: string; // AAAA-MM
   ingresoGravable: number;
-  /** El subsidio sólo procede cuando el trabajador tiene un solo patrón (art. 1.12 Decreto) */
+  /** El subsidio sólo procede con un solo patrón y para ingresos por salarios. */
   aplicaSubsidio?: boolean;
+  dias?: number;
+  mesesCubiertos?: number;
 };
 
 export function calcularIsrSalarios(input: IsrSalariosInput) {
@@ -374,15 +495,15 @@ export function calcularIsrSalarios(input: IsrSalariosInput) {
   const t = aplicarTarifa(base, conjunto.cuerpo.tramos);
   const isrCausado = t.impuesto;
 
-  let subsidio = 0;
-  let selloSubsidio: SelloNormativo | null = null;
-  if (input.aplicaSubsidio) {
-    const cs = resolverNormativa("ISR", "PF_SUBSIDIO_MENSUAL", input.periodo);
-    if (cs.cuerpo.tipo !== "subsidio") throw new Error("Conjunto normativo inválido para subsidio al empleo.");
-    const tramo = cs.cuerpo.tramos.find((x) => base >= x.desde && (x.hasta === null || base <= x.hasta));
-    subsidio = round2(tramo?.subsidio ?? 0);
-    selloSubsidio = sello(cs);
-  }
+  const s = input.aplicaSubsidio
+    ? calcularSubsidioEmpleo({
+        periodo: input.periodo,
+        ingresoGravable: base,
+        ...(input.dias !== undefined ? { dias: input.dias } : {}),
+        ...(input.mesesCubiertos !== undefined ? { mesesCubiertos: input.mesesCubiertos } : {}),
+      })
+    : null;
+  const subsidio = s?.subsidio ?? 0;
 
   const neto = round2(isrCausado - subsidio);
   return {
@@ -393,7 +514,8 @@ export function calcularIsrSalarios(input: IsrSalariosInput) {
     isrARetener: neto > 0 ? neto : 0,
     subsidioEntregado: neto < 0 ? round2(-neto) : 0,
     normativa: sello(conjunto),
-    normativaSubsidio: selloSubsidio,
+    subsidioDetalle: s,
+    normativaSubsidio: s?.detalle[0]?.normativa ?? null,
   };
 }
 

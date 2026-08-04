@@ -15,6 +15,7 @@ import {
   calcularIsrPf,
   calcularIsrPm,
   calcularIsrSalarios,
+  calcularSubsidioEmpleo,
   calcularResicoPf,
   calcularIva,
   resolverNormativa,
@@ -22,7 +23,21 @@ import {
   verificarSello,
   inventarioNormativo,
 } from "./motor";
-import { CATALOGO_NORMATIVO, HASHES_PUBLICADOS, hashConjunto } from "./catalogo";
+import { CATALOGO_NORMATIVO, HASHES_PUBLICADOS, hashConjunto, serializacionCanonica } from "./catalogo";
+import {
+  FIX_ISR_PF_MENSUAL_2026,
+  FIX_ISR_PF_ANUAL_2026,
+  FIX_ISR_PF_MENSUAL_2025,
+  FIX_ISR_PF_ANUAL_2025,
+  FIX_ISR_PF_MENSUAL_2024,
+  FIX_ISR_PF_ANUAL_2024,
+  FIX_SUBSIDIO_2026,
+  FIX_RESICO,
+  FIX_TASA_ISR_PM,
+  FIX_TASA_IVA_GENERAL,
+  FUENTE_DECRETO_SUBSIDIO_2026,
+  type FilaTarifa,
+} from "./__fixtures__/oficiales";
 
 const c2 = (n: number) => Math.round(n * 100) / 100;
 /** Cálculo independiente: cuota fija + (base − LI) × % */
@@ -53,7 +68,7 @@ describe("Integridad e inmutabilidad del catálogo", () => {
       expect(c.fuente.url).toMatch(/^https?:\/\//);
       expect(c.fuente.publicacionDOF).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(c.fuente.entradaVigor).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-      expect(c.verificacion.estado).toBe("verificado");
+      expect(["verificado", "pendiente_cotejo"]).toContain(c.verificacion.estado);
     }
   });
 
@@ -70,16 +85,80 @@ describe("Integridad e inmutabilidad del catálogo", () => {
     }
   });
 
-  it("la tarifa anual 2026 equivale a 12 × la mensual (tolerancia de redondeo del Anexo 8)", () => {
-    const m = CATALOGO_NORMATIVO.find((c) => c.id === "isr-pf-mensual-2026-v1")!;
-    const a = CATALOGO_NORMATIVO.find((c) => c.id === "isr-pf-anual-2026-v1")!;
-    if (m.cuerpo.tipo !== "tarifa" || a.cuerpo.tipo !== "tarifa") throw new Error("tipo");
-    m.cuerpo.tramos.forEach((tm, i) => {
-      const ta = a.cuerpo.tipo === "tarifa" ? a.cuerpo.tramos[i]! : null!;
-      expect(ta.porcentaje).toBe(tm.porcentaje);
-      expect(Math.abs(ta.limiteInferior - tm.limiteInferior * 12)).toBeLessThan(1);
-      expect(Math.abs(ta.cuotaFija - tm.cuotaFija * 12)).toBeLessThan(1.5);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe("Cotejo literal contra los fixtures oficiales (fila por fila)", () => {
+  const tarifaDe = (id: string): FilaTarifa[] => {
+    const c = CATALOGO_NORMATIVO.find((x) => x.id === id);
+    if (!c) throw new Error(`No existe el conjunto ${id}`);
+    if (c.cuerpo.tipo !== "tarifa") throw new Error("tipo");
+    return c.cuerpo.tramos.map((t) => [t.limiteInferior, t.limiteSuperior, t.cuotaFija, t.porcentaje]);
+  };
+
+  const casos: Array<[string, readonly FilaTarifa[]]> = [
+    ["isr-pf-mensual-2026-v1", FIX_ISR_PF_MENSUAL_2026],
+    ["isr-pf-anual-2026-v1", FIX_ISR_PF_ANUAL_2026],
+    ["isr-pf-mensual-2025-v1", FIX_ISR_PF_MENSUAL_2025],
+    ["isr-pf-anual-2025-v1", FIX_ISR_PF_ANUAL_2025],
+    ["isr-pf-mensual-2024-v1", FIX_ISR_PF_MENSUAL_2024],
+    ["isr-pf-anual-2024-v1", FIX_ISR_PF_ANUAL_2024],
+  ];
+
+  it.each(casos)("%s coincide fila por fila con la publicación oficial", (id, fixture) => {
+    const enCatalogo = tarifaDe(id);
+    expect(enCatalogo).toHaveLength(fixture.length);
+    fixture.forEach((fila, i) => {
+      expect({ fila: i + 1, valores: enCatalogo[i] }).toEqual({ fila: i + 1, valores: [...fila] });
     });
+  });
+
+  it("la tarifa ANUAL no se deriva de la mensual: 12 × mensual NO reproduce la anual", () => {
+    // Contraejemplo publicado en el Anexo 8 2026:
+    expect(c2(844.59 * 12)).toBe(10135.08);
+    expect(FIX_ISR_PF_ANUAL_2026[0]![1]).toBe(10135.11);
+    expect(FIX_ISR_PF_ANUAL_2026[1]![0]).toBe(10135.12);
+    expect(FIX_ISR_PF_ANUAL_2026[0]![1]).not.toBe(c2(FIX_ISR_PF_MENSUAL_2026[0]![1]! * 12));
+
+    // Y no es un caso aislado: hay filas que difieren en las tres tarifas.
+    const pares: Array<[readonly FilaTarifa[], readonly FilaTarifa[]]> = [
+      [FIX_ISR_PF_MENSUAL_2026, FIX_ISR_PF_ANUAL_2026],
+      [FIX_ISR_PF_MENSUAL_2025, FIX_ISR_PF_ANUAL_2025],
+      [FIX_ISR_PF_MENSUAL_2024, FIX_ISR_PF_ANUAL_2024],
+    ];
+    for (const [mensual, anual] of pares) {
+      const derivada = mensual.map((f) => [c2(f[0] * 12), f[1] === null ? null : c2(f[1] * 12), c2(f[2] * 12), f[3]]);
+      expect(anual.map((f) => [...f])).not.toEqual(derivada);
+    }
+  });
+
+  it("los porcentajes de cada tramo sí son idénticos entre mensual y anual (eso sí lo publica el Anexo 8)", () => {
+    FIX_ISR_PF_MENSUAL_2026.forEach((f, i) => expect(FIX_ISR_PF_ANUAL_2026[i]![3]).toBe(f[3]));
+  });
+
+  it("RESICO, ISR PM e IVA coinciden con sus fixtures", () => {
+    const resico = CATALOGO_NORMATIVO.find((c) => c.id === "resico-pf-v1")!;
+    if (resico.cuerpo.tipo !== "resico") throw new Error("tipo");
+    expect(resico.cuerpo.limiteAnual).toBe(FIX_RESICO.limiteAnual);
+    expect(resico.cuerpo.retencionPM).toBe(FIX_RESICO.retencionPM);
+    expect(resico.cuerpo.tramos.map((t) => [t.hasta, t.tasa])).toEqual(FIX_RESICO.tramos.map((t) => [...t]));
+
+    const pm = CATALOGO_NORMATIVO.find((c) => c.id === "isr-pm-2026-v1")!;
+    const iva = CATALOGO_NORMATIVO.find((c) => c.id === "iva-general-v1")!;
+    expect(pm.cuerpo.tipo === "tasa" && pm.cuerpo.tasa).toBe(FIX_TASA_ISR_PM);
+    expect(iva.cuerpo.tipo === "tasa" && iva.cuerpo.tasa).toBe(FIX_TASA_IVA_GENERAL);
+  });
+
+  it("bordes calculados a mano DESDE el fixture, no desde el catálogo", () => {
+    // Anual 2026, primer límite superior oficial: 10,135.11 → 1.92% sobre el excedente de 0.01.
+    const anualBorde = c2(0 + ((10135.11 - 0.01) * 1.92) / 100);
+    expect(calcularIsrPf({ periodo: "2026", ingresos: 10135.11 }).isrCausado).toBe(anualBorde);
+    // Un centavo arriba entra al segundo tramo anual: cuota 194.59 + 6.4%.
+    const anualSiguiente = c2(194.59 + ((10135.12 - 10135.12) * 6.4) / 100);
+    expect(calcularIsrPf({ periodo: "2026", ingresos: 10135.12, anual: true }).isrCausado).toBe(anualSiguiente);
+    // Mensual 2026, mismo importe: cae en el tramo 141,880.67? no — 10,135.12 está en el tramo 3.
+    const mensual = c2(420.95 + ((10135.12 - 7168.52) * 10.88) / 100);
+    expect(calcularIsrPf({ periodo: "2026-03", ingresos: 10135.12 }).isrCausado).toBe(mensual);
   });
 });
 
@@ -219,35 +298,132 @@ describe("ISR PF — deducciones, retenciones y pagos provisionales", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-describe("Subsidio para el empleo (salarios) 2026", () => {
-  it("ingreso bajo: el subsidio supera al ISR y se entrega diferencia", () => {
-    const r = calcularIsrSalarios({ periodo: "2026-03", ingresoGravable: 1500, aplicaSubsidio: true });
-    expect(r.isrCausado).toBe(esperado(1500, 844.6, 16.22, 6.4));
-    expect(r.subsidioEmpleo).toBe(407.02);
-    expect(r.isrARetener).toBe(0);
-    expect(r.subsidioEntregado).toBe(c2(407.02 - r.isrCausado));
+describe("Subsidio para el empleo 2026 — Decreto DOF 31/12/2025", () => {
+  const ENE = FIX_SUBSIDIO_2026.enero;
+  const FEB = FIX_SUBSIDIO_2026.febreroEnAdelante;
+  // Importes calculados a mano desde los fixtures, sin usar el motor:
+  const MONTO_ENE = c2((3439.46 * 15.59) / 100); // 536.21
+  const MONTO_FEB = c2((3569.97 * 15.02) / 100); // 536.21
+
+  it("el subsidio tiene conjunto normativo propio: NO se etiqueta como Anexo 8", () => {
+    for (const per of ["2026-01", "2026-02"]) {
+      const c = resolverNormativa("ISR", "PF_SUBSIDIO_MENSUAL", per);
+      expect(c.fuente.url).toBe(FUENTE_DECRETO_SUBSIDIO_2026);
+      expect(c.fuente.publicacionDOF).toBe("2025-12-31");
+      expect(c.fuente.nombre).toMatch(/Decreto/i);
+      expect(c.fuente.nombre).not.toMatch(/Anexo 8/i);
+    }
   });
 
-  it("ingreso medio: el subsidio sólo reduce el ISR a retener", () => {
-    const r = calcularIsrSalarios({ periodo: "2026-03", ingresoGravable: 6000, aplicaSubsidio: true });
-    expect(r.subsidioEmpleo).toBe(294.63);
-    expect(r.isrARetener).toBe(c2(r.isrCausado - 294.63));
+  it("el catálogo coincide con el fixture del decreto", () => {
+    const ene = resolverNormativa("ISR", "PF_SUBSIDIO_MENSUAL", "2026-01");
+    const feb = resolverNormativa("ISR", "PF_SUBSIDIO_MENSUAL", "2026-07");
+    if (ene.cuerpo.tipo !== "subsidio_porcentaje" || feb.cuerpo.tipo !== "subsidio_porcentaje") throw new Error("tipo");
+    expect(ene.cuerpo.subsidio).toEqual({ ...ENE });
+    expect(feb.cuerpo.subsidio).toEqual({ ...FEB });
   });
 
-  it("arriba del último tramo el subsidio es cero", () => {
-    const r = calcularIsrSalarios({ periodo: "2026-03", ingresoGravable: 25000, aplicaSubsidio: true });
-    expect(r.subsidioEmpleo).toBe(0);
-    expect(r.isrARetener).toBe(r.isrCausado);
+  it("enero 2026 aplica 15.59% sobre la UMA mensual de 2025", () => {
+    const r = calcularSubsidioEmpleo({ periodo: "2026-01", ingresoGravable: 8000 });
+    expect(r.detalle[0]!.porcentaje).toBe(15.59);
+    expect(r.detalle[0]!.umaEjercicio).toBe(2025);
+    expect(r.detalle[0]!.umaMensual).toBe(3439.46);
+    expect(r.subsidio).toBe(MONTO_ENE);
   });
 
-  it("sin derecho a subsidio no se aplica y no se sella tabla de subsidio", () => {
+  it("febrero 2026 en adelante aplica 15.02% sobre la UMA 2026", () => {
+    for (const per of ["2026-02", "2026-06", "2026-12"]) {
+      const r = calcularSubsidioEmpleo({ periodo: per, ingresoGravable: 8000 });
+      expect(r.detalle[0]!.porcentaje).toBe(15.02);
+      expect(r.detalle[0]!.umaEjercicio).toBe(2026);
+      expect(r.subsidio).toBe(MONTO_FEB);
+    }
+  });
+
+  it("el cambio enero→febrero usa conjuntos normativos distintos", () => {
+    const ene = calcularSubsidioEmpleo({ periodo: "2026-01", ingresoGravable: 8000 });
+    const feb = calcularSubsidioEmpleo({ periodo: "2026-02", ingresoGravable: 8000 });
+    expect(ene.detalle[0]!.normativa.conjuntoId).toBe("subsidio-empleo-2026-01-v1");
+    expect(feb.detalle[0]!.normativa.conjuntoId).toBe("subsidio-empleo-2026-02-v1");
+    expect(ene.detalle[0]!.normativa.version).not.toBe(feb.detalle[0]!.normativa.version);
+  });
+
+  it("límite de ingreso mensual de $11,492.66: exacto, un centavo abajo y arriba", () => {
+    expect(calcularSubsidioEmpleo({ periodo: "2026-03", ingresoGravable: 11492.66 }).subsidio).toBe(MONTO_FEB);
+    expect(calcularSubsidioEmpleo({ periodo: "2026-03", ingresoGravable: 11492.65 }).subsidio).toBe(MONTO_FEB);
+    const arriba = calcularSubsidioEmpleo({ periodo: "2026-03", ingresoGravable: 11492.67 });
+    expect(arriba.subsidio).toBe(0);
+    expect(arriba.detalle[0]!.conDerecho).toBe(false);
+    expect(FEB.limiteIngresoMensual).toBe(11492.66);
+  });
+
+  it("pago por un periodo menor a un mes se prorratea por días", () => {
+    const quincena = calcularSubsidioEmpleo({ periodo: "2026-03", ingresoGravable: 6000, dias: 15 });
+    expect(quincena.subsidio).toBe(c2((MONTO_FEB / 30.4) * 15));
+    const semana = calcularSubsidioEmpleo({ periodo: "2026-03", ingresoGravable: 3000, dias: 7 });
+    expect(semana.subsidio).toBe(c2((MONTO_FEB / 30.4) * 7));
+    expect(() => calcularSubsidioEmpleo({ periodo: "2026-03", ingresoGravable: 3000, dias: 0 })).toThrow();
+  });
+
+  it("pago que comprende dos o más meses suma el subsidio de cada mes", () => {
+    const bimestre = calcularSubsidioEmpleo({ periodo: "2026-03", ingresoGravable: 16000, mesesCubiertos: 2 });
+    expect(bimestre.detalle).toHaveLength(2);
+    expect(bimestre.subsidio).toBe(c2(MONTO_FEB * 2));
+
+    // Cruce enero → febrero: cada mes con su propio porcentaje y UMA.
+    const cruce = calcularSubsidioEmpleo({ periodo: "2026-01", ingresoGravable: 16000, mesesCubiertos: 2 });
+    expect(cruce.detalle.map((d) => d.porcentaje)).toEqual([15.59, 15.02]);
+    expect(cruce.detalle.map((d) => d.umaEjercicio)).toEqual([2025, 2026]);
+    expect(cruce.subsidio).toBe(c2(MONTO_ENE + MONTO_FEB));
+  });
+
+  it("en pagos multi-mes el límite se evalúa contra el ingreso de cada mes", () => {
+    const r = calcularSubsidioEmpleo({ periodo: "2026-03", ingresoGravable: 30000, mesesCubiertos: 2 });
+    expect(r.detalle.every((d) => d.conDerecho)).toBe(false); // 15,000 por mes > 11,492.66
+    expect(r.subsidio).toBe(0);
+  });
+
+  it("subsidio mayor, igual o menor que el ISR determinado", () => {
+    // Menor: ingreso alto, el subsidio sólo reduce el ISR a retener.
+    const menor = calcularIsrSalarios({ periodo: "2026-03", ingresoGravable: 11000, aplicaSubsidio: true });
+    expect(menor.subsidioEmpleo).toBeLessThan(menor.isrCausado);
+    expect(menor.isrARetener).toBe(c2(menor.isrCausado - MONTO_FEB));
+    expect(menor.subsidioEntregado).toBe(0);
+
+    // Mayor: ingreso bajo, se entrega la diferencia en efectivo.
+    const mayor = calcularIsrSalarios({ periodo: "2026-03", ingresoGravable: 1500, aplicaSubsidio: true });
+    expect(mayor.subsidioEmpleo).toBeGreaterThan(mayor.isrCausado);
+    expect(mayor.isrARetener).toBe(0);
+    expect(mayor.subsidioEntregado).toBe(c2(MONTO_FEB - mayor.isrCausado));
+
+    // Igual: se construye el ingreso cuyo ISR es exactamente el subsidio.
+    // Tramo 3 mensual 2026 (fixture): LI 7,168.52, cuota fija 420.95, 10.88%.
+    const ingresoIgual = c2(7168.52 + ((MONTO_FEB - 420.95) * 100) / 10.88);
+    const igual = calcularIsrSalarios({ periodo: "2026-03", ingresoGravable: ingresoIgual, aplicaSubsidio: true });
+    expect(igual.isrCausado).toBe(MONTO_FEB);
+    expect(igual.isrARetener).toBe(0);
+    expect(igual.subsidioEntregado).toBe(0);
+  });
+
+  it("sin derecho a subsidio no se aplica ni se sella el conjunto", () => {
     const r = calcularIsrSalarios({ periodo: "2026-03", ingresoGravable: 1500 });
     expect(r.subsidioEmpleo).toBe(0);
     expect(r.normativaSubsidio).toBeNull();
   });
 
-  it("el subsidio no existe para 2024/2025 en el catálogo: falla cerrado", () => {
-    expect(() => calcularIsrSalarios({ periodo: "2025-03", ingresoGravable: 1500, aplicaSubsidio: true })).toThrow();
+  it("periodos sin normativa de subsidio configurada fallan cerrado", () => {
+    for (const per of ["2025-03", "2024-03", "2027-01"]) {
+      expect(() => calcularSubsidioEmpleo({ periodo: per, ingresoGravable: 5000 })).toThrow();
+    }
+  });
+
+  it("la UMA 2026 pendiente de cotejo se reporta como advertencia, no en silencio", () => {
+    const feb = calcularSubsidioEmpleo({ periodo: "2026-02", ingresoGravable: 8000 });
+    expect(feb.pendienteCotejo).toBe(true);
+    expect(feb.advertencia).toMatch(/UMA 2026/);
+    const ene = calcularSubsidioEmpleo({ periodo: "2026-01", ingresoGravable: 8000 });
+    expect(ene.pendienteCotejo).toBe(false);
+    expect(ene.advertencia).toBeNull();
   });
 });
 
@@ -302,7 +478,7 @@ describe("RESICO PF", () => {
     [50000, 1.1],
     [83333.33, 1.5],
     [208333.33, 2.0],
-    [3500000 / 12, 2.5],
+    [291666.67, 2.5],
   ];
 
   it.each(casos)("ingreso %s aplica tasa %s%%", (ingreso, tasa) => {
@@ -398,7 +574,7 @@ describe("Historial y reproducibilidad", () => {
 
   it("un hash alterado marca el resultado como NO reproducible", () => {
     const r = calcularIsrPf({ periodo: "2026-06", ingresos: 45000 });
-    const v = verificarSello({ conjuntoId: r.normativa.conjuntoId, hash: "fnv1a32:deadbeef" });
+    const v = verificarSello({ conjuntoId: r.normativa.conjuntoId, hash: "sha256:0".repeat(1) + "0".repeat(63) });
     expect(v.reproducible).toBe(false);
     expect(v.reproducible === false && v.motivo).toMatch(/modificado/);
   });
@@ -413,7 +589,7 @@ describe("Historial y reproducibilidad", () => {
     expect(inv.length).toBe(CATALOGO_NORMATIVO.length);
     for (const i of inv) {
       expect(i.hash).toBe(HASHES_PUBLICADOS[i.id]);
-      expect(i.verificacion.estado).toBe("verificado");
+      expect(["verificado", "pendiente_cotejo"]).toContain(i.verificacion.estado);
     }
   });
 
