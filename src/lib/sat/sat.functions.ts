@@ -49,48 +49,9 @@ function extraerRfcsDeCer(cer_b64: string): string[] {
   return Array.from(found);
 }
 
+// Nota: la conexión al SAT ya NO pasa por un PAC. Se usa el Web Service oficial
+// de Descarga Masiva firmado con la e.firma del contribuyente (costo $0 por solicitud).
 
-
-async function obtainSwToken(args: { cer_b64: string; key_b64: string; password: string }) {
-  const SW_BASE = (process.env.SW_SAPIEN_API_URL || "https://services.sw.com.mx/").replace(/\/$/, "");
-  const SW_TOKEN = process.env.SW_SAPIEN_API_TOKEN;
-  const SW_USER = process.env.SW_USER;
-  const SW_PASSWORD = process.env.SW_PASSWORD;
-
-  // Sin credenciales ni token → modo simulado
-  if (!SW_TOKEN && (!SW_USER || !SW_PASSWORD)) {
-    return { token: `mock_${crypto.randomUUID()}`, simulated: true as const };
-  }
-
-  // Token maestro: preconfigurado (sandbox SW Sapien) o vía user/password
-  let masterToken: string | undefined = SW_TOKEN;
-  if (!masterToken) {
-    const auth = await fetch(`${SW_BASE}/security/authenticate`, {
-      method: "POST",
-      headers: { user: SW_USER!, password: SW_PASSWORD! },
-    });
-    if (!auth.ok) throw new Error(`PAC auth falló (${auth.status})`);
-    const authJson = (await auth.json()) as { data?: { token?: string } };
-    masterToken = authJson?.data?.token;
-    if (!masterToken) throw new Error("PAC no devolvió token maestro");
-  }
-
-  // Registrar e.firma del cliente para descargas
-  const reg = await fetch(`${SW_BASE}/cfdi/efirma/register`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${masterToken}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      cer: args.cer_b64,
-      key: args.key_b64,
-      password: args.password,
-    }),
-  });
-  if (!reg.ok) {
-    const txt = await reg.text();
-    throw new Error(`PAC rechazó la e.firma: ${txt.slice(0, 200)}`);
-  }
-  return { token: masterToken, simulated: false as const };
-}
 
 export const getSatStatus = createServerFn({ method: "GET" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
