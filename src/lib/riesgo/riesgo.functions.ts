@@ -19,6 +19,14 @@ export type CriterioRiesgo = {
   puntos: number; // 0..100 (más alto = más riesgo)
   hallazgos: string[];
   accion: string;
+  /** Fundamento legal del criterio */
+  fundamento?: string;
+  /** URL de la fuente oficial */
+  fuenteUrl?: string;
+  /** Datos del expediente usados para evaluarlo */
+  datosUtilizados?: string;
+  /** Regla determinista vs. análisis generado por IA */
+  naturaleza?: "determinista" | "ia";
 };
 
 export type RiesgoSAT = {
@@ -31,8 +39,10 @@ export type RiesgoSAT = {
     periodo: { desde: string; hasta: string };
     n_cfdi: number;
     n_mov: number;
+    metodologia: typeof RIESGO_METODOLOGIA;
   };
 };
+
 
 export type RiesgoSATResult = RiesgoSAT | { notFound: true };
 
