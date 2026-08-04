@@ -477,3 +477,19 @@ No se modificaron datos reales.
 **Archivos:** `src/lib/fiscal/normativa/catalogo.ts`, `motor.ts` (`resolverUma`, tope mensual), `__fixtures__/oficiales.ts` (valores literales + `UMA_2026_VALOR_INCORRECTO` sólo para rechazarlo), `normativa.numerica.test.ts`.
 
 **Pruebas nuevas:** 31/01 vs 01/02, enero completo $536.21, febrero completo $535.65, un día de enero y de febrero con divisor 30.4, periodos de 7/15/30 días, tope tras pagos parciales, pago que cruza enero-febrero, ingresos $11,492.66 y $11,492.67, rechazo de $3,569.97 en todo el catálogo, vigencia UMA 2025 hasta el 31/01/2026. Suite fiscal: 175 pruebas en verde. No se modificaron datos reales ni se ejecutó nada contra el SAT.
+
+## Auditoría de la versión publicada (cierre)
+
+- **Panel admin**: cada renglón muestra ahora el límite base del plan frente al
+  límite vigente, las cortesías con su fecha de expiración y los expedientes
+  demo, que existen pero no consumen cuota.
+- **Expedientes**: `/app/clientes` separa "Reales" y "Demostración" en pestañas,
+  etiqueta los demo con un distintivo visible y los excluye de los KPI.
+- **Riesgo SAT**: el score se calcula en `src/lib/riesgo/score.ts`. Sin cobertura
+  mínima (50% de criterios con información real) no se publica score: el
+  semáforo queda en "sin datos" y nunca se afirma "riesgo bajo".
+- **Servicio SAT**: la decisión de si se puede sincronizar se centralizó en
+  `src/lib/sat/estado-servicio.ts`, con causa y motivo explícitos (cuenta
+  bloqueada, sin selección, sin credencial, cuota agotada, servicio sin saldo).
+- **Regresiones**: `src/lib/riesgo/score.test.ts` y
+  `src/lib/sat/estado-servicio.test.ts` (12 casos) blindan estos puntos.
