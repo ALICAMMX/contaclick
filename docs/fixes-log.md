@@ -123,3 +123,35 @@ Módulos verificados sanos: `salud/salud.functions.ts`, `reportes/reportes.funct
 - Nuevo `src/lib/sat/sat-directo-runner.server.ts`: solicita, verifica, descarga los ZIP y los ingesta como CFDI con dedup por UUID/hash.
 - Las corridas con solicitud en proceso quedan en `en_curso` y el cron las cosecha automáticamente cuando el SAT libera los paquetes.
 - El candado de saldo PAC ya no aplica en modo directo; se conserva la cuota de solicitudes por plan.
+
+## Aislamiento por expediente activo (tenant + rol + cliente)
+
+**Problema:** varias pantallas mostraban datos de un RFC distinto al expediente
+seleccionado (Reporte Ejecutivo, y las pestañas Dashboard/Actividad/Novedades de
+Sincronización SAT), y algunas conservaban información del expediente anterior
+tras cambiar de selección.
+
+**Causa raíz:**
+- `listarReportes`, `obtenerKpisReportes`, `listarRecomendaciones`,
+  `listarSimulaciones` y `obtenerReporte` aceptaban `cliente_id` opcional; el
+  frontend nunca lo enviaba, así que devolvían todo el despacho.
+- `dashboardSatSync`, `listSyncRuns` y `listSyncEventos` filtraban solo por
+  despacho, nunca por expediente.
+- Al cambiar de expediente no se descartaba la caché de React Query.
+
+**Solución:**
+- Nueva fuente única de verdad server-side: `src/lib/despacho/scope.ts`
+  (`assertClienteScope`). Valida existencia del expediente, resuelve el
+  expediente padre si se recibe un tercero, exige membresía activa u
+  ownership del despacho y consulta `has_cliente_access` para permisos finos.
+  Si no hay expediente activo o no hay acceso, **falla cerrado** (throw).
+- `cliente_id` pasó a ser **obligatorio** en las funciones de Reporte Ejecutivo
+  y Sincronización SAT; todas filtran por `cliente_id` **y** `despacho_id`.
+- Se añadió `assertClienteScope` a calendario (`listObligacionesCliente`),
+  conciliación (`listMovimientos`, `getReconciliationStats`), precios de
+  importación (`runImportPriceCheck`) y `runSyncNow`/`getSatSyncConfig`.
+- `ActiveClienteProvider` ahora limpia toda la caché de React Query al cambiar
+  de expediente, estabiliza la revalidación (una sola llamada por id) y expone
+  `hydrating` para evitar el falso "no hay expediente" durante la carga.
+- Reporte Ejecutivo ya no tiene selector de cliente propio: usa siempre el
+  expediente activo de la barra superior.
