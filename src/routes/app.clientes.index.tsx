@@ -172,8 +172,10 @@ function ClientesPage() {
             <Button
               variant="hero"
               type="button"
+              disabled={cuotaBloqueada}
+              title={cuotaQ.data?.motivo ?? undefined}
               onPointerDown={(e) => {
-                if (e.button !== 0) return;
+                if (e.button !== 0 || cuotaBloqueada) return;
                 setOpenForm((v) => !v);
               }}
               onClick={(e) => e.preventDefault()}
@@ -184,8 +186,37 @@ function ClientesPage() {
         </div>
       </div>
 
+      {canManageExpedientes && cuotaBloqueada && (
+        <div className="rounded-xl border border-warning/40 bg-warning/10 p-4 flex items-start gap-3">
+          <Lock className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+          <div className="text-sm">
+            <p className="font-semibold">No puedes dar de alta más expedientes</p>
+            <p className="text-muted-foreground mt-0.5">{cuotaQ.data?.motivo}</p>
+            <p className="text-muted-foreground mt-1">
+              Uso actual: <strong>{cuotaQ.data?.usado}</strong> de{" "}
+              <strong>{cuotaQ.data?.ilimitado ? "ilimitados" : cuotaQ.data?.limite}</strong> RFC.
+              Los expedientes de demostración no cuentan.
+            </p>
+            <div className="flex flex-wrap gap-2 mt-2">
+              <Link
+                to="/precios"
+                className="inline-flex items-center h-8 px-3 rounded-md bg-warning text-warning-foreground text-xs font-semibold"
+              >
+                Ver planes
+              </Link>
+              <Link
+                to="/app/configuracion"
+                className="inline-flex items-center h-8 px-3 rounded-md border border-border text-xs font-medium"
+              >
+                Revisar mi uso
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       {canManageExpedientes && (
-        <div hidden={!openForm}>
+        <div hidden={!openForm || cuotaBloqueada}>
           <NewClienteForm onSubmit={(d) => createMut.mutate(d)} loading={createMut.isPending} />
         </div>
       )}
