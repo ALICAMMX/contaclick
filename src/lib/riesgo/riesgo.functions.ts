@@ -331,6 +331,18 @@ export const computeRiesgoSAT = createServerFn({ method: "POST" })
       accion: "Si importas, sube pedimentos para validar precios.",
     });
 
+    // Documentación normativa: cada criterio declara fundamento, fuente,
+    // dato utilizado y si es regla determinista o análisis de IA.
+    for (const c of criterios) {
+      const f = FUENTES_RIESGO[c.id];
+      if (f) {
+        c.fundamento = f.fundamento;
+        c.fuenteUrl = f.url;
+        c.datosUtilizados = f.datosUtilizados;
+        c.naturaleza = f.naturaleza;
+      }
+    }
+
     // Score ponderado (promedio simple)
     const score = Math.round(criterios.reduce((a, c) => a + c.puntos, 0) / criterios.length);
     const semaforo = level(score);
@@ -344,6 +356,8 @@ export const computeRiesgoSAT = createServerFn({ method: "POST" })
         periodo: { desde, hasta },
         n_cfdi: cfdi.length,
         n_mov: mov.length,
+        metodologia: RIESGO_METODOLOGIA,
       },
     };
   });
+
