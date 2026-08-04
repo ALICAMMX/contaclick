@@ -189,7 +189,7 @@ describe("plan", () => {
         planes: { clave: "basico", nombre: "Básico", limites: { rfcs: 5, ia_msgs: 100 } },
       },
       clientes: rfcsReales(4),
-      uso: { ia_requests: 90, ia_tokens: 10, sat_solicitudes: 0, sat_costo_centavos: 0 },
+      uso: { despacho_id: DESPACHO, periodo: periodoActual(), ia_requests: 90, ia_tokens: 10, sat_solicitudes: 0, sat_costo_centavos: 0 },
     });
     const antes = await getEntitlements(makeSupabase(base), DESPACHO);
     expect(limiteDe(antes, "rfcs")).toBe(5);
@@ -222,12 +222,21 @@ describe("cuotas: dentro, exactamente en el límite y por encima", () => {
     await expect(assertCuota(sb, await getEntitlements(sb, DESPACHO), "rfcs", 1)).resolves.toBeUndefined();
   });
 
-  it("exactamente en el límite permite el último consumo y avisa al 80/100%", async () => {
-    const d = conPlan(5, 4);
+  it("al cruzar el 80% avisa pero deja consumir", async () => {
+    const d = conPlan(5, 3);
     const sb = makeSupabase(d);
     const ent = await getEntitlements(sb, DESPACHO);
     await expect(assertCuota(sb, ent, "rfcs", 1)).resolves.toBeUndefined();
     expect(d.alertas.some((a) => a.evidencia.umbral === "80")).toBe(true);
+  });
+
+  it("exactamente en el límite permite el último consumo", async () => {
+    const d = conPlan(5, 4);
+    const sb = makeSupabase(d);
+    const ent = await getEntitlements(sb, DESPACHO);
+    await expect(assertCuota(sb, ent, "rfcs", 1)).resolves.toBeUndefined();
+    expect(cuotaAgotada(ent, "rfcs", 1)).toBe(false);
+    expect(cuotaAgotada(ent, "rfcs", 2)).toBe(true);
   });
 
   it("por encima del límite lanza UsageLimitError y emite el aviso 100%", async () => {
