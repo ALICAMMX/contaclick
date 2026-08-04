@@ -372,10 +372,22 @@ export function inventarioNormativo() {
 }
 
 
+// ── UMA (INEGI, DOF) ─────────────────────────────────────────────────────────
+// La UMA tiene conjunto normativo, fuente y vigencia propios: se publica en
+// enero y entra en vigor el 1 de febrero. Enero de 2026 todavía usa la UMA 2025.
+
+export function resolverUma(periodo: string) {
+  const c = resolverNormativa("UMA", "UMA_INEGI", periodo);
+  if (c.cuerpo.tipo !== "uma") throw new Error("Conjunto normativo inválido para la UMA.");
+  return { ...c.cuerpo.uma, ejercicio: c.ejercicio, normativa: sello(c) };
+}
+
 // ── Subsidio para el empleo (Decreto DOF 31/12/2025) ─────────────────────────
 // El subsidio NO proviene del Anexo 8 de la RMF: tiene conjunto normativo,
-// fuente y versión propios. Enero 2026 = 15.59% de la UMA mensual 2025;
-// febrero a diciembre 2026 = 15.02% de la UMA mensual 2026.
+// fuente y versión propios. Enero 2026 = 15.59% de la UMA mensual 2025
+// ($3,439.46 → $536.21); febrero a diciembre 2026 = 15.02% de la UMA mensual
+// 2026 ($3,566.22 → $535.65). El importe operativo SIEMPRE se obtiene con la
+// fórmula UMA × porcentaje, nunca de los considerandos del decreto.
 
 export type SubsidioInput = {
   /** Mes del pago, AAAA-MM. En pagos multi-mes, el primer mes cubierto. */
@@ -385,6 +397,11 @@ export type SubsidioInput = {
   dias?: number;
   /** Número de meses completos que comprende el pago (>= 1). */
   mesesCubiertos?: number;
+  /**
+   * Subsidio ya entregado al trabajador dentro del mismo mes en pagos parciales
+   * anteriores. El acumulado del mes nunca puede exceder el máximo mensual.
+   */
+  subsidioPrevioDelMes?: number;
 };
 
 function siguienteMes(periodo: string): string {
@@ -392,6 +409,7 @@ function siguienteMes(periodo: string): string {
   const d = new Date(Date.UTC(y!, m!, 1));
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
+
 
 function subsidioDeUnMes(periodo: string, ingresoDelMes: number) {
   const c = resolverNormativa("ISR", "PF_SUBSIDIO_MENSUAL", periodo);
@@ -405,9 +423,11 @@ function subsidioDeUnMes(periodo: string, ingresoDelMes: number) {
 }
 
 /**
- * Subsidio para el empleo del periodo. Devuelve el desglose por mes cubierto,
- * el sello normativo de cada conjunto aplicado y una advertencia cuando algún
- * parámetro (p. ej. la UMA 2026) aún está pendiente de cotejo oficial.
+ * Subsidio para el empleo del periodo. Devuelve el desglose por mes cubierto y
+ * el sello normativo de cada conjunto aplicado. Prorrateo de periodos menores a
+ * un mes: (UMA mensual × %) ÷ 30.4 × días, nunca entre los días naturales del
+ * mes. El acumulado de pagos parciales del mismo mes no puede exceder el
+ * máximo mensual aplicable.
  */
 export function calcularSubsidioEmpleo(input: SubsidioInput) {
   const ingreso = round2(validarMonto("Ingreso gravable", input.ingresoGravable));
@@ -419,6 +439,10 @@ export function calcularSubsidioEmpleo(input: SubsidioInput) {
     if (meses > 1) throw new Error("Un pago no puede ser a la vez por días sueltos y por varios meses.");
     if (!(input.dias > 0)) throw new Error("Días: debe ser mayor a cero.");
   }
+  const previo = round2(validarMonto("Subsidio previo del mes", input.subsidioPrevioDelMes ?? 0));
+  if (previo > 0 && meses > 1) {
+    throw new Error("El subsidio previo del mes sólo aplica a pagos dentro de un mismo mes.");
+  }
 
   const detalle: Array<{
     periodo: string;
@@ -428,7 +452,11 @@ export function calcularSubsidioEmpleo(input: SubsidioInput) {
     umaEjercicio: number;
     limiteIngresoMensual: number;
     conDerecho: boolean;
+    /** Máximo mensual del subsidio en ese mes (UMA mensual × %) */
+    maximoMensual: number;
     monto: number;
+    /** true si el importe se recortó para no exceder el máximo mensual */
+    topado: boolean;
     normativa: SelloNormativo;
   }> = [];
 
@@ -439,14 +467,22 @@ export function calcularSubsidioEmpleo(input: SubsidioInput) {
   let periodo = input.periodo;
   let total = 0;
   let pendienteCotejo = false;
+  let topadoAlguno = false;
 
   for (let k = 0; k < meses; k++) {
     const { conjunto, sp, conDerecho, monto } = subsidioDeUnMes(periodo, ingresoPorMes);
     if (conjunto.verificacion.estado !== "verificado") pendienteCotejo = true;
     let montoMes = monto;
     if (input.dias !== undefined) {
-      // Periodos menores a un mes: proporción diaria del decreto.
+      // Periodos menores a un mes: divisor fijo de 30.4 días del decreto.
       montoMes = round2((monto / sp.diasMesComercial) * input.dias);
+    }
+    // Tope: lo ya entregado en el mes más este pago no puede exceder el máximo.
+    const disponible = round2(Math.max(monto - previo, 0));
+    const topado = montoMes > disponible;
+    if (topado) {
+      montoMes = disponible;
+      topadoAlguno = true;
     }
     total = round2(total + montoMes);
     detalle.push({
@@ -457,7 +493,9 @@ export function calcularSubsidioEmpleo(input: SubsidioInput) {
       umaEjercicio: sp.umaEjercicio,
       limiteIngresoMensual: sp.limiteIngresoMensual,
       conDerecho,
+      maximoMensual: monto,
       monto: montoMes,
+      topado,
       normativa: sello(conjunto),
     });
     periodo = siguienteMes(periodo);
@@ -468,13 +506,16 @@ export function calcularSubsidioEmpleo(input: SubsidioInput) {
     mesesCubiertos: meses,
     dias: input.dias ?? null,
     ingresoGravable: ingreso,
+    subsidioPrevioDelMes: previo,
     subsidio: total,
+    topadoAlMaximoMensual: topadoAlguno,
     detalle,
     pendienteCotejo,
     advertencia: pendienteCotejo
-      ? "Uno de los parámetros del subsidio (UMA 2026) está pendiente de cotejo contra el aviso oficial del INEGI publicado en el DOF. Verifica antes de timbrar la nómina."
+      ? "Uno de los parámetros del subsidio está pendiente de cotejo contra su publicación oficial en el DOF. Verifica antes de timbrar la nómina."
       : null,
   };
+
 }
 
 // ── ISR de salarios con subsidio ─────────────────────────────────────────────

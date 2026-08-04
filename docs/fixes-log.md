@@ -457,3 +457,23 @@ límite evaluado por mes en pagos multi-mes, subsidio mayor/igual/menor que el I
 Ningún cálculo anual se obtiene multiplicando la tabla mensual, y el subsidio al
 empleo tiene su propio conjunto normativo con fuente y vigencia separadas.
 No se modificaron datos reales.
+
+## 2026-08-04 — UMA 2026 oficial y corrección del subsidio al empleo
+
+**Problema:** el conjunto normativo del subsidio de febrero-diciembre 2026 usaba una UMA mensual estimada ($3,569.97) marcada como `pendiente_cotejo`, lo que producía $536.21 tanto en enero como en febrero.
+
+**Corrección (fuente: INEGI, DOF 09/01/2026 — https://dof.gob.mx/nota_detalle.php?codigo=5778072&fecha=09/01/2026):**
+- UMA 2026: diaria $117.31, mensual $3,566.22, anual $42,794.64, vigente desde el 01/02/2026.
+- Nuevos conjuntos versionados `uma-2026-v1` y `uma-2025-v1` (impuesto `UMA`, régimen `UMA_INEGI`) con fuente, vigencia y hash SHA-256 propios.
+- Subsidio: `subsidio-empleo-2026-02-v1` (UMA $3,569.97) se retira y se sustituye por `subsidio-empleo-2026-02-v2` (UMA $3,566.22). Se elimina `pendiente_cotejo` del catálogo.
+
+| Periodo | Base | % | Importe anterior | Importe nuevo |
+|---|---|---|---|---|
+| Enero 2026 | UMA 2025 $3,439.46 | 15.59% | $536.21 | $536.21 (sin cambio) |
+| Feb–Dic 2026 | UMA 2026 $3,566.22 | 15.02% | $536.21 | **$535.65** |
+
+**Prorrateo:** confirmado `(UMA mensual × %) ÷ 30.4 × días`, nunca entre los días naturales del mes. El acumulado de pagos parciales se topa al máximo mensual (`subsidioPrevioDelMes` + `topadoAlMaximoMensual`).
+
+**Archivos:** `src/lib/fiscal/normativa/catalogo.ts`, `motor.ts` (`resolverUma`, tope mensual), `__fixtures__/oficiales.ts` (valores literales + `UMA_2026_VALOR_INCORRECTO` sólo para rechazarlo), `normativa.numerica.test.ts`.
+
+**Pruebas nuevas:** 31/01 vs 01/02, enero completo $536.21, febrero completo $535.65, un día de enero y de febrero con divisor 30.4, periodos de 7/15/30 días, tope tras pagos parciales, pago que cruza enero-febrero, ingresos $11,492.66 y $11,492.67, rechazo de $3,569.97 en todo el catálogo, vigencia UMA 2025 hasta el 31/01/2026. Suite fiscal: 175 pruebas en verde. No se modificaron datos reales ni se ejecutó nada contra el SAT.
