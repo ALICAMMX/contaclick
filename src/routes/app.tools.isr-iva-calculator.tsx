@@ -36,18 +36,27 @@ function IsrIvaCalculator() {
   const [importedFrom, setImportedFrom] = useState<string | null>(null);
   const [parsing, setParsing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [retenciones, setRetenciones] = useState("");
+  const [pagosProv, setPagosProv] = useState("");
 
   const calc = useMemo(() => {
-    const ing = Number(ingresos) || 0;
-    const ded = Number(deducciones) || 0;
     const ivaT = Number(ivaTrasladado) || 0;
     const ivaA = Number(ivaAcreditable) || 0;
-    const base = Math.max(ing - ded, 0);
-    const { isr, tramo } = calcIsrPF(base);
-    const ivaPorPagar = Math.max(ivaT - ivaA, 0);
-    const ivaSaldoFavor = Math.max(ivaA - ivaT, 0);
-    return { ing, ded, base, isr, tramo, ivaT, ivaA, ivaPorPagar, ivaSaldoFavor };
-  }, [ingresos, deducciones, ivaTrasladado, ivaAcreditable]);
+    try {
+      const isr = calcularIsrPf({
+        periodo,
+        ingresos: Number(ingresos) || 0,
+        deducciones: Number(deducciones) || 0,
+        retenciones: Number(retenciones) || 0,
+        pagosProvisionalesAnteriores: Number(pagosProv) || 0,
+      });
+      const iva = calcularIva({ periodo, ivaTrasladado: ivaT, ivaAcreditable: ivaA });
+      return { ok: true as const, isr, iva };
+    } catch (e) {
+      return { ok: false as const, error: e instanceof Error ? e.message : "Error de cálculo" };
+    }
+  }, [periodo, ingresos, deducciones, retenciones, pagosProv, ivaTrasladado, ivaAcreditable]);
+
 
   const f = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
