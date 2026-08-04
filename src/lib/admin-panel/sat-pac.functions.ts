@@ -143,8 +143,9 @@ export const recargarSatPac = createServerFn({ method: "POST" })
     const { data: row, error } = await context.supabase.rpc("pac_recargar", {
       _solicitudes: data.solicitudes,
       _costo_total_centavos: centavos,
-      _referencia: data.referencia,
-      _motivo: "Recarga manual registrada por super-admin",
+      _motivo: `Recarga manual registrada por super-admin. Referencia: ${data.referencia}`,
+      // Llave de idempotencia: dos envíos del mismo comprobante no duplican saldo.
+      _key: `recarga:${data.referencia}`,
     });
     if (error) throw new Error(error.message);
     await evaluarAlertasSaldoPac(context.supabase);
