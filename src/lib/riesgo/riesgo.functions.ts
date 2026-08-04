@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 import { lookupEfos } from "@/lib/efos/lista-demo";
 import { FUENTES_RIESGO, RIESGO_METODOLOGIA } from "@/lib/riesgo/criterios-fuentes";
+import { COBERTURA_MINIMA, calcularScoreRiesgo, type SemaforoRiesgo } from "@/lib/riesgo/score";
 
 const Input = z.object({
   cliente_id: z.string().uuid(),
@@ -12,13 +13,7 @@ const Input = z.object({
 });
 
 export type NivelCriterio = "verde" | "amarillo" | "rojo" | "no_evaluable";
-export type SemaforoRiesgo = "verde" | "amarillo" | "rojo" | "sin_datos";
-
-/**
- * Cobertura mínima para publicar un score general. Por debajo de esto el
- * expediente NO tiene información suficiente y jamás se afirma "riesgo bajo".
- */
-export const COBERTURA_MINIMA = 0.5; // 50% de los criterios evaluables
+export { COBERTURA_MINIMA, type SemaforoRiesgo };
 
 export type CriterioRiesgo = {
   id: number;
@@ -463,15 +458,7 @@ export const computeRiesgoSAT = createServerFn({ method: "POST" })
     }
 
     // --- Score: SOLO sobre criterios con información real ---
-    const evaluables = criterios.filter((c) => c.evaluable);
-    const porcentaje = criterios.length ? evaluables.length / criterios.length : 0;
-    const suficiente = evaluables.length > 0 && porcentaje >= COBERTURA_MINIMA;
-    const faltantes = criterios.filter((c) => !c.evaluable).map((c) => `#${c.id} ${c.nombre}`);
-
-    const score = suficiente
-      ? Math.round(evaluables.reduce((a, c) => a + (c.puntos ?? 0), 0) / evaluables.length)
-      : null;
-    const semaforo: SemaforoRiesgo = score === null ? "sin_datos" : level(score);
+    const { score, semaforo, cobertura } = calcularScoreRiesgo(criterios);
 
     return {
       score,
@@ -482,19 +469,7 @@ export const computeRiesgoSAT = createServerFn({ method: "POST" })
         periodo: { desde, hasta },
         n_cfdi: cfdi.length,
         n_mov: mov.length,
-        cobertura: {
-          evaluables: evaluables.length,
-          total: criterios.length,
-          porcentaje: Math.round(porcentaje * 100),
-          minimo: Math.round(COBERTURA_MINIMA * 100),
-          suficiente,
-          mensaje: suficiente
-            ? null
-            : evaluables.length === 0
-              ? "Este expediente no tiene información cargada: no es posible determinar su nivel de riesgo SAT."
-              : `Solo ${evaluables.length} de ${criterios.length} criterios pudieron evaluarse (mínimo ${Math.round(COBERTURA_MINIMA * 100)}%). El resultado sería engañoso, por eso no se publica un score.`,
-          faltantes,
-        },
+        cobertura,
         metodologia: RIESGO_METODOLOGIA,
       },
     };
