@@ -4826,6 +4826,15 @@ export type Database = {
           solicitudes: number
         }[]
       }
+      pac_selftest: {
+        Args: never
+        Returns: {
+          detalle: string
+          ok: boolean
+          test: string
+        }[]
+      }
+      pac_selftest_lock: { Args: { _segundos?: number }; Returns: string }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {
