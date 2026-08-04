@@ -9,6 +9,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 import { z } from "zod";
+import { decidirEstadoSat, nivelPac } from "@/lib/sat/estado-servicio";
 import { computeSaludFiscal } from "@/lib/salud/salud.functions";
 import { computeRiesgoSAT } from "@/lib/riesgo/riesgo.functions";
 import { runExpressAudit } from "@/lib/auditor/auditor.functions";
@@ -268,37 +269,18 @@ export const estadoServicioSat = createServerFn({ method: "GET" })
       credencial_activa: credencialActiva,
     };
 
-    if (!ent.acceso) {
-      return { ...base, puede_ejecutar: false, causa: "cuenta_bloqueada", motivo: ent.motivo_bloqueo };
-    }
-    if (previstas <= 0) {
-      return {
-        ...base,
-        puede_ejecutar: false,
-        causa: "sin_seleccion",
-        motivo: "Selecciona al menos un tipo de comprobante para descargar.",
-      };
-    }
-    if (!credencialActiva) {
-      return {
-        ...base,
-        puede_ejecutar: false,
-        causa: "sin_credencial",
-        motivo: "Este expediente no tiene una credencial SAT activa (e.firma o CIEC). Conéctala antes de sincronizar.",
-      };
-    }
-    if (!ilimitado && restante !== null && previstas > restante) {
-      return {
-        ...base,
-        puede_ejecutar: false,
-        causa: "cuota_agotada",
-        motivo: `Esta corrida requiere ${previstas} solicitudes y a tu plan le quedan ${restante} en el periodo ${ent.periodo}. Reduce el rango o los tipos de comprobante, o mejora tu plan.`,
-      };
-    }
-
-    // Sandbox/demo no toca el saldo real del proveedor.
-    if (ent.es_sandbox) {
-      return { ...base, puede_ejecutar: true, causa: "ok", motivo: null };
+    const previoServicio = decidirEstadoSat({
+      acceso: ent.acceso,
+      motivoBloqueo: ent.motivo_bloqueo,
+      previstas,
+      credencialActiva,
+      ilimitado,
+      restante,
+      periodo: ent.periodo,
+      esSandbox: ent.es_sandbox,
+    });
+    if (!previoServicio.puede_ejecutar || ent.es_sandbox) {
+      return { ...base, ...previoServicio };
     }
 
     // El saldo global del PAC es información interna: se lee con privilegios y
@@ -306,26 +288,26 @@ export const estadoServicioSat = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const pac = await leerSaldoPac(supabaseAdmin as any);
     const esSuperAdmin = !!(sa as any[])?.length;
-    const nivel =
-      pac.disponible <= 0 ? "agotado" : pac.disponible < previstas ? "insuficiente"
-        : pac.disponible <= pac.umbral_critico ? "critico" : "ok";
+    const nivel = nivelPac(pac.disponible, previstas, pac.umbral_critico);
     const servicio = esSuperAdmin
       ? { disponible: pac.disponible, reservado: pac.reservado, umbral_critico: pac.umbral_critico, nivel }
       : undefined;
 
-    if (nivel === "agotado" || nivel === "insuficiente") {
-      return {
-        ...base,
-        servicio,
-        puede_ejecutar: false,
-        causa: "servicio_sin_saldo",
-        motivo:
-          "El servicio de descarga masiva SAT está temporalmente sin saldo operativo. " +
-          "No se consumirá nada de tu cuota: el administrador ya fue notificado y podrás reintentar en cuanto se recargue.",
-      };
-    }
-
-    return { ...base, servicio, puede_ejecutar: true, causa: "ok", motivo: null };
+    return {
+      ...base,
+      servicio,
+      ...decidirEstadoSat({
+        acceso: ent.acceso,
+        motivoBloqueo: ent.motivo_bloqueo,
+        previstas,
+        credencialActiva,
+        ilimitado,
+        restante,
+        periodo: ent.periodo,
+        esSandbox: ent.es_sandbox,
+        nivelServicio: nivel,
+      }),
+    };
   });
 
 // ============= EJECUCIÓN =============
