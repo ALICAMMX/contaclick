@@ -107,7 +107,7 @@ function CalendarioFiscal() {
   const query = useQuery({
     queryKey: ["calendario", cliente?.id, desde, hasta],
     queryFn: () => listFn({ data: { clienteId: cliente!.id, desde, hasta } }),
-    enabled: !!cliente?.id,
+    enabled: !hydrating && !!cliente?.id,
   });
 
   const obligacionesFiltradas = useMemo(() => {

@@ -16,14 +16,14 @@ export const Route = createFileRoute("/app/tools/import-prices")({
 });
 
 function ImportPrices() {
-  const { cliente } = useActiveCliente();
+  const { cliente, hydrating } = useActiveCliente();
   const [year, setYear] = useState(new Date().getFullYear());
   const [umbral, setUmbral] = useState(0.5);
   const [filter, setFilter] = useState<"all" | "alta" | "media" | "baja">("all");
   const fn = useServerFn(runImportPriceCheck);
 
   const q = useQuery({
-    enabled: !!cliente?.id,
+    enabled: !hydrating && !!cliente?.id,
     queryKey: ["import-prices", cliente?.id, year, umbral],
     queryFn: async () => {
       try {

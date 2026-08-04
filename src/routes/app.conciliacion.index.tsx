@@ -108,18 +108,18 @@ function ConciliacionPage() {
   const fnCuentas = useServerFn(listCuentas);
   const fnCreateCuenta = useServerFn(createCuenta);
   const cuentas = useQuery({
-    enabled: !!cliente,
+    enabled: !hydrating && !!cliente,
     queryKey: ["cuentas", cliente?.id],
     queryFn: () => fnCuentas({ data: { cliente_id: cliente!.id } }),
   });
 
   const stats = useQuery({
-    enabled: !!cliente,
+    enabled: !hydrating && !!cliente,
     queryKey: ["recon-stats", cliente?.id],
     queryFn: () => fnStats({ data: { cliente_id: cliente!.id } }),
   });
   const list = useQuery({
-    enabled: !!cliente,
+    enabled: !hydrating && !!cliente,
     queryKey: ["recon-list", cliente?.id, filterCuenta],
     queryFn: () => fnList({ data: {
       cliente_id: cliente!.id,
