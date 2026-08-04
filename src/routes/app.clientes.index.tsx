@@ -13,6 +13,7 @@ import { listExpedientes, type Expediente } from "@/lib/expedientes/expedientes.
 import { useActiveCliente } from "@/lib/active-cliente";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { HerramientaHelp } from "@/components/HerramientaHelp";
+import { usePuedeCrearExpediente } from "@/lib/entitlements/use-entitlements";
 
 export const Route = createFileRoute("/app/clientes/")({
   component: ClientesPage,
