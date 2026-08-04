@@ -337,6 +337,7 @@ function UserRow({
         </TableCell>
         <TableCell>
           <UsageMini usado={row.rfc_activos} limite={row.rfc_limite} />
+          <LimiteDetalle row={row} recurso="rfcs" />
         </TableCell>
         <TableCell>
           {row.ultimo_pago_at ? (
@@ -445,6 +446,34 @@ function UserRow({
         </TableRow>
       )}
     </>
+  );
+}
+
+/**
+ * Muestra el origen del límite: base del plan, ampliación por cortesía vigente
+ * y expedientes demo (que existen pero NO consumen cuota).
+ */
+function LimiteDetalle({ row, recurso }: { row: AdminUserRow; recurso: "rfcs" }) {
+  const ent = row.entitlements;
+  if (!ent) return null;
+  const m = ent.medidores.find((x) => x.recurso === recurso);
+  const exc = ent.excepciones.filter((e) => e.tipo === "limite_rfcs");
+  return (
+    <div className="text-[10px] text-muted-foreground mt-0.5 space-y-0.5 max-w-[190px]">
+      {m && m.ampliado_por_excepcion && (
+        <div>
+          Base del plan: {m.limite_base < 0 ? "∞" : m.limite_base} · vigente:{" "}
+          {m.limite_efectivo < 0 ? "∞" : m.limite_efectivo}
+        </div>
+      )}
+      {ent.rfcs_demo > 0 && <div>{ent.rfcs_demo} demo (no cuentan en la cuota)</div>}
+      {exc.map((e, i) => (
+        <div key={i} title={e.motivo}>
+          Cortesía hasta {new Date(e.expira_at).toLocaleDateString("es-MX")}
+        </div>
+      ))}
+      {!ent.acceso && <div className="text-destructive">Sin acceso: {ent.motivo_bloqueo}</div>}
+    </div>
   );
 }
 
