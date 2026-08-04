@@ -5,6 +5,7 @@ import { assertClienteScope, assertRecordScope, EXPEDIENTE_REQUERIDO, REGISTRO_F
 
 type Row = Record<string, any>;
 
+
 /** Fake mínimo del query builder de supabase-js usado por scope.ts */
 function makeSupabase(db: {
   clientes: Row[];
@@ -45,7 +46,13 @@ const CLI_A2 = "aaaaaaa1-0000-0000-0000-000000000002";
 const CLI_B1 = "bbbbbbb1-0000-0000-0000-000000000001";
 const USER = "user-1";
 
-const baseDb = () => ({
+const baseDb = (): {
+  clientes: Row[];
+  memberships: Row[];
+  despachos: Row[];
+  tables: Record<string, Row[]>;
+  clienteAccess?: boolean;
+} => ({
   clientes: [
     { id: CLI_A1, rfc: "AAA010101AAA", razon_social: "Alfa", despacho_id: DESPACHO_A, tipo_relacion: "cliente", cliente_padre_id: null },
     { id: CLI_A2, rfc: "AAA020202AAA", razon_social: "Beta", despacho_id: DESPACHO_A, tipo_relacion: "cliente", cliente_padre_id: null },
