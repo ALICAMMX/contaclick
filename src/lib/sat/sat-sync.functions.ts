@@ -234,13 +234,15 @@ export const runSyncNow = createServerFn({ method: "POST" })
 
     let solicitudesPrevistas = 0;
     let esMockRun = false;
-    if (!cred || cred.estatus !== "activo" || !cred.pac_token) {
-      errores.push({ fase: "auth", mensaje: "Expediente no conectado al SAT (sin credencial activa)" });
+    if (!cred || cred.estatus !== "activo" || (!usaSatDirecto && !cred.pac_token)) {
+      errores.push({ fase: "auth", mensaje: "Expediente no conectado al SAT (sin e.firma cargada)" });
     } else {
-      const isMock = cred.pac_token.startsWith("mock_") || !process.env.SW_USER;
-      esMockRun = isMock;
-      // ===== Candados de costo PAC =====
+      // Con e.firma propia la descarga es directa contra el SAT: costo $0, sin PAC.
+      const isMock = !usaSatDirecto && (cred.pac_token?.startsWith("mock_") || !process.env.SW_USER);
+      esMockRun = !!isMock;
+      // ===== Candados de uso (cuota del plan; el saldo PAC no aplica en SAT directo) =====
       try {
+
         solicitudesPrevistas = contarSolicitudesPrevistas({
           emitidos: !!cfg?.emitidos,
           recibidos: !!cfg?.recibidos,
