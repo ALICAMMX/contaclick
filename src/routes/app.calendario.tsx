@@ -251,8 +251,8 @@ function CalendarioFiscal() {
           <ListaObligaciones
             rows={obligacionesFiltradas}
             onEdit={(o) => { setEditing(o); setFormOpen(true); }}
-            onComplete={(o) => completeRow(qc, o)}
-            onDelete={(o) => deleteRow(qc, o)}
+            onComplete={(o) => completeRow(qc, o, cliente?.id ?? "")}
+            onDelete={(o) => deleteRow(qc, o, cliente?.id ?? "")}
           />
         </TabsContent>
       </Tabs>
@@ -261,8 +261,8 @@ function CalendarioFiscal() {
         date={dayModalDate}
         rows={obligacionesFiltradas.filter((o) => o.proximo_vencimiento === dayModalDate)}
         onClose={() => setDayModalDate(null)}
-        onComplete={(o) => completeRow(qc, o)}
-        onPostpone={(o, d) => postponeRow(qc, o, d)}
+        onComplete={(o) => completeRow(qc, o, cliente?.id ?? "")}
+        onPostpone={(o, d) => postponeRow(qc, o, d, cliente?.id ?? "")}
         onEdit={(o) => { setEditing(o); setDayModalDate(null); setFormOpen(true); }}
       />
 
@@ -800,25 +800,25 @@ function AlertConfigDialog({
 // MUTACIONES INLINE
 // =========================================================================
 
-function completeRow(qc: ReturnType<typeof useQueryClient>, o: ObligacionRow) {
-  setEstatusObligacion({ data: { id: o.id, estatus: "presentada" } })
+function completeRow(qc: ReturnType<typeof useQueryClient>, o: ObligacionRow, clienteId: string) {
+  setEstatusObligacion({ data: { id: o.id, clienteId, estatus: "presentada" } })
     .then(() => {
       toast.success("Obligación marcada como cumplida");
       qc.invalidateQueries({ queryKey: ["calendario"] });
     })
     .catch((e: any) => toast.error(e?.message ?? "Error"));
 }
-function postponeRow(qc: ReturnType<typeof useQueryClient>, o: ObligacionRow, d: string) {
-  posponerObligacion({ data: { id: o.id, nuevaFecha: d } })
+function postponeRow(qc: ReturnType<typeof useQueryClient>, o: ObligacionRow, d: string, clienteId: string) {
+  posponerObligacion({ data: { id: o.id, clienteId, nuevaFecha: d } })
     .then(() => {
       toast.success("Obligación pospuesta");
       qc.invalidateQueries({ queryKey: ["calendario"] });
     })
     .catch((e: any) => toast.error(e?.message ?? "Error"));
 }
-function deleteRow(qc: ReturnType<typeof useQueryClient>, o: ObligacionRow) {
+function deleteRow(qc: ReturnType<typeof useQueryClient>, o: ObligacionRow, clienteId: string) {
   if (!confirm(`¿Eliminar "${o.nombre ?? o.clave}"?`)) return;
-  eliminarObligacion({ data: { id: o.id } })
+  eliminarObligacion({ data: { id: o.id, clienteId } })
     .then(() => {
       toast.success("Obligación eliminada");
       qc.invalidateQueries({ queryKey: ["calendario"] });
