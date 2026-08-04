@@ -117,3 +117,9 @@ Módulos verificados sanos: `salud/salud.functions.ts`, `reportes/reportes.funct
 - **Causa:** la generación automática sí existía en `/app/contabilidad-auto`, pero estaba separada del módulo de “Pólizas contables”, por lo que el flujo comercial y operativo no coincidía con lo mostrado al usuario.
 - **Fix:** `/app/polizas` ahora abre con la pestaña **Automáticas**, permite generar pólizas desde CFDI pendientes y movimientos bancarios sin póliza, y permite aprobar borradores automáticos desde la misma pantalla.
 - **Resultado:** el módulo de pólizas ya no depende sólo de importación manual/CSV; integra el flujo automático que se había descrito y mantiene manual/CSV como alternativas.
+
+## Descarga masiva SAT sin PAC (e.firma directa)
+- Se conectó `runSyncNow` y el cron `/api/public/hooks/sat-sync` al Servicio de Descarga Masiva del SAT usando la e.firma del contribuyente (costo $0 por solicitud); el PAC (SW Sapien) queda como respaldo.
+- Nuevo `src/lib/sat/sat-directo-runner.server.ts`: solicita, verifica, descarga los ZIP y los ingesta como CFDI con dedup por UUID/hash.
+- Las corridas con solicitud en proceso quedan en `en_curso` y el cron las cosecha automáticamente cuando el SAT libera los paquetes.
+- El candado de saldo PAC ya no aplica en modo directo; se conserva la cuota de solicitudes por plan.
