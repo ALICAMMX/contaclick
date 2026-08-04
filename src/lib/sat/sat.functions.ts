@@ -178,10 +178,11 @@ export const conectarSat = createServerFn({ method: "POST" })
       accion: "sat.conectar",
       entidad: "cliente",
       entidad_id: cli.id,
-      payload: { simulated: result.simulated, rfc: cli.rfc, auto_sync: true },
+      payload: { proveedor: "sat_directo", rfc: cli.rfc, auto_sync: true },
     });
 
-    return { ok: true, simulated: result.simulated, auto_sync_activado: true };
+    return { ok: true, simulated: false, auto_sync_activado: true };
+
   });
 
 export const desconectarSat = createServerFn({ method: "POST" })
