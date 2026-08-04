@@ -209,6 +209,25 @@ function CriterioCard({ c }: { c: CriterioRiesgo }) {
       <div className="mt-3 text-xs border-t border-current/20 pt-2 opacity-90">
         <span className="font-semibold">Acción:</span> {c.accion}
       </div>
+      {(c.fundamento || c.datosUtilizados) && (
+        <div className="mt-2 text-[11px] border-t border-current/20 pt-2 opacity-75 space-y-0.5">
+          {c.fundamento && <div><span className="font-semibold">Fundamento:</span> {c.fundamento}</div>}
+          {c.datosUtilizados && <div><span className="font-semibold">Dato usado:</span> {c.datosUtilizados}</div>}
+          <div>
+            <span className="font-semibold">Naturaleza:</span>{" "}
+            {c.naturaleza === "ia" ? "análisis generado por IA" : "regla determinista"}
+            {c.fuenteUrl && (
+              <>
+                {" · "}
+                <a href={c.fuenteUrl} target="_blank" rel="noreferrer noopener" className="underline">
+                  fuente oficial
+                </a>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
