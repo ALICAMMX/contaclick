@@ -294,22 +294,57 @@ export const runSyncNow = createServerFn({ method: "POST" })
             });
           }
         } else {
-          // PAC real: dispara solicitud asíncrona. Polling lo hará el cron de SAT.
-          const res = await fetch("https://services.sw.com.mx/cfdi/descargamasiva/solicitud", {
-            method: "POST",
-            headers: { Authorization: `Bearer ${cred.pac_token}`, "Content-Type": "application/json" },
-            body: JSON.stringify({
-              rfc: cli.rfc,
-              fechaInicio: desde,
-              fechaFin: hasta,
-              tipoSolicitud: "CFDI",
-            }),
+          // SAT directo con e.firma: se envían las solicitudes (asíncronas, costo $0).
+          // El cron de SAT verifica y descarga los paquetes cuando el SAT los libera.
+          const { solicitarDescargas, cosecharSolicitud } = await import(
+            "@/lib/sat/sat-directo-runner.server"
+          );
+          const { solicitudes, errores: errSol } = await solicitarDescargas({
+            supabase,
+            clienteId: cli.id,
+            rfc: cli.rfc!,
+            desde,
+            hasta,
+            emitidos: cfg?.emitidos ?? true,
+            recibidos: cfg?.recibidos ?? true,
           });
-          if (!res.ok) {
-            const txt = await res.text();
-            errores.push({ fase: "solicitud", mensaje: `PAC ${res.status}: ${txt.slice(0, 200)}` });
+          for (const m of errSol) errores.push({ fase: "solicitud", mensaje: m });
+
+          // Primer intento de cosecha inmediata (a veces el SAT responde en segundos)
+          const estado: any[] = [];
+          for (const s of solicitudes) {
+            try {
+              const r = await cosecharSolicitud({
+                supabase,
+                despachoId: cli.despacho_id,
+                clienteId: cli.id,
+                solicitud: s,
+              });
+              estado.push(r.solicitud);
+              nuevos += r.nuevos;
+              descargados += r.nuevos + r.duplicados;
+              duplicados += r.duplicados;
+            } catch (e: any) {
+              estado.push({ ...s, mensaje: String(e?.message ?? e).slice(0, 250) });
+            }
+          }
+          await supabase
+            .from("sat_sync_runs")
+            .update({ proveedor: "sat_directo", solicitudes: estado })
+            .eq("id", runId);
+          if (estado.some((s) => s.estado === "pendiente")) {
+            errores.length === 0 &&
+              (await supabase.from("sat_sync_eventos").insert({
+                despacho_id: cli.despacho_id,
+                cliente_id: cli.id,
+                run_id: runId,
+                tipo: "info",
+                mensaje:
+                  "Solicitud enviada al SAT. La descarga se completará automáticamente cuando el SAT libere los paquetes (puede tardar de minutos a horas).",
+              }));
           }
         }
+
 
         // Detección de duplicados: cualquier hash repetido en cfdi_xml del expediente
         const { data: dupHashes } = await supabase
