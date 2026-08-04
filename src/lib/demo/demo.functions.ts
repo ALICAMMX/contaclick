@@ -40,7 +40,7 @@ export const seedDemo = createServerFn({ method: "POST" })
     // ---- Clientes ----
     const clientesPayload = [
       {
-        user_id: userId, despacho_id,
+        user_id: userId, despacho_id, es_demo: true,
         rfc: "PME920101AB1",
         razon_social: "Panadería La Mexicana SA de CV",
         regimen_fiscal: "601 - General de Ley Personas Morales",
@@ -51,7 +51,7 @@ export const seedDemo = createServerFn({ method: "POST" })
         estado_mes: "Pendiente declaración mensual",
       },
       {
-        user_id: userId, despacho_id,
+        user_id: userId, despacho_id, es_demo: true,
         rfc: "GORA850515HM4",
         razon_social: "Ana García Rodríguez",
         regimen_fiscal: "626 - RESICO Personas Físicas",
