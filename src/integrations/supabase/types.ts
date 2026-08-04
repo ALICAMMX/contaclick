@@ -4633,6 +4633,13 @@ export type Database = {
         }
       }
       email_queue_dispatch: { Args: never; Returns: undefined }
+      emitir_avisos_vencimiento: {
+        Args: never
+        Returns: {
+          excepciones: number
+          trials: number
+        }[]
+      }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
@@ -4780,6 +4787,7 @@ export type Database = {
         Args: { _key: string; _motivo: string }
         Returns: boolean
       }
+      pac_liberar_abandonadas: { Args: { _minutos?: number }; Returns: number }
       pac_recargar: {
         Args: {
           _costo_total_centavos: number
@@ -4805,6 +4813,17 @@ export type Database = {
           ok: boolean
           reservadas: number
           saldo_disponible: number
+        }[]
+      }
+      pac_reservas_abandonadas: {
+        Args: { _minutos?: number }
+        Returns: {
+          created_at: string
+          despacho_id: string
+          idempotency_key: string
+          minutos_abierta: number
+          run_id: string
+          solicitudes: number
         }[]
       }
       read_email_batch: {
