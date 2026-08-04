@@ -7,6 +7,8 @@ import { ToolShell } from "@/components/ToolShell";
 import { Button } from "@/components/ui/button";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { getResumenFiscalMes } from "@/lib/fiscal/resumen.functions";
+import { calcularIsrPm, calcularIva } from "@/lib/fiscal/normativa/motor";
+import { NormativaBadge, NormativaBloqueada } from "@/components/NormativaBadge";
 
 export const Route = createFileRoute("/app/tools/isr-iva-pm")({
   component: IsrIvaPM,
