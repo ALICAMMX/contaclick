@@ -87,7 +87,7 @@ export const listarMovimientosPac = createServerFn({ method: "GET" })
     const { data: rows, error } = await context.supabase
       .from("sat_pac_movimientos")
       .select(
-        "id, tipo, solicitudes, costo_centavos, saldo_resultante, motivo, referencia, idempotency_key, run_id, despacho_id, created_at, created_by",
+        "id, tipo, solicitudes, costo_centavos, saldo_antes, saldo_despues, reservado_despues, motivo, idempotency_key, run_id, despacho_id, created_at, creado_por",
       )
       .order("created_at", { ascending: false })
       .limit(data.limit ?? 100);
