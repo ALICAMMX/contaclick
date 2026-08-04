@@ -47,7 +47,7 @@ export const listClientes = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     const { data, error } = await supabase
       .from("clientes")
-      .select("id, rfc, razon_social, regimen_fiscal, semaforo, estado_mes, email, telefono, created_at, despacho_id")
+      .select("id, rfc, razon_social, regimen_fiscal, semaforo, estado_mes, email, telefono, created_at, despacho_id, es_demo")
       .eq("tipo_relacion", "cliente")
       .is("cliente_padre_id", null)
       .order("created_at", { ascending: false });
@@ -58,7 +58,17 @@ export const listClientes = createServerFn({ method: "GET" })
     // Si el despacho activa acceso_restringido, los colaboradores sólo ven
     // los expedientes que les fueron asignados. Owner y rol "despacho" ven todo.
     const despachoIds = Array.from(new Set(rows.map((r: any) => r.despacho_id).filter(Boolean)));
-    if (despachoIds.length === 0) return { clientes: rows.map(({ despacho_id: _d, ...r }: any) => r), canManageExpedientes: true };
+    if (despachoIds.length === 0) {
+      const solos = rows.map(({ despacho_id: _d, ...r }: any) => r);
+      return {
+        clientes: solos,
+        totales: {
+          reales: solos.filter((c: any) => !c.es_demo).length,
+          demo: solos.filter((c: any) => c.es_demo).length,
+        },
+        canManageExpedientes: true,
+      };
+    }
 
     const { data: desps } = await supabase
       .from("despachos").select("id, owner_user_id, acceso_restringido").in("id", despachoIds);
@@ -95,7 +105,15 @@ export const listClientes = createServerFn({ method: "GET" })
     let activeDespachoId: string | null = null;
     try { activeDespachoId = await resolveActiveDespachoId(supabase, userId); } catch { activeDespachoId = null; }
 
-    return { clientes: visible, canManageExpedientes: await canManageExpedientes(supabase, userId, activeDespachoId) };
+    return {
+      clientes: visible,
+      // Los expedientes demo se listan aparte y no consumen cuota.
+      totales: {
+        reales: visible.filter((c: any) => !c.es_demo).length,
+        demo: visible.filter((c: any) => c.es_demo).length,
+      },
+      canManageExpedientes: await canManageExpedientes(supabase, userId, activeDespachoId),
+    };
   });
 
 export const getCliente = createServerFn({ method: "GET" })

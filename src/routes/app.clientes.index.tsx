@@ -21,6 +21,7 @@ export const Route = createFileRoute("/app/clientes/")({
 
 type ViewMode = "tabla" | "cards";
 type Semaforo = "todos" | "rojo" | "amarillo" | "verde";
+type Origen = "reales" | "demo";
 
 function fmtMoney(n: number) {
   return n.toLocaleString("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 });
@@ -49,6 +50,9 @@ function ClientesPage() {
     return (localStorage.getItem("cc.expedientes.view") as ViewMode) || "tabla";
   });
   const [semaforo, setSemaforo] = useState<Semaforo>("todos");
+  // Los expedientes demo viven en una pestaña aparte: no se mezclan con la
+  // contabilidad real ni cuentan para la cuota del plan.
+  const [origen, setOrigen] = useState<Origen>("reales");
   const [toDelete, setToDelete] = useState<{ id: string; rfc: string; razon: string } | null>(null);
 
   const setViewPersist = (v: ViewMode) => {
@@ -103,7 +107,9 @@ function ClientesPage() {
     return map;
   }, [expedientesQ.data]);
 
+  const totales = data?.totales ?? { reales: 0, demo: 0 };
   const clientes = (data?.clientes ?? []).filter((c) => {
+    if (origen === "demo" ? !(c as any).es_demo : !!(c as any).es_demo) return false;
     if (q) {
       const s = q.toLowerCase();
       if (!(c.rfc.toLowerCase().includes(s) || c.razon_social.toLowerCase().includes(s))) return false;
@@ -117,14 +123,15 @@ function ClientesPage() {
   const canManageExpedientes = !!data?.canManageExpedientes;
 
   const kpis = useMemo(() => {
-    const items = expedientesQ.data?.items ?? [];
+    const demoIds = new Set((data?.clientes ?? []).filter((c: any) => c.es_demo).map((c: any) => c.id));
+    const items = (expedientesQ.data?.items ?? []).filter((i) => !demoIds.has(i.id));
     return {
       total: items.length,
       riesgo: items.filter((i) => i.riesgo >= 67).length,
       alertas: items.reduce((a, b) => a + b.alertas_altas, 0),
       ingresos: items.reduce((a, b) => a + b.ingresos_mes, 0),
     };
-  }, [expedientesQ.data]);
+  }, [expedientesQ.data, data?.clientes]);
 
   const activate = (c: { id: string; rfc: string; razon_social: string; regimen_fiscal: string | null }) => {
     setCliente({ id: c.id, rfc: c.rfc, razon_social: c.razon_social, regimen_fiscal: c.regimen_fiscal });
@@ -142,7 +149,10 @@ function ClientesPage() {
             {isLoading ? (
               <span className="inline-block h-3 w-10 align-middle rounded bg-muted/50 animate-pulse" />
             ) : (
-              <>{data?.clientes.length ?? 0} en total.</>
+              <>
+                {totales.reales} real{totales.reales === 1 ? "" : "es"}
+                {totales.demo > 0 && <> · {totales.demo} de demostración (no cuentan en tu plan)</>}.
+              </>
             )}
           </p>
         </div>
@@ -236,6 +246,29 @@ function ClientesPage() {
         </div>
       )}
 
+      <div className="inline-flex rounded-md border border-border bg-card overflow-hidden">
+        {(["reales", "demo"] as const).map((o) => (
+          <button
+            key={o}
+            type="button"
+            onClick={() => setOrigen(o)}
+            className={`h-9 px-4 text-sm transition-colors ${o === "demo" ? "border-l border-border" : ""} ${
+              origen === o ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"
+            }`}
+            aria-pressed={origen === o}
+          >
+            {o === "reales" ? `Reales (${totales.reales})` : `Demostración (${totales.demo})`}
+          </button>
+        ))}
+      </div>
+
+      {origen === "demo" && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-muted-foreground">
+          Expedientes de demostración: datos simulados para entrenamiento. No consumen cuota del plan y
+          quedan fuera de reportes, conciliaciones y declaraciones reales.
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[240px] max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -263,7 +296,13 @@ function ClientesPage() {
       ) : clientes.length === 0 ? (
         <div className="rounded-xl border border-border/60 bg-card/50 p-12 text-center">
           <UserRound className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-50" />
-          <div className="font-medium">{q || semaforo !== "todos" ? "No hay coincidencias" : "Aún no tienes expedientes"}</div>
+          <div className="font-medium">
+            {q || semaforo !== "todos"
+              ? "No hay coincidencias"
+              : origen === "demo"
+                ? "No tienes expedientes de demostración"
+                : "Aún no tienes expedientes"}
+          </div>
           <p className="text-sm text-muted-foreground mt-1">
             {q || semaforo !== "todos" ? "Prueba con otro filtro." : "Crea tu primer expediente para empezar a usar las herramientas."}
           </p>
@@ -284,7 +323,14 @@ function ClientesPage() {
                 const isActive = active?.id === c.id;
                 return (
                   <tr key={c.id} className={`border-t border-border/30 ${isActive ? "bg-primary/5" : "hover:bg-accent/5"}`}>
-                    <td className="px-5 py-3.5 font-medium">{c.razon_social}</td>
+                    <td className="px-5 py-3.5 font-medium">
+                      {c.razon_social}
+                      {(c as any).es_demo && (
+                        <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-300 align-middle">
+                          DEMO
+                        </span>
+                      )}
+                    </td>
                     <td className="px-5 py-3.5 font-mono text-xs text-muted-foreground">{c.rfc}</td>
                     <td className="px-5 py-3.5 text-muted-foreground text-xs">{c.regimen_fiscal ?? "—"}</td>
                     <td className="px-5 py-3.5 text-right">
@@ -340,6 +386,9 @@ function ClientesPage() {
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold truncate flex items-center gap-2">
                         {c.razon_social}
+                        {(c as any).es_demo && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-300">DEMO</span>
+                        )}
                         {isActive && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/15 text-primary">Activo</span>}
                       </div>
                       <div className="text-xs font-mono text-muted-foreground mt-0.5">{c.rfc}</div>

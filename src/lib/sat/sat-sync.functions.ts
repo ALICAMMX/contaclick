@@ -9,6 +9,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 import { z } from "zod";
+import { decidirEstadoSat, nivelPac } from "@/lib/sat/estado-servicio";
 import { computeSaludFiscal } from "@/lib/salud/salud.functions";
 import { computeRiesgoSAT } from "@/lib/riesgo/riesgo.functions";
 import { runExpressAudit } from "@/lib/auditor/auditor.functions";
@@ -18,10 +19,11 @@ import {
   assertSatRunPermitido,
   contarSolicitudesPrevistas,
   devolverReservaPac,
+  leerSaldoPac,
   registrarConsumoSat,
   type FrecuenciaSat,
 } from "@/lib/usage/sat-quota";
-import { assertFrecuencia, getEntitlements } from "@/lib/entitlements/service";
+import { assertFrecuencia, getEntitlements, limiteDe, usadoDe } from "@/lib/entitlements/service";
 
 
 export type Frecuencia = "manual" | "diaria" | "semanal" | "mensual";
@@ -184,6 +186,129 @@ export const listSyncEventos = createServerFn({ method: "GET" })
     return rows ?? [];
   });
 
+// ============= ESTADO DEL SERVICIO (candado previo a ejecutar) =============
+
+export type EstadoServicioSat = {
+  puede_ejecutar: boolean;
+  motivo: string | null;
+  /** ok | sin_credencial | cuenta_bloqueada | cuota_agotada | servicio_sin_saldo | sin_seleccion */
+  causa:
+    | "ok"
+    | "sin_credencial"
+    | "cuenta_bloqueada"
+    | "cuota_agotada"
+    | "servicio_sin_saldo"
+    | "sin_seleccion";
+  /** Solicitudes que consumirá la corrida con la configuración guardada. */
+  previstas: number;
+  rango: { desde: string; hasta: string };
+  cuota: { usado: number; limite: number; ilimitado: boolean; restante: number | null };
+  es_sandbox: boolean;
+  credencial_activa: boolean;
+  /** Sólo para super-admin: estado real del proveedor. */
+  servicio?: { disponible: number; reservado: number; umbral_critico: number; nivel: string };
+};
+
+/**
+ * Superficie única del candado de descargas SAT: la UI NUNCA decide por su
+ * cuenta si se puede sincronizar. Devuelve el costo estimado en solicitudes,
+ * la cuota del plan y el motivo exacto de bloqueo (incluido saldo del PAC).
+ */
+export const estadoServicioSat = createServerFn({ method: "GET" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ cliente_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }): Promise<EstadoServicioSat> => {
+    const { supabase, userId } = context;
+    const scope = await assertClienteScope(supabase as any, userId, data.cliente_id);
+    const ent = await getEntitlements(supabase, scope.despacho_id);
+
+    const [{ data: cfg }, { data: cred }, { data: sa }] = await Promise.all([
+      supabase
+        .from("sat_sync_config")
+        .select("emitidos, recibidos, nomina, pagos, retenciones, periodo, fecha_desde, fecha_hasta")
+        .eq("cliente_id", scope.cliente_id)
+        .eq("despacho_id", scope.despacho_id)
+        .maybeSingle(),
+      supabase
+        .from("sat_credenciales")
+        .select("estatus")
+        .eq("cliente_id", scope.cliente_id)
+        .eq("despacho_id", scope.despacho_id)
+        .maybeSingle(),
+      supabase.from("user_roles").select("user_id").eq("user_id", userId).eq("role", "super_admin").limit(1),
+    ]);
+
+    const c = (cfg ?? {
+      emitidos: true, recibidos: true, nomina: true, pagos: true, retenciones: false,
+      periodo: "mes_actual", fecha_desde: null, fecha_hasta: null,
+    }) as any;
+
+    const rango = resolverRango(c.periodo as Periodo, c.fecha_desde, c.fecha_hasta);
+    const previstas = contarSolicitudesPrevistas({
+      emitidos: !!c.emitidos,
+      recibidos: !!c.recibidos,
+      nomina: !!c.nomina,
+      pagos: !!c.pagos,
+      retenciones: !!c.retenciones,
+      fecha_desde: rango.desde,
+      fecha_hasta: rango.hasta,
+    });
+
+    const limite = limiteDe(ent, "sat_solicitudes");
+    const usado = usadoDe(ent, "sat_solicitudes");
+    const ilimitado = limite < 0;
+    const restante = ilimitado ? null : Math.max(0, limite - usado);
+    const credencialActiva = (cred as any)?.estatus === "activo";
+
+    const cuota = { usado, limite, ilimitado, restante };
+    const base = {
+      previstas,
+      rango,
+      cuota,
+      es_sandbox: ent.es_sandbox,
+      credencial_activa: credencialActiva,
+    };
+
+    const previoServicio = decidirEstadoSat({
+      acceso: ent.acceso,
+      motivoBloqueo: ent.motivo_bloqueo,
+      previstas,
+      credencialActiva,
+      ilimitado,
+      restante,
+      periodo: ent.periodo,
+      esSandbox: ent.es_sandbox,
+    });
+    if (!previoServicio.puede_ejecutar || ent.es_sandbox) {
+      return { ...base, ...previoServicio };
+    }
+
+    // El saldo global del PAC es información interna: se lee con privilegios y
+    // sólo se devuelve en detalle al super-admin.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const pac = await leerSaldoPac(supabaseAdmin as any);
+    const esSuperAdmin = !!(sa as any[])?.length;
+    const nivel = nivelPac(pac.disponible, previstas, pac.umbral_critico);
+    const servicio = esSuperAdmin
+      ? { disponible: pac.disponible, reservado: pac.reservado, umbral_critico: pac.umbral_critico, nivel }
+      : undefined;
+
+    return {
+      ...base,
+      servicio,
+      ...decidirEstadoSat({
+        acceso: ent.acceso,
+        motivoBloqueo: ent.motivo_bloqueo,
+        previstas,
+        credencialActiva,
+        ilimitado,
+        restante,
+        periodo: ent.periodo,
+        esSandbox: ent.es_sandbox,
+        nivelServicio: nivel,
+      }),
+    };
+  });
 
 // ============= EJECUCIÓN =============
 

@@ -1,6 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import {
+  getEntitlements,
+  limiteDe,
+  usadoDe,
+  type Entitlements,
+  type Recurso,
+} from "@/lib/entitlements/service";
 
 const APP_ROLES = ["super_admin", "despacho", "contador", "auxiliar", "cliente_final", "colaborador"] as const;
 type AppRole = (typeof APP_ROLES)[number];
@@ -43,7 +50,69 @@ export type AdminUserRow = {
   rfc_limite: number;
   ia_msgs_limite: number;
   ia_tokens_limite: number;
+  /** Detalle calculado por el servicio central de entitlements. */
+  entitlements: {
+    estado: string;
+    acceso: boolean;
+    motivo_bloqueo: string | null;
+    periodo: string;
+    /** Expedientes demo: visibles pero fuera de toda cuota. */
+    rfcs_demo: number;
+    medidores: {
+      recurso: Recurso;
+      usado: number;
+      limite_base: number;
+      limite_efectivo: number;
+      ilimitado: boolean;
+      ampliado_por_excepcion: boolean;
+    }[];
+    excepciones: {
+      tipo: string;
+      valor_num: number | null;
+      valor_texto: string | null;
+      motivo: string;
+      expira_at: string;
+    }[];
+  } | null;
 };
+
+const RECURSOS: Recurso[] = ["rfcs", "ia_requests", "ia_tokens", "sat_solicitudes"];
+
+function limiteBaseDe(ent: Entitlements, r: Recurso): number {
+  if (r === "ia_requests") return ent.limites_base.ia_msgs ?? 0;
+  if (r === "ia_tokens") return ent.limites_base.ia_tokens ?? 0;
+  if (r === "sat_solicitudes") return ent.limites_base.sat_solicitudes_mes ?? 0;
+  return ent.limites_base.rfcs ?? 0;
+}
+
+function resumenEntitlements(ent: Entitlements): NonNullable<AdminUserRow["entitlements"]> {
+  return {
+    estado: ent.estado,
+    acceso: ent.acceso,
+    motivo_bloqueo: ent.motivo_bloqueo,
+    periodo: ent.periodo,
+    rfcs_demo: ent.uso.rfcs_demo,
+    medidores: RECURSOS.map((r) => {
+      const efectivo = limiteDe(ent, r);
+      const base = limiteBaseDe(ent, r);
+      return {
+        recurso: r,
+        usado: usadoDe(ent, r),
+        limite_base: base,
+        limite_efectivo: efectivo,
+        ilimitado: efectivo < 0,
+        ampliado_por_excepcion: efectivo !== base,
+      };
+    }),
+    excepciones: ent.excepciones.map((e) => ({
+      tipo: e.tipo,
+      valor_num: e.valor_num,
+      valor_texto: e.valor_texto,
+      motivo: e.motivo,
+      expira_at: e.expira_at,
+    })),
+  };
+}
 
 /** Lista todos los usuarios con su despacho, plan, pagos y consumo IA del mes. */
 export const adminListUsers = createServerFn({ method: "GET" })
@@ -57,7 +126,7 @@ export const adminListUsers = createServerFn({ method: "GET" })
     startOfMonth.setHours(0, 0, 0, 0);
     const startOfMonthIso = startOfMonth.toISOString();
 
-    const [profilesRes, despachosRes, subsRes, pagosRes, iaRes, rolesRes, membRes, planesRes, authRes, clientesRes] = await Promise.all([
+    const [profilesRes, despachosRes, subsRes, pagosRes, iaRes, rolesRes, membRes, planesRes, authRes] = await Promise.all([
       supabaseAdmin.from("profiles").select("id, email, full_name, telefono, activo, created_at"),
       supabaseAdmin.from("despachos").select("id, nombre, owner_user_id, estado, trial_ends_at, plan_id"),
       supabaseAdmin.from("suscripciones").select("id, despacho_id, plan_id, estatus, current_period_end, proveedor, created_at").order("created_at", { ascending: false }),
@@ -67,7 +136,6 @@ export const adminListUsers = createServerFn({ method: "GET" })
       supabaseAdmin.from("user_memberships").select("user_id, despacho_id, estado"),
       supabaseAdmin.from("planes").select("id, clave, nombre, precio_mxn, limites"),
       supabaseAdmin.auth.admin.listUsers({ perPage: 1000 }),
-      supabaseAdmin.from("clientes").select("despacho_id, tipo_relacion").eq("tipo_relacion", "cliente"),
     ]);
 
     if (profilesRes.error) throw new Error(profilesRes.error.message);
@@ -80,18 +148,25 @@ export const adminListUsers = createServerFn({ method: "GET" })
     const memberships = membRes.data ?? [];
     const planes = planesRes.data ?? [];
     const authUsers = authRes.data?.users ?? [];
-    const clientes = clientesRes.data ?? [];
 
     const planById = new Map(planes.map((p) => [p.id, p]));
     const despachoById = new Map(despachos.map((d) => [d.id, d]));
     const subByDespacho = new Map<string, any>();
     for (const s of subs) if (!subByDespacho.has(s.despacho_id)) subByDespacho.set(s.despacho_id, s);
 
-    const rfcsByDespacho = new Map<string, number>();
-    for (const c of clientes as any[]) {
-      if (!c.despacho_id || c.tipo_relacion !== "cliente") continue;
-      rfcsByDespacho.set(c.despacho_id, (rfcsByDespacho.get(c.despacho_id) ?? 0) + 1);
-    }
+    // Fuente única de verdad de límites y uso: el servicio de entitlements.
+    // Evita que el panel muestre el límite base del plan ignorando cortesías,
+    // o que cuente expedientes demo dentro de la cuota.
+    const entPorDespacho = new Map<string, Entitlements>();
+    await Promise.all(
+      despachos.map(async (d: any) => {
+        try {
+          entPorDespacho.set(d.id, await getEntitlements(supabaseAdmin as any, d.id));
+        } catch {
+          /* despacho inconsistente: la fila se muestra sin detalle */
+        }
+      }),
+    );
 
 
     const rows: AdminUserRow[] = (profilesRes.data ?? []).map((p: any) => {
@@ -116,6 +191,7 @@ export const adminListUsers = createServerFn({ method: "GET" })
       const iaCosto = iaMes.reduce((s: number, i: any) => s + Number(i.costo_usd ?? 0), 0);
 
       const authUser = authUsers.find((u: any) => u.id === p.id);
+      const ent = despacho ? entPorDespacho.get(despacho.id) ?? null : null;
 
       return {
         user_id: p.id,
@@ -140,10 +216,11 @@ export const adminListUsers = createServerFn({ method: "GET" })
         ia_calls_mes: iaCalls,
         ia_tokens_mes: iaTokens,
         ia_costo_usd_mes: Number(iaCosto.toFixed(4)),
-        rfc_activos: despacho ? (rfcsByDespacho.get(despacho.id) ?? 0) : 0,
-        rfc_limite: Number((plan as any)?.limites?.rfcs ?? 0),
-        ia_msgs_limite: Number((plan as any)?.limites?.ia_msgs ?? 0),
-        ia_tokens_limite: Number((plan as any)?.limites?.ia_tokens ?? 0),
+        rfc_activos: ent ? ent.uso.rfcs : 0,
+        rfc_limite: ent ? limiteDe(ent, "rfcs") : Number((plan as any)?.limites?.rfcs ?? 0),
+        ia_msgs_limite: ent ? limiteDe(ent, "ia_requests") : Number((plan as any)?.limites?.ia_msgs ?? 0),
+        ia_tokens_limite: ent ? limiteDe(ent, "ia_tokens") : Number((plan as any)?.limites?.ia_tokens ?? 0),
+        entitlements: ent ? resumenEntitlements(ent) : null,
       };
     });
 

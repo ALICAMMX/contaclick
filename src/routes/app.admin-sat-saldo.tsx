@@ -39,6 +39,7 @@ function SatSaldoPage() {
 
   const [solRec, setSolRec] = useState("");
   const [costoRec, setCostoRec] = useState("");
+  const [refRec, setRefRec] = useState("");
   const [umbral, setUmbral] = useState("");
   const [costoUnit, setCostoUnit] = useState("");
 
@@ -48,12 +49,16 @@ function SatSaldoPage() {
         data: {
           solicitudes: parseInt(solRec, 10),
           costo_total_mxn: parseFloat(costoRec),
+          referencia: refRec.trim(),
+          confirmacion: "RECARGAR" as const,
         },
       }),
     onSuccess: () => {
       toast.success("Recarga registrada");
-      setSolRec(""); setCostoRec("");
+      setSolRec(""); setCostoRec(""); setRefRec("");
       qc.invalidateQueries({ queryKey: ["sat-pac-saldo"] });
+      // El candado de "Sincronizar ahora" depende de este saldo: se refresca al instante.
+      qc.invalidateQueries({ queryKey: ["sat-sync"] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Error"),
   });
@@ -72,6 +77,7 @@ function SatSaldoPage() {
       toast.success("Configuración actualizada");
       setUmbral(""); setCostoUnit("");
       qc.invalidateQueries({ queryKey: ["sat-pac-saldo"] });
+      qc.invalidateQueries({ queryKey: ["sat-sync"] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Error"),
   });
@@ -86,8 +92,8 @@ function SatSaldoPage() {
 
   const d = q.data!;
   const saldo = d.saldo;
-  const saldoBajo =
-    saldo && saldo.saldo_solicitudes <= saldo.umbral_aviso;
+  const disponible = d.disponible;
+  const saldoBajo = disponible <= (d.umbral_aviso ?? 0);
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
@@ -111,7 +117,8 @@ function SatSaldoPage() {
           <div className="text-sm">
             <p className="font-semibold text-destructive">Saldo bajo</p>
             <p className="text-muted-foreground">
-              El saldo está por debajo del umbral de aviso ({fmt(saldo?.umbral_aviso)}).
+              El saldo está por debajo del umbral de aviso ({fmt(d.umbral_aviso)}).
+              Mientras dure, el botón “Sincronizar ahora” queda deshabilitado para todos los despachos.
               Registra una recarga para no interrumpir las descargas SAT de los clientes.
             </p>
           </div>
@@ -119,7 +126,7 @@ function SatSaldoPage() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Stat label="Saldo disponible" value={fmt(saldo?.saldo_solicitudes)} sub="solicitudes" />
+        <Stat label="Saldo disponible" value={fmt(disponible)} sub={`solicitudes · ${fmt(d.reservado)} reservadas`} />
         <Stat label="Costo unitario" value={mxn(saldo?.costo_unitario_centavos)} sub="por solicitud" />
         <Stat label="Consumo del mes" value={fmt(d.total_mes)} sub={`${fmt(d.ritmo_diario)}/día`} />
         <Stat
@@ -144,8 +151,15 @@ function SatSaldoPage() {
             <Label className="text-xs">Costo total MXN (con IVA)</Label>
             <Input type="number" step="0.01" value={costoRec} onChange={(e) => setCostoRec(e.target.value)} placeholder="500.00" />
           </div>
+          <div className="space-y-2">
+            <Label className="text-xs">Referencia del comprobante</Label>
+            <Input value={refRec} onChange={(e) => setRefRec(e.target.value)} placeholder="Factura SW-12345" />
+            <p className="text-[11px] text-muted-foreground">
+              Sirve como llave de idempotencia: registrar dos veces el mismo comprobante no duplica el saldo.
+            </p>
+          </div>
           <Button
-            disabled={!solRec || !costoRec || recargar.isPending}
+            disabled={!solRec || !costoRec || refRec.trim().length < 3 || recargar.isPending}
             onClick={() => recargar.mutate()}
             className="w-full"
           >
