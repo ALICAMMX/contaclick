@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
-import { assertClienteScope } from "@/lib/despacho/scope";
+import { assertClienteScope, assertRecordScope } from "@/lib/despacho/scope";
 
 
 function extractJsonObject(raw: string) {

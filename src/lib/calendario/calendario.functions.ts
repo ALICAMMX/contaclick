@@ -4,7 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 import { resolveActiveDespachoId } from "@/lib/despacho/resolve";
 import { plantillasPorRegimen, fechaVencimiento } from "./catalogo";
-import { assertClienteScope } from "@/lib/despacho/scope";
+import { assertClienteScope, assertRecordScope } from "@/lib/despacho/scope";
 
 export type ObligacionRow = {
   id: string;

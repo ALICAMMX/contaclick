@@ -13,7 +13,7 @@ import { computeSaludFiscal } from "@/lib/salud/salud.functions";
 import { computeRiesgoSAT } from "@/lib/riesgo/riesgo.functions";
 import { runExpressAudit } from "@/lib/auditor/auditor.functions";
 import { scanClienteEfos } from "@/lib/efos/efos.functions";
-import { assertClienteScope } from "@/lib/despacho/scope";
+import { assertClienteScope, assertRecordScope } from "@/lib/despacho/scope";
 import {
   assertSatRunPermitido,
   contarSolicitudesPrevistas,

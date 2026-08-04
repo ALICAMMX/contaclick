@@ -6,7 +6,7 @@ import {
   ensureDespacho,
   sha256Hex,
 } from "@/lib/conciliacion/conciliacion.server";
-import { assertClienteScope } from "@/lib/despacho/scope";
+import { assertClienteScope, assertRecordScope } from "@/lib/despacho/scope";
 import {
   parseClienteInput,
 
