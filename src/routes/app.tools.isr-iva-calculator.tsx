@@ -220,28 +220,40 @@ function IsrIvaCalculator() {
           <NumField label="Ingresos acumulables del mes (MXN)" value={ingresos} onChange={setIngresos} />
           <NumField label="Deducciones autorizadas (MXN)" value={deducciones} onChange={setDeducciones} />
           <hr className="border-border/40" />
+          <NumField label="Retenciones de ISR del periodo" value={retenciones} onChange={setRetenciones} />
+          <NumField label="Pagos provisionales anteriores" value={pagosProv} onChange={setPagosProv} />
+          <hr className="border-border/40" />
           <NumField label="IVA trasladado (cobrado)" value={ivaTrasladado} onChange={setIvaTrasladado} />
           <NumField label="IVA acreditable (pagado)" value={ivaAcreditable} onChange={setIvaAcreditable} />
         </div>
 
         <div className="space-y-4">
-          <Result title="ISR a cargo del mes" big value={f(calc.isr)} />
-          <div className="grid grid-cols-2 gap-3">
-            <Result title="Base gravable" value={f(calc.base)} />
-            <Result title="Tasa marginal" value={`${calc.tramo.pct.toFixed(2)}%`} />
-          </div>
-          <hr className="border-border/40" />
-          {calc.ivaPorPagar > 0 ? (
-            <Result title="IVA a cargo" big value={f(calc.ivaPorPagar)} tone="warn" />
+          {!calc.ok ? (
+            <NormativaBloqueada mensaje={calc.error} />
           ) : (
-            <Result title="IVA a favor" big value={f(calc.ivaSaldoFavor)} tone="ok" />
+            <>
+              <Result title="ISR a cargo del mes" big value={f(calc.isr.isrACargo)} tone={calc.isr.isrACargo > 0 ? "warn" : "ok"} />
+              <div className="grid grid-cols-2 gap-3">
+                <Result title="Base gravable" value={f(calc.isr.base)} />
+                <Result title="Tasa marginal" value={`${calc.isr.porcentaje.toFixed(2)}%`} />
+                <Result title="ISR causado" value={f(calc.isr.isrCausado)} />
+                <Result title="ISR a favor" value={f(calc.isr.isrAFavor)} />
+              </div>
+              <hr className="border-border/40" />
+              {calc.iva.ivaACargo > 0 ? (
+                <Result title="IVA a cargo" big value={f(calc.iva.ivaACargo)} tone="warn" />
+              ) : (
+                <Result title="IVA a favor" big value={f(calc.iva.ivaAFavor)} tone="ok" />
+              )}
+              <NormativaBadge sello={calc.isr.normativa} />
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                No incluye subsidio al empleo, ajuste anual por inflación ni tasas 0%/exentos de IVA.
+                Confirma el régimen específico del contribuyente antes de presentar la declaración.
+              </p>
+            </>
           )}
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Tarifas ISR 2024 publicadas por SAT. Esta herramienta es un cálculo orientativo: no incluye
-            subsidio al empleo, pagos provisionales previos ni retenciones. Confirma el resultado con la
-            normativa vigente y el régimen específico del contribuyente.
-          </p>
         </div>
+
       </div>
     </ToolShell>
   );
