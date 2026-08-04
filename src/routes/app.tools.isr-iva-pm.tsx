@@ -36,24 +36,24 @@ function IsrIvaPM() {
   const calc = useMemo(() => {
     const ingMes = Number(ingresosNominales) || 0;
     const ingAcum = Math.max(Number(ingresosAcumulados) || 0, ingMes);
-    const coef = Number(coefUtilidad) || 0;
-    const perdidas = Number(perdidasFiscales) || 0;
-    const pagosAnt = Number(pagosProvAnt) || 0;
-    const ret = Number(retIsr) || 0;
     const ivaT = Number(ivaTrasladado) || 0;
     const ivaA = Number(ivaAcreditable) || 0;
+    try {
+      const isr = calcularIsrPm({
+        periodo,
+        ingresosNominales: ingAcum,
+        coeficienteUtilidad: Number(coefUtilidad) || 0,
+        perdidasPendientes: Number(perdidasFiscales) || 0,
+        pagosProvisionalesAnteriores: Number(pagosProvAnt) || 0,
+        retenciones: Number(retIsr) || 0,
+      });
+      const iva = calcularIva({ periodo, ivaTrasladado: ivaT, ivaAcreditable: ivaA });
+      return { ok: true as const, ingAcum, isr, iva };
+    } catch (e) {
+      return { ok: false as const, error: e instanceof Error ? e.message : "Error de cálculo" };
+    }
+  }, [periodo, ingresosNominales, ingresosAcumulados, coefUtilidad, perdidasFiscales, pagosProvAnt, retIsr, ivaTrasladado, ivaAcreditable]);
 
-    // Art. 14 LISR: utilidad fiscal = ingresos acumulados × coef - pérdidas
-    const utilidadFiscal = Math.max(ingAcum * coef - perdidas, 0);
-    // ISR tasa 30% (Art. 9 LISR para PM)
-    const isrCausado = utilidadFiscal * 0.30;
-    const isrPorPagar = Math.max(isrCausado - pagosAnt - ret, 0);
-
-    const ivaPorPagar = Math.max(ivaT - ivaA, 0);
-    const ivaSaldoFavor = Math.max(ivaA - ivaT, 0);
-
-    return { ingMes, ingAcum, coef, utilidadFiscal, isrCausado, isrPorPagar, ivaT, ivaA, ivaPorPagar, ivaSaldoFavor };
-  }, [ingresosNominales, ingresosAcumulados, coefUtilidad, perdidasFiscales, pagosProvAnt, retIsr, ivaTrasladado, ivaAcreditable]);
 
   const f = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
