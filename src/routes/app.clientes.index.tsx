@@ -38,6 +38,9 @@ function ClientesPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { cliente: active, setCliente } = useActiveCliente();
+  // Candado de cuota calculado en el servidor (el backend lo revalida al crear).
+  const cuotaQ = usePuedeCrearExpediente();
+  const cuotaBloqueada = cuotaQ.data ? !cuotaQ.data.permitido : false;
   const [openForm, setOpenForm] = useState(false);
   const [q, setQ] = useState("");
   const [view, setView] = useState<ViewMode>(() => {
