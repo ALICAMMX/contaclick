@@ -254,10 +254,11 @@ export const runSyncNow = createServerFn({ method: "POST" })
         });
         if (solicitudesPrevistas === 0) solicitudesPrevistas = 1; // sin tipos: al menos 1
         let supabaseAdmin: any = null;
-        if (!isMock) {
+        if (!isMock && !usaSatDirecto) {
           const mod = await import("@/integrations/supabase/client.server");
           supabaseAdmin = mod.supabaseAdmin;
         }
+
         await assertSatRunPermitido({
           supabase,
           supabaseAdmin,
