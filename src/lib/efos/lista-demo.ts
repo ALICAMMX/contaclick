@@ -72,3 +72,92 @@ export const EFOS_META = {
     "El listado oficial se publica de forma periódica en el DOF. Verifica la fecha de corte antes de rechazar una deducción; el resultado requiere revisión profesional.",
 };
 
+
+// ── Vigencia del listado y fallo cerrado ────────────────────────────────────
+
+/** Días tras los cuales el listado se considera desactualizado (el SAT publica ~quincenalmente). */
+export const EFOS_MAX_DIAS_VIGENCIA = 45;
+
+export function diasDesdeCorte(hoy: Date = new Date()): number {
+  const corte = new Date(`${EFOS_META.actualizado_al}T00:00:00Z`);
+  return Math.floor((hoy.getTime() - corte.getTime()) / 86_400_000);
+}
+
+export function listadoVigente(hoy: Date = new Date()): boolean {
+  return diasDesdeCorte(hoy) <= EFOS_MAX_DIAS_VIGENCIA;
+}
+
+export type EfosConsulta =
+  | { estado: "en_lista"; registro: EfosRecord; vigente: boolean; diasDesdeCorte: number }
+  | { estado: "sin_coincidencia"; vigente: true; diasDesdeCorte: number }
+  | { estado: "fuente_desactualizada"; vigente: false; diasDesdeCorte: number; mensaje: string };
+
+/**
+ * Consulta con fallo cerrado: si el listado está desactualizado NO se afirma
+ * que el RFC esté limpio; se devuelve `fuente_desactualizada`.
+ */
+export function consultarEfos(rfc: string, hoy: Date = new Date()): EfosConsulta {
+  const dias = diasDesdeCorte(hoy);
+  const vigente = dias <= EFOS_MAX_DIAS_VIGENCIA;
+  const hit = lookupEfos(rfc);
+  if (hit) return { estado: "en_lista", registro: hit, vigente, diasDesdeCorte: dias };
+  if (!vigente) {
+    return {
+      estado: "fuente_desactualizada",
+      vigente: false,
+      diasDesdeCorte: dias,
+      mensaje: `El listado 69-B tiene ${dias} días desde su fecha de corte (${EFOS_META.actualizado_al}). No es posible afirmar que el RFC esté fuera del listado; verifica directamente en el portal del SAT.`,
+    };
+  }
+  return { estado: "sin_coincidencia", vigente: true, diasDesdeCorte: dias };
+}
+
+/** Efecto fiscal por situación (art. 69-B CFF). */
+export const EFECTO_POR_SITUACION: Record<EfosSituacion, { etiqueta: string; bloquea: boolean; efecto: string }> = {
+  definitivo: {
+    etiqueta: "Definitivo",
+    bloquea: true,
+    efecto: "Operaciones inexistentes confirmadas: las deducciones y el IVA acreditable son improcedentes salvo que se acredite la materialidad (69-B, quinto párrafo).",
+  },
+  presunto: {
+    etiqueta: "Presunto",
+    bloquea: false,
+    efecto: "Presunción publicada, plazo de defensa abierto. Aún no hay efecto definitivo, pero exige documentar materialidad de inmediato.",
+  },
+  desvirtuado: {
+    etiqueta: "Desvirtuado",
+    bloquea: false,
+    efecto: "El contribuyente desvirtuó la presunción; los comprobantes conservan efectos fiscales.",
+  },
+  sentencia_favorable: {
+    etiqueta: "Sentencia favorable",
+    bloquea: false,
+    efecto: "Resolución jurisdiccional a favor del contribuyente; los comprobantes conservan efectos fiscales.",
+  },
+  cancelado: {
+    etiqueta: "Cancelado del listado",
+    bloquea: false,
+    efecto: "El RFC fue eliminado del listado; sin efecto adverso vigente.",
+  },
+};
+
+/**
+ * Aplica una actualización del listado oficial. Si la descarga falló o llegó
+ * vacía, se CONSERVA el último listado válido en lugar de sustituirlo.
+ */
+export function aplicarActualizacionListado(
+  actual: EfosRecord[],
+  entrante: EfosRecord[] | null | undefined,
+): { registros: EfosRecord[]; aplicada: boolean; motivo?: string } {
+  if (!entrante || entrante.length === 0) {
+    return { registros: actual, aplicada: false, motivo: "Descarga vacía o fallida: se conserva el último listado válido." };
+  }
+  if (actual.length > 0 && entrante.length < actual.length * 0.5) {
+    return {
+      registros: actual,
+      aplicada: false,
+      motivo: `Descarga sospechosamente incompleta (${entrante.length} vs ${actual.length} registros): se conserva el último listado válido.`,
+    };
+  }
+  return { registros: entrante, aplicada: true };
+}

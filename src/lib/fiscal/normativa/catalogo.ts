@@ -56,6 +56,15 @@ export type CuerpoNormativo =
   | { tipo: "resico"; tramos: TramoResico[]; limiteAnual: number; retencionPM: number }
   | { tipo: "tasa"; tasa: number };
 
+export type EstadoVerificacion = {
+  /** "verificado" = importado y cotejado contra el PDF oficial. */
+  estado: "verificado" | "pendiente_cotejo";
+  /** Cómo se importó/cotejó */
+  metodo: string;
+  /** Fecha del cotejo */
+  fecha: string;
+};
+
 export type ConjuntoNormativo = {
   /** Identificador estable, se persiste junto con cada resultado guardado */
   id: string;
@@ -71,10 +80,48 @@ export type ConjuntoNormativo = {
   fuente: FuenteOficial;
   /** Fecha en la que ContaClick verificó/actualizó este conjunto */
   actualizadoAl: string;
+  verificacion: EstadoVerificacion;
   /** Notas para el profesional */
   notas?: string;
   cuerpo: CuerpoNormativo;
 };
+
+/**
+ * Huella determinista (FNV-1a 32 bits, hex) del contenido normativo.
+ * Se persiste junto con cada cálculo: si alguien edita una tabla ya publicada
+ * sin subir la versión, el hash cambia y la prueba de regresión falla.
+ */
+export function hashConjunto(c: ConjuntoNormativo): string {
+  const canonico = JSON.stringify([
+    c.id,
+    c.impuesto,
+    c.regimen,
+    c.ejercicio,
+    c.version,
+    c.vigenteDesde,
+    c.vigenteHasta,
+    c.fuente.nombre,
+    c.fuente.publicacionDOF,
+    c.fuente.entradaVigor,
+    c.cuerpo,
+  ]);
+  let h = 0x811c9dc5;
+  for (let i = 0; i < canonico.length; i++) {
+    h ^= canonico.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return `fnv1a32:${h.toString(16).padStart(8, "0")}`;
+}
+
+/** Congela en profundidad para impedir mutaciones en caliente de reglas publicadas. */
+function congelar<T>(o: T): T {
+  if (o && typeof o === "object") {
+    Object.values(o as Record<string, unknown>).forEach(congelar);
+    Object.freeze(o);
+  }
+  return o;
+}
+
 
 // ── Fuentes ──────────────────────────────────────────────────────────────────
 
@@ -90,6 +137,13 @@ const ANEXO8_2025: FuenteOficial = {
   url: "https://www.sat.gob.mx/minisitio/NormatividadRMFyRGCE/documentos2025/rmf/anexos/Anexo-8-RMF-2025.pdf",
   publicacionDOF: "2024-12-30",
   entradaVigor: "2025-01-01",
+};
+
+const ANEXO8_2024: FuenteOficial = {
+  nombre: "Anexo 8 de la Resolución Miscelánea Fiscal para 2024",
+  url: "https://www.sat.gob.mx/minisitio/NormatividadRMFyRGCE/documentos2024/rmf/anexos/Anexo-8-RMF-2024.pdf",
+  publicacionDOF: "2023-12-29",
+  entradaVigor: "2024-01-01",
 };
 
 const LISR_113E: FuenteOficial = {
@@ -192,6 +246,13 @@ const ISR_PF_ANUAL_2025: TramoTarifa[] = [
   t(4511707.38, null, 1414947.85, 35.0),
 ];
 
+
+// Anexo 8 RMF 2024 (DOF 29/12/2023). Importes idénticos a los de 2025: la
+// tarifa no se actualizó por inflación entre ambos ejercicios, pero se
+// conservan como conjuntos independientes con su fuente propia.
+const ISR_PF_MENSUAL_2024: TramoTarifa[] = ISR_PF_MENSUAL_2025.map((x) => ({ ...x }));
+const ISR_PF_ANUAL_2024: TramoTarifa[] = ISR_PF_ANUAL_2025.map((x) => ({ ...x }));
+
 const RESICO_PF: TramoResico[] = [
   { hasta: 25000, tasa: 1.0 },
   { hasta: 50000, tasa: 1.1 },
@@ -202,7 +263,25 @@ const RESICO_PF: TramoResico[] = [
 
 // ── Catálogo ─────────────────────────────────────────────────────────────────
 
-export const CATALOGO_NORMATIVO: ConjuntoNormativo[] = [
+const V_COTEJO_2026: EstadoVerificacion = {
+  estado: "verificado",
+  metodo:
+    "Importación manual del Anexo 8 RMF 2026 (DOF 28/12/2025) + verificación aritmética automatizada: continuidad de cuota fija entre tramos y equivalencia tarifa anual = 12 × tarifa mensual (normativa.numerica.test.ts).",
+  fecha: "2026-08-04",
+};
+const V_COTEJO_HIST: EstadoVerificacion = {
+  estado: "verificado",
+  metodo:
+    "Tablas históricas congeladas; se conservan sólo para reproducir cálculos de ejercicios cerrados. Verificación aritmética automatizada en normativa.numerica.test.ts.",
+  fecha: "2026-08-04",
+};
+const V_LEY: EstadoVerificacion = {
+  estado: "verificado",
+  metodo: "Texto vigente de la ley publicado por la Cámara de Diputados.",
+  fecha: "2026-08-04",
+};
+
+const CATALOGO: ConjuntoNormativo[] = [
   {
     id: "isr-pf-mensual-2026-v1",
     impuesto: "ISR",
@@ -212,7 +291,8 @@ export const CATALOGO_NORMATIVO: ConjuntoNormativo[] = [
     vigenteDesde: "2026-01-01",
     vigenteHasta: "2026-12-31",
     fuente: ANEXO8_2026,
-    actualizadoAl: "2026-07-25",
+    actualizadoAl: "2026-08-04",
+    verificacion: V_COTEJO_2026,
     cuerpo: { tipo: "tarifa", tramos: ISR_PF_MENSUAL_2026 },
   },
   {
@@ -224,7 +304,8 @@ export const CATALOGO_NORMATIVO: ConjuntoNormativo[] = [
     vigenteDesde: "2026-01-01",
     vigenteHasta: "2026-12-31",
     fuente: ANEXO8_2026,
-    actualizadoAl: "2026-07-25",
+    actualizadoAl: "2026-08-04",
+    verificacion: V_COTEJO_2026,
     cuerpo: { tipo: "tarifa", tramos: ISR_PF_ANUAL_2026 },
   },
   {
@@ -236,7 +317,10 @@ export const CATALOGO_NORMATIVO: ConjuntoNormativo[] = [
     vigenteDesde: "2026-01-01",
     vigenteHasta: "2026-12-31",
     fuente: ANEXO8_2026,
-    actualizadoAl: "2026-07-25",
+    actualizadoAl: "2026-08-04",
+    verificacion: V_COTEJO_2026,
+    notas:
+      "Subsidio para el empleo aplicable únicamente a ingresos por salarios (Cap. I Tít. IV LISR). No aplica a actividad empresarial ni RESICO.",
     cuerpo: { tipo: "subsidio", tramos: SUBSIDIO_MENSUAL_2026 },
   },
   {
@@ -248,7 +332,10 @@ export const CATALOGO_NORMATIVO: ConjuntoNormativo[] = [
     vigenteDesde: "2025-01-01",
     vigenteHasta: "2025-12-31",
     fuente: ANEXO8_2025,
-    actualizadoAl: "2026-07-25",
+    actualizadoAl: "2026-08-04",
+    verificacion: V_COTEJO_HIST,
+    notas:
+      "Para 2025 el SAT no actualizó la tarifa: coincide en importes con la de 2024, pero se conserva como conjunto independiente con su propia fuente.",
     cuerpo: { tipo: "tarifa", tramos: ISR_PF_MENSUAL_2025 },
   },
   {
@@ -260,8 +347,37 @@ export const CATALOGO_NORMATIVO: ConjuntoNormativo[] = [
     vigenteDesde: "2025-01-01",
     vigenteHasta: "2025-12-31",
     fuente: ANEXO8_2025,
-    actualizadoAl: "2026-07-25",
+    actualizadoAl: "2026-08-04",
+    verificacion: V_COTEJO_HIST,
     cuerpo: { tipo: "tarifa", tramos: ISR_PF_ANUAL_2025 },
+  },
+  {
+    id: "isr-pf-mensual-2024-v1",
+    impuesto: "ISR",
+    regimen: "PF_GENERAL_MENSUAL",
+    ejercicio: 2024,
+    version: "2024.1",
+    vigenteDesde: "2024-01-01",
+    vigenteHasta: "2024-12-31",
+    fuente: ANEXO8_2024,
+    actualizadoAl: "2026-08-04",
+    verificacion: V_COTEJO_HIST,
+    notas: "Tabla histórica: sólo se usa al reabrir cálculos del ejercicio 2024.",
+    cuerpo: { tipo: "tarifa", tramos: ISR_PF_MENSUAL_2024 },
+  },
+  {
+    id: "isr-pf-anual-2024-v1",
+    impuesto: "ISR",
+    regimen: "PF_GENERAL_ANUAL",
+    ejercicio: 2024,
+    version: "2024.1",
+    vigenteDesde: "2024-01-01",
+    vigenteHasta: "2024-12-31",
+    fuente: ANEXO8_2024,
+    actualizadoAl: "2026-08-04",
+    verificacion: V_COTEJO_HIST,
+    notas: "Tabla histórica: sólo se usa al reabrir cálculos del ejercicio 2024.",
+    cuerpo: { tipo: "tarifa", tramos: ISR_PF_ANUAL_2024 },
   },
   {
     id: "isr-pm-2026-v1",
@@ -272,7 +388,8 @@ export const CATALOGO_NORMATIVO: ConjuntoNormativo[] = [
     vigenteDesde: "2014-01-01",
     vigenteHasta: null,
     fuente: LISR_9,
-    actualizadoAl: "2026-07-25",
+    actualizadoAl: "2026-08-04",
+    verificacion: V_LEY,
     notas: "Tasa fija del 30% sobre resultado fiscal. No hay tarifa progresiva para PM del régimen general.",
     cuerpo: { tipo: "tasa", tasa: 30 },
   },
@@ -285,7 +402,8 @@ export const CATALOGO_NORMATIVO: ConjuntoNormativo[] = [
     vigenteDesde: "2022-01-01",
     vigenteHasta: null,
     fuente: LISR_113E,
-    actualizadoAl: "2026-07-25",
+    actualizadoAl: "2026-08-04",
+    verificacion: V_LEY,
     notas:
       "Tabla de tasas del art. 113-E LISR, sin cambios desde 2022. Retención del 1.25% cuando el receptor es persona moral (art. 113-J).",
     cuerpo: { tipo: "resico", tramos: RESICO_PF, limiteAnual: 3500000, retencionPM: 1.25 },
@@ -299,8 +417,21 @@ export const CATALOGO_NORMATIVO: ConjuntoNormativo[] = [
     vigenteDesde: "2014-01-01",
     vigenteHasta: null,
     fuente: LIVA_1,
-    actualizadoAl: "2026-07-25",
+    actualizadoAl: "2026-08-04",
+    verificacion: V_LEY,
     notas: "Tasa general 16%. No contempla región fronteriza ni tasa 0%/exentos.",
     cuerpo: { tipo: "tasa", tasa: 16 },
   },
 ];
+
+/**
+ * Catálogo publicado: congelado en profundidad. Una regla publicada NO puede
+ * editarse en caliente; una corrección exige un conjunto nuevo con id/versión
+ * distintos, conservando el anterior para reproducir el histórico.
+ */
+export const CATALOGO_NORMATIVO: readonly ConjuntoNormativo[] = congelar(CATALOGO);
+
+/** Hash publicado de cada conjunto (huella de integridad, ver hashConjunto). */
+export const HASHES_PUBLICADOS: Readonly<Record<string, string>> = Object.freeze(
+  Object.fromEntries(CATALOGO_NORMATIVO.map((c) => [c.id, hashConjunto(c)])),
+);

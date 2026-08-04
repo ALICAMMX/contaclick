@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { getResumenFiscalMes } from "@/lib/fiscal/resumen.functions";
+import { calcularIsrPf, calcularIva } from "@/lib/fiscal/normativa/motor";
+import { NormativaBadge, NormativaBloqueada } from "@/components/NormativaBadge";
 
 const MES_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 
@@ -18,25 +20,9 @@ export const Route = createFileRoute("/app/reportes/resumen-fiscal")({
   component: ResumenFiscalPage,
 });
 
-// Tarifa ISR mensual 2024 PF
-const TARIFA = [
-  { li: 0.01, ls: 746.04, cuota: 0, pct: 1.92 },
-  { li: 746.05, ls: 6332.05, cuota: 14.32, pct: 6.40 },
-  { li: 6332.06, ls: 11128.01, cuota: 371.83, pct: 10.88 },
-  { li: 11128.02, ls: 12935.82, cuota: 893.63, pct: 16.00 },
-  { li: 12935.83, ls: 15487.71, cuota: 1182.88, pct: 17.92 },
-  { li: 15487.72, ls: 31236.49, cuota: 1640.18, pct: 21.36 },
-  { li: 31236.50, ls: 49233.00, cuota: 5004.12, pct: 23.52 },
-  { li: 49233.01, ls: 93993.90, cuota: 9236.89, pct: 30.00 },
-  { li: 93993.91, ls: 125325.20, cuota: 22665.17, pct: 32.00 },
-  { li: 125325.21, ls: 375975.61, cuota: 32691.18, pct: 34.00 },
-  { li: 375975.62, ls: Infinity, cuota: 117912.32, pct: 35.00 },
-];
-function calcIsr(base: number) {
-  if (base <= 0) return { isr: 0, pct: TARIFA[0].pct };
-  const t = TARIFA.find((x) => base >= x.li && base <= x.ls)!;
-  return { isr: t.cuota + ((base - t.li) * t.pct) / 100, pct: t.pct };
-}
+// Las tarifas NO viven aquí: se resuelven por periodo desde el motor normativo
+// versionado (src/lib/fiscal/normativa). Si no hay tabla vigente, se bloquea.
+
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 2 }).format(Number(n) || 0);
@@ -68,12 +54,27 @@ function ResumenFiscalPage() {
   const r = q.data;
   const calc = useMemo(() => {
     if (!r) return null;
-    const base = Math.max(r.ingresos - r.egresos, 0);
-    const { isr, pct } = calcIsr(base);
-    const ivaCargo = Math.max(r.ivaTrasladado - r.ivaAcreditable, 0);
-    const ivaFavor = Math.max(r.ivaAcreditable - r.ivaTrasladado, 0);
-    return { base, isr, pct, ivaCargo, ivaFavor };
-  }, [r]);
+    try {
+      const isr = calcularIsrPf({ periodo, ingresos: r.ingresos, deducciones: r.egresos });
+      const iva = calcularIva({
+        periodo,
+        ivaTrasladado: r.ivaTrasladado,
+        ivaAcreditable: r.ivaAcreditable,
+      });
+      return {
+        ok: true as const,
+        base: isr.base,
+        isr: isr.isrCausado,
+        pct: isr.porcentaje,
+        ivaCargo: iva.ivaACargo,
+        ivaFavor: iva.ivaAFavor,
+        sello: isr.normativa,
+      };
+    } catch (e) {
+      return { ok: false as const, error: e instanceof Error ? e.message : "Error de cálculo" };
+    }
+  }, [r, periodo]);
+
 
   const calcUrl = `/app/tools/isr-iva-calculator`;
 
@@ -135,7 +136,9 @@ function ResumenFiscalPage() {
         <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Calculando…</div>
       )}
 
-      {cliente && r && calc && (
+      {cliente && calc && !calc.ok && <NormativaBloqueada mensaje={calc.error} />}
+
+      {cliente && r && calc?.ok && (
         <>
           {r.cfdiCount === 0 ? (
             <div className="rounded-xl border border-border/60 bg-card/30 p-8 text-center">
@@ -175,6 +178,8 @@ function ResumenFiscalPage() {
                   </Link>
                 </Button>
               </div>
+
+              <NormativaBadge sello={calc.sello} />
 
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Cálculo orientativo basado en CFDI vigentes del periodo. No considera retenciones, subsidio al empleo,
