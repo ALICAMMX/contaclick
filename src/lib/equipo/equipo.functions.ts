@@ -55,30 +55,16 @@ async function resolveAdminDespacho(supabase: any, userId: string) {
 }
 
 async function getMembersLimit(supabaseAdmin: any, despachoId: string): Promise<number | null> {
-  // Read plan + override from despacho. If no plan, default to trial=2.
-  const { data: d } = await supabaseAdmin
-    .from("despachos")
-    .select("plan_id, estado, limites_override")
-    .eq("id", despachoId)
-    .maybeSingle();
-  // Override tiene prioridad si define max_miembros
-  const ov = (d?.limites_override as any)?.max_miembros;
-  if (ov !== undefined && ov !== null) {
-    if (typeof ov === "number") return ov < 0 ? null : ov;
-  }
-  if (d?.plan_id) {
-    const { data: p } = await supabaseAdmin
-      .from("planes")
-      .select("limites")
-      .eq("id", d.plan_id)
-      .maybeSingle();
-    const lim = (p?.limites as any)?.max_miembros;
-    if (lim === null) return null;
-    if (typeof lim === "number") return lim < 0 ? null : lim;
-  }
-  // Default by estado
-  return d?.estado === "trial" ? 2 : 5;
+  // Única fuente de verdad: el servicio central de entitlements resuelve
+  // default < plan < override comercial < excepción vigente.
+  const { getEntitlements } = await import("@/lib/entitlements/service");
+  const ent = await getEntitlements(supabaseAdmin, despachoId);
+  const lim = ent.limites.max_miembros;
+  if (typeof lim === "number") return lim < 0 ? null : lim;
+  // Sin max_miembros configurado: trial = 2, cuenta con plan = 5.
+  return ent.plan ? 5 : 2;
 }
+
 
 export const listTeam = createServerFn({ method: "GET" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
