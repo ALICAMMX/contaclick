@@ -364,15 +364,20 @@ export const obtenerReporte = createServerFn({ method: "POST" })
 // ============ Marcar enviado ============
 export const marcarReporteEnviado = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid(), cliente_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const sb = context.supabase as any;
+    const scope = await assertClienteScope(sb, context.userId, data.cliente_id);
+    await assertRecordScope(sb, context.userId, "reportes_ejecutivos", data.id, scope.cliente_id);
     const { error } = await sb.from("reportes_ejecutivos")
       .update({ estado: "enviado", enviado_at: new Date().toISOString() })
-      .eq("id", data.id);
+      .eq("id", data.id)
+      .eq("cliente_id", scope.cliente_id)
+      .eq("despacho_id", scope.despacho_id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
 
 // ============ Recomendaciones (bandeja) ============
 export const listarRecomendaciones = createServerFn({ method: "POST" })
