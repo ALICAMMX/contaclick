@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 import { lookupEfos } from "@/lib/efos/lista-demo";
+import { FUENTES_RIESGO, RIESGO_METODOLOGIA } from "@/lib/riesgo/criterios-fuentes";
 
 const Input = z.object({
   cliente_id: z.string().uuid(),
