@@ -35,6 +35,7 @@ export const COTEJO = {
   isrPfMensual2024: "transcripción manual del Anexo 8 RMF 2024 (DOF 29/12/2023)",
   isrPfAnual2024: "transcripción manual e INDEPENDIENTE de la tarifa anual del Anexo 8 RMF 2024",
   subsidio2026: "transcripción manual del decreto DOF 31/12/2025",
+  uma2026: "transcripción manual del aviso INEGI publicado en el DOF el 09/01/2026",
   redDisponible: false,
 } as const;
 
@@ -135,24 +136,57 @@ export const FIX_ISR_PF_ANUAL_2024: readonly FilaTarifa[] = [
 ] as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
+// UMA — valores oficiales publicados por el INEGI en el DOF.
+// Transcripción literal. NADA de esto se deriva del motor ni del catálogo.
+// ─────────────────────────────────────────────────────────────────────────────
+export const FUENTE_UMA_2026 = "https://dof.gob.mx/nota_detalle.php?codigo=5778072&fecha=09/01/2026";
+
+export const FIX_UMA_2026 = {
+  diario: 117.31,
+  mensual: 3566.22,
+  anual: 42794.64,
+  publicacionDOF: "2026-01-09",
+  vigenteDesde: "2026-02-01",
+} as const;
+
+export const FIX_UMA_2025 = {
+  diario: 113.14,
+  mensual: 3439.46,
+  anual: 41273.52,
+  vigenteDesde: "2025-02-01",
+  vigenteHasta: "2026-01-31",
+} as const;
+
+/** Valor estimado que NUNCA fue oficial. Se conserva sólo para rechazarlo. */
+export const UMA_2026_VALOR_INCORRECTO = 3569.97;
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SUBSIDIO PARA EL EMPLEO 2026 — Decreto DOF 31/12/2025 (NO Anexo 8)
+// El importe operativo se obtiene con la fórmula UMA mensual × porcentaje.
 // ─────────────────────────────────────────────────────────────────────────────
 export const FIX_SUBSIDIO_2026 = {
   enero: {
     porcentaje: 15.59,
-    umaMensual: 3439.46, // UMA mensual vigente en 2025
+    umaMensual: 3439.46, // UMA mensual vigente en 2025 (hasta el 31/01/2026)
     umaEjercicio: 2025,
     limiteIngresoMensual: 11492.66,
     diasMesComercial: 30.4,
   },
   febreroEnAdelante: {
     porcentaje: 15.02,
-    umaMensual: 3569.97, // UMA mensual 2026 — PENDIENTE DE COTEJO (aviso INEGI en el DOF)
+    umaMensual: 3566.22, // UMA mensual 2026 (INEGI, DOF 09/01/2026)
     umaEjercicio: 2026,
     limiteIngresoMensual: 11492.66,
     diasMesComercial: 30.4,
   },
 } as const;
+
+/** Importes mensuales oficiales, escritos a mano (no calculados por el motor). */
+export const FIX_SUBSIDIO_MENSUAL_2026 = {
+  enero: 536.21, // 3,439.46 × 15.59%
+  febreroEnAdelante: 535.65, // 3,566.22 × 15.02%
+} as const;
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // OTROS PARÁMETROS

@@ -19,6 +19,7 @@ import {
   calcularResicoPf,
   calcularIva,
   resolverNormativa,
+  resolverUma,
   conjuntoPorId,
   verificarSello,
   inventarioNormativo,
@@ -36,6 +37,11 @@ import {
   FIX_TASA_ISR_PM,
   FIX_TASA_IVA_GENERAL,
   FUENTE_DECRETO_SUBSIDIO_2026,
+  FIX_UMA_2026,
+  FIX_UMA_2025,
+  FIX_SUBSIDIO_MENSUAL_2026,
+  UMA_2026_VALOR_INCORRECTO,
+  FUENTE_UMA_2026,
   type FilaTarifa,
 } from "./__fixtures__/oficiales";
 
@@ -303,7 +309,7 @@ describe("Subsidio para el empleo 2026 — Decreto DOF 31/12/2025", () => {
   const FEB = FIX_SUBSIDIO_2026.febreroEnAdelante;
   // Importes calculados a mano desde los fixtures, sin usar el motor:
   const MONTO_ENE = c2((3439.46 * 15.59) / 100); // 536.21
-  const MONTO_FEB = c2((3569.97 * 15.02) / 100); // 536.21
+  const MONTO_FEB = c2((3566.22 * 15.02) / 100); // 535.65
 
   it("el subsidio tiene conjunto normativo propio: NO se etiqueta como Anexo 8", () => {
     for (const per of ["2026-01", "2026-02"]) {
@@ -344,7 +350,7 @@ describe("Subsidio para el empleo 2026 — Decreto DOF 31/12/2025", () => {
     const ene = calcularSubsidioEmpleo({ periodo: "2026-01", ingresoGravable: 8000 });
     const feb = calcularSubsidioEmpleo({ periodo: "2026-02", ingresoGravable: 8000 });
     expect(ene.detalle[0]!.normativa.conjuntoId).toBe("subsidio-empleo-2026-01-v1");
-    expect(feb.detalle[0]!.normativa.conjuntoId).toBe("subsidio-empleo-2026-02-v1");
+    expect(feb.detalle[0]!.normativa.conjuntoId).toBe("subsidio-empleo-2026-02-v2");
     expect(ene.detalle[0]!.normativa.version).not.toBe(feb.detalle[0]!.normativa.version);
   });
 
@@ -417,13 +423,131 @@ describe("Subsidio para el empleo 2026 — Decreto DOF 31/12/2025", () => {
     }
   });
 
-  it("la UMA 2026 pendiente de cotejo se reporta como advertencia, no en silencio", () => {
-    const feb = calcularSubsidioEmpleo({ periodo: "2026-02", ingresoGravable: 8000 });
-    expect(feb.pendienteCotejo).toBe(true);
-    expect(feb.advertencia).toMatch(/UMA 2026/);
-    const ene = calcularSubsidioEmpleo({ periodo: "2026-01", ingresoGravable: 8000 });
-    expect(ene.pendienteCotejo).toBe(false);
-    expect(ene.advertencia).toBeNull();
+  it("ningún conjunto del subsidio queda pendiente de cotejo", () => {
+    for (const per of ["2026-01", "2026-02", "2026-12"]) {
+      const r = calcularSubsidioEmpleo({ periodo: per, ingresoGravable: 8000 });
+      expect(r.pendienteCotejo).toBe(false);
+      expect(r.advertencia).toBeNull();
+    }
+  });
+
+  // ── Importes oficiales, escritos a mano en los fixtures ──────────────────
+  it("enero completo de 2026 entrega $536.21", () => {
+    expect(FIX_SUBSIDIO_MENSUAL_2026.enero).toBe(536.21);
+    expect(calcularSubsidioEmpleo({ periodo: "2026-01", ingresoGravable: 8000 }).subsidio).toBe(536.21);
+  });
+
+  it("febrero completo de 2026 entrega $535.65 (distinto de enero)", () => {
+    expect(FIX_SUBSIDIO_MENSUAL_2026.febreroEnAdelante).toBe(535.65);
+    expect(calcularSubsidioEmpleo({ periodo: "2026-02", ingresoGravable: 8000 }).subsidio).toBe(535.65);
+    expect(FIX_SUBSIDIO_MENSUAL_2026.febreroEnAdelante).not.toBe(FIX_SUBSIDIO_MENSUAL_2026.enero);
+  });
+
+  it("el 31 de enero de 2026 sigue con la UMA 2025 y el 1 de febrero cambia", () => {
+    const ene = calcularSubsidioEmpleo({ periodo: "2026-01", ingresoGravable: 8000, dias: 1 });
+    expect(ene.detalle[0]!.umaMensual).toBe(FIX_UMA_2025.mensual);
+    expect(ene.detalle[0]!.umaEjercicio).toBe(2025);
+    const feb = calcularSubsidioEmpleo({ periodo: "2026-02", ingresoGravable: 8000, dias: 1 });
+    expect(feb.detalle[0]!.umaMensual).toBe(FIX_UMA_2026.mensual);
+    expect(feb.detalle[0]!.umaEjercicio).toBe(2026);
+  });
+
+  // ── Prorrateo: divisor fijo 30.4, nunca días naturales ───────────────────
+  it("un día de enero usa divisor 30.4 (no 31)", () => {
+    const r = calcularSubsidioEmpleo({ periodo: "2026-01", ingresoGravable: 8000, dias: 1 });
+    expect(r.subsidio).toBe(c2(536.21 / 30.4));
+    expect(r.subsidio).not.toBe(c2(536.21 / 31));
+  });
+
+  it("un día de febrero usa divisor 30.4 (no 28)", () => {
+    const r = calcularSubsidioEmpleo({ periodo: "2026-02", ingresoGravable: 8000, dias: 1 });
+    expect(r.subsidio).toBe(c2(535.65 / 30.4));
+    expect(r.subsidio).not.toBe(c2(535.65 / 28));
+  });
+
+  it("periodos de 7, 15 y 30 días se prorratean con 30.4", () => {
+    for (const d of [7, 15, 30]) {
+      const r = calcularSubsidioEmpleo({ periodo: "2026-02", ingresoGravable: 8000, dias: d });
+      expect(r.subsidio).toBe(c2((535.65 / 30.4) * d));
+      expect(r.subsidio).toBeLessThanOrEqual(535.65);
+    }
+  });
+
+  it("el acumulado de pagos parciales del mes no excede el máximo mensual", () => {
+    const quincena = calcularSubsidioEmpleo({ periodo: "2026-02", ingresoGravable: 4000, dias: 15 });
+    const segunda = calcularSubsidioEmpleo({
+      periodo: "2026-02",
+      ingresoGravable: 4000,
+      dias: 15,
+      subsidioPrevioDelMes: quincena.subsidio,
+    });
+    const tercera = calcularSubsidioEmpleo({
+      periodo: "2026-02",
+      ingresoGravable: 4000,
+      dias: 15,
+      subsidioPrevioDelMes: c2(quincena.subsidio + segunda.subsidio),
+    });
+    const total = c2(quincena.subsidio + segunda.subsidio + tercera.subsidio);
+    expect(total).toBe(535.65);
+    expect(tercera.topadoAlMaximoMensual).toBe(true);
+  });
+
+  it("un pago que abarca enero y febrero aplica una norma distinta por mes", () => {
+    const r = calcularSubsidioEmpleo({ periodo: "2026-01", ingresoGravable: 16000, mesesCubiertos: 2 });
+    expect(r.detalle.map((d) => d.periodo)).toEqual(["2026-01", "2026-02"]);
+    expect(r.detalle[0]!.monto).toBe(536.21);
+    expect(r.detalle[1]!.monto).toBe(535.65);
+    expect(r.subsidio).toBe(c2(536.21 + 535.65));
+  });
+
+  // ── Límite de ingreso ────────────────────────────────────────────────────
+  it("con ingreso de $11,492.66 hay derecho; con $11,492.67 no", () => {
+    expect(calcularSubsidioEmpleo({ periodo: "2026-02", ingresoGravable: 11492.66 }).subsidio).toBe(535.65);
+    expect(calcularSubsidioEmpleo({ periodo: "2026-02", ingresoGravable: 11492.67 }).subsidio).toBe(0);
+    expect(calcularSubsidioEmpleo({ periodo: "2026-01", ingresoGravable: 11492.66 }).subsidio).toBe(536.21);
+    expect(calcularSubsidioEmpleo({ periodo: "2026-01", ingresoGravable: 11492.67 }).subsidio).toBe(0);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe("UMA — INEGI, DOF 09/01/2026", () => {
+  it("la UMA 2026 es $117.31 diarios, $3,566.22 mensuales y $42,794.64 anuales", () => {
+    const u = resolverUma("2026-02");
+    expect(u.diario).toBe(FIX_UMA_2026.diario);
+    expect(u.mensual).toBe(FIX_UMA_2026.mensual);
+    expect(u.anual).toBe(FIX_UMA_2026.anual);
+    expect(u.ejercicio).toBe(2026);
+  });
+
+  it("rechaza el valor incorrecto $3,569.97 en cualquier parte del catálogo", () => {
+    expect(UMA_2026_VALOR_INCORRECTO).not.toBe(FIX_UMA_2026.mensual);
+    const json = JSON.stringify(CATALOGO_NORMATIVO);
+    expect(json).not.toContain("3569.97");
+    expect(resolverUma("2026-02").mensual).not.toBe(UMA_2026_VALOR_INCORRECTO);
+    for (const per of ["2026-02", "2026-06", "2026-12"]) {
+      expect(calcularSubsidioEmpleo({ periodo: per, ingresoGravable: 8000 }).detalle[0]!.umaMensual)
+        .not.toBe(UMA_2026_VALOR_INCORRECTO);
+    }
+  });
+
+  it("la UMA 2025 rige hasta el 31/01/2026 y la 2026 desde el 01/02/2026", () => {
+    expect(resolverUma("2025-06").mensual).toBe(FIX_UMA_2025.mensual);
+    expect(resolverUma("2026-01").mensual).toBe(FIX_UMA_2025.mensual);
+    expect(resolverUma("2026-02").mensual).toBe(FIX_UMA_2026.mensual);
+    expect(resolverUma("2026-12").mensual).toBe(FIX_UMA_2026.mensual);
+  });
+
+  it("la UMA tiene fuente y vigencia propias (INEGI, no RMF ni decreto)", () => {
+    const c = resolverNormativa("UMA", "UMA_INEGI", "2026-02");
+    expect(c.fuente.url).toBe(FUENTE_UMA_2026);
+    expect(c.fuente.publicacionDOF).toBe("2026-01-09");
+    expect(c.vigenteDesde).toBe("2026-02-01");
+    expect(c.verificacion.estado).toBe("verificado");
+  });
+
+  it("el subsidio de febrero 2026 es exactamente 15.02% de la UMA mensual vigente", () => {
+    const u = resolverUma("2026-02");
+    expect(c2((u.mensual * 15.02) / 100)).toBe(FIX_SUBSIDIO_MENSUAL_2026.febreroEnAdelante);
   });
 });
 

@@ -10,7 +10,7 @@
 
 import { sha256Hex } from "./sha256";
 
-export type Impuesto = "ISR" | "IVA";
+export type Impuesto = "ISR" | "IVA" | "UMA";
 
 export type Regimen =
   | "PF_GENERAL_MENSUAL" // Tarifa mensual art. 96 / 106 LISR (pagos provisionales PF)
@@ -18,7 +18,8 @@ export type Regimen =
   | "PF_SUBSIDIO_MENSUAL" // Subsidio para el empleo mensual
   | "PF_RESICO" // RESICO PF art. 113-E LISR
   | "PM_GENERAL" // ISR PM art. 9 LISR
-  | "IVA_GENERAL"; // LIVA art. 1
+  | "IVA_GENERAL" // LIVA art. 1
+  | "UMA_INEGI"; // Unidad de Medida y Actualización (INEGI, DOF)
 
 export type FuenteOficial = {
   /** Nombre del documento normativo */
@@ -64,11 +65,20 @@ export type TramoResico = {
   tasa: number;
 };
 
+/** Valores de la Unidad de Medida y Actualización publicados por el INEGI. */
+export type ValoresUma = {
+  diario: number;
+  mensual: number;
+  anual: number;
+};
+
 export type CuerpoNormativo =
   | { tipo: "tarifa"; tramos: TramoTarifa[] }
   | { tipo: "subsidio_porcentaje"; subsidio: SubsidioPorcentaje }
   | { tipo: "resico"; tramos: TramoResico[]; limiteAnual: number; retencionPM: number }
+  | { tipo: "uma"; uma: ValoresUma }
   | { tipo: "tasa"; tasa: number };
+
 
 export type EstadoVerificacion = {
   /** "verificado" = importado y cotejado contra el PDF oficial. */
@@ -141,6 +151,12 @@ export function serializacionCanonica(c: ConjuntoNormativo): string {
       cuerpo.push(c.cuerpo.limiteAnual.toFixed(2));
       cuerpo.push(c.cuerpo.retencionPM.toFixed(2));
       for (const t of c.cuerpo.tramos) cuerpo.push([t.hasta.toFixed(2), t.tasa.toFixed(2)].join("|"));
+      break;
+    case "uma":
+      cuerpo.push("uma");
+      cuerpo.push(
+        [c.cuerpo.uma.diario.toFixed(2), c.cuerpo.uma.mensual.toFixed(2), c.cuerpo.uma.anual.toFixed(2)].join("|"),
+      );
       break;
     case "tasa":
       cuerpo.push("tasa");
@@ -218,6 +234,28 @@ const DECRETO_SUBSIDIO_2026: FuenteOficial = {
   publicacionDOF: "2025-12-31",
   entradaVigor: "2026-01-01",
 };
+
+/**
+ * UMA — la publica el INEGI en el DOF durante los primeros días de enero y
+ * entra en vigor el 1 de febrero del año que se publica (art. 5 de la Ley para
+ * Determinar el Valor de la UMA). Tiene conjunto normativo propio porque el
+ * subsidio para el empleo se calcula como porcentaje de la UMA mensual.
+ */
+const INEGI_UMA_2026: FuenteOficial = {
+  nombre: "Valor de la Unidad de Medida y Actualización 2026 (INEGI, DOF 09/01/2026)",
+  url: "https://dof.gob.mx/nota_detalle.php?codigo=5778072&fecha=09/01/2026",
+  publicacionDOF: "2026-01-09",
+  entradaVigor: "2026-02-01",
+};
+
+const INEGI_UMA_2025: FuenteOficial = {
+  nombre:
+    "Valor de la Unidad de Medida y Actualización 2025 (INEGI) — importe mensual corroborado por el Decreto DOF 31/12/2025",
+  url: "https://www.inegi.org.mx/temas/uma/",
+  publicacionDOF: "2025-01-09",
+  entradaVigor: "2025-02-01",
+};
+
 
 const LISR_113E: FuenteOficial = {
   nombre: "Ley del ISR, artículo 113-E (Régimen Simplificado de Confianza, personas físicas)",
@@ -342,11 +380,24 @@ const V_SUBSIDIO_ENE: EstadoVerificacion = {
   fecha: "2026-08-04",
 };
 const V_SUBSIDIO_FEB: EstadoVerificacion = {
-  estado: "pendiente_cotejo",
+  estado: "verificado",
   metodo:
-    "Porcentaje (15.02%) y límite ($11,492.66) transcritos del decreto DOF 31/12/2025. El valor de la UMA mensual 2026 NO pudo cotejarse contra el aviso del INEGI en el DOF: queda pendiente y el motor marca el resultado con advertencia.",
+    "Porcentaje (15.02%) y límite ($11,492.66) transcritos del decreto DOF 31/12/2025; UMA mensual 2026 ($3,566.22) tomada del aviso del INEGI publicado en el DOF el 09/01/2026 y cotejada contra el fixture literal en __fixtures__/oficiales.ts.",
   fecha: "2026-08-04",
 };
+const V_UMA_2026: EstadoVerificacion = {
+  estado: "verificado",
+  metodo:
+    "Valores diario ($117.31), mensual ($3,566.22) y anual ($42,794.64) transcritos del aviso del INEGI publicado en el DOF el 09/01/2026, vigentes desde el 1 de febrero de 2026.",
+  fecha: "2026-08-04",
+};
+const V_UMA_2025: EstadoVerificacion = {
+  estado: "verificado",
+  metodo:
+    "Valores diario ($113.14), mensual ($3,439.46) y anual ($41,273.52) de la UMA 2025; el importe mensual coincide con el que el Decreto DOF 31/12/2025 ordena aplicar en enero de 2026.",
+  fecha: "2026-08-04",
+};
+
 const V_LEY: EstadoVerificacion = {
   estado: "verificado",
   metodo: "Texto vigente de la ley publicado por la Cámara de Diputados.",
@@ -405,29 +456,63 @@ const CATALOGO: ConjuntoNormativo[] = [
     },
   },
   {
-    id: "subsidio-empleo-2026-02-v1",
+    // v2 corrige la UMA mensual 2026: $3,569.97 (estimada, incorrecta) →
+    // $3,566.22 (aviso INEGI, DOF 09/01/2026). El conjunto erróneo se retira:
+    // nunca correspondió a un valor oficial publicado.
+    id: "subsidio-empleo-2026-02-v2",
     impuesto: "ISR",
     regimen: "PF_SUBSIDIO_MENSUAL",
     ejercicio: 2026,
-    version: "2026.1-febrero",
+    version: "2026.2-febrero",
     vigenteDesde: "2026-02-01",
     vigenteHasta: "2026-12-31",
     fuente: DECRETO_SUBSIDIO_2026,
     actualizadoAl: "2026-08-04",
     verificacion: V_SUBSIDIO_FEB,
     notas:
-      "A partir de febrero de 2026: 15.02% sobre la UMA mensual del ejercicio 2026. El valor de la UMA 2026 está marcado como PENDIENTE DE COTEJO contra el aviso del INEGI publicado en el DOF; mientras no se coteje, el resultado se entrega con advertencia.",
+      "De febrero a diciembre de 2026: 15.02% sobre la UMA mensual del ejercicio 2026 ($3,566.22, aviso INEGI DOF 09/01/2026) = $535.65 mensuales. Los periodos menores a un mes se prorratean dividiendo entre 30.4 días, nunca entre los días naturales del mes.",
     cuerpo: {
       tipo: "subsidio_porcentaje",
       subsidio: {
         porcentaje: 15.02,
-        umaMensual: 3569.97,
+        umaMensual: 3566.22,
         umaEjercicio: 2026,
         limiteIngresoMensual: 11492.66,
         diasMesComercial: 30.4,
       },
     },
   },
+  {
+    id: "uma-2026-v1",
+    impuesto: "UMA",
+    regimen: "UMA_INEGI",
+    ejercicio: 2026,
+    version: "2026.1",
+    vigenteDesde: "2026-02-01",
+    vigenteHasta: "2027-01-31",
+    fuente: INEGI_UMA_2026,
+    actualizadoAl: "2026-08-04",
+    verificacion: V_UMA_2026,
+    notas:
+      "UMA 2026: $117.31 diarios, $3,566.22 mensuales, $42,794.64 anuales. Vigente desde el 1 de febrero de 2026 (art. 5 de la Ley para Determinar el Valor de la UMA).",
+    cuerpo: { tipo: "uma", uma: { diario: 117.31, mensual: 3566.22, anual: 42794.64 } },
+  },
+  {
+    id: "uma-2025-v1",
+    impuesto: "UMA",
+    regimen: "UMA_INEGI",
+    ejercicio: 2025,
+    version: "2025.1",
+    vigenteDesde: "2025-02-01",
+    vigenteHasta: "2026-01-31",
+    fuente: INEGI_UMA_2025,
+    actualizadoAl: "2026-08-04",
+    verificacion: V_UMA_2025,
+    notas:
+      "UMA 2025: $113.14 diarios, $3,439.46 mensuales, $41,273.52 anuales. Sigue vigente hasta el 31 de enero de 2026, por eso el subsidio de enero de 2026 se calcula sobre ella.",
+    cuerpo: { tipo: "uma", uma: { diario: 113.14, mensual: 3439.46, anual: 41273.52 } },
+  },
+
   {
     id: "isr-pf-mensual-2025-v1",
     impuesto: "ISR",
