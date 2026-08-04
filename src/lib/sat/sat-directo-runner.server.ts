@@ -181,7 +181,7 @@ export async function cosecharPendientes(
     .from("sat_sync_runs")
     .select("id, despacho_id, cliente_id, solicitudes, estatus")
     .eq("proveedor", "sat_directo")
-    .in("estatus", ["en_curso", "pendiente_sat"])
+    .eq("estatus", "en_curso")
     .order("iniciado_at", { ascending: true })
     .limit(limite);
 
@@ -219,7 +219,7 @@ export async function cosecharPendientes(
       .from("sat_sync_runs")
       .update({
         solicitudes: actualizadas,
-        estatus: sigueEsperando ? "pendiente_sat" : "exito",
+        estatus: sigueEsperando ? "en_curso" : "exitoso",
         nuevos: (run as any).nuevos ? (run as any).nuevos + nuevos : nuevos,
         descargados: nuevos,
         finalizado_at: sigueEsperando ? null : new Date().toISOString(),
