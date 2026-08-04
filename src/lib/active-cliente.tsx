@@ -1,5 +1,6 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { useQueryClient } from "@tanstack/react-query";
 import { resolveActiveCliente } from "@/lib/clientes.functions";
 
 export type ActiveCliente = {
@@ -11,6 +12,8 @@ export type ActiveCliente = {
 
 type Ctx = {
   cliente: ActiveCliente;
+  /** true mientras se re-resuelve el expediente persistido al cargar la app. */
+  hydrating: boolean;
   setCliente: (c: ActiveCliente) => void;
   clear: () => void;
 };
@@ -20,7 +23,25 @@ const STORAGE_KEY = "cc.activeCliente";
 
 export function ActiveClienteProvider({ children }: { children: ReactNode }) {
   const [cliente, setClienteState] = useState<ActiveCliente>(null);
+  const [hydrating, setHydrating] = useState(true);
   const resolveCliente = useServerFn(resolveActiveCliente);
+  const queryClient = useQueryClient();
+
+  // Identidad estable del server fn para no re-disparar efectos en cada render.
+  const resolveRef = useRef(resolveCliente);
+  resolveRef.current = resolveCliente;
+
+  // Aislamiento: al cambiar de expediente se descarta TODA la caché de datos
+  // para que ninguna pantalla muestre información del expediente anterior.
+  const previousId = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    const id = cliente?.id ?? null;
+    if (previousId.current !== undefined && previousId.current !== id) {
+      queryClient.cancelQueries();
+      queryClient.clear();
+    }
+    previousId.current = id;
+  }, [cliente?.id, queryClient]);
 
   const setCliente = useCallback((c: ActiveCliente) => {
     setClienteState(c);
@@ -35,55 +56,66 @@ export function ActiveClienteProvider({ children }: { children: ReactNode }) {
   // Hidratación inicial: leer solo el id persistido y resolver server-side.
   useEffect(() => {
     let alive = true;
+    let pending = false;
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as { id?: string };
+      const parsed = raw ? (JSON.parse(raw) as { id?: string }) : null;
       const id = parsed?.id;
       if (!id) {
         localStorage.removeItem(STORAGE_KEY);
-        return;
+      } else {
+        pending = true;
+        resolveRef.current({ data: { id } })
+          .then((resolved) => {
+            if (!alive) return;
+            if (resolved) {
+              previousId.current = resolved.id;
+              setClienteState({
+                id: resolved.id,
+                rfc: resolved.rfc,
+                razon_social: resolved.razon_social,
+                regimen_fiscal: resolved.regimen_fiscal,
+              });
+            } else {
+              try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+            }
+          })
+          .catch(() => { /* sin red / sin sesión: no hidratar */ })
+          .finally(() => { if (alive) setHydrating(false); });
       }
-      resolveCliente({ data: { id } })
-        .then((resolved) => {
-          if (!alive) return;
-          if (resolved) {
-            setClienteState({
-              id: resolved.id,
-              rfc: resolved.rfc,
-              razon_social: resolved.razon_social,
-              regimen_fiscal: resolved.regimen_fiscal,
-            });
-          } else {
-            try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
-          }
-        })
-        .catch(() => { /* sin red / sin sesión: no hidratar */ });
     } catch {
       try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
     }
+    if (!pending) setHydrating(false);
     return () => { alive = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Revalidación posterior al cambio de cliente activo.
+  // Revalidación server-side cada vez que cambia el expediente seleccionado.
+  // Si el usuario perdió el acceso, se limpia (fail-closed).
+  const revalidatedFor = useRef<string | null>(null);
   useEffect(() => {
-    if (!cliente?.id) return;
+    const id = cliente?.id ?? null;
+    if (!id || revalidatedFor.current === id) return;
+    revalidatedFor.current = id;
     let alive = true;
-    resolveCliente({ data: { id: cliente.id } })
+    resolveRef.current({ data: { id } })
       .then((resolved) => {
         if (!alive) return;
-        const next = resolved
-          ? { id: resolved.id, rfc: resolved.rfc, razon_social: resolved.razon_social, regimen_fiscal: resolved.regimen_fiscal }
-          : null;
-        if (JSON.stringify(next) !== JSON.stringify(cliente)) setCliente(next);
+        if (!resolved) { setCliente(null); return; }
+        setClienteState((prev) =>
+          prev && prev.id === resolved.id && prev.rfc === resolved.rfc && prev.razon_social === resolved.razon_social
+            ? prev
+            : { id: resolved.id, rfc: resolved.rfc, razon_social: resolved.razon_social, regimen_fiscal: resolved.regimen_fiscal },
+        );
       })
       .catch(() => { /* conservar estado local si no se puede validar */ });
     return () => { alive = false; };
-  }, [cliente, resolveCliente, setCliente]);
+  }, [cliente?.id, setCliente]);
 
-
-  const value = useMemo<Ctx>(() => ({ cliente, setCliente, clear: () => setCliente(null) }), [cliente, setCliente]);
+  const value = useMemo<Ctx>(
+    () => ({ cliente, hydrating, setCliente, clear: () => setCliente(null) }),
+    [cliente, hydrating, setCliente],
+  );
   return <ActiveCtx.Provider value={value}>{children}</ActiveCtx.Provider>;
 }
 
@@ -92,6 +124,7 @@ export function useActiveCliente() {
   if (!ctx) throw new Error("useActiveCliente must be used inside ActiveClienteProvider");
   return ctx;
 }
+
 
 /**
  * Congela el expediente activo al montarse el componente. Permite detectar si

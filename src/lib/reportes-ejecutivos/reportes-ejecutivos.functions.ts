@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
+import { assertClienteScope } from "@/lib/despacho/scope";
+
 
 function extractJsonObject(raw: string) {
   const text = String(raw ?? "").trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
@@ -71,21 +73,22 @@ function rangoPeriodo(periodo: string) {
   return { desde: desde.toISOString(), hasta: hasta.toISOString() };
 }
 
-// ============ Listar ============
+// ============ Listar (SIEMPRE acotado al expediente activo) ============
 export const listarReportes = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) =>
-    z.object({ cliente_id: z.string().uuid().optional(), limit: z.number().int().min(1).max(200).default(50) }).parse(d ?? {}),
+    z.object({ cliente_id: z.string().uuid(), limit: z.number().int().min(1).max(200).default(50) }).parse(d ?? {}),
   )
   .handler(async ({ data, context }) => {
     const sb = context.supabase as any;
-    let q = sb
+    const scope = await assertClienteScope(context.supabase as any, context.userId, data.cliente_id);
+    const { data: rows, error } = await sb
       .from("reportes_ejecutivos")
       .select("id, cliente_id, periodo, tipo, estado, ahorro_estimado_centavos, resumen_ejecutivo, enviado_at, created_at, updated_at, clientes:cliente_id(rfc, razon_social)")
+      .eq("cliente_id", scope.cliente_id)
+      .eq("despacho_id", scope.despacho_id)
       .order("created_at", { ascending: false })
       .limit(data.limit);
-    if (data.cliente_id) q = q.eq("cliente_id", data.cliente_id);
-    const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
     return (rows ?? []) as Array<{
       id: string; cliente_id: string | null; periodo: string; tipo: string; estado: string;
@@ -95,30 +98,37 @@ export const listarReportes = createServerFn({ method: "POST" })
     }>;
   });
 
-// ============ KPIs Dashboard ============
+// ============ KPIs Dashboard (del expediente activo) ============
 export const obtenerKpisReportes = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((d: unknown) => z.object({ cliente_id: z.string().uuid() }).parse(d ?? {}))
+  .handler(async ({ data, context }) => {
     const sb = context.supabase as any;
+    const scope = await assertClienteScope(context.supabase as any, context.userId, data.cliente_id);
     const periodo = periodoActual();
-    const [reportesMes, recomendaciones, clientesTotal] = await Promise.all([
-      sb.from("reportes_ejecutivos").select("id, estado, enviado_at, ahorro_estimado_centavos", { count: "exact" }).eq("periodo", periodo),
-      sb.from("recomendaciones_ia").select("id, estado, impacto_estimado_centavos, prioridad"),
-      sb.from("clientes").select("id", { count: "exact", head: true }),
+    const [reportesMes, reportesTodos, recomendaciones] = await Promise.all([
+      sb.from("reportes_ejecutivos").select("id, estado, enviado_at, ahorro_estimado_centavos")
+        .eq("cliente_id", scope.cliente_id).eq("despacho_id", scope.despacho_id).eq("periodo", periodo),
+      sb.from("reportes_ejecutivos").select("id, enviado_at, ahorro_estimado_centavos")
+        .eq("cliente_id", scope.cliente_id).eq("despacho_id", scope.despacho_id),
+      sb.from("recomendaciones_ia").select("id, estado, impacto_estimado_centavos, prioridad")
+        .eq("cliente_id", scope.cliente_id).eq("despacho_id", scope.despacho_id),
     ]);
     const reportes = (reportesMes.data ?? []) as Array<{ id: string; estado: string; enviado_at: string | null; ahorro_estimado_centavos: number }>;
+    const todos = (reportesTodos.data ?? []) as Array<{ id: string; enviado_at: string | null; ahorro_estimado_centavos: number }>;
     const recs = (recomendaciones.data ?? []) as Array<{ id: string; estado: string; impacto_estimado_centavos: number; prioridad: string }>;
     return {
       reportes_generados: reportes.length,
       reportes_enviados: reportes.filter((r) => r.enviado_at).length,
-      ahorro_total_centavos: reportes.reduce((a, r) => a + (r.ahorro_estimado_centavos ?? 0), 0),
-      clientes_pendientes: Math.max(0, (clientesTotal.count ?? 0) - reportes.length),
+      ahorro_total_centavos: todos.reduce((a, r) => a + (r.ahorro_estimado_centavos ?? 0), 0),
+      clientes_pendientes: reportes.length > 0 ? 0 : 1,
       recomendaciones_pendientes: recs.filter((r) => r.estado === "pendiente").length,
       recomendaciones_implementadas: recs.filter((r) => r.estado === "implementada").length,
       recomendaciones_alta_prioridad: recs.filter((r) => r.prioridad === "alta" && r.estado === "pendiente").length,
       impacto_potencial_centavos: recs.filter((r) => r.estado !== "descartada").reduce((a, r) => a + (r.impacto_estimado_centavos ?? 0), 0),
     };
   });
+
 
 // ============ Recolectar datos del periodo ============
 async function recolectarDatos(sb: any, cliente_id: string, periodo: string) {
@@ -212,6 +222,7 @@ export const generarReporte = createServerFn({ method: "POST" })
     const sb = context.supabase as any;
     const userId = context.userId;
     const periodo = data.periodo ?? periodoActual();
+    await assertClienteScope(context.supabase as any, context.userId, data.cliente_id);
     const datos = await recolectarDatos(sb, data.cliente_id, periodo);
 
     // Llamado IA para hallazgos, oportunidades, resumen y recomendaciones
@@ -327,23 +338,28 @@ Responde SOLO JSON válido, completo, sin markdown y sin cortar textos. Redacta 
 // ============ Obtener reporte ============
 export const obtenerReporte = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid(), cliente_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const sb = context.supabase as any;
+    const scope = await assertClienteScope(context.supabase as any, context.userId, data.cliente_id);
     const { data: rep, error } = await sb
       .from("reportes_ejecutivos")
       .select("*, clientes:cliente_id(rfc, razon_social)")
       .eq("id", data.id)
+      .eq("cliente_id", scope.cliente_id)
+      .eq("despacho_id", scope.despacho_id)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    if (!rep) throw new Error("Reporte no encontrado");
+    if (!rep) throw new Error("Reporte no encontrado en el expediente activo");
     const { data: recs } = await sb
       .from("recomendaciones_ia")
       .select("*")
       .eq("reporte_id", data.id)
+      .eq("cliente_id", scope.cliente_id)
       .order("prioridad");
     return { reporte: rep as any, recomendaciones: (recs ?? []) as any[] };
   });
+
 
 // ============ Marcar enviado ============
 export const marcarReporteEnviado = createServerFn({ method: "POST" })
@@ -363,7 +379,7 @@ export const listarRecomendaciones = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) =>
     z.object({
-      cliente_id: z.string().uuid().optional(),
+      cliente_id: z.string().uuid(),
       estado: z.string().optional(),
       categoria: z.string().optional(),
       limit: z.number().int().min(1).max(500).default(100),
@@ -371,12 +387,14 @@ export const listarRecomendaciones = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const sb = context.supabase as any;
+    const scope = await assertClienteScope(context.supabase as any, context.userId, data.cliente_id);
     let q = sb
       .from("recomendaciones_ia")
       .select("*, clientes:cliente_id(rfc, razon_social)")
+      .eq("cliente_id", scope.cliente_id)
+      .eq("despacho_id", scope.despacho_id)
       .order("created_at", { ascending: false })
       .limit(data.limit);
-    if (data.cliente_id) q = q.eq("cliente_id", data.cliente_id);
     if (data.estado) q = q.eq("estado", data.estado);
     if (data.categoria) q = q.eq("categoria", data.categoria);
     const { data: rows, error } = await q;
@@ -440,6 +458,7 @@ export const simularEscenario = createServerFn({ method: "POST" })
     const sb = context.supabase as any;
     const userId = context.userId;
     const periodo = periodoActual();
+    await assertClienteScope(context.supabase as any, context.userId, data.cliente_id);
     const datos = await recolectarDatos(sb, data.cliente_id, periodo);
 
     const apiKey = process.env.LOVABLE_API_KEY;
@@ -487,12 +506,17 @@ Responde SOLO JSON:
 
 export const listarSimulaciones = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ cliente_id: z.string().uuid().optional() }).parse(d ?? {}))
+  .inputValidator((d: unknown) => z.object({ cliente_id: z.string().uuid() }).parse(d ?? {}))
   .handler(async ({ data, context }) => {
     const sb = context.supabase as any;
-    let q = sb.from("simulaciones_fiscales").select("*, clientes:cliente_id(rfc, razon_social)").order("created_at", { ascending: false }).limit(50);
-    if (data.cliente_id) q = q.eq("cliente_id", data.cliente_id);
-    const { data: rows, error } = await q;
+    const scope = await assertClienteScope(context.supabase as any, context.userId, data.cliente_id);
+    const { data: rows, error } = await sb
+      .from("simulaciones_fiscales")
+      .select("*, clientes:cliente_id(rfc, razon_social)")
+      .eq("cliente_id", scope.cliente_id)
+      .eq("despacho_id", scope.despacho_id)
+      .order("created_at", { ascending: false })
+      .limit(50);
     if (error) throw new Error(error.message);
     return rows ?? [];
   });
@@ -502,7 +526,9 @@ export const listarClientesParaReporte = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .handler(async ({ context }) => {
     const sb = context.supabase as any;
-    const { data, error } = await sb.from("clientes").select("id, rfc, razon_social").order("razon_social").limit(500);
+    const { data, error } = await sb.from("clientes").select("id, rfc, razon_social")
+      .eq("tipo_relacion", "cliente").is("cliente_padre_id", null)
+      .order("razon_social").limit(500);
     if (error) throw new Error(error.message);
     return (data ?? []) as Array<{ id: string; rfc: string; razon_social: string | null }>;
   });

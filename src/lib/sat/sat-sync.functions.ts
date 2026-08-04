@@ -13,7 +13,7 @@ import { computeSaludFiscal } from "@/lib/salud/salud.functions";
 import { computeRiesgoSAT } from "@/lib/riesgo/riesgo.functions";
 import { runExpressAudit } from "@/lib/auditor/auditor.functions";
 import { scanClienteEfos } from "@/lib/efos/efos.functions";
-import { resolveActiveDespachoId } from "@/lib/despacho/resolve";
+import { assertClienteScope } from "@/lib/despacho/scope";
 import {
   assertSatRunPermitido,
   assertFrecuenciaPermitida,
@@ -72,10 +72,12 @@ export const getSatSyncConfig = createServerFn({ method: "GET" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ cliente_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
+    const scope = await assertClienteScope(context.supabase as any, context.userId, data.cliente_id);
     const { data: row } = await context.supabase
       .from("sat_sync_config")
       .select("*")
-      .eq("cliente_id", data.cliente_id)
+      .eq("cliente_id", scope.cliente_id)
+      .eq("despacho_id", scope.despacho_id)
       .maybeSingle();
     return row;
   });
@@ -114,28 +116,29 @@ export const upsertSatSyncConfig = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-// ============= DASHBOARD =============
+// ============= DASHBOARD (acotado al expediente activo) =============
 
 export const dashboardSatSync = createServerFn({ method: "GET" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((d: unknown) => z.object({ cliente_id: z.string().uuid() }).parse(d ?? {}))
+  .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const despachoId = await resolveActiveDespachoId(supabase, userId);
-    if (!despachoId) return { conectados: 0, ultima: null, hoy: 0, nuevos: 0, errores: 0, pendientes: 0, actividad: [], desconectados: [], conErrores: [], novedades: [] };
+    const scope = await assertClienteScope(supabase as any, userId, data.cliente_id);
+    const { cliente_id: clienteId, despacho_id: despachoId } = scope;
 
     const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
     const [{ count: conectados }, { data: ultima }, { count: hoyCount }, { count: nuevos }, { count: errores }, { count: pendientes }, { data: actividad }, { data: desconectados }, { data: conErrores }, { data: novedades }] =
       await Promise.all([
-        supabase.from("sat_credenciales").select("cliente_id", { count: "exact", head: true }).eq("despacho_id", despachoId).eq("estatus", "activo"),
-        supabase.from("sat_sync_runs").select("iniciado_at, cliente_id, estatus").eq("despacho_id", despachoId).order("iniciado_at", { ascending: false }).limit(1).maybeSingle(),
-        supabase.from("sat_sync_runs").select("id", { count: "exact", head: true }).eq("despacho_id", despachoId).gte("iniciado_at", hoy.toISOString()),
-        supabase.from("sat_sync_eventos").select("id", { count: "exact", head: true }).eq("despacho_id", despachoId).eq("tipo", "nuevo").gte("created_at", hoy.toISOString()),
-        supabase.from("sat_sync_runs").select("id", { count: "exact", head: true }).eq("despacho_id", despachoId).eq("estatus", "error").gte("iniciado_at", new Date(Date.now() - 7 * 86400000).toISOString()),
-        supabase.from("sat_sync_config").select("cliente_id", { count: "exact", head: true }).eq("despacho_id", despachoId).eq("activo", true).or("ultima_corrida_at.is.null,ultima_corrida_at.lt." + new Date(Date.now() - 2 * 86400000).toISOString()),
-        supabase.from("sat_sync_runs").select("id, cliente_id, iniciado_at, finalizado_at, estatus, descargados, nuevos, errores, clientes(rfc, razon_social)").eq("despacho_id", despachoId).order("iniciado_at", { ascending: false }).limit(15),
-        supabase.from("sat_credenciales").select("cliente_id, estatus, last_error, clientes(rfc, razon_social)").eq("despacho_id", despachoId).neq("estatus", "activo").limit(10),
-        supabase.from("sat_credenciales").select("cliente_id, estatus, last_error, last_sync_at, clientes(rfc, razon_social)").eq("despacho_id", despachoId).eq("estatus", "error").limit(10),
-        supabase.from("sat_sync_eventos").select("id, tipo, uuid_cfdi, monto, mensaje, created_at, cliente_id, clientes(rfc, razon_social)").eq("despacho_id", despachoId).order("created_at", { ascending: false }).limit(20),
+        supabase.from("sat_credenciales").select("cliente_id", { count: "exact", head: true }).eq("despacho_id", despachoId).eq("cliente_id", clienteId).eq("estatus", "activo"),
+        supabase.from("sat_sync_runs").select("iniciado_at, cliente_id, estatus").eq("despacho_id", despachoId).eq("cliente_id", clienteId).order("iniciado_at", { ascending: false }).limit(1).maybeSingle(),
+        supabase.from("sat_sync_runs").select("id", { count: "exact", head: true }).eq("despacho_id", despachoId).eq("cliente_id", clienteId).gte("iniciado_at", hoy.toISOString()),
+        supabase.from("sat_sync_eventos").select("id", { count: "exact", head: true }).eq("despacho_id", despachoId).eq("cliente_id", clienteId).eq("tipo", "nuevo").gte("created_at", hoy.toISOString()),
+        supabase.from("sat_sync_runs").select("id", { count: "exact", head: true }).eq("despacho_id", despachoId).eq("cliente_id", clienteId).eq("estatus", "error").gte("iniciado_at", new Date(Date.now() - 7 * 86400000).toISOString()),
+        supabase.from("sat_sync_config").select("cliente_id", { count: "exact", head: true }).eq("despacho_id", despachoId).eq("cliente_id", clienteId).eq("activo", true).or("ultima_corrida_at.is.null,ultima_corrida_at.lt." + new Date(Date.now() - 2 * 86400000).toISOString()),
+        supabase.from("sat_sync_runs").select("id, cliente_id, iniciado_at, finalizado_at, estatus, descargados, nuevos, errores, clientes(rfc, razon_social)").eq("despacho_id", despachoId).eq("cliente_id", clienteId).order("iniciado_at", { ascending: false }).limit(15),
+        supabase.from("sat_credenciales").select("cliente_id, estatus, last_error, clientes(rfc, razon_social)").eq("despacho_id", despachoId).eq("cliente_id", clienteId).neq("estatus", "activo").limit(10),
+        supabase.from("sat_credenciales").select("cliente_id, estatus, last_error, last_sync_at, clientes(rfc, razon_social)").eq("despacho_id", despachoId).eq("cliente_id", clienteId).eq("estatus", "error").limit(10),
+        supabase.from("sat_sync_eventos").select("id, tipo, uuid_cfdi, monto, mensaje, created_at, cliente_id, clientes(rfc, razon_social)").eq("despacho_id", despachoId).eq("cliente_id", clienteId).order("created_at", { ascending: false }).limit(20),
       ]);
 
     return {
@@ -154,23 +157,34 @@ export const dashboardSatSync = createServerFn({ method: "GET" })
 
 export const listSyncRuns = createServerFn({ method: "GET" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ cliente_id: z.string().uuid().optional(), limit: z.number().int().min(1).max(200).default(50) }).parse(d))
+  .inputValidator((d: unknown) => z.object({ cliente_id: z.string().uuid(), limit: z.number().int().min(1).max(200).default(50) }).parse(d))
   .handler(async ({ data, context }) => {
-    let q = context.supabase.from("sat_sync_runs").select("*, clientes(rfc, razon_social)").order("iniciado_at", { ascending: false }).limit(data.limit);
-    if (data.cliente_id) q = q.eq("cliente_id", data.cliente_id);
-    const { data: rows } = await q;
+    const scope = await assertClienteScope(context.supabase as any, context.userId, data.cliente_id);
+    const { data: rows } = await context.supabase
+      .from("sat_sync_runs")
+      .select("*, clientes(rfc, razon_social)")
+      .eq("cliente_id", scope.cliente_id)
+      .eq("despacho_id", scope.despacho_id)
+      .order("iniciado_at", { ascending: false })
+      .limit(data.limit);
     return rows ?? [];
   });
 
 export const listSyncEventos = createServerFn({ method: "GET" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ cliente_id: z.string().uuid().optional(), limit: z.number().int().min(1).max(200).default(50) }).parse(d))
+  .inputValidator((d: unknown) => z.object({ cliente_id: z.string().uuid(), limit: z.number().int().min(1).max(200).default(50) }).parse(d))
   .handler(async ({ data, context }) => {
-    let q = context.supabase.from("sat_sync_eventos").select("*, clientes(rfc, razon_social)").order("created_at", { ascending: false }).limit(data.limit);
-    if (data.cliente_id) q = q.eq("cliente_id", data.cliente_id);
-    const { data: rows } = await q;
+    const scope = await assertClienteScope(context.supabase as any, context.userId, data.cliente_id);
+    const { data: rows } = await context.supabase
+      .from("sat_sync_eventos")
+      .select("*, clientes(rfc, razon_social)")
+      .eq("cliente_id", scope.cliente_id)
+      .eq("despacho_id", scope.despacho_id)
+      .order("created_at", { ascending: false })
+      .limit(data.limit);
     return rows ?? [];
   });
+
 
 // ============= EJECUCIÓN =============
 
@@ -187,6 +201,7 @@ export const runSyncNow = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const inicio = Date.now();
 
+    await assertClienteScope(supabase as any, userId, data.cliente_id);
     const { data: cli } = await supabase
       .from("clientes")
       .select("id, rfc, razon_social, despacho_id")

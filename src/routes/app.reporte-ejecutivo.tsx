@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HerramientaHelp } from "@/components/HerramientaHelp";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -20,11 +19,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  obtenerKpisReportes, listarReportes, listarClientesParaReporte, generarReporte,
+  obtenerKpisReportes, listarReportes, generarReporte,
   obtenerReporte, marcarReporteEnviado, listarRecomendaciones, actualizarRecomendacion,
   crearTareaDesdeRecomendacion, simularEscenario, listarSimulaciones,
 } from "@/lib/reportes-ejecutivos/reportes-ejecutivos.functions";
 import { safeFilename, triggerFileDownload } from "@/lib/download";
+import { useActiveCliente } from "@/lib/active-cliente";
 
 export const Route = createFileRoute("/app/reporte-ejecutivo")({
   head: () => ({
@@ -63,7 +63,8 @@ function ReporteEjecutivoPage() {
   const [openGenerar, setOpenGenerar] = useState(false);
   const [openSim, setOpenSim] = useState(false);
   const [openReporte, setOpenReporte] = useState<string | null>(null);
-  const [clienteSel, setClienteSel] = useState<string>("");
+  const { cliente, hydrating } = useActiveCliente();
+  const clienteSel = cliente?.id ?? "";
   const [periodoSel, setPeriodoSel] = useState<string>(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -71,11 +72,11 @@ function ReporteEjecutivoPage() {
   const [escenario, setEscenario] = useState("");
   const [paramsTexto, setParamsTexto] = useState("");
 
-  const kpis = useQuery({ queryKey: ["re-kpis"], queryFn: () => obtenerKpisReportes() });
-  const reportes = useQuery({ queryKey: ["re-list"], queryFn: () => listarReportes({ data: {} }) });
-  const clientes = useQuery({ queryKey: ["re-clientes"], queryFn: () => listarClientesParaReporte() });
-  const recs = useQuery({ queryKey: ["re-recs"], queryFn: () => listarRecomendaciones({ data: {} }) });
-  const sims = useQuery({ queryKey: ["re-sims"], queryFn: () => listarSimulaciones({ data: {} }) });
+  const scoped = { enabled: !!clienteSel } as const;
+  const kpis = useQuery({ ...scoped, queryKey: ["re-kpis", clienteSel], queryFn: () => obtenerKpisReportes({ data: { cliente_id: clienteSel } }) });
+  const reportes = useQuery({ ...scoped, queryKey: ["re-list", clienteSel], queryFn: () => listarReportes({ data: { cliente_id: clienteSel } }) });
+  const recs = useQuery({ ...scoped, queryKey: ["re-recs", clienteSel], queryFn: () => listarRecomendaciones({ data: { cliente_id: clienteSel } }) });
+  const sims = useQuery({ ...scoped, queryKey: ["re-sims", clienteSel], queryFn: () => listarSimulaciones({ data: { cliente_id: clienteSel } }) });
 
   const mGenerar = useMutation({
     mutationFn: (v: { cliente_id: string; periodo: string }) =>
@@ -122,9 +123,9 @@ function ReporteEjecutivoPage() {
   });
 
   const repDetalle = useQuery({
-    queryKey: ["re-detalle", openReporte],
-    queryFn: () => openReporte ? obtenerReporte({ data: { id: openReporte } }) : null,
-    enabled: !!openReporte,
+    queryKey: ["re-detalle", clienteSel, openReporte],
+    queryFn: () => openReporte && clienteSel ? obtenerReporte({ data: { id: openReporte, cliente_id: clienteSel } }) : null,
+    enabled: !!openReporte && !!clienteSel,
   });
 
   const k = kpis.data;
@@ -155,13 +156,10 @@ function ReporteEjecutivoPage() {
               </DialogHeader>
               <div className="space-y-3">
                 <div>
-                  <label className="text-sm font-medium">Cliente</label>
-                  <Select value={clienteSel} onValueChange={setClienteSel}>
-                    <SelectTrigger><SelectValue placeholder="Selecciona cliente" /></SelectTrigger>
-                    <SelectContent>{clientes.data?.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.razon_social ?? c.rfc} · {c.rfc}</SelectItem>
-                    ))}</SelectContent>
-                  </Select>
+                  <label className="text-sm font-medium">Expediente activo</label>
+                  <div className="h-10 rounded-md border border-input bg-muted/30 px-3 flex items-center text-sm">
+                    {cliente ? `${cliente.razon_social} · ${cliente.rfc}` : "Selecciona un expediente en la barra superior"}
+                  </div>
                 </div>
                 <div>
                   <label className="text-sm font-medium">Escenario</label>
@@ -198,13 +196,10 @@ function ReporteEjecutivoPage() {
                 <DialogDescription>El agente IA analizará todos los datos del cliente y producirá un diagnóstico premium.</DialogDescription>
               </DialogHeader>
               <div className="space-y-3">
-                <label className="text-sm font-medium">Cliente</label>
-                <Select value={clienteSel} onValueChange={setClienteSel}>
-                  <SelectTrigger><SelectValue placeholder="Selecciona cliente" /></SelectTrigger>
-                  <SelectContent>{clientes.data?.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.razon_social ?? c.rfc} · {c.rfc}</SelectItem>
-                  ))}</SelectContent>
-                </Select>
+                <label className="text-sm font-medium">Expediente activo</label>
+                <div className="h-10 rounded-md border border-input bg-muted/30 px-3 flex items-center text-sm">
+                  {cliente ? `${cliente.razon_social} · ${cliente.rfc}` : "Selecciona un expediente en la barra superior"}
+                </div>
                 <label className="text-sm font-medium">Periodo (mes)</label>
                 <input
                   type="month"
@@ -223,6 +218,15 @@ function ReporteEjecutivoPage() {
           </Dialog>
         </div>
       </header>
+
+      {!cliente && !hydrating && (
+        <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center">
+          <h2 className="text-base font-medium">Selecciona un expediente</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Los reportes, recomendaciones y simulaciones se muestran únicamente del expediente activo. Elígelo en la barra superior.
+          </p>
+        </div>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

@@ -29,8 +29,13 @@ function fmtRel(s?: string | null) {
 
 function SatSyncPage() {
   const [tab, setTab] = useState<"dashboard" | "actividad" | "novedades" | "config">("dashboard");
+  const { cliente, hydrating } = useActiveCliente();
   const fnDash = useServerFn(dashboardSatSync);
-  const dash = useQuery({ queryKey: ["sat-sync", "dash"], queryFn: () => fnDash() });
+  const dash = useQuery({
+    enabled: !!cliente?.id,
+    queryKey: ["sat-sync", "dash", cliente?.id],
+    queryFn: () => fnDash({ data: { cliente_id: cliente!.id } }),
+  });
 
   return (
     <div className="space-y-6">
@@ -75,10 +80,27 @@ function SatSyncPage() {
         ))}
       </nav>
 
-      {tab === "dashboard" && <DashboardTab d={dash.data} loading={dash.isLoading} />}
-      {tab === "actividad" && <ActividadTab />}
-      {tab === "novedades" && <NovedadesTab />}
-      {tab === "config" && <ConfigTab />}
+      {!cliente ? (
+        hydrating ? <div className="text-sm text-muted-foreground">Cargando expediente activo…</div> : <SinExpediente />
+      ) : (
+        <>
+          {tab === "dashboard" && <DashboardTab d={dash.data} loading={dash.isLoading} />}
+          {tab === "actividad" && <ActividadTab clienteId={cliente.id} />}
+          {tab === "novedades" && <NovedadesTab clienteId={cliente.id} />}
+          {tab === "config" && <ConfigTab />}
+        </>
+      )}
+    </div>
+  );
+}
+
+function SinExpediente() {
+  return (
+    <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center">
+      <h2 className="text-base font-medium text-foreground">Selecciona un expediente</h2>
+      <p className="text-sm text-muted-foreground mt-1">
+        Esta pantalla solo muestra información del expediente activo. Elige uno en la barra superior.
+      </p>
     </div>
   );
 }
@@ -175,9 +197,9 @@ function DashboardTab({ d, loading }: { d: any; loading: boolean }) {
   );
 }
 
-function ActividadTab() {
+function ActividadTab({ clienteId }: { clienteId: string }) {
   const fn = useServerFn(listSyncRuns);
-  const q = useQuery({ queryKey: ["sat-sync", "runs"], queryFn: () => fn({ data: { limit: 100 } }) });
+  const q = useQuery({ queryKey: ["sat-sync", "runs", clienteId], queryFn: () => fn({ data: { cliente_id: clienteId, limit: 100 } }) });
   const rows = q.data ?? [];
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -216,9 +238,9 @@ function ActividadTab() {
   );
 }
 
-function NovedadesTab() {
+function NovedadesTab({ clienteId }: { clienteId: string }) {
   const fn = useServerFn(listSyncEventos);
-  const q = useQuery({ queryKey: ["sat-sync", "eventos"], queryFn: () => fn({ data: { limit: 100 } }) });
+  const q = useQuery({ queryKey: ["sat-sync", "eventos", clienteId], queryFn: () => fn({ data: { cliente_id: clienteId, limit: 100 } }) });
   const rows = q.data ?? [];
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
