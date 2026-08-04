@@ -13,12 +13,14 @@ export const Route = createFileRoute("/app/riesgo")({
   component: RiesgoPage,
 });
 
-const colorBySemaforo = (s: "verde" | "amarillo" | "rojo") =>
+const colorBySemaforo = (s: "verde" | "amarillo" | "rojo" | "no_evaluable" | "sin_datos") =>
   s === "rojo"
     ? "text-red-400 border-red-500/40 bg-red-500/10"
     : s === "amarillo"
       ? "text-amber-400 border-amber-500/40 bg-amber-500/10"
-      : "text-emerald-400 border-emerald-500/40 bg-emerald-500/10";
+      : s === "verde"
+        ? "text-emerald-400 border-emerald-500/40 bg-emerald-500/10"
+        : "text-muted-foreground border-border bg-muted/30";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -117,11 +119,25 @@ function RiesgoPage() {
           <div className={`rounded-2xl border p-6 flex items-center justify-between ${colorBySemaforo(data.semaforo)}`}>
             <div>
               <div className="text-xs uppercase tracking-wide opacity-80">Score de Riesgo SAT</div>
-              <div className="text-5xl font-bold mt-1">{data.score}<span className="text-2xl opacity-60">/100</span></div>
-              <div className="text-sm mt-2 opacity-90">
+              <div className="text-5xl font-bold mt-1">
+                {data.score === null ? (
+                  <span className="text-3xl">Sin información suficiente</span>
+                ) : (
+                  <>
+                    {data.score}
+                    <span className="text-2xl opacity-60">/100</span>
+                  </>
+                )}
+              </div>
+              <div className="text-sm mt-2 opacity-90 max-w-xl">
                 {data.semaforo === "rojo" && "Riesgo alto — atender criterios en rojo de inmediato."}
                 {data.semaforo === "amarillo" && "Riesgo moderado — atender hallazgos antes del cierre."}
                 {data.semaforo === "verde" && "Riesgo bajo — mantén la disciplina de cumplimiento."}
+                {data.semaforo === "sin_datos" && data.meta.cobertura.mensaje}
+              </div>
+              <div className="text-xs mt-2 opacity-75">
+                Cobertura de información: {data.meta.cobertura.evaluables} de {data.meta.cobertura.total} criterios
+                ({data.meta.cobertura.porcentaje}%) · mínimo requerido {data.meta.cobertura.minimo}%
               </div>
             </div>
             <div className="text-right text-xs opacity-80">
@@ -145,13 +161,13 @@ function RiesgoPage() {
                       {
                         name: "Resumen",
                         rows: [
-                          { Cliente: data.meta.cliente.razon_social, RFC: data.meta.cliente.rfc, Score: data.score, Semaforo: data.semaforo, "CFDI analizados": data.meta.n_cfdi, "Movimientos": data.meta.n_mov, Desde: data.meta.periodo.desde, Hasta: data.meta.periodo.hasta },
+                          { Cliente: data.meta.cliente.razon_social, RFC: data.meta.cliente.rfc, Score: data.score ?? "No evaluable", Semaforo: data.semaforo, "Criterios evaluables": `${data.meta.cobertura.evaluables}/${data.meta.cobertura.total}`, "CFDI analizados": data.meta.n_cfdi, "Movimientos": data.meta.n_mov, Desde: data.meta.periodo.desde, Hasta: data.meta.periodo.hasta },
                         ],
                       },
                       {
                         name: "Criterios",
                         rows: data.criterios.map((c) => ({
-                          "#": c.id, Criterio: c.nombre, Nivel: c.nivel, Puntos: c.puntos, Descripcion: c.descripcion, Hallazgos: c.hallazgos.join(" | "), Accion: c.accion,
+                          "#": c.id, Criterio: c.nombre, Nivel: c.nivel, Puntos: c.puntos ?? "N/A", Descripcion: c.descripcion, Hallazgos: c.hallazgos.join(" | "), Accion: c.accion,
                         })),
                       },
                     ]);
@@ -171,6 +187,23 @@ function RiesgoPage() {
             <p>{data.meta.metodologia.descripcion}</p>
             <p className="italic">{data.meta.metodologia.advertencia}</p>
           </div>
+
+          {!data.meta.cobertura.suficiente && (
+            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm space-y-2">
+              <div className="font-medium flex items-center gap-2 text-amber-300">
+                <ShieldQuestion className="h-4 w-4" /> No se puede determinar el nivel de riesgo
+              </div>
+              <p className="text-muted-foreground">{data.meta.cobertura.mensaje}</p>
+              {data.meta.cobertura.faltantes.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Criterios sin información: {data.meta.cobertura.faltantes.join(" · ")}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Carga CFDI y el estado de cuenta bancario del periodo para habilitar la evaluación.
+              </p>
+            </div>
+          )}
 
           <div className="grid md:grid-cols-2 gap-4">
             {data.criterios.map((c) => <CriterioCard key={c.id} c={c} />)}
@@ -198,7 +231,7 @@ function Header() {
 }
 
 function CriterioCard({ c }: { c: CriterioRiesgo }) {
-  const Icon = c.nivel === "verde" ? ShieldCheck : ShieldAlert;
+  const Icon = c.nivel === "no_evaluable" ? ShieldQuestion : c.nivel === "verde" ? ShieldCheck : ShieldAlert;
   return (
     <div className={`rounded-xl border p-4 ${colorBySemaforo(c.nivel)}`}>
       <div className="flex items-start justify-between gap-3">
@@ -206,7 +239,9 @@ function CriterioCard({ c }: { c: CriterioRiesgo }) {
           <Icon className="h-4 w-4" />
           <span>#{c.id} · {c.nombre}</span>
         </div>
-        <div className="text-xs font-mono opacity-80">{c.puntos}/100</div>
+        <div className="text-xs font-mono opacity-80">
+          {c.evaluable ? `${c.puntos}/100` : "No evaluable"}
+        </div>
       </div>
       <p className="text-xs mt-2 opacity-80">{c.descripcion}</p>
       <ul className="mt-3 space-y-1 text-xs">
