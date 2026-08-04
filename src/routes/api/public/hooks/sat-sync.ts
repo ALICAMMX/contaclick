@@ -48,9 +48,10 @@ export const Route = createFileRoute("/api/public/hooks/sat-sync")({
           const inicio = Date.now();
           const { data: cred } = await supabase
             .from("sat_credenciales")
-            .select("pac_token, estatus")
+            .select("pac_token, estatus, efirma_cer, efirma_key_enc")
             .eq("cliente_id", cfg.cliente_id)
             .maybeSingle();
+          const usaSatDirecto = !!cred?.efirma_cer && !!cred?.efirma_key_enc;
 
           const { data: runIns } = await supabase
             .from("sat_sync_runs")
@@ -58,6 +59,7 @@ export const Route = createFileRoute("/api/public/hooks/sat-sync")({
               despacho_id: cfg.despacho_id,
               cliente_id: cfg.cliente_id,
               origen: "cron",
+              proveedor: usaSatDirecto ? "sat_directo" : "sw_sapien",
               tipo: cfg.emitidos && cfg.recibidos ? "ambos" : cfg.emitidos ? "emitidos" : "recibidos",
               desde, hasta, estatus: "en_curso",
             })
@@ -67,16 +69,44 @@ export const Route = createFileRoute("/api/public/hooks/sat-sync")({
           const runId = runIns?.id;
           const erroresArr: { fase: string; mensaje: string }[] = [];
           let descargados = 0, nuevos = 0, cancelados = 0;
+          let esperandoSat = false;
 
-          if (!cred || cred.estatus !== "activo" || !cred.pac_token) {
-            erroresArr.push({ fase: "auth", mensaje: "Sin credencial activa" });
-          } else if (cred.pac_token.startsWith("mock_") || !process.env.SW_USER) {
+          if (!cred || cred.estatus !== "activo" || (!usaSatDirecto && !cred.pac_token)) {
+            erroresArr.push({ fase: "auth", mensaje: "Sin e.firma cargada" });
+          } else if (usaSatDirecto) {
+            const { solicitarDescargas } = await import("@/lib/sat/sat-directo-runner.server");
+            const { data: cli } = await supabase
+              .from("clientes").select("rfc").eq("id", cfg.cliente_id).maybeSingle();
+            try {
+              const { solicitudes, errores: errSol } = await solicitarDescargas({
+                supabase,
+                clienteId: cfg.cliente_id,
+                rfc: String(cli?.rfc ?? ""),
+                desde, hasta,
+                emitidos: !!cfg.emitidos,
+                recibidos: !!cfg.recibidos,
+              });
+              for (const m of errSol) erroresArr.push({ fase: "solicitud", mensaje: m });
+              esperandoSat = solicitudes.length > 0;
+              if (runId) {
+                await supabase.from("sat_sync_runs")
+                  .update({ solicitudes: solicitudes as any })
+                  .eq("id", runId);
+              }
+            } catch (e: any) {
+              erroresArr.push({ fase: "solicitud", mensaje: String(e?.message ?? e).slice(0, 300) });
+            }
+          } else if (cred.pac_token?.startsWith("mock_") || !process.env.SW_USER) {
             descargados = Math.floor(Math.random() * 3);
             nuevos = descargados;
           }
 
-          const estatus = erroresArr.length === 0 ? "exitoso" : "error";
-          if (runId) {
+          const estatus = esperandoSat
+            ? "en_curso"
+            : erroresArr.length === 0
+              ? "exitoso"
+              : "error";
+          if (runId && !esperandoSat) {
             await supabase.from("sat_sync_runs").update({
               finalizado_at: new Date().toISOString(),
               duracion_ms: Date.now() - inicio,
@@ -84,6 +114,7 @@ export const Route = createFileRoute("/api/public/hooks/sat-sync")({
               errores: erroresArr as any,
             }).eq("id", runId);
           }
+
 
           // Calcular próxima
           const next = new Date();
@@ -98,9 +129,19 @@ export const Route = createFileRoute("/api/public/hooks/sat-sync")({
           if (estatus === "exitoso") exitosos++; else errores++;
         }
 
-        return Response.json({ ok: true, procesados, exitosos, errores });
+        // Cosecha de solicitudes que el SAT ya liberó (corridas en_curso)
+        let cosecha = { revisadas: 0, nuevos: 0 };
+        try {
+          const { cosecharPendientes } = await import("@/lib/sat/sat-directo-runner.server");
+          cosecha = await cosecharPendientes(supabase, 20);
+        } catch {
+          // no bloquea el cron
+        }
+
+        return Response.json({ ok: true, procesados, exitosos, errores, cosecha });
       },
       GET: async () => Response.json({ ok: true, info: "POST con apikey para procesar sincronizaciones SAT pendientes" }),
+
     },
   },
 });

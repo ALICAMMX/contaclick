@@ -206,9 +206,11 @@ export const runSyncNow = createServerFn({ method: "POST" })
     // Credencial
     const { data: cred } = await supabase
       .from("sat_credenciales")
-      .select("pac_token, estatus")
+      .select("pac_token, estatus, proveedor, efirma_cer, efirma_key_enc")
       .eq("cliente_id", data.cliente_id)
       .maybeSingle();
+    const usaSatDirecto = !!cred?.efirma_cer && !!cred?.efirma_key_enc;
+
 
     // Crear run
     const { data: runIns, error: runErr } = await supabase
@@ -232,13 +234,15 @@ export const runSyncNow = createServerFn({ method: "POST" })
 
     let solicitudesPrevistas = 0;
     let esMockRun = false;
-    if (!cred || cred.estatus !== "activo" || !cred.pac_token) {
-      errores.push({ fase: "auth", mensaje: "Expediente no conectado al SAT (sin credencial activa)" });
+    if (!cred || cred.estatus !== "activo" || (!usaSatDirecto && !cred.pac_token)) {
+      errores.push({ fase: "auth", mensaje: "Expediente no conectado al SAT (sin e.firma cargada)" });
     } else {
-      const isMock = cred.pac_token.startsWith("mock_") || !process.env.SW_USER;
-      esMockRun = isMock;
-      // ===== Candados de costo PAC =====
+      // Con e.firma propia la descarga es directa contra el SAT: costo $0, sin PAC.
+      const isMock = !usaSatDirecto && (cred.pac_token?.startsWith("mock_") || !process.env.SW_USER);
+      esMockRun = !!isMock;
+      // ===== Candados de uso (cuota del plan; el saldo PAC no aplica en SAT directo) =====
       try {
+
         solicitudesPrevistas = contarSolicitudesPrevistas({
           emitidos: !!cfg?.emitidos,
           recibidos: !!cfg?.recibidos,
@@ -250,10 +254,11 @@ export const runSyncNow = createServerFn({ method: "POST" })
         });
         if (solicitudesPrevistas === 0) solicitudesPrevistas = 1; // sin tipos: al menos 1
         let supabaseAdmin: any = null;
-        if (!isMock) {
+        if (!isMock && !usaSatDirecto) {
           const mod = await import("@/integrations/supabase/client.server");
           supabaseAdmin = mod.supabaseAdmin;
         }
+
         await assertSatRunPermitido({
           supabase,
           supabaseAdmin,
@@ -289,22 +294,57 @@ export const runSyncNow = createServerFn({ method: "POST" })
             });
           }
         } else {
-          // PAC real: dispara solicitud asíncrona. Polling lo hará el cron de SAT.
-          const res = await fetch("https://services.sw.com.mx/cfdi/descargamasiva/solicitud", {
-            method: "POST",
-            headers: { Authorization: `Bearer ${cred.pac_token}`, "Content-Type": "application/json" },
-            body: JSON.stringify({
-              rfc: cli.rfc,
-              fechaInicio: desde,
-              fechaFin: hasta,
-              tipoSolicitud: "CFDI",
-            }),
+          // SAT directo con e.firma: se envían las solicitudes (asíncronas, costo $0).
+          // El cron de SAT verifica y descarga los paquetes cuando el SAT los libera.
+          const { solicitarDescargas, cosecharSolicitud } = await import(
+            "@/lib/sat/sat-directo-runner.server"
+          );
+          const { solicitudes, errores: errSol } = await solicitarDescargas({
+            supabase,
+            clienteId: cli.id,
+            rfc: cli.rfc!,
+            desde,
+            hasta,
+            emitidos: cfg?.emitidos ?? true,
+            recibidos: cfg?.recibidos ?? true,
           });
-          if (!res.ok) {
-            const txt = await res.text();
-            errores.push({ fase: "solicitud", mensaje: `PAC ${res.status}: ${txt.slice(0, 200)}` });
+          for (const m of errSol) errores.push({ fase: "solicitud", mensaje: m });
+
+          // Primer intento de cosecha inmediata (a veces el SAT responde en segundos)
+          const estado: any[] = [];
+          for (const s of solicitudes) {
+            try {
+              const r = await cosecharSolicitud({
+                supabase,
+                despachoId: cli.despacho_id,
+                clienteId: cli.id,
+                solicitud: s,
+              });
+              estado.push(r.solicitud);
+              nuevos += r.nuevos;
+              descargados += r.nuevos + r.duplicados;
+              duplicados += r.duplicados;
+            } catch (e: any) {
+              estado.push({ ...s, mensaje: String(e?.message ?? e).slice(0, 250) });
+            }
+          }
+          await supabase
+            .from("sat_sync_runs")
+            .update({ proveedor: "sat_directo", solicitudes: estado })
+            .eq("id", runId);
+          if (estado.some((s) => s.estado === "pendiente")) {
+            errores.length === 0 &&
+              (await supabase.from("sat_sync_eventos").insert({
+                despacho_id: cli.despacho_id,
+                cliente_id: cli.id,
+                run_id: runId,
+                tipo: "info",
+                mensaje:
+                  "Solicitud enviada al SAT. La descarga se completará automáticamente cuando el SAT libere los paquetes (puede tardar de minutos a horas).",
+              }));
           }
         }
+
 
         // Detección de duplicados: cualquier hash repetido en cfdi_xml del expediente
         const { data: dupHashes } = await supabase
@@ -324,16 +364,36 @@ export const runSyncNow = createServerFn({ method: "POST" })
     }
 
     const fin = Date.now();
-    const estatus = errores.length === 0 ? "exitoso" : descargados > 0 ? "parcial" : "error";
+    // Si el SAT dejó solicitudes en proceso, la corrida sigue "en_curso": el cron la cosecha.
+    const { data: runActual } = await supabase
+      .from("sat_sync_runs")
+      .select("solicitudes")
+      .eq("id", runId)
+      .maybeSingle();
+    const esperandoSat = ((runActual?.solicitudes ?? []) as any[]).some(
+      (s) => s?.estado === "pendiente",
+    );
+    const estatus = esperandoSat
+      ? "en_curso"
+      : errores.length === 0
+        ? "exitoso"
+        : descargados > 0
+          ? "parcial"
+          : "error";
 
     await supabase.from("sat_sync_runs").update({
-      finalizado_at: new Date(fin).toISOString(),
+      finalizado_at: esperandoSat ? null : new Date(fin).toISOString(),
       duracion_ms: fin - inicio,
       estatus,
       descargados, nuevos, cancelados, duplicados,
       errores: errores as any,
-      detalle: estatus === "error" ? "La corrida no pudo completarse" : `Descargados: ${descargados}, nuevos: ${nuevos}, cancelados: ${cancelados}`,
+      detalle: esperandoSat
+        ? "Solicitud enviada al SAT. Se completará automáticamente al liberar los paquetes."
+        : estatus === "error"
+          ? "La corrida no pudo completarse"
+          : `Descargados: ${descargados}, nuevos: ${nuevos}, cancelados: ${cancelados}`,
     }).eq("id", runId);
+
 
     // Registro de consumo SAT (cuota despacho + saldo PAC si es real)
     if (solicitudesPrevistas > 0 && estatus !== "error") {

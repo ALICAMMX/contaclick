@@ -49,48 +49,9 @@ function extraerRfcsDeCer(cer_b64: string): string[] {
   return Array.from(found);
 }
 
+// Nota: la conexión al SAT ya NO pasa por un PAC. Se usa el Web Service oficial
+// de Descarga Masiva firmado con la e.firma del contribuyente (costo $0 por solicitud).
 
-
-async function obtainSwToken(args: { cer_b64: string; key_b64: string; password: string }) {
-  const SW_BASE = (process.env.SW_SAPIEN_API_URL || "https://services.sw.com.mx/").replace(/\/$/, "");
-  const SW_TOKEN = process.env.SW_SAPIEN_API_TOKEN;
-  const SW_USER = process.env.SW_USER;
-  const SW_PASSWORD = process.env.SW_PASSWORD;
-
-  // Sin credenciales ni token → modo simulado
-  if (!SW_TOKEN && (!SW_USER || !SW_PASSWORD)) {
-    return { token: `mock_${crypto.randomUUID()}`, simulated: true as const };
-  }
-
-  // Token maestro: preconfigurado (sandbox SW Sapien) o vía user/password
-  let masterToken: string | undefined = SW_TOKEN;
-  if (!masterToken) {
-    const auth = await fetch(`${SW_BASE}/security/authenticate`, {
-      method: "POST",
-      headers: { user: SW_USER!, password: SW_PASSWORD! },
-    });
-    if (!auth.ok) throw new Error(`PAC auth falló (${auth.status})`);
-    const authJson = (await auth.json()) as { data?: { token?: string } };
-    masterToken = authJson?.data?.token;
-    if (!masterToken) throw new Error("PAC no devolvió token maestro");
-  }
-
-  // Registrar e.firma del cliente para descargas
-  const reg = await fetch(`${SW_BASE}/cfdi/efirma/register`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${masterToken}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      cer: args.cer_b64,
-      key: args.key_b64,
-      password: args.password,
-    }),
-  });
-  if (!reg.ok) {
-    const txt = await reg.text();
-    throw new Error(`PAC rechazó la e.firma: ${txt.slice(0, 200)}`);
-  }
-  return { token: masterToken, simulated: false as const };
-}
 
 export const getSatStatus = createServerFn({ method: "GET" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
@@ -133,36 +94,45 @@ export const conectarSat = createServerFn({ method: "POST" })
         `La e.firma NO corresponde a este expediente. El certificado pertenece a ${rfcsCer.join(", ")} pero el expediente activo es ${rfcCliente}. Para evitar firmar declaraciones con la e.firma equivocada, la carga fue rechazada.`,
       );
     }
-
-
-    let result: { token: string; simulated: boolean };
+    // Validar la e.firma abriéndola localmente y autenticando contra el SAT.
+    // Si el SAT acepta el token, la credencial queda lista para descargas gratuitas.
+    let vence: string | null = null;
     try {
-      result = await obtainSwToken({
+      const { abrirEFirma, satAutenticar } = await import(
+        "@/lib/sat/providers/sat-directo.server"
+      );
+      const creds = abrirEFirma({
         cer_b64: data.cer_b64,
         key_b64: data.key_b64,
         password: data.password,
       });
+      await satAutenticar(creds);
     } catch (e: any) {
-      // Guardar el error para visibilidad y propagar
       await supabase.from("sat_credenciales").upsert(
         {
           cliente_id: cli.id,
           despacho_id: cli.despacho_id,
-          proveedor: "sw_sapien",
+          proveedor: "sat_directo",
           estatus: "error",
           last_error: String(e?.message ?? e).slice(0, 500),
         },
         { onConflict: "cliente_id" },
       );
-      throw new Error(e?.message ?? "Error al conectar con el PAC");
+      throw new Error(e?.message ?? "No se pudo validar la e.firma con el SAT");
     }
 
+    const { cifrar } = await import("@/lib/sat/efirma-vault.server");
     const { error: upErr } = await supabase.from("sat_credenciales").upsert(
       {
         cliente_id: cli.id,
         despacho_id: cli.despacho_id,
-        proveedor: "sw_sapien",
-        pac_token: result.token,
+        proveedor: "sat_directo",
+        pac_token: null,
+        efirma_cer: data.cer_b64,
+        efirma_key_enc: await cifrar(data.key_b64),
+        efirma_pass_enc: await cifrar(data.password),
+        efirma_rfc: rfcCliente,
+        efirma_vence_at: vence,
         estatus: "activo",
         last_error: null,
         last_sync_at: new Date().toISOString(),
@@ -170,6 +140,7 @@ export const conectarSat = createServerFn({ method: "POST" })
       { onConflict: "cliente_id" },
     );
     if (upErr) throw new Error(upErr.message);
+
 
     // Auto-activar descarga automática para este expediente (idempotente).
     // Si no existe configuración, se crea con defaults sensatos y queda lista
@@ -207,10 +178,11 @@ export const conectarSat = createServerFn({ method: "POST" })
       accion: "sat.conectar",
       entidad: "cliente",
       entidad_id: cli.id,
-      payload: { simulated: result.simulated, rfc: cli.rfc, auto_sync: true },
+      payload: { proveedor: "sat_directo", rfc: cli.rfc, auto_sync: true },
     });
 
-    return { ok: true, simulated: result.simulated, auto_sync_activado: true };
+    return { ok: true, simulated: false, auto_sync_activado: true };
+
   });
 
 export const desconectarSat = createServerFn({ method: "POST" })

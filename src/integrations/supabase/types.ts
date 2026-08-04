@@ -3140,6 +3140,11 @@ export type Database = {
           cliente_id: string
           created_at: string
           despacho_id: string
+          efirma_cer: string | null
+          efirma_key_enc: string | null
+          efirma_pass_enc: string | null
+          efirma_rfc: string | null
+          efirma_vence_at: string | null
           estatus: string
           id: string
           last_error: string | null
@@ -3152,6 +3157,11 @@ export type Database = {
           cliente_id: string
           created_at?: string
           despacho_id: string
+          efirma_cer?: string | null
+          efirma_key_enc?: string | null
+          efirma_pass_enc?: string | null
+          efirma_rfc?: string | null
+          efirma_vence_at?: string | null
           estatus?: string
           id?: string
           last_error?: string | null
@@ -3164,6 +3174,11 @@ export type Database = {
           cliente_id?: string
           created_at?: string
           despacho_id?: string
+          efirma_cer?: string | null
+          efirma_key_enc?: string | null
+          efirma_pass_enc?: string | null
+          efirma_rfc?: string | null
+          efirma_vence_at?: string | null
           estatus?: string
           id?: string
           last_error?: string | null
@@ -3364,6 +3379,8 @@ export type Database = {
           iniciado_at: string
           nuevos: number
           origen: string
+          proveedor: string
+          solicitudes: Json
           tipo: string
           triggered_by: string | null
         }
@@ -3384,6 +3401,8 @@ export type Database = {
           iniciado_at?: string
           nuevos?: number
           origen?: string
+          proveedor?: string
+          solicitudes?: Json
           tipo?: string
           triggered_by?: string | null
         }
@@ -3404,6 +3423,8 @@ export type Database = {
           iniciado_at?: string
           nuevos?: number
           origen?: string
+          proveedor?: string
+          solicitudes?: Json
           tipo?: string
           triggered_by?: string | null
         }
