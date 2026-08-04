@@ -126,23 +126,32 @@ function IsrIvaPM() {
         </div>
 
         <div className="space-y-4">
-          <Result title="ISR a cargo del mes" big value={f(calc.isrPorPagar)} tone={calc.isrPorPagar > 0 ? "warn" : "ok"} />
-          <div className="grid grid-cols-2 gap-3">
-            <Result title="Utilidad fiscal estimada" value={f(calc.utilidadFiscal)} />
-            <Result title="ISR causado (30 %)" value={f(calc.isrCausado)} />
-          </div>
-          <hr className="border-border/40" />
-          {calc.ivaPorPagar > 0 ? (
-            <Result title="IVA a cargo" big value={f(calc.ivaPorPagar)} tone="warn" />
+          {!calc.ok ? (
+            <NormativaBloqueada mensaje={calc.error} />
           ) : (
-            <Result title="IVA a favor" big value={f(calc.ivaSaldoFavor)} tone="ok" />
+            <>
+              <Result title="ISR a cargo del mes" big value={f(calc.isr.isrACargo)} tone={calc.isr.isrACargo > 0 ? "warn" : "ok"} />
+              <div className="grid grid-cols-2 gap-3">
+                <Result title="Utilidad fiscal estimada" value={f(calc.isr.utilidadFiscal)} />
+                <Result title={`ISR causado (${calc.isr.tasa} %)`} value={f(calc.isr.isrCausado)} />
+                <Result title="Pérdidas aplicadas" value={f(calc.isr.perdidasAplicadas)} />
+                <Result title="ISR a favor" value={f(calc.isr.isrAFavor)} />
+              </div>
+              <hr className="border-border/40" />
+              {calc.iva.ivaACargo > 0 ? (
+                <Result title="IVA a cargo" big value={f(calc.iva.ivaACargo)} tone="warn" />
+              ) : (
+                <Result title="IVA a favor" big value={f(calc.iva.ivaAFavor)} tone="ok" />
+              )}
+              <NormativaBadge sello={calc.isr.normativa} />
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Art. 14 LISR (PM régimen general). No incluye ajuste anual por inflación, ISR diferido ni IEPS.
+                El coeficiente de utilidad proviene de la última declaración anual con utilidad fiscal.
+              </p>
+            </>
           )}
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Cálculo orientativo basado en el Art. 14 LISR (PM régimen general, tasa 30 %). No incluye ajuste anual por
-            inflación, ISR diferido, ni IETU/IEPS. El coeficiente de utilidad se determina con base en el último ejercicio
-            con utilidad fiscal. Confirma con la normativa vigente.
-          </p>
         </div>
+
       </div>
     </ToolShell>
   );
