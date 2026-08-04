@@ -72,7 +72,7 @@ function ReporteEjecutivoPage() {
   const [escenario, setEscenario] = useState("");
   const [paramsTexto, setParamsTexto] = useState("");
 
-  const scoped = { enabled: !!clienteSel } as const;
+  const scoped = { enabled: !hydrating && !!clienteSel } as const;
   const kpis = useQuery({ ...scoped, queryKey: ["re-kpis", clienteSel], queryFn: () => obtenerKpisReportes({ data: { cliente_id: clienteSel } }) });
   const reportes = useQuery({ ...scoped, queryKey: ["re-list", clienteSel], queryFn: () => listarReportes({ data: { cliente_id: clienteSel } }) });
   const recs = useQuery({ ...scoped, queryKey: ["re-recs", clienteSel], queryFn: () => listarRecomendaciones({ data: { cliente_id: clienteSel } }) });
