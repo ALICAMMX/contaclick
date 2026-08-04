@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { getResumenFiscalMes } from "@/lib/fiscal/resumen.functions";
 import { parseCfdi } from "@/lib/tools/cfdi-parser";
+import { calcularIsrPf, calcularIva } from "@/lib/fiscal/normativa/motor";
+import { NormativaBadge, NormativaBloqueada } from "@/components/NormativaBadge";
 
 export const Route = createFileRoute("/app/tools/isr-iva-calculator")({
   component: IsrIvaCalculator,
