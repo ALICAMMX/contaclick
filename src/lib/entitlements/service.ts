@@ -40,6 +40,8 @@ export interface ExcepcionVigente {
 
 export interface UsoActual {
   rfcs: number;
+  /** Expedientes demo/showroom: visibles, pero fuera de toda cuota. */
+  rfcs_demo: number;
   ia_requests: number;
   ia_tokens: number;
   sat_solicitudes: number;
@@ -61,6 +63,9 @@ export interface Entitlements {
   periodo: string;
   periodo_inicia: string;
   periodo_termina: string;
+  /** Límites del plan (default < plan < override) ANTES de excepciones. */
+  limites_base: Limites;
+  /** Límites efectivos tras aplicar las excepciones comerciales vigentes. */
   limites: Limites;
   uso: UsoActual;
   excepciones: ExcepcionVigente[];
@@ -239,11 +244,12 @@ export async function getEntitlements(
       : "Tu prueba gratuita venció. Elige un plan para volver a operar; tus expedientes siguen guardados.";
 
   // --- Límites efectivos: default < plan < override comercial < excepción ---
-  const limites: Limites = {
+  const limites_base: Limites = {
     ...DEFAULT_LIMITS,
     ...(((d as any).planes?.limites as Limites | undefined) ?? {}),
     ...(((d as any).limites_override as Partial<Limites> | null) ?? {}),
   };
+  const limites: Limites = { ...limites_base };
   for (const e of excepciones) {
     const campo = EXC_A_LIMITE[e.tipo];
     if (campo && e.valor_num != null) {
@@ -274,6 +280,7 @@ export async function getEntitlements(
     periodo,
     periodo_inicia: rango.inicia,
     periodo_termina: rango.termina,
+    limites_base,
     limites,
     uso,
     excepciones,
@@ -289,7 +296,7 @@ export async function getUso(
   despachoId: string,
   periodo = periodoActual(),
 ): Promise<UsoActual> {
-  const [{ count }, { data: up }] = await Promise.all([
+  const [{ count }, { count: countDemo }, { data: up }] = await Promise.all([
     supabase
       .from("clientes")
       .select("id", { count: "exact", head: true })
@@ -297,6 +304,13 @@ export async function getUso(
       .eq("tipo_relacion", "cliente")
       .is("cliente_padre_id", null)
       .eq("es_demo", false),
+    supabase
+      .from("clientes")
+      .select("id", { count: "exact", head: true })
+      .eq("despacho_id", despachoId)
+      .eq("tipo_relacion", "cliente")
+      .is("cliente_padre_id", null)
+      .eq("es_demo", true),
     supabase
       .from("uso_periodo")
       .select("ia_requests, ia_tokens, sat_solicitudes, sat_costo_centavos")
@@ -307,6 +321,7 @@ export async function getUso(
 
   return {
     rfcs: count ?? 0,
+    rfcs_demo: countDemo ?? 0,
     ia_requests: (up as any)?.ia_requests ?? 0,
     ia_tokens: Number((up as any)?.ia_tokens ?? 0),
     sat_solicitudes: (up as any)?.sat_solicitudes ?? 0,
