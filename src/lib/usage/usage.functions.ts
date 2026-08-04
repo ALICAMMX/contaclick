@@ -71,7 +71,7 @@ export const getUsageHistory = createServerFn({ method: "GET" })
       .in("periodo", periodos);
     const map = new Map<string, any>();
     (data ?? []).forEach((r: any) => map.set(r.periodo, r));
-    const limites = await getPlanLimites(supabase, despachoId);
+    const { limites } = await getEntitlements(supabase, despachoId);
     return {
       plan: { rfcs: limites.rfcs, ia_msgs: limites.ia_msgs, ia_tokens: limites.ia_tokens ?? 0 },
       historial: periodos.map((p) => ({
