@@ -391,3 +391,69 @@ presentación en el panel de administración o del proceso de pago).
 - `src/lib/fiscal/normativa/normativa.test.ts` — 42 casos: límites inferior/exacto/superior de cada tramo ISR PF, deducciones, retenciones, pagos provisionales, ISR PM con coeficiente y pérdidas, RESICO por tasa, IVA a cargo/a favor/valores inválidos, redondeo a 2 decimales, cambio de ejercicio y periodo sin mezclar tablas.
 - `src/lib/fiscal/e2e-sintetico.test.ts` — 20 casos: flujo operativo completo con datos sintéticos (CSF → expediente → CFDI emitidos/recibidos/nómina/pagos → validación UUID → 69-B → deducibilidad → banco → pólizas borrador → aprobación → conciliación → ISR/IVA → obligaciones/tareas/workflow → resumen y reporte ejecutivo), aislamiento entre dos expedientes y entre despachos, fallo cerrado sin expediente activo, y reversión total de los datos sintéticos.
 - Suite completa: **107 pruebas verdes** (1 omitida por requerir BD). Sin IA, sin SAT, sin correo y sin tocar datos reales.
+
+## 2026-07-25 (bis) — Corrección de dos errores conceptuales en la validación fiscal
+
+**Error 1 — La tarifa anual se validaba como 12 × la tarifa mensual.**
+La suite contenía una prueba que exigía la equivalencia `anual = 12 × mensual`.
+Es incorrecto: el Anexo 8 de la RMF publica la tarifa del art. 152 LISR (anual)
+como una tabla propia, y sus importes NO coinciden con el producto de la mensual.
+Contraejemplo publicado 2026: el primer límite superior mensual es **844.59**,
+`844.59 × 12 = 10,135.08`, pero el límite superior anual publicado es
+**10,135.11** (y el siguiente límite inferior anual es 10,135.12).
+
+- Prueba eliminada: la de equivalencia 12×.
+- Prueba nueva en su lugar: *"la tarifa ANUAL no se deriva de la mensual"*, que
+  demuestra el contraejemplo y verifica que para 2024, 2025 y 2026 la tabla anual
+  del catálogo **no** es igual a la mensual multiplicada por 12.
+- `motor.ts`: `calcularIsrPf` ahora resuelve `PF_GENERAL_ANUAL` cuando el periodo
+  es `AAAA` o se pasa `anual: true`; antes cualquier periodo tomaba la mensual.
+- Se conserva una prueba de lo que el Anexo 8 sí comparte: los **porcentajes**
+  sobre excedente son idénticos entre mensual y anual.
+
+**Error 2 — El subsidio al empleo 2026 se modelaba como tabla de tramos.**
+Desde el Decreto DOF **31/12/2025** el subsidio dejó de ser una tabla por tramos:
+es un **porcentaje de la UMA mensual**, con un tope de ingreso mensual.
+
+| Periodo | Porcentaje | UMA aplicable | UMA mensual | Subsidio | Límite de ingreso |
+|---|---|---|---|---|---|
+| 2026-01 | 15.59 % | UMA 2025 | 3,439.46 | 536.21 | 11,492.66 |
+| 2026-02 en adelante | 15.02 % | UMA 2026 | 3,569.97 | 536.21 | 11,492.66 |
+
+- `catalogo.ts`: se eliminó la tabla `SUBSIDIO_MENSUAL_2026` (tramos) y se crearon
+  dos conjuntos normativos **independientes** —`subsidio-empleo-2026-01-v1` y
+  `subsidio-empleo-2026-02-v1`— con fuente propia `DECRETO_SUBSIDIO_2026`
+  (no Anexo 8), tipo de cuerpo `subsidio_porcentaje`.
+- `motor.ts`: `calcularSubsidioEmpleo` aplica porcentaje × UMA, prorratea por días
+  cuando el pago cubre menos de un mes y suma mes por mes cuando cubre varios,
+  resolviendo la normativa de **cada** mes por separado (un pago que cruza
+  enero–febrero usa 15.59 % y 15.02 % respectivamente).
+- La UMA 2026 está marcada `pendiente_cotejo`; el resultado lo expone como
+  `advertencia` y `NormativaBadge` lo muestra en pantalla en lugar de callarlo.
+
+**Independencia de los resultados esperados.**
+`src/lib/fiscal/normativa/__fixtures__/oficiales.ts` transcribe literalmente las
+tablas publicadas (ISR PF mensual y anual 2024/2025/2026, subsidio 2026, RESICO,
+tasas ISR PM e IVA). Las pruebas comparan el catálogo **fila por fila** contra el
+fixture, y los importes esperados se calculan a mano desde el fixture, no
+llamando al motor ni derivando una tabla de la otra.
+
+**Integridad normativa.**
+El sello dejó de usar FNV-1a: `src/lib/fiscal/normativa/sha256.ts` implementa
+SHA-256 y `hashConjunto` sella una serialización canónica del conjunto.
+`sha256.test.ts` coteja la implementación contra vectores conocidos y contra
+`node:crypto`. Los hashes publicados están congelados en `HASHES_PUBLICADOS`:
+cualquier edición de una tabla rompe la prueba de integridad.
+
+**Casos nuevos del subsidio**: conjunto normativo propio (no Anexo 8), cotejo
+contra el decreto, enero 15.59 %/UMA 2025, febrero–diciembre 15.02 %/UMA 2026,
+cambio enero→febrero con versiones distintas, límite 11,492.66 exacto/±1 centavo,
+prorrateo quincenal y semanal, pago bimestral, pago que cruza enero–febrero,
+límite evaluado por mes en pagos multi-mes, subsidio mayor/igual/menor que el ISR
+(entrega en efectivo vs. reducción de retención), periodos sin normativa (2024,
+2025, 2027) que fallan cerrado, y advertencia de UMA pendiente de cotejo.
+
+**Resultado de la suite: 206 pruebas verdes, 1 omitida (requiere BD), 0 fallos.**
+Ningún cálculo anual se obtiene multiplicando la tabla mensual, y el subsidio al
+empleo tiene su propio conjunto normativo con fuente y vigencia separadas.
+No se modificaron datos reales.

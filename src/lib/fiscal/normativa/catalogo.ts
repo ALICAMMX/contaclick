@@ -8,6 +8,8 @@
 // está calculando. Nunca cae "silenciosamente" a la última tabla disponible.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { sha256Hex } from "./sha256";
+
 export type Impuesto = "ISR" | "IVA";
 
 export type Regimen =
@@ -38,10 +40,22 @@ export type TramoTarifa = {
   porcentaje: number;
 };
 
-export type TramoSubsidio = {
-  desde: number;
-  hasta: number | null;
-  subsidio: number;
+/**
+ * Subsidio para el empleo vigente desde el Decreto DOF 01/05/2024 y su
+ * actualización DOF 31/12/2025: ya NO es una tabla por tramos, es un
+ * porcentaje sobre la UMA mensual con un límite de ingreso mensual.
+ */
+export type SubsidioPorcentaje = {
+  /** % aplicable sobre la UMA mensual (ej. 15.02) */
+  porcentaje: number;
+  /** UMA mensual que ordena aplicar el decreto para este periodo */
+  umaMensual: number;
+  /** Ejercicio de la UMA utilizada (enero 2026 usa la UMA de 2025) */
+  umaEjercicio: number;
+  /** Tope de ingreso gravable mensual para tener derecho al subsidio */
+  limiteIngresoMensual: number;
+  /** Días que el decreto usa para prorratear periodos menores a un mes */
+  diasMesComercial: number;
 };
 
 export type TramoResico = {
@@ -52,7 +66,7 @@ export type TramoResico = {
 
 export type CuerpoNormativo =
   | { tipo: "tarifa"; tramos: TramoTarifa[] }
-  | { tipo: "subsidio"; tramos: TramoSubsidio[] }
+  | { tipo: "subsidio_porcentaje"; subsidio: SubsidioPorcentaje }
   | { tipo: "resico"; tramos: TramoResico[]; limiteAnual: number; retencionPM: number }
   | { tipo: "tasa"; tasa: number };
 
@@ -87,30 +101,76 @@ export type ConjuntoNormativo = {
 };
 
 /**
- * Huella determinista (FNV-1a 32 bits, hex) del contenido normativo.
- * Se persiste junto con cada cálculo: si alguien edita una tabla ya publicada
- * sin subir la versión, el hash cambia y la prueba de regresión falla.
+ * Serialización canónica del conjunto normativo: orden fijo de campos e
+ * inclusión EXPLÍCITA de todos los límites, cuotas fijas, porcentajes,
+ * parámetros del subsidio, fuente oficial y fechas. No depende del orden de
+ * las claves del objeto ni de campos editoriales (notas, verificación).
+ */
+export function serializacionCanonica(c: ConjuntoNormativo): string {
+  const cuerpo: string[] = [];
+  switch (c.cuerpo.tipo) {
+    case "tarifa":
+      cuerpo.push("tarifa");
+      for (const t of c.cuerpo.tramos) {
+        cuerpo.push(
+          [
+            t.limiteInferior.toFixed(2),
+            t.limiteSuperior === null ? "EN_ADELANTE" : t.limiteSuperior.toFixed(2),
+            t.cuotaFija.toFixed(2),
+            t.porcentaje.toFixed(2),
+          ].join("|"),
+        );
+      }
+      break;
+    case "subsidio_porcentaje": {
+      const sp = c.cuerpo.subsidio;
+      cuerpo.push("subsidio_porcentaje");
+      cuerpo.push(
+        [
+          sp.porcentaje.toFixed(2),
+          sp.umaMensual.toFixed(2),
+          String(sp.umaEjercicio),
+          sp.limiteIngresoMensual.toFixed(2),
+          sp.diasMesComercial.toFixed(1),
+        ].join("|"),
+      );
+      break;
+    }
+    case "resico":
+      cuerpo.push("resico");
+      cuerpo.push(c.cuerpo.limiteAnual.toFixed(2));
+      cuerpo.push(c.cuerpo.retencionPM.toFixed(2));
+      for (const t of c.cuerpo.tramos) cuerpo.push([t.hasta.toFixed(2), t.tasa.toFixed(2)].join("|"));
+      break;
+    case "tasa":
+      cuerpo.push("tasa");
+      cuerpo.push(c.cuerpo.tasa.toFixed(2));
+      break;
+  }
+
+  return [
+    `id=${c.id}`,
+    `impuesto=${c.impuesto}`,
+    `regimen=${c.regimen}`,
+    `ejercicio=${c.ejercicio}`,
+    `version=${c.version}`,
+    `vigenteDesde=${c.vigenteDesde}`,
+    `vigenteHasta=${c.vigenteHasta ?? "SIN_TERMINO"}`,
+    `fuente=${c.fuente.nombre}`,
+    `fuenteUrl=${c.fuente.url}`,
+    `publicacionDOF=${c.fuente.publicacionDOF}`,
+    `entradaVigor=${c.fuente.entradaVigor}`,
+    `cuerpo=${cuerpo.join(";")}`,
+  ].join("\n");
+}
+
+/**
+ * Sello de integridad SHA-256 del conjunto normativo. Si alguien edita una
+ * tabla ya publicada sin subir la versión, el hash cambia y las pruebas de
+ * regresión y `verificarSello` lo detectan.
  */
 export function hashConjunto(c: ConjuntoNormativo): string {
-  const canonico = JSON.stringify([
-    c.id,
-    c.impuesto,
-    c.regimen,
-    c.ejercicio,
-    c.version,
-    c.vigenteDesde,
-    c.vigenteHasta,
-    c.fuente.nombre,
-    c.fuente.publicacionDOF,
-    c.fuente.entradaVigor,
-    c.cuerpo,
-  ]);
-  let h = 0x811c9dc5;
-  for (let i = 0; i < canonico.length; i++) {
-    h ^= canonico.charCodeAt(i);
-    h = Math.imul(h, 0x01000193) >>> 0;
-  }
-  return `fnv1a32:${h.toString(16).padStart(8, "0")}`;
+  return `sha256:${sha256Hex(serializacionCanonica(c))}`;
 }
 
 /** Congela en profundidad para impedir mutaciones en caliente de reglas publicadas. */
@@ -144,6 +204,19 @@ const ANEXO8_2024: FuenteOficial = {
   url: "https://www.sat.gob.mx/minisitio/NormatividadRMFyRGCE/documentos2024/rmf/anexos/Anexo-8-RMF-2024.pdf",
   publicacionDOF: "2023-12-29",
   entradaVigor: "2024-01-01",
+};
+
+/**
+ * El subsidio para el empleo NO se publica en el Anexo 8 de la RMF: proviene
+ * del Decreto por el que se otorga el subsidio para el empleo (DOF 01/05/2024)
+ * y de su actualización para 2026 publicada en el DOF el 31/12/2025.
+ */
+const DECRETO_SUBSIDIO_2026: FuenteOficial = {
+  nombre:
+    "Decreto por el que se otorga el subsidio para el empleo — actualización para el ejercicio 2026 (DOF 31/12/2025)",
+  url: "https://www.dof.gob.mx/nota_detalle.php?codigo=5777649&fecha=31/12/2025",
+  publicacionDOF: "2025-12-31",
+  entradaVigor: "2026-01-01",
 };
 
 const LISR_113E: FuenteOficial = {
@@ -204,19 +277,6 @@ const ISR_PF_ANUAL_2026: TramoTarifa[] = [
   t(5107703.93, null, 1601862.46, 35.0),
 ];
 
-const SUBSIDIO_MENSUAL_2026: TramoSubsidio[] = [
-  { desde: 0.01, hasta: 1768.96, subsidio: 407.02 },
-  { desde: 1768.97, hasta: 2653.38, subsidio: 406.83 },
-  { desde: 2653.39, hasta: 3472.84, subsidio: 406.62 },
-  { desde: 3472.85, hasta: 3537.87, subsidio: 392.77 },
-  { desde: 3537.88, hasta: 4446.15, subsidio: 382.46 },
-  { desde: 4446.16, hasta: 4717.18, subsidio: 354.23 },
-  { desde: 4717.19, hasta: 5335.42, subsidio: 324.87 },
-  { desde: 5335.43, hasta: 6224.67, subsidio: 294.63 },
-  { desde: 6224.68, hasta: 7113.9, subsidio: 253.54 },
-  { desde: 7113.91, hasta: 7382.33, subsidio: 217.61 },
-  { desde: 7382.34, hasta: null, subsidio: 0 },
-];
 
 const ISR_PF_MENSUAL_2025: TramoTarifa[] = [
   t(0.01, 746.04, 0, 1.92),
@@ -258,7 +318,7 @@ const RESICO_PF: TramoResico[] = [
   { hasta: 50000, tasa: 1.1 },
   { hasta: 83333.33, tasa: 1.5 },
   { hasta: 208333.33, tasa: 2.0 },
-  { hasta: 3500000 / 12, tasa: 2.5 },
+  { hasta: 291666.67, tasa: 2.5 },
 ];
 
 // ── Catálogo ─────────────────────────────────────────────────────────────────
@@ -266,13 +326,25 @@ const RESICO_PF: TramoResico[] = [
 const V_COTEJO_2026: EstadoVerificacion = {
   estado: "verificado",
   metodo:
-    "Importación manual del Anexo 8 RMF 2026 (DOF 28/12/2025) + verificación aritmética automatizada: continuidad de cuota fija entre tramos y equivalencia tarifa anual = 12 × tarifa mensual (normativa.numerica.test.ts).",
+    "Transcripción manual, fila por fila, del Anexo 8 RMF 2026 (DOF 28/12/2025). Las tarifas mensual y anual se transcriben por separado — NINGUNA se deriva de la otra — y se comparan contra los fixtures literales de __fixtures__/oficiales.ts.",
   fecha: "2026-08-04",
 };
 const V_COTEJO_HIST: EstadoVerificacion = {
   estado: "verificado",
   metodo:
-    "Tablas históricas congeladas; se conservan sólo para reproducir cálculos de ejercicios cerrados. Verificación aritmética automatizada en normativa.numerica.test.ts.",
+    "Tablas históricas congeladas; se conservan sólo para reproducir cálculos de ejercicios cerrados. Mensual y anual transcritas por separado y cotejadas contra __fixtures__/oficiales.ts.",
+  fecha: "2026-08-04",
+};
+const V_SUBSIDIO_ENE: EstadoVerificacion = {
+  estado: "verificado",
+  metodo:
+    "Porcentaje (15.59%), UMA mensual 2025 ($3,439.46) y límite de ingreso ($11,492.66) transcritos del decreto DOF 31/12/2025 y cotejados contra el fixture literal en __fixtures__/oficiales.ts.",
+  fecha: "2026-08-04",
+};
+const V_SUBSIDIO_FEB: EstadoVerificacion = {
+  estado: "pendiente_cotejo",
+  metodo:
+    "Porcentaje (15.02%) y límite ($11,492.66) transcritos del decreto DOF 31/12/2025. El valor de la UMA mensual 2026 NO pudo cotejarse contra el aviso del INEGI en el DOF: queda pendiente y el motor marca el resultado con advertencia.",
   fecha: "2026-08-04",
 };
 const V_LEY: EstadoVerificacion = {
@@ -309,19 +381,52 @@ const CATALOGO: ConjuntoNormativo[] = [
     cuerpo: { tipo: "tarifa", tramos: ISR_PF_ANUAL_2026 },
   },
   {
-    id: "subsidio-empleo-mensual-2026-v1",
+    id: "subsidio-empleo-2026-01-v1",
     impuesto: "ISR",
     regimen: "PF_SUBSIDIO_MENSUAL",
     ejercicio: 2026,
-    version: "2026.1",
+    version: "2026.1-enero",
     vigenteDesde: "2026-01-01",
-    vigenteHasta: "2026-12-31",
-    fuente: ANEXO8_2026,
+    vigenteHasta: "2026-01-31",
+    fuente: DECRETO_SUBSIDIO_2026,
     actualizadoAl: "2026-08-04",
-    verificacion: V_COTEJO_2026,
+    verificacion: V_SUBSIDIO_ENE,
     notas:
-      "Subsidio para el empleo aplicable únicamente a ingresos por salarios (Cap. I Tít. IV LISR). No aplica a actividad empresarial ni RESICO.",
-    cuerpo: { tipo: "subsidio", tramos: SUBSIDIO_MENSUAL_2026 },
+      "Enero de 2026: el decreto ordena aplicar 15.59% sobre la UMA mensual VIGENTE EN 2025 ($3,439.46). Sólo aplica a ingresos por salarios (Cap. I Tít. IV LISR) y con un solo patrón.",
+    cuerpo: {
+      tipo: "subsidio_porcentaje",
+      subsidio: {
+        porcentaje: 15.59,
+        umaMensual: 3439.46,
+        umaEjercicio: 2025,
+        limiteIngresoMensual: 11492.66,
+        diasMesComercial: 30.4,
+      },
+    },
+  },
+  {
+    id: "subsidio-empleo-2026-02-v1",
+    impuesto: "ISR",
+    regimen: "PF_SUBSIDIO_MENSUAL",
+    ejercicio: 2026,
+    version: "2026.1-febrero",
+    vigenteDesde: "2026-02-01",
+    vigenteHasta: "2026-12-31",
+    fuente: DECRETO_SUBSIDIO_2026,
+    actualizadoAl: "2026-08-04",
+    verificacion: V_SUBSIDIO_FEB,
+    notas:
+      "A partir de febrero de 2026: 15.02% sobre la UMA mensual del ejercicio 2026. El valor de la UMA 2026 está marcado como PENDIENTE DE COTEJO contra el aviso del INEGI publicado en el DOF; mientras no se coteje, el resultado se entrega con advertencia.",
+    cuerpo: {
+      tipo: "subsidio_porcentaje",
+      subsidio: {
+        porcentaje: 15.02,
+        umaMensual: 3569.97,
+        umaEjercicio: 2026,
+        limiteIngresoMensual: 11492.66,
+        diasMesComercial: 30.4,
+      },
+    },
   },
   {
     id: "isr-pf-mensual-2025-v1",
