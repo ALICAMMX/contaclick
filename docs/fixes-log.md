@@ -375,3 +375,19 @@ separado (las lecturas restantes de `plan_id`/`trial_ends_at` son de
 presentación en el panel de administración o del proceso de pago).
 
 > No se modificaron datos reales para esta validación.
+
+## 2026-07-25 — Vigencia normativa versionada + prueba operativa integral
+
+**Problema crítico:** la calculadora ISR/IVA PF usaba tarifas 2024 escritas en el componente, operando en 2026.
+
+**Correcciones**
+- `src/lib/fiscal/normativa/catalogo.ts`: conjuntos normativos por impuesto/régimen/ejercicio/periodo con fuente oficial, URL, fecha de publicación y de entrada en vigor (ISR PF mensual y anual 2025/2026, RESICO PF, ISR PM, IVA).
+- `src/lib/fiscal/normativa/motor.ts`: `resolverNormativa` exige cobertura exacta del periodo. Sin tabla vigente **bloquea el cálculo** con error explicativo; nunca cae silenciosamente a la última tabla. Todo resultado lleva sello normativo (ejercicio, versión, fuente, fecha, naturaleza determinista).
+- Calculadoras refactorizadas: ISR/IVA PF, ISR PM, RESICO PF (+ retención 1.25% y control del límite anual). Muestran `NormativaBadge` con fuente y aviso de revisión profesional.
+- Riesgo SAT: `src/lib/riesgo/criterios-fuentes.ts` documenta fundamento legal, dato utilizado, fuente y naturaleza de los 12 criterios; la UI los muestra por tarjeta y publica la metodología v2026.1.
+- 69-B/EFOS: `EFOS_META` ahora declara versión del listado, fecha de corte, fundamento (art. 69-B CFF), URL oficial y advertencia; la UI del validador lo despliega.
+
+**Pruebas permanentes**
+- `src/lib/fiscal/normativa/normativa.test.ts` — 42 casos: límites inferior/exacto/superior de cada tramo ISR PF, deducciones, retenciones, pagos provisionales, ISR PM con coeficiente y pérdidas, RESICO por tasa, IVA a cargo/a favor/valores inválidos, redondeo a 2 decimales, cambio de ejercicio y periodo sin mezclar tablas.
+- `src/lib/fiscal/e2e-sintetico.test.ts` — 20 casos: flujo operativo completo con datos sintéticos (CSF → expediente → CFDI emitidos/recibidos/nómina/pagos → validación UUID → 69-B → deducibilidad → banco → pólizas borrador → aprobación → conciliación → ISR/IVA → obligaciones/tareas/workflow → resumen y reporte ejecutivo), aislamiento entre dos expedientes y entre despachos, fallo cerrado sin expediente activo, y reversión total de los datos sintéticos.
+- Suite completa: **107 pruebas verdes** (1 omitida por requerir BD). Sin IA, sin SAT, sin correo y sin tocar datos reales.
