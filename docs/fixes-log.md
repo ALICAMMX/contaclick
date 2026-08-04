@@ -230,3 +230,148 @@ sintético y se eliminó al terminar. Datos reales verificados intactos
 `BLOQUEADO: otra transaccion tiene el saldo` mientras A mantenía el
 `SELECT ... FOR UPDATE`, y obtuvo el lock al liberarse. El saldo se serializa
 correctamente: dos corridas SAT simultáneas no pueden gastar el mismo saldo.
+
+---
+
+## Validación final de entitlements (evidencia del segundo bloque)
+
+### 1. Regresiones permanentes en control de versiones
+
+| Suite | Archivo | Casos |
+|---|---|---|
+| Entitlements (matriz completa) | `src/lib/entitlements/entitlements.test.ts` | 24 |
+| Saldo PAC (choque de nombres, ledger) | `src/lib/sat/pac-regression.test.ts` | 10 + 1 SQL opcional |
+| Aislamiento multi-tenant | `src/lib/despacho/scope.test.ts` | 11 |
+
+Ejecución: `npm test` (alias `predeploy`) → **45 pasados, 1 omitido** (el omitido
+es la suite SQL contra base real). La suite SQL vive en
+`supabase/tests/pac_regression.sql`, corre dentro de `BEGIN … ROLLBACK` y se
+lanza con `npm run test:pac-sql` (requiere `PGHOST` y rol con permiso de
+ejecución). Cubre exactamente el incidente original: `pac_recargar()` y
+`pac_confirmar_consumo()` debían devolver el saldo **posterior** sin
+ambigüedad entre la columna `sat_pac_saldo.saldo_solicitudes` y la columna de
+salida homónima.
+
+### 2. Trials vencidos y estados contradictorios (anonimizado)
+
+Registro de la corrida: `audit_logs #1845`, `entitlements.expirar_trials`,
+2026-08-04 08:15:31 UTC, payload `{"normalizadas": 11, "vencidas": 13}`.
+
+**Regla (a) — normalización de estado contradictorio (11 cuentas).**
+`plan_id IS NOT NULL AND (trial_ends_at IS NOT NULL OR estado='trial')`
+→ `estado='activa'`, `trial_ends_at=NULL`.
+Antes: cuenta con plan de pago que además arrastraba fecha de trial (mostraba
+"Plan Profesional · Trial 0 días"). Después: 12 cuentas en `activa` con plan y
+`trial_ends_at = NULL` (11 normalizadas + 1 que ya estaba correcta).
+
+**Regla (b) — expiración de trial (13 cuentas).**
+`plan_id IS NULL AND estado='trial' AND trial_ends_at <= now() AND es_sandbox=false`
+y sin excepción vigente de tipo `trial_extension` / `acceso_cortesia`
+→ `estado='vencida'`.
+
+Estado posterior verificado (hash corto del id, sin datos personales):
+
+| Hash | Estado | Plan | Fin de trial |
+|---|---|---|---|
+| 49414516, f76dfe92, f4f3a2b3, b8b6f276, c61034d0, cedbdd12, a46ceb6e | vencida | — | 2026-07-03/04 |
+| 9b9400c4, deab7ba9 | vencida | — | 2026-07-08 |
+| a48d6a3f, 635c9af2, 1cb3a1c5 | vencida | — | 2026-07-13/14 |
+| 6f2374e8 | vencida | — | 2026-07-18 |
+| 52650331, f46b7503 | trial | — | 2026-08-05/06 (vigentes) |
+| 12 cuentas | activa | sí | NULL |
+
+Total 27 cuentas; ninguna en estado contradictorio. Sin cuentas `suspendida`
+ni `es_sandbox`.
+
+**Procedimiento de reversión** (solo super-admin, por cuenta, con motivo):
+1. Reversión comercial recomendada: crear una excepción
+   `entitlement_excepciones` tipo `trial_extension` o `acceso_cortesia` con
+   `motivo` (≥10 caracteres), `creado_por` y `expira_at` futuro. El acceso se
+   restablece de inmediato y caduca solo.
+2. Reversión de datos (excepcional): `UPDATE despachos SET estado='trial',
+   trial_ends_at=<fecha original>` ejecutado con rol privilegiado; el trigger
+   `tg_despachos_guard` lo impide desde cualquier sesión de usuario. Las fechas
+   originales quedan en la tabla (`trial_ends_at` no se borró en la regla (b)),
+   por lo que la reversión es exacta.
+
+### 3. Matriz de entitlements ejecutada
+
+| Escenario | Resultado esperado | Estado |
+|---|---|---|
+| Trial vigente | acceso, días restantes, límites default | ✅ |
+| Trial vencido | `acceso=false`, estado persistido `vencida` | ✅ |
+| Plan activo | límites del plan (incl. `-1` ilimitado) | ✅ |
+| Plan cancelado / sin plan y trial vencido | bloqueo con motivo | ✅ |
+| Dentro de cuota | permite consumir | ✅ |
+| 80% de cuota | avisa y permite | ✅ |
+| Exactamente en el límite | permite el último consumo | ✅ |
+| Por encima del límite | `UsageLimitError` + aviso 100% | ✅ |
+| Excepción vigente | amplía el límite, nunca lo reduce | ✅ |
+| Excepción vencida | deja de aplicar automáticamente | ✅ |
+| Excepción revocada | deja de aplicar de inmediato | ✅ |
+| Cambio de plan | recalcula límites, no reinicia el uso del periodo | ✅ |
+| Renovación / periodo | `periodo` = mes UTC vigente | ✅ |
+| Usuario sin membresía | RLS no devuelve la cuenta → error, sin fuga | ✅ |
+| Evasión desde el frontend | el servidor recalcula; entitlement fabricado no sirve | ✅ |
+| Cuenta sandbox | nunca se bloquea por cuota | ✅ |
+| Expedientes demo | no consumen cuota de RFCs | ✅ |
+| Frecuencia SAT | rechaza frecuencia superior al plan; excepción la amplía | ✅ |
+
+### 4. Permisos de `clientes.es_demo` y `despachos.es_sandbox`
+
+- `tg_clientes_demo_guard` (BEFORE INSERT/UPDATE): un usuario normal **no puede**
+  convertir un expediente existente en demo; al alta solo se permiten demos
+  hasta un tope de 25 por cuenta. Solo super-admin (o contexto sin sesión:
+  cron/servicio) queda exento.
+- `tg_despachos_guard` (BEFORE UPDATE): bloquea desde sesión de usuario los
+  cambios de `es_sandbox`, `plan_id`, `limites_override`, la reactivación sin
+  plan y cualquier extensión de `trial_ends_at`.
+- Verificado en base: 17 expedientes demo, 0 despachos sandbox.
+
+### 5. Excepciones comerciales
+
+- `motivo` obligatorio (CHECK ≥ 10 caracteres útiles), `creado_por` y
+  `expira_at` obligatorios.
+- No pueden quedar permanentes: `tg_excepcion_guard` exige expiración futura y
+  máximo 365 días, tanto al crear como al ampliar.
+- Trazabilidad completa en `audit_logs`: `entitlements.excepcion.creada`,
+  `.modificada` y `.revocada`, con valores antes/después.
+- Caducidad automática: `excepcion_vigente()` y `getEntitlements()` filtran por
+  `revocada_at IS NULL AND expira_at > now()`; no hay proceso que "limpiar".
+
+### 6. Alertas y no duplicación
+
+- Uso (80%/100%): índice único parcial `idx_alertas_uso_unique`
+  (despacho, tipo, recurso, periodo, umbral).
+- Trial y excepción por vencer: `emitir_avisos_vencimiento()` +
+  `idx_alertas_vencimiento_unique` (despacho, tipo, ref, umbral) con
+  `ON CONFLICT DO NOTHING` — umbrales 7d/3d y 15d/7d.
+- Saldo PAC: `idx_alertas_pac_unique` (tipo, umbral, periodo) para avisos
+  globales; `pac_recargar()` cierra las alertas abiertas al reponer saldo.
+- Reejecutar los emisores no genera duplicados (probado en la suite y
+  garantizado por los índices). A la fecha no hay filas de estos tipos en
+  `alertas`: ninguna cuenta cruzó umbral desde la corrección.
+
+### 7. Inventario de rutas que dependen del servicio central
+
+Consumidores de `src/lib/entitlements/service.ts` (directo o vía
+`entitlements.functions.ts` / `usage/limits.ts`):
+
+- `src/lib/clientes.functions.ts` — alta de expedientes (cuota RFCs)
+- `src/lib/chat.functions.ts`, `src/lib/bot-ayuda.functions.ts` — cuota IA
+- `src/lib/sat/sat-sync.functions.ts`, `src/lib/usage/sat-quota.ts` — cuota y
+  frecuencia SAT + saldo PAC
+- `src/lib/usage/usage.functions.ts` — medidores de la UI
+- `src/lib/admin-panel/sat-pac.functions.ts` — operación de saldo PAC
+- `src/lib/equipo/equipo.functions.ts` — límite de miembros (**migrado en esta
+  entrega**: antes leía `limites_override`/`planes.limites` por su cuenta)
+- Frontend: `use-entitlements.ts` → `TrialGate`, `TrialBanner`,
+  `UsageMeters`, `UsageProfileCard`
+
+`src/lib/usage/limits.ts` quedó como capa de compatibilidad que delega en el
+servicio; no contiene reglas propias. Revisión de código confirmada: fuera de
+`src/lib/entitlements/**` ya no hay lógica que otorgue acceso, cuota o saldo por
+separado (las lecturas restantes de `plan_id`/`trial_ends_at` son de
+presentación en el panel de administración o del proceso de pago).
+
+> No se modificaron datos reales para esta validación.
