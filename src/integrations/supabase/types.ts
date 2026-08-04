@@ -116,7 +116,7 @@ export type Database = {
           cliente_id: string | null
           created_at: string
           descripcion: string | null
-          despacho_id: string
+          despacho_id: string | null
           estatus: string
           evidencia: Json | null
           id: string
@@ -134,7 +134,7 @@ export type Database = {
           cliente_id?: string | null
           created_at?: string
           descripcion?: string | null
-          despacho_id: string
+          despacho_id?: string | null
           estatus?: string
           evidencia?: Json | null
           id?: string
@@ -152,7 +152,7 @@ export type Database = {
           cliente_id?: string | null
           created_at?: string
           descripcion?: string | null
-          despacho_id?: string
+          despacho_id?: string | null
           estatus?: string
           evidencia?: Json | null
           id?: string
@@ -738,6 +738,7 @@ export type Database = {
           despacho_id: string | null
           domicilio_fiscal: string | null
           email: string | null
+          es_demo: boolean
           estado_mes: string | null
           id: string
           notas: string | null
@@ -763,6 +764,7 @@ export type Database = {
           despacho_id?: string | null
           domicilio_fiscal?: string | null
           email?: string | null
+          es_demo?: boolean
           estado_mes?: string | null
           id?: string
           notas?: string | null
@@ -788,6 +790,7 @@ export type Database = {
           despacho_id?: string | null
           domicilio_fiscal?: string | null
           email?: string | null
+          es_demo?: boolean
           estado_mes?: string | null
           id?: string
           notas?: string | null
@@ -1663,6 +1666,7 @@ export type Database = {
         Row: {
           acceso_restringido: boolean
           created_at: string
+          es_sandbox: boolean
           estado: string
           id: string
           limites_override: Json | null
@@ -1676,6 +1680,7 @@ export type Database = {
         Insert: {
           acceso_restringido?: boolean
           created_at?: string
+          es_sandbox?: boolean
           estado?: string
           id?: string
           limites_override?: Json | null
@@ -1689,6 +1694,7 @@ export type Database = {
         Update: {
           acceso_restringido?: boolean
           created_at?: string
+          es_sandbox?: boolean
           estado?: string
           id?: string
           limites_override?: Json | null
@@ -1795,6 +1801,59 @@ export type Database = {
           used_at?: string | null
         }
         Relationships: []
+      }
+      entitlement_excepciones: {
+        Row: {
+          creado_por: string
+          created_at: string
+          despacho_id: string
+          expira_at: string
+          id: string
+          motivo: string
+          revocada_at: string | null
+          revocada_por: string | null
+          tipo: string
+          updated_at: string
+          valor_num: number | null
+          valor_texto: string | null
+        }
+        Insert: {
+          creado_por: string
+          created_at?: string
+          despacho_id: string
+          expira_at: string
+          id?: string
+          motivo: string
+          revocada_at?: string | null
+          revocada_por?: string | null
+          tipo: string
+          updated_at?: string
+          valor_num?: number | null
+          valor_texto?: string | null
+        }
+        Update: {
+          creado_por?: string
+          created_at?: string
+          despacho_id?: string
+          expira_at?: string
+          id?: string
+          motivo?: string
+          revocada_at?: string | null
+          revocada_por?: string | null
+          tipo?: string
+          updated_at?: string
+          valor_num?: number | null
+          valor_texto?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entitlement_excepciones_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       google_calendar_event_map: {
         Row: {
@@ -3189,6 +3248,65 @@ export type Database = {
         }
         Relationships: []
       }
+      sat_pac_movimientos: {
+        Row: {
+          costo_centavos: number
+          creado_por: string | null
+          created_at: string
+          despacho_id: string | null
+          id: string
+          idempotency_key: string
+          motivo: string | null
+          proveedor: string
+          reservado_despues: number
+          run_id: string | null
+          saldo_antes: number
+          saldo_despues: number
+          solicitudes: number
+          tipo: string
+        }
+        Insert: {
+          costo_centavos?: number
+          creado_por?: string | null
+          created_at?: string
+          despacho_id?: string | null
+          id?: string
+          idempotency_key: string
+          motivo?: string | null
+          proveedor?: string
+          reservado_despues?: number
+          run_id?: string | null
+          saldo_antes: number
+          saldo_despues: number
+          solicitudes: number
+          tipo: string
+        }
+        Update: {
+          costo_centavos?: number
+          creado_por?: string | null
+          created_at?: string
+          despacho_id?: string | null
+          id?: string
+          idempotency_key?: string
+          motivo?: string | null
+          proveedor?: string
+          reservado_despues?: number
+          run_id?: string | null
+          saldo_antes?: number
+          saldo_despues?: number
+          solicitudes?: number
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sat_pac_movimientos_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sat_pac_saldo: {
         Row: {
           actualizado_at: string
@@ -3198,8 +3316,10 @@ export type Database = {
           id: string
           proveedor: string
           recargado_total: number
+          reservado_solicitudes: number
           saldo_solicitudes: number
           umbral_aviso: number
+          umbral_critico: number
         }
         Insert: {
           actualizado_at?: string
@@ -3209,8 +3329,10 @@ export type Database = {
           id?: string
           proveedor?: string
           recargado_total?: number
+          reservado_solicitudes?: number
           saldo_solicitudes?: number
           umbral_aviso?: number
+          umbral_critico?: number
         }
         Update: {
           actualizado_at?: string
@@ -3220,8 +3342,10 @@ export type Database = {
           id?: string
           proveedor?: string
           recargado_total?: number
+          reservado_solicitudes?: number
           saldo_solicitudes?: number
           umbral_aviso?: number
+          umbral_critico?: number
         }
         Relationships: []
       }
@@ -4496,8 +4620,10 @@ export type Database = {
           id: string
           proveedor: string
           recargado_total: number
+          reservado_solicitudes: number
           saldo_solicitudes: number
           umbral_aviso: number
+          umbral_critico: number
         }
         SetofOptions: {
           from: "*"
@@ -4510,6 +4636,22 @@ export type Database = {
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
+      }
+      excepcion_vigente: {
+        Args: { _despacho: string; _tipo: string }
+        Returns: {
+          expira_at: string
+          motivo: string
+          valor_num: number
+          valor_texto: string
+        }[]
+      }
+      expirar_trials: {
+        Args: never
+        Returns: {
+          normalizadas: number
+          vencidas: number
+        }[]
       }
       has_cliente_access: { Args: { _cliente: string }; Returns: boolean }
       has_role: {
@@ -4602,6 +4744,69 @@ export type Database = {
         }
         Returns: number
       }
+      pac_ajustar: {
+        Args: { _delta: number; _key: string; _motivo: string }
+        Returns: number
+      }
+      pac_conciliacion: {
+        Args: { _desde?: string }
+        Returns: {
+          ajustes: number
+          consumos: number
+          corridas_sat: number
+          descuadre: number
+          devoluciones: number
+          recargas: number
+          reservado: number
+          saldo_actual: number
+          saldo_calculado: number
+          solicitudes_uso_periodo: number
+        }[]
+      }
+      pac_confirmar_consumo: {
+        Args: {
+          _despacho?: string
+          _key: string
+          _run_id?: string
+          _solicitudes_reales: number
+        }
+        Returns: {
+          consumidas: number
+          devueltas: number
+          saldo_solicitudes: number
+        }[]
+      }
+      pac_devolver_reserva: {
+        Args: { _key: string; _motivo: string }
+        Returns: boolean
+      }
+      pac_recargar: {
+        Args: {
+          _costo_total_centavos: number
+          _key: string
+          _motivo: string
+          _solicitudes: number
+        }
+        Returns: {
+          duplicado: boolean
+          saldo_solicitudes: number
+        }[]
+      }
+      pac_reservar: {
+        Args: {
+          _despacho?: string
+          _key: string
+          _motivo?: string
+          _run_id?: string
+          _solicitudes: number
+        }
+        Returns: {
+          duplicado: boolean
+          ok: boolean
+          reservadas: number
+          saldo_disponible: number
+        }[]
+      }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {
@@ -4620,8 +4825,10 @@ export type Database = {
           id: string
           proveedor: string
           recargado_total: number
+          reservado_solicitudes: number
           saldo_solicitudes: number
           umbral_aviso: number
+          umbral_critico: number
         }
         SetofOptions: {
           from: "*"

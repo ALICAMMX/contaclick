@@ -1,36 +1,37 @@
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, Clock, X, ArrowRight } from "lucide-react";
-import { useDespacho } from "@/lib/despacho/use-despacho";
+import { AlertTriangle, Clock, X, ArrowRight, ShieldCheck } from "lucide-react";
+import { useEntitlements } from "@/lib/entitlements/use-entitlements";
 import { useState, useEffect } from "react";
 
+/**
+ * Aviso de estado de cuenta. Lee el entitlement del servidor, por lo que ya no
+ * puede mostrar combinaciones imposibles como "Plan Profesional · Trial 0 días".
+ */
 export function TrialBanner() {
-  const { despacho } = useDespacho();
+  const { ent } = useEntitlements();
   const [dismissedWarning, setDismissedWarning] = useState(false);
 
-  // Restore dismissed state from localStorage (only for warning, not expired)
   useEffect(() => {
     if (typeof window !== "undefined") {
       setDismissedWarning(window.localStorage.getItem("trial-warning-dismissed") === "1");
     }
   }, []);
 
-  if (!despacho || despacho.plan_id || despacho.estado !== "trial") return null;
+  if (!ent) return null;
 
-  const trialEnd = despacho.trial_ends_at ? new Date(despacho.trial_ends_at) : null;
-  if (!trialEnd) return null;
+  // Cortesía vigente: se informa, no se alarma.
+  const cortesia = ent.excepciones?.find(
+    (e) => e.tipo === "trial_extension" || e.tipo === "acceso_cortesia",
+  );
 
-  const daysLeft = Math.max(0, Math.ceil((trialEnd.getTime() - Date.now()) / 86400000));
-
-  // EXPIRED — urgent non-dismissible banner
-  if (daysLeft === 0) {
+  // Cuenta bloqueada (trial vencido sin plan ni cortesía).
+  if (!ent.acceso) {
     return (
       <div className="bg-destructive/15 border-b border-destructive/30 text-destructive-foreground">
         <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <AlertTriangle className="h-5 w-5 shrink-0 text-destructive" />
-            <p className="text-sm font-medium">
-              Tu prueba gratuita ha vencido. Elige un plan para seguir usando ContaClick sin interrupciones.
-            </p>
+            <p className="text-sm font-medium">{ent.motivo_bloqueo}</p>
           </div>
           <Link
             to="/precios"
@@ -43,7 +44,30 @@ export function TrialBanner() {
     );
   }
 
-  // WARNING — 1-3 days left, dismissible
+  // Con plan contratado no hay banner de trial: el trial dejó de existir.
+  if (ent.plan) return null;
+
+  if (cortesia) {
+    const dias = Math.max(
+      0,
+      Math.ceil((new Date(cortesia.expira_at).getTime() - Date.now()) / 86400000),
+    );
+    return (
+      <div className="bg-primary/10 border-b border-primary/25">
+        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center gap-3">
+          <ShieldCheck className="h-5 w-5 shrink-0 text-primary" />
+          <p className="text-sm font-medium">
+            Tu cuenta opera con una ampliación autorizada por{" "}
+            <strong>{dias} día{dias === 1 ? "" : "s"}</strong> más. Motivo: {cortesia.motivo}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!ent.trial?.activo) return null;
+  const daysLeft = ent.trial.dias_restantes;
+
   if (daysLeft <= 3 && !dismissedWarning) {
     return (
       <div className="bg-warning/15 border-b border-warning/30 text-warning-foreground">
@@ -51,7 +75,11 @@ export function TrialBanner() {
           <div className="flex items-center gap-3 min-w-0">
             <Clock className="h-5 w-5 shrink-0 text-warning" />
             <p className="text-sm font-medium">
-              Tu prueba gratuita termina en <strong>{daysLeft} días</strong>. Elige un plan antes de que se interrumpa el acceso.
+              Tu prueba gratuita termina en{" "}
+              <strong>
+                {daysLeft} día{daysLeft === 1 ? "" : "s"}
+              </strong>
+              . Elige un plan antes de que se interrumpa el acceso.
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">

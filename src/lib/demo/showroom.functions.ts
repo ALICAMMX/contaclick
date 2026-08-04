@@ -47,6 +47,8 @@ async function seedOneCliente(supabase: SupabaseClient, despacho_id: string, use
   // 1) Cliente
   const { data: clienteRow, error: cErr } = await supabase.from("clientes").insert({
     user_id: userId, despacho_id,
+    // Marca segura: los expedientes demo no consumen cuota ni entran a reportes reales.
+    es_demo: true,
     rfc: perfil.rfc, razon_social: perfil.razon,
     regimen_fiscal: `${perfil.regimen} - ${perfil.tipo_persona === "moral" ? "Personas Morales" : "Personas Físicas"}`,
     email: perfil.email, telefono: perfil.telefono,
