@@ -82,7 +82,7 @@ const SEM_BG: Record<Semaforo, string> = {
 };
 
 function CalendarioFiscal() {
-  const { cliente } = useActiveCliente();
+  const { cliente, hydrating } = useActiveCliente();
   const qc = useQueryClient();
   const listFn = useServerFn(listObligacionesCliente);
   const autogenFn = useServerFn(autogenerarObligaciones);
