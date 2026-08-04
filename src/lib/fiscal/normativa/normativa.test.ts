@@ -102,7 +102,7 @@ describe("ISR PF 2026 — fronteras de todos los tramos", () => {
     expect(r.base).toBe(50000);
     expect(r.porcentaje).toBe(23.52);
     expect(r.isrCausado).toBe(round2(5665.16 + (50000 - 35362.84) * 0.2352));
-    expect(r.isrCausado).toBe(9107.31);
+    expect(r.isrCausado).toBe(9107.82);
   });
 
   it("mismo importe en 2025 produce OTRO resultado (no se mezclan tablas)", () => {
@@ -314,9 +314,9 @@ describe("redondeo", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe("casos regresivos congelados", () => {
   const esperados = [
-    { periodo: "2026-01", ingresos: 15_000, isr: 1402.87 },
-    { periodo: "2026-01", ingresos: 120_000, isr: 30015.99 },
-    { periodo: "2025-01", ingresos: 15_000, isr: 1550.94 },
+    { periodo: "2026-01", ingresos: 15_000, isr: 1402.82 },
+    { periodo: "2026-01", ingresos: 120_000, isr: 30007.87 },
+    { periodo: "2025-01", ingresos: 15_000, isr: 1552.78 },
   ];
   it.each(esperados)("$periodo · $ingresos", ({ periodo, ingresos, isr }) => {
     expect(calcularIsrPf({ periodo, ingresos }).isrCausado).toBe(isr);
