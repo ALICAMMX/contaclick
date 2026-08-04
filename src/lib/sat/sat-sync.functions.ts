@@ -184,6 +184,148 @@ export const listSyncEventos = createServerFn({ method: "GET" })
     return rows ?? [];
   });
 
+// ============= ESTADO DEL SERVICIO (candado previo a ejecutar) =============
+
+export type EstadoServicioSat = {
+  puede_ejecutar: boolean;
+  motivo: string | null;
+  /** ok | sin_credencial | cuenta_bloqueada | cuota_agotada | servicio_sin_saldo | sin_seleccion */
+  causa:
+    | "ok"
+    | "sin_credencial"
+    | "cuenta_bloqueada"
+    | "cuota_agotada"
+    | "servicio_sin_saldo"
+    | "sin_seleccion";
+  /** Solicitudes que consumirá la corrida con la configuración guardada. */
+  previstas: number;
+  rango: { desde: string; hasta: string };
+  cuota: { usado: number; limite: number; ilimitado: boolean; restante: number | null };
+  es_sandbox: boolean;
+  credencial_activa: boolean;
+  /** Sólo para super-admin: estado real del proveedor. */
+  servicio?: { disponible: number; reservado: number; umbral_critico: number; nivel: string };
+};
+
+/**
+ * Superficie única del candado de descargas SAT: la UI NUNCA decide por su
+ * cuenta si se puede sincronizar. Devuelve el costo estimado en solicitudes,
+ * la cuota del plan y el motivo exacto de bloqueo (incluido saldo del PAC).
+ */
+export const estadoServicioSat = createServerFn({ method: "GET" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ cliente_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }): Promise<EstadoServicioSat> => {
+    const { supabase, userId } = context;
+    const scope = await assertClienteScope(supabase as any, userId, data.cliente_id);
+    const ent = await getEntitlements(supabase, scope.despacho_id);
+
+    const [{ data: cfg }, { data: cred }, { data: sa }] = await Promise.all([
+      supabase
+        .from("sat_sync_config")
+        .select("emitidos, recibidos, nomina, pagos, retenciones, periodo, fecha_desde, fecha_hasta")
+        .eq("cliente_id", scope.cliente_id)
+        .eq("despacho_id", scope.despacho_id)
+        .maybeSingle(),
+      supabase
+        .from("sat_credenciales")
+        .select("estatus")
+        .eq("cliente_id", scope.cliente_id)
+        .eq("despacho_id", scope.despacho_id)
+        .maybeSingle(),
+      supabase.from("user_roles").select("user_id").eq("user_id", userId).eq("role", "super_admin").limit(1),
+    ]);
+
+    const c = (cfg ?? {
+      emitidos: true, recibidos: true, nomina: true, pagos: true, retenciones: false,
+      periodo: "mes_actual", fecha_desde: null, fecha_hasta: null,
+    }) as any;
+
+    const rango = resolverRango(c.periodo as Periodo, c.fecha_desde, c.fecha_hasta);
+    const previstas = contarSolicitudesPrevistas({
+      emitidos: !!c.emitidos,
+      recibidos: !!c.recibidos,
+      nomina: !!c.nomina,
+      pagos: !!c.pagos,
+      retenciones: !!c.retenciones,
+      fecha_desde: rango.desde,
+      fecha_hasta: rango.hasta,
+    });
+
+    const limite = limiteDe(ent, "sat_solicitudes");
+    const usado = usadoDe(ent, "sat_solicitudes");
+    const ilimitado = limite < 0;
+    const restante = ilimitado ? null : Math.max(0, limite - usado);
+    const credencialActiva = (cred as any)?.estatus === "activo";
+
+    const cuota = { usado, limite, ilimitado, restante };
+    const base = {
+      previstas,
+      rango,
+      cuota,
+      es_sandbox: ent.es_sandbox,
+      credencial_activa: credencialActiva,
+    };
+
+    if (!ent.acceso) {
+      return { ...base, puede_ejecutar: false, causa: "cuenta_bloqueada", motivo: ent.motivo_bloqueo };
+    }
+    if (previstas <= 0) {
+      return {
+        ...base,
+        puede_ejecutar: false,
+        causa: "sin_seleccion",
+        motivo: "Selecciona al menos un tipo de comprobante para descargar.",
+      };
+    }
+    if (!credencialActiva) {
+      return {
+        ...base,
+        puede_ejecutar: false,
+        causa: "sin_credencial",
+        motivo: "Este expediente no tiene una credencial SAT activa (e.firma o CIEC). Conéctala antes de sincronizar.",
+      };
+    }
+    if (!ilimitado && restante !== null && previstas > restante) {
+      return {
+        ...base,
+        puede_ejecutar: false,
+        causa: "cuota_agotada",
+        motivo: `Esta corrida requiere ${previstas} solicitudes y a tu plan le quedan ${restante} en el periodo ${ent.periodo}. Reduce el rango o los tipos de comprobante, o mejora tu plan.`,
+      };
+    }
+
+    // Sandbox/demo no toca el saldo real del proveedor.
+    if (ent.es_sandbox) {
+      return { ...base, puede_ejecutar: true, causa: "ok", motivo: null };
+    }
+
+    // El saldo global del PAC es información interna: se lee con privilegios y
+    // sólo se devuelve en detalle al super-admin.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const pac = await leerSaldoPac(supabaseAdmin as any);
+    const esSuperAdmin = !!(sa as any[])?.length;
+    const nivel =
+      pac.disponible <= 0 ? "agotado" : pac.disponible < previstas ? "insuficiente"
+        : pac.disponible <= pac.umbral_critico ? "critico" : "ok";
+    const servicio = esSuperAdmin
+      ? { disponible: pac.disponible, reservado: pac.reservado, umbral_critico: pac.umbral_critico, nivel }
+      : undefined;
+
+    if (nivel === "agotado" || nivel === "insuficiente") {
+      return {
+        ...base,
+        servicio,
+        puede_ejecutar: false,
+        causa: "servicio_sin_saldo",
+        motivo:
+          "El servicio de descarga masiva SAT está temporalmente sin saldo operativo. " +
+          "No se consumirá nada de tu cuota: el administrador ya fue notificado y podrás reintentar en cuanto se recargue.",
+      };
+    }
+
+    return { ...base, servicio, puede_ejecutar: true, causa: "ok", motivo: null };
+  });
 
 // ============= EJECUCIÓN =============
 
