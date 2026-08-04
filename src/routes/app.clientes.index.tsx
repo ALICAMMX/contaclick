@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  Plus, Search, UserRound, X, FileBadge, Upload,
+  Plus, Search, UserRound, X, FileBadge, Upload, Lock,
   LayoutGrid, Table as TableIcon, ShieldAlert, FileText, Bell, Sparkles, ArrowRight,
 } from "lucide-react";
 import { toast } from "sonner";
