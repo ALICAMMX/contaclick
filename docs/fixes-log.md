@@ -194,3 +194,39 @@ tras cambiar de selección.
 - Tercero (proveedor) → resuelve al expediente padre.
 - Registro de OTRO expediente del MISMO despacho → bloqueado.
 - Registro de otro despacho, id inexistente e id vacío → bloqueados sin fuga.
+
+---
+
+## 2026-08-04 — Auditoría transaccional del saldo de descargas SAT (PAC)
+
+**Bug crítico encontrado y corregido:** `pac_recargar` y `pac_confirmar_consumo`
+fallaban SIEMPRE con `column reference "saldo_solicitudes" is ambiguous`
+(el nombre de la columna de salida chocaba con la columna de la tabla).
+Es decir: no era posible recargar saldo ni confirmar el consumo de una corrida
+SAT. Se corrigió calificando las columnas con alias de tabla (`s.saldo_solicitudes`).
+
+**Cómo se validó:** se creó temporalmente `public.pac_selftest()`
+(SECURITY DEFINER), se ejecutó dentro de `BEGIN ... ROLLBACK` sobre saldo
+sintético y se eliminó al terminar. Datos reales verificados intactos
+(saldo 0/0, 0 movimientos, ningún registro `selftest:%`).
+
+**Resultado: 23/23 casos en verde**
+- Recarga suma correcto; misma llave de idempotencia no cobra dos veces.
+- Reserva acepta, respeta disponible y no duplica al repetir la llave.
+- Sobre-reserva rechazada: el saldo nunca queda negativo.
+- Confirmar 25 de 40 consume 25 y devuelve 15; doble confirmación no duplica.
+- Devolución de corrida fallida se registra exactamente una vez.
+- Confirmar sin reserva lanza excepción; devolver sin reserva regresa `false`.
+- Libro mayor inmutable: UPDATE y DELETE bloqueados por trigger.
+- Conciliación saldo vs libro mayor: descuadre = 0 (antes y después de ajustes).
+- Reservas colgadas: no se marcan si son recientes, se detectan y se liberan
+  devolviendo el reservado a 0.
+- Ajustes: exigen motivo ≥ 5 caracteres y son idempotentes por llave.
+- Permisos: recarga, ajuste y conciliación rechazados sin rol super-admin.
+- Sin columnas de punto flotante en `sat_pac_saldo` / `sat_pac_movimientos`
+  (todo en unidades enteras y centavos).
+
+**Concurrencia:** con dos sesiones simultáneas, la sesión B recibió
+`BLOQUEADO: otra transaccion tiene el saldo` mientras A mantenía el
+`SELECT ... FOR UPDATE`, y obtuvo el lock al liberarse. El saldo se serializa
+correctamente: dos corridas SAT simultáneas no pueden gastar el mismo saldo.
