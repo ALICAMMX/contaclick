@@ -206,9 +206,11 @@ export const runSyncNow = createServerFn({ method: "POST" })
     // Credencial
     const { data: cred } = await supabase
       .from("sat_credenciales")
-      .select("pac_token, estatus")
+      .select("pac_token, estatus, proveedor, efirma_cer, efirma_key_enc")
       .eq("cliente_id", data.cliente_id)
       .maybeSingle();
+    const usaSatDirecto = !!cred?.efirma_cer && !!cred?.efirma_key_enc;
+
 
     // Crear run
     const { data: runIns, error: runErr } = await supabase
