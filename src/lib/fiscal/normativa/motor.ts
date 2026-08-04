@@ -8,6 +8,7 @@
 
 import {
   CATALOGO_NORMATIVO,
+  hashConjunto,
   type ConjuntoNormativo,
   type Impuesto,
   type Regimen,
@@ -28,6 +29,10 @@ export class NormativaNoVigenteError extends Error {
 
 export type SelloNormativo = {
   conjuntoId: string;
+  /** Huella de integridad del conjunto usado (detecta edición silenciosa) */
+  hash: string;
+  /** Fecha/hora en que se ejecutó el cálculo (ISO) */
+  calculadoEn: string;
   ejercicio: number;
   version: string;
   vigencia: string;
@@ -110,6 +115,8 @@ export function resolverNormativa(
 export function sello(c: ConjuntoNormativo): SelloNormativo {
   return {
     conjuntoId: c.id,
+    hash: hashConjunto(c),
+    calculadoEn: new Date().toISOString(),
     ejercicio: c.ejercicio,
     version: c.version,
     vigencia: `${c.vigenteDesde} → ${c.vigenteHasta ?? "vigente"}`,
@@ -343,6 +350,73 @@ export function inventarioNormativo() {
     fuente: c.fuente.nombre,
     url: c.fuente.url,
     publicacionDOF: c.fuente.publicacionDOF,
+    entradaVigor: c.fuente.entradaVigor,
     actualizadoAl: c.actualizadoAl,
+    verificacion: c.verificacion,
+    hash: hashConjunto(c),
   }));
+}
+
+
+// ── Subsidio para el empleo (sólo ingresos por salarios) ─────────────────────
+
+export type IsrSalariosInput = {
+  periodo: string; // AAAA-MM
+  ingresoGravable: number;
+  /** El subsidio sólo procede cuando el trabajador tiene un solo patrón (art. 1.12 Decreto) */
+  aplicaSubsidio?: boolean;
+};
+
+export function calcularIsrSalarios(input: IsrSalariosInput) {
+  const conjunto = resolverNormativa("ISR", "PF_GENERAL_MENSUAL", input.periodo);
+  if (conjunto.cuerpo.tipo !== "tarifa") throw new Error("Conjunto normativo inválido para ISR salarios.");
+  const base = round2(validarMonto("Ingreso gravable", input.ingresoGravable));
+  const t = aplicarTarifa(base, conjunto.cuerpo.tramos);
+  const isrCausado = t.impuesto;
+
+  let subsidio = 0;
+  let selloSubsidio: SelloNormativo | null = null;
+  if (input.aplicaSubsidio) {
+    const cs = resolverNormativa("ISR", "PF_SUBSIDIO_MENSUAL", input.periodo);
+    if (cs.cuerpo.tipo !== "subsidio") throw new Error("Conjunto normativo inválido para subsidio al empleo.");
+    const tramo = cs.cuerpo.tramos.find((x) => base >= x.desde && (x.hasta === null || base <= x.hasta));
+    subsidio = round2(tramo?.subsidio ?? 0);
+    selloSubsidio = sello(cs);
+  }
+
+  const neto = round2(isrCausado - subsidio);
+  return {
+    periodo: input.periodo,
+    base,
+    isrCausado,
+    subsidioEmpleo: subsidio,
+    isrARetener: neto > 0 ? neto : 0,
+    subsidioEntregado: neto < 0 ? round2(-neto) : 0,
+    normativa: sello(conjunto),
+    normativaSubsidio: selloSubsidio,
+  };
+}
+
+// ── Reproducibilidad histórica ───────────────────────────────────────────────
+
+/** Recupera el conjunto exacto con el que se calculó un resultado archivado. */
+export function conjuntoPorId(id: string): ConjuntoNormativo | null {
+  return CATALOGO_NORMATIVO.find((c) => c.id === id) ?? null;
+}
+
+/**
+ * Verifica que un resultado archivado siga siendo reproducible: el conjunto
+ * existe y su contenido no cambió (hash idéntico al sellado en su momento).
+ */
+export function verificarSello(s: Pick<SelloNormativo, "conjuntoId" | "hash">) {
+  const c = conjuntoPorId(s.conjuntoId);
+  if (!c) return { reproducible: false as const, motivo: "El conjunto normativo ya no existe en el catálogo." };
+  const actual = hashConjunto(c);
+  if (actual !== s.hash) {
+    return {
+      reproducible: false as const,
+      motivo: `El conjunto ${s.conjuntoId} fue modificado (hash ${s.hash} → ${actual}). Una corrección debe publicarse como versión nueva.`,
+    };
+  }
+  return { reproducible: true as const, conjunto: c };
 }
