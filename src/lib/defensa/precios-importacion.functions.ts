@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
+import { assertClienteScope } from "@/lib/despacho/scope";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const RFC_EXTRANJERO = "XEXX010101000";
@@ -55,6 +56,7 @@ export const runImportPriceCheck = createServerFn({ method: "POST" })
     if (!UUID_RE.test(data.cliente_id)) return empty;
 
     const { supabase } = context;
+    await assertClienteScope(supabase as any, context.userId, data.cliente_id);
     const { data: cli } = await supabase.from("clientes").select("rfc").eq("id", data.cliente_id).maybeSingle();
     const rfcCli = ((cli?.rfc as string) ?? "").toUpperCase();
     if (!rfcCli) return empty;

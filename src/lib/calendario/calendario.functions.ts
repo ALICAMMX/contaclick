@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 import { resolveActiveDespachoId } from "@/lib/despacho/resolve";
 import { plantillasPorRegimen, fechaVencimiento } from "./catalogo";
+import { assertClienteScope } from "@/lib/despacho/scope";
 
 export type ObligacionRow = {
   id: string;
@@ -52,6 +53,7 @@ export const listObligacionesCliente = createServerFn({ method: "GET" })
   )
   .handler(async ({ data, context }): Promise<CalendarioResponse> => {
     const { supabase } = context;
+    await assertClienteScope(supabase as any, context.userId, data.clienteId);
 
     const { data: rfcs } = await supabase
       .from("rfcs")

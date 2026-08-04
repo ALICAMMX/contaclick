@@ -6,8 +6,10 @@ import {
   ensureDespacho,
   sha256Hex,
 } from "@/lib/conciliacion/conciliacion.server";
+import { assertClienteScope } from "@/lib/despacho/scope";
 import {
   parseClienteInput,
+
   parseListMovimientosInput,
   parseRunReconciliationInput,
   parseUpdateConciliacionInput,
@@ -118,6 +120,7 @@ export const listMovimientos = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator(parseListMovimientosInput)
   .handler(async ({ data, context }) => {
+    await assertClienteScope(context.supabase as any, context.userId, data.cliente_id);
     let q = context.supabase
       .from("movimientos_bancarios")
       .select("id, fecha, descripcion, referencia, cargo, abono, saldo, cuenta_id")
@@ -273,6 +276,7 @@ export const getReconciliationStats = createServerFn({ method: "POST" })
   .inputValidator(parseClienteInput)
   .handler(async ({ data, context }) => {
     const { supabase } = context;
+    await assertClienteScope(supabase as any, context.userId, data.cliente_id);
     const [{ data: movs }, { data: cfdis }, { data: conc }] = await Promise.all([
       supabase.from("movimientos_bancarios").select("id, cargo, abono").eq("cliente_id", data.cliente_id),
       supabase.from("cfdi_xml").select("id, total, tipo_cfdi, rfc_emisor, rfc_receptor").eq("cliente_id", data.cliente_id),

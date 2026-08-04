@@ -84,7 +84,7 @@ export const Route = createFileRoute("/app/conciliacion/")({
 });
 
 function ConciliacionPage() {
-  const { cliente } = useActiveCliente();
+  const { cliente, hydrating } = useActiveCliente();
   const qc = useQueryClient();
   const fnUpload = useServerFn(uploadMovimientos);
   const fnList = useServerFn(listMovimientos);
@@ -308,6 +308,10 @@ function ConciliacionPage() {
       { name: "Resumen", rows: resumen },
       { name: "Movimientos", rows: movs },
     ]);
+  }
+
+  if (!cliente && hydrating) {
+    return <div className="rounded-xl border border-border bg-card p-8 text-sm text-muted-foreground">Cargando expediente activo…</div>;
   }
 
   if (!cliente) {
