@@ -94,36 +94,45 @@ export const conectarSat = createServerFn({ method: "POST" })
         `La e.firma NO corresponde a este expediente. El certificado pertenece a ${rfcsCer.join(", ")} pero el expediente activo es ${rfcCliente}. Para evitar firmar declaraciones con la e.firma equivocada, la carga fue rechazada.`,
       );
     }
-
-
-    let result: { token: string; simulated: boolean };
+    // Validar la e.firma abriéndola localmente y autenticando contra el SAT.
+    // Si el SAT acepta el token, la credencial queda lista para descargas gratuitas.
+    let vence: string | null = null;
     try {
-      result = await obtainSwToken({
+      const { abrirEFirma, satAutenticar } = await import(
+        "@/lib/sat/providers/sat-directo.server"
+      );
+      const creds = abrirEFirma({
         cer_b64: data.cer_b64,
         key_b64: data.key_b64,
         password: data.password,
       });
+      await satAutenticar(creds);
     } catch (e: any) {
-      // Guardar el error para visibilidad y propagar
       await supabase.from("sat_credenciales").upsert(
         {
           cliente_id: cli.id,
           despacho_id: cli.despacho_id,
-          proveedor: "sw_sapien",
+          proveedor: "sat_directo",
           estatus: "error",
           last_error: String(e?.message ?? e).slice(0, 500),
         },
         { onConflict: "cliente_id" },
       );
-      throw new Error(e?.message ?? "Error al conectar con el PAC");
+      throw new Error(e?.message ?? "No se pudo validar la e.firma con el SAT");
     }
 
+    const { cifrar } = await import("@/lib/sat/efirma-vault.server");
     const { error: upErr } = await supabase.from("sat_credenciales").upsert(
       {
         cliente_id: cli.id,
         despacho_id: cli.despacho_id,
-        proveedor: "sw_sapien",
-        pac_token: result.token,
+        proveedor: "sat_directo",
+        pac_token: null,
+        efirma_cer: data.cer_b64,
+        efirma_key_enc: await cifrar(data.key_b64),
+        efirma_pass_enc: await cifrar(data.password),
+        efirma_rfc: rfcCliente,
+        efirma_vence_at: vence,
         estatus: "activo",
         last_error: null,
         last_sync_at: new Date().toISOString(),
@@ -131,6 +140,7 @@ export const conectarSat = createServerFn({ method: "POST" })
       { onConflict: "cliente_id" },
     );
     if (upErr) throw new Error(upErr.message);
+
 
     // Auto-activar descarga automática para este expediente (idempotente).
     // Si no existe configuración, se crea con defaults sensatos y queda lista
