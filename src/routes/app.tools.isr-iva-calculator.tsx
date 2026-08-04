@@ -9,33 +9,16 @@ import { Button } from "@/components/ui/button";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { getResumenFiscalMes } from "@/lib/fiscal/resumen.functions";
 import { parseCfdi } from "@/lib/tools/cfdi-parser";
+import { calcularIsrPf, calcularIva } from "@/lib/fiscal/normativa/motor";
+import { NormativaBadge, NormativaBloqueada } from "@/components/NormativaBadge";
 
 export const Route = createFileRoute("/app/tools/isr-iva-calculator")({
   component: IsrIvaCalculator,
 });
 
-// Tarifa ISR mensual 2024 (estándar; el usuario debe verificar vigencia)
-const TARIFA_ISR_MENSUAL = [
-  { li: 0.01, ls: 746.04, cuota: 0, pct: 1.92 },
-  { li: 746.05, ls: 6332.05, cuota: 14.32, pct: 6.40 },
-  { li: 6332.06, ls: 11128.01, cuota: 371.83, pct: 10.88 },
-  { li: 11128.02, ls: 12935.82, cuota: 893.63, pct: 16.00 },
-  { li: 12935.83, ls: 15487.71, cuota: 1182.88, pct: 17.92 },
-  { li: 15487.72, ls: 31236.49, cuota: 1640.18, pct: 21.36 },
-  { li: 31236.50, ls: 49233.00, cuota: 5004.12, pct: 23.52 },
-  { li: 49233.01, ls: 93993.90, cuota: 9236.89, pct: 30.00 },
-  { li: 93993.91, ls: 125325.20, cuota: 22665.17, pct: 32.00 },
-  { li: 125325.21, ls: 375975.61, cuota: 32691.18, pct: 34.00 },
-  { li: 375975.62, ls: Infinity, cuota: 117912.32, pct: 35.00 },
-];
+// Las tarifas NO viven aquí: se resuelven por periodo desde el motor normativo
+// versionado (src/lib/fiscal/normativa). Si no hay tabla vigente, se bloquea.
 
-function calcIsrPF(base: number) {
-  if (base <= 0) return { isr: 0, tramo: TARIFA_ISR_MENSUAL[0] };
-  const tramo = TARIFA_ISR_MENSUAL.find((t) => base >= t.li && base <= t.ls)!;
-  const excedente = base - tramo.li;
-  const isr = tramo.cuota + (excedente * tramo.pct) / 100;
-  return { isr, tramo };
-}
 
 function currentPeriodo(): string {
   const d = new Date();
@@ -55,18 +38,27 @@ function IsrIvaCalculator() {
   const [importedFrom, setImportedFrom] = useState<string | null>(null);
   const [parsing, setParsing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [retenciones, setRetenciones] = useState("");
+  const [pagosProv, setPagosProv] = useState("");
 
   const calc = useMemo(() => {
-    const ing = Number(ingresos) || 0;
-    const ded = Number(deducciones) || 0;
     const ivaT = Number(ivaTrasladado) || 0;
     const ivaA = Number(ivaAcreditable) || 0;
-    const base = Math.max(ing - ded, 0);
-    const { isr, tramo } = calcIsrPF(base);
-    const ivaPorPagar = Math.max(ivaT - ivaA, 0);
-    const ivaSaldoFavor = Math.max(ivaA - ivaT, 0);
-    return { ing, ded, base, isr, tramo, ivaT, ivaA, ivaPorPagar, ivaSaldoFavor };
-  }, [ingresos, deducciones, ivaTrasladado, ivaAcreditable]);
+    try {
+      const isr = calcularIsrPf({
+        periodo,
+        ingresos: Number(ingresos) || 0,
+        deducciones: Number(deducciones) || 0,
+        retenciones: Number(retenciones) || 0,
+        pagosProvisionalesAnteriores: Number(pagosProv) || 0,
+      });
+      const iva = calcularIva({ periodo, ivaTrasladado: ivaT, ivaAcreditable: ivaA });
+      return { ok: true as const, isr, iva };
+    } catch (e) {
+      return { ok: false as const, error: e instanceof Error ? e.message : "Error de cálculo" };
+    }
+  }, [periodo, ingresos, deducciones, retenciones, pagosProv, ivaTrasladado, ivaAcreditable]);
+
 
   const f = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -228,28 +220,40 @@ function IsrIvaCalculator() {
           <NumField label="Ingresos acumulables del mes (MXN)" value={ingresos} onChange={setIngresos} />
           <NumField label="Deducciones autorizadas (MXN)" value={deducciones} onChange={setDeducciones} />
           <hr className="border-border/40" />
+          <NumField label="Retenciones de ISR del periodo" value={retenciones} onChange={setRetenciones} />
+          <NumField label="Pagos provisionales anteriores" value={pagosProv} onChange={setPagosProv} />
+          <hr className="border-border/40" />
           <NumField label="IVA trasladado (cobrado)" value={ivaTrasladado} onChange={setIvaTrasladado} />
           <NumField label="IVA acreditable (pagado)" value={ivaAcreditable} onChange={setIvaAcreditable} />
         </div>
 
         <div className="space-y-4">
-          <Result title="ISR a cargo del mes" big value={f(calc.isr)} />
-          <div className="grid grid-cols-2 gap-3">
-            <Result title="Base gravable" value={f(calc.base)} />
-            <Result title="Tasa marginal" value={`${calc.tramo.pct.toFixed(2)}%`} />
-          </div>
-          <hr className="border-border/40" />
-          {calc.ivaPorPagar > 0 ? (
-            <Result title="IVA a cargo" big value={f(calc.ivaPorPagar)} tone="warn" />
+          {!calc.ok ? (
+            <NormativaBloqueada mensaje={calc.error} />
           ) : (
-            <Result title="IVA a favor" big value={f(calc.ivaSaldoFavor)} tone="ok" />
+            <>
+              <Result title="ISR a cargo del mes" big value={f(calc.isr.isrACargo)} tone={calc.isr.isrACargo > 0 ? "warn" : "ok"} />
+              <div className="grid grid-cols-2 gap-3">
+                <Result title="Base gravable" value={f(calc.isr.base)} />
+                <Result title="Tasa marginal" value={`${calc.isr.porcentaje.toFixed(2)}%`} />
+                <Result title="ISR causado" value={f(calc.isr.isrCausado)} />
+                <Result title="ISR a favor" value={f(calc.isr.isrAFavor)} />
+              </div>
+              <hr className="border-border/40" />
+              {calc.iva.ivaACargo > 0 ? (
+                <Result title="IVA a cargo" big value={f(calc.iva.ivaACargo)} tone="warn" />
+              ) : (
+                <Result title="IVA a favor" big value={f(calc.iva.ivaAFavor)} tone="ok" />
+              )}
+              <NormativaBadge sello={calc.isr.normativa} />
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                No incluye subsidio al empleo, ajuste anual por inflación ni tasas 0%/exentos de IVA.
+                Confirma el régimen específico del contribuyente antes de presentar la declaración.
+              </p>
+            </>
           )}
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Tarifas ISR 2024 publicadas por SAT. Esta herramienta es un cálculo orientativo: no incluye
-            subsidio al empleo, pagos provisionales previos ni retenciones. Confirma el resultado con la
-            normativa vigente y el régimen específico del contribuyente.
-          </p>
         </div>
+
       </div>
     </ToolShell>
   );

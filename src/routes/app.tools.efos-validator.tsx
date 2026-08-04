@@ -72,11 +72,28 @@ function EfosValidator() {
       description="Detecta proveedores en lista negra del SAT antes de declarar. La corresponsabilidad por trabajar con un EFOS recae en el contribuyente y su contador."
       icon={<ShieldAlert className="h-5 w-5 text-primary-foreground" />}
     >
-      {/* Aviso de fuente demo */}
-      <div className="rounded-lg border border-warning/30 bg-warning/5 p-3 text-xs text-warning-foreground/90">
-        <strong>Datos demo.</strong> Esta versión usa una lista de muestra ({catalogQ.data?.meta.total_registros ?? "—"} RFCs).
-        La sincronización oficial con el archivo 69-B del SAT se activa en plan Pro.
+      {/* Trazabilidad de la fuente y versión del listado */}
+      <div className="rounded-lg border border-warning/30 bg-warning/5 p-3 text-xs text-warning-foreground/90 space-y-1">
+        <div>
+          <strong>Datos demo.</strong> Esta versión usa una lista de muestra ({catalogQ.data?.meta.total_registros ?? "—"} RFCs).
+          La sincronización oficial con el archivo 69-B del SAT se activa en plan Pro.
+        </div>
+        <div>
+          Versión del listado: <strong>{catalogQ.data?.meta.version ?? "—"}</strong> · actualizado al{" "}
+          <strong>{catalogQ.data?.meta.actualizado_al ?? "—"}</strong> ·{" "}
+          {catalogQ.data?.meta.fundamento ?? "Art. 69-B CFF"}
+          {catalogQ.data?.meta.url && (
+            <>
+              {" · "}
+              <a href={catalogQ.data.meta.url} target="_blank" rel="noreferrer noopener" className="underline">
+                listado oficial SAT
+              </a>
+            </>
+          )}
+        </div>
+        <div className="italic opacity-90">{catalogQ.data?.meta.advertencia}</div>
       </div>
+
 
       {/* Catálogo resumen */}
       {catalogQ.data && (

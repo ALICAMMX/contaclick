@@ -60,7 +60,15 @@ export function efosBatch(rfcs: string[]): EfosRecord[] {
 }
 
 export const EFOS_META = {
-  fuente: "Lista demo. Sustituir por sincronización oficial 69-B SAT.",
+  fuente:
+    "Listado de contribuyentes del art. 69-B CFF (EFOS). Versión DEMO: se sustituye por la sincronización oficial del SAT.",
+  url: "http://omawww.sat.gob.mx/cifras_sat/Paginas/datos/vinculo.html?page=ListCompleta69B.html",
+  fundamento: "Artículo 69-B del Código Fiscal de la Federación",
+  version: "demo-2026.1",
+  naturaleza: "determinista" as const,
   total_registros: EFOS_DEMO.length,
   actualizado_al: "2026-06-15",
+  advertencia:
+    "El listado oficial se publica de forma periódica en el DOF. Verifica la fecha de corte antes de rechazar una deducción; el resultado requiere revisión profesional.",
 };
+

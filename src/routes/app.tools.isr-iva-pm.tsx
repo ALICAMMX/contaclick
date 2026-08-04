@@ -7,6 +7,8 @@ import { ToolShell } from "@/components/ToolShell";
 import { Button } from "@/components/ui/button";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { getResumenFiscalMes } from "@/lib/fiscal/resumen.functions";
+import { calcularIsrPm, calcularIva } from "@/lib/fiscal/normativa/motor";
+import { NormativaBadge, NormativaBloqueada } from "@/components/NormativaBadge";
 
 export const Route = createFileRoute("/app/tools/isr-iva-pm")({
   component: IsrIvaPM,
@@ -36,24 +38,24 @@ function IsrIvaPM() {
   const calc = useMemo(() => {
     const ingMes = Number(ingresosNominales) || 0;
     const ingAcum = Math.max(Number(ingresosAcumulados) || 0, ingMes);
-    const coef = Number(coefUtilidad) || 0;
-    const perdidas = Number(perdidasFiscales) || 0;
-    const pagosAnt = Number(pagosProvAnt) || 0;
-    const ret = Number(retIsr) || 0;
     const ivaT = Number(ivaTrasladado) || 0;
     const ivaA = Number(ivaAcreditable) || 0;
+    try {
+      const isr = calcularIsrPm({
+        periodo,
+        ingresosNominales: ingAcum,
+        coeficienteUtilidad: Number(coefUtilidad) || 0,
+        perdidasPendientes: Number(perdidasFiscales) || 0,
+        pagosProvisionalesAnteriores: Number(pagosProvAnt) || 0,
+        retenciones: Number(retIsr) || 0,
+      });
+      const iva = calcularIva({ periodo, ivaTrasladado: ivaT, ivaAcreditable: ivaA });
+      return { ok: true as const, ingAcum, isr, iva };
+    } catch (e) {
+      return { ok: false as const, error: e instanceof Error ? e.message : "Error de cálculo" };
+    }
+  }, [periodo, ingresosNominales, ingresosAcumulados, coefUtilidad, perdidasFiscales, pagosProvAnt, retIsr, ivaTrasladado, ivaAcreditable]);
 
-    // Art. 14 LISR: utilidad fiscal = ingresos acumulados × coef - pérdidas
-    const utilidadFiscal = Math.max(ingAcum * coef - perdidas, 0);
-    // ISR tasa 30% (Art. 9 LISR para PM)
-    const isrCausado = utilidadFiscal * 0.30;
-    const isrPorPagar = Math.max(isrCausado - pagosAnt - ret, 0);
-
-    const ivaPorPagar = Math.max(ivaT - ivaA, 0);
-    const ivaSaldoFavor = Math.max(ivaA - ivaT, 0);
-
-    return { ingMes, ingAcum, coef, utilidadFiscal, isrCausado, isrPorPagar, ivaT, ivaA, ivaPorPagar, ivaSaldoFavor };
-  }, [ingresosNominales, ingresosAcumulados, coefUtilidad, perdidasFiscales, pagosProvAnt, retIsr, ivaTrasladado, ivaAcreditable]);
 
   const f = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -124,23 +126,32 @@ function IsrIvaPM() {
         </div>
 
         <div className="space-y-4">
-          <Result title="ISR a cargo del mes" big value={f(calc.isrPorPagar)} tone={calc.isrPorPagar > 0 ? "warn" : "ok"} />
-          <div className="grid grid-cols-2 gap-3">
-            <Result title="Utilidad fiscal estimada" value={f(calc.utilidadFiscal)} />
-            <Result title="ISR causado (30 %)" value={f(calc.isrCausado)} />
-          </div>
-          <hr className="border-border/40" />
-          {calc.ivaPorPagar > 0 ? (
-            <Result title="IVA a cargo" big value={f(calc.ivaPorPagar)} tone="warn" />
+          {!calc.ok ? (
+            <NormativaBloqueada mensaje={calc.error} />
           ) : (
-            <Result title="IVA a favor" big value={f(calc.ivaSaldoFavor)} tone="ok" />
+            <>
+              <Result title="ISR a cargo del mes" big value={f(calc.isr.isrACargo)} tone={calc.isr.isrACargo > 0 ? "warn" : "ok"} />
+              <div className="grid grid-cols-2 gap-3">
+                <Result title="Utilidad fiscal estimada" value={f(calc.isr.utilidadFiscal)} />
+                <Result title={`ISR causado (${calc.isr.tasa} %)`} value={f(calc.isr.isrCausado)} />
+                <Result title="Pérdidas aplicadas" value={f(calc.isr.perdidasAplicadas)} />
+                <Result title="ISR a favor" value={f(calc.isr.isrAFavor)} />
+              </div>
+              <hr className="border-border/40" />
+              {calc.iva.ivaACargo > 0 ? (
+                <Result title="IVA a cargo" big value={f(calc.iva.ivaACargo)} tone="warn" />
+              ) : (
+                <Result title="IVA a favor" big value={f(calc.iva.ivaAFavor)} tone="ok" />
+              )}
+              <NormativaBadge sello={calc.isr.normativa} />
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Art. 14 LISR (PM régimen general). No incluye ajuste anual por inflación, ISR diferido ni IEPS.
+                El coeficiente de utilidad proviene de la última declaración anual con utilidad fiscal.
+              </p>
+            </>
           )}
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Cálculo orientativo basado en el Art. 14 LISR (PM régimen general, tasa 30 %). No incluye ajuste anual por
-            inflación, ISR diferido, ni IETU/IEPS. El coeficiente de utilidad se determina con base en el último ejercicio
-            con utilidad fiscal. Confirma con la normativa vigente.
-          </p>
         </div>
+
       </div>
     </ToolShell>
   );

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 import { lookupEfos } from "@/lib/efos/lista-demo";
+import { FUENTES_RIESGO, RIESGO_METODOLOGIA } from "@/lib/riesgo/criterios-fuentes";
 
 const Input = z.object({
   cliente_id: z.string().uuid(),
@@ -18,6 +19,14 @@ export type CriterioRiesgo = {
   puntos: number; // 0..100 (más alto = más riesgo)
   hallazgos: string[];
   accion: string;
+  /** Fundamento legal del criterio */
+  fundamento?: string;
+  /** URL de la fuente oficial */
+  fuenteUrl?: string;
+  /** Datos del expediente usados para evaluarlo */
+  datosUtilizados?: string;
+  /** Regla determinista vs. análisis generado por IA */
+  naturaleza?: "determinista" | "ia";
 };
 
 export type RiesgoSAT = {
@@ -30,8 +39,10 @@ export type RiesgoSAT = {
     periodo: { desde: string; hasta: string };
     n_cfdi: number;
     n_mov: number;
+    metodologia: typeof RIESGO_METODOLOGIA;
   };
 };
+
 
 export type RiesgoSATResult = RiesgoSAT | { notFound: true };
 
@@ -331,6 +342,18 @@ export const computeRiesgoSAT = createServerFn({ method: "POST" })
       accion: "Si importas, sube pedimentos para validar precios.",
     });
 
+    // Documentación normativa: cada criterio declara fundamento, fuente,
+    // dato utilizado y si es regla determinista o análisis de IA.
+    for (const c of criterios) {
+      const f = FUENTES_RIESGO[c.id];
+      if (f) {
+        c.fundamento = f.fundamento;
+        c.fuenteUrl = f.url;
+        c.datosUtilizados = f.datosUtilizados;
+        c.naturaleza = f.naturaleza;
+      }
+    }
+
     // Score ponderado (promedio simple)
     const score = Math.round(criterios.reduce((a, c) => a + c.puntos, 0) / criterios.length);
     const semaforo = level(score);
@@ -344,6 +367,8 @@ export const computeRiesgoSAT = createServerFn({ method: "POST" })
         periodo: { desde, hasta },
         n_cfdi: cfdi.length,
         n_mov: mov.length,
+        metodologia: RIESGO_METODOLOGIA,
       },
     };
   });
+
