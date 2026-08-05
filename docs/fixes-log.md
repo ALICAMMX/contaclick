@@ -638,3 +638,38 @@ reales, contrato sin duplicar el bloque de evidencia, degradación de modo sin
 expediente, derivación a motores deterministas con rutas existentes en el
 registro, y advertencia obligatoria en toda capacidad no operativa).
 Suite completa: 306 en verde.
+
+---
+
+## Conti — Fase 1.1: aislamiento real de modos, motores conectados y validador de grounding
+
+**Causa del cruce de contexto.** El prompt prohibía usar el expediente en Guía y Consulta, pero el dato seguía llegando: (1) el mensaje de bienvenida del panel incluía `Expediente activo: **<razón social>**` y viajaba como turno del historial en cualquier modo; (2) el `clienteId` se enviaba siempre desde el navegador; (3) un hilo abierto en modo Expediente conservaba sus turnos al cambiar de modo. La instrucción no era una barrera.
+
+**Payload antes / después**
+
+| Modo | Antes | Después |
+|---|---|---|
+| Guía | capacidades + guías + normativa + turnos previos con razón social/RFC | capacidades + guías. Sin `clienteId`, sin RFC, sin razón social, sin régimen, sin cifras |
+| Consulta | igual que Guía | sólo catálogo normativo + motores. Sin capacidades de cliente y sin expediente |
+| Expediente | expediente tras `assertClienteScope` | igual, con minimización de campos (RFC, razón social, régimen, tipo de persona) |
+
+Implementado en `src/lib/conti/contexto.ts`: `construirPayloadConti` decide qué existe, `depurarHistorial` redacta RFC/razón social/menciones al expediente en los turnos previos, y `mismaConversacion` hace del modo parte de la llave del hilo (columna `modo` en `bot_ayuda_threads`): cambiar de modo abre conversación nueva.
+
+**Motores deterministas conectados** (`src/lib/conti/motores.ts`), vía function calling server-side: `conti_calcular_isr_pf`, `conti_calcular_isr_pm`, `conti_calcular_resico`, `conti_calcular_iva`. Cada salida devuelve entradas normalizadas, resultado, conjunto normativo, versión, hash, vigencia, fuente, verificación, fundamentos, advertencias y limitaciones. El modelo sólo explica la salida. RESICO $10,000 con retención de PM: ISR causado $100, retención $125, pago mensual $0, diferencia aritmética $25, sin concluir acreditamiento futuro, con fundamento 113-E/113-F/113-J y sin atribuir la tabla al Anexo 8.
+
+**Validador de grounding** (`src/lib/conti/validador.ts`), aplicado antes de mostrar cualquier respuesta:
+- fuga de contexto en Guía/Consulta → se rechaza y se regenera sin el contexto contaminado;
+- umbral "Salud Fiscal > 80", metas de conciliación y "incidencias críticas en cero" → eliminados;
+- EFOS definitivo que invalida la deducción → sustituido por materialidad/efectos/regularización;
+- pagos en efectivo de $2,000 como regla general → sustituido por la dependencia del supuesto;
+- pre-SUA, "Riesgo SAT = cierre seguro", Anexo 8 en RESICO, nombres internos y tokens → eliminados;
+- rutas internas que no existen en el registro de capacidades → se retira el enlace;
+- importes publicados sin ejecución de motor → "No calculado".
+
+**Interfaz.** En Guía y Consulta el panel muestra "Sin expediente · este modo no utiliza datos de clientes" y una nota de que no recibe RFC ni razón social; en Expediente muestra nombre, RFC y periodo como confirmación visual del contexto. El saludo dejó de mencionar el expediente y el cambio de modo limpia la conversación.
+
+**Salud Fiscal.** Sin cobertura mínima, las recomendaciones ya no quedan vacías: se listan las acciones necesarias para obtener cobertura, con su ruta.
+
+**Verificación.** 331 pruebas en verde (49 de Conti, 28 nuevas de aislamiento/motores/validador). Smoke test sintético en preview con las tres consultas (cierre mensual en Guía, RESICO $10,000 en Consulta, ruta obsoleta `/app/tools/sat-risk`): ninguna mencionó expediente, RESICO ejecutó el motor y devolvió 100/125/0/25, y la ruta obsoleta se redirigió a `/app/riesgo`. No se tocaron datos, PAC, SAT ni correo reales.
+
+**Riesgos pendientes.** El typecheck del proyecto arrastra errores previos y ajenos a este cambio en enlaces a `/auth` (parámetro `search` requerido). El modelo todavía puede proponer pasos operativos genéricos en Guía; el validador retira rutas y umbrales inventados, pero la redacción de pasos no queda sellada campo por campo.
