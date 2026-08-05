@@ -55,10 +55,11 @@ const FUNDAMENTOS: Record<HerramientaConti, string[]> = {
   conti_calcular_isr_pf: ["LISR art. 96 / 106 (pagos provisionales)", "LISR art. 152 (tarifa anual)"],
   conti_calcular_isr_pm: ["LISR art. 9 (tasa)", "LISR art. 14 (pago provisional)"],
   conti_calcular_resico: [
-    "LISR art. 113-E (tabla de tasas y tope de ingresos)",
-    "LISR art. 113-F (pago mensual definitivo)",
-    "LISR art. 113-J (retención 1.25% cuando el receptor es persona moral)",
+    "LISR art. 113-E: ingresos efectivamente cobrados, tabla de tasas y determinación del pago mensual.",
+    "LISR art. 113-J: retención del 1.25% cuando el receptor es persona moral; esa retención se considera en el pago mensual del 113-E.",
+    "LISR art. 113-F: determinación ANUAL, en la que se disminuyen los pagos mensuales y las retenciones. No regula la resta mensual.",
   ],
+
   conti_calcular_iva: ["LIVA art. 1 (tasa)", "LIVA art. 5-D (pago mensual definitivo)"],
 };
 
