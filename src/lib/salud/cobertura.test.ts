@@ -107,7 +107,7 @@ describe("Salud Fiscal — cobertura mínima", () => {
     ];
     const r = calcularSaludScore(dims);
     expect(r.cobertura.suficiente).toBe(true);
-    expect(r.score).toBe(29);
+    expect(r.score).toBe(28);
     expect(r.semaforo).toBe("rojo");
   });
 });

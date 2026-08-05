@@ -20,9 +20,12 @@ const Input = z.object({
 export type SubScore = {
   key: "cumplimiento" | "riesgo_sat" | "cfdi" | "bancos" | "laboral" | "documental";
   label: string;
-  score: number; // 0..100 (más alto = mejor)
+  /** 0..100 (más alto = mejor). null cuando no hay información para evaluarla. */
+  score: number | null;
   peso: number; // %
+  estado: EstadoDimension;
   detalles: string[];
+  faltante: FaltanteSalud | null;
 };
 
 export type SaludAlerta = {
