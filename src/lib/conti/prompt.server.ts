@@ -66,10 +66,13 @@ const SLUG_TO_ROUTE: Record<string, string> = {
 /** Guías operativas, anotadas con la madurez real que declara el registro. */
 function digestGuias(): string {
   return Object.values(HELP_REGISTRY)
-    .map((t) => {
+    .flatMap((t) => {
       const ruta = SLUG_TO_ROUTE[t.slug] ?? "/app";
       const cap = getCapabilityByRoute(ruta);
+      // Las capacidades retiradas (alias históricos) no se ofrecen jamás.
+      if (cap?.madurez === "obsoleta") return [];
       const estado = cap ? cap.madurez : "no_registrada";
+
       const pasos = t.tutorial
         .slice(0, 5)
         .map((p) => `  ${p.n}. ${p.titulo} — ${p.detalle}`)
