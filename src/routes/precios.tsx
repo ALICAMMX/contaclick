@@ -70,8 +70,15 @@ function PreciosPage() {
   const [billing, setBilling] = useState<Billing>("anual");
   const fundadorVigente = programaFundadorVigente();
 
+  // Solo herramientas de los módulos que se listan abajo: el número del
+  // encabezado y el del desglose por módulo deben coincidir siempre.
+  const modulosVisibles = MODULOS.map((m) => m.clave);
   const herramientas = CAPABILITIES.filter(
-    (c) => c.visibleEnMenu && c.madurez !== "obsoleta" && c.permiso !== "super_admin",
+    (c) =>
+      c.visibleEnMenu &&
+      c.madurez !== "obsoleta" &&
+      c.permiso !== "super_admin" &&
+      modulosVisibles.includes(c.modulo),
   );
 
   return (
