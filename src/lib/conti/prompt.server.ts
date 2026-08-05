@@ -183,6 +183,12 @@ export function buildContiPrompt(opts: {
       `---\n## Registro de capacidades (única lista válida de herramientas)\n${digestCapacidades()}`,
     );
   }
+  if (payload.modo === "guia") {
+    partes.push(
+      `---\n## Pasos sellados de Guía (único contenido redactable)\n${digestPasosGuia()}`,
+    );
+  }
+
   if (payload.normativa) {
     partes.push(`---\n## Vigencias normativas cargadas\n${digestNormativo()}`);
   }
