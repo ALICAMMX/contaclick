@@ -181,9 +181,11 @@ export function HelpBot() {
   const handleNew = () => {
     setActiveId(null);
     setMessages([welcome]);
+    setFeedbackDado({});
     setSidebarOpen(false);
     inputRef.current?.focus();
   };
+
 
   const handleSelect = async (id: string) => {
     if (id === activeId) {
