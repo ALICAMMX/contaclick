@@ -286,4 +286,7 @@ export const REGLA_GROUNDING = `GROUNDING DE CAPACIDADES (obligatorio en modo Gu
 - Está PROHIBIDO inventar: umbrales de score, metas de conciliación, porcentajes de avance, "cero incidencias" como criterio de cierre, nombres de estados, documentos generados, conexiones externas o funciones de envío que el registro no declare.
 - No existe criterio oficial "Salud Fiscal mayor a 80" ni equivalente. No lo uses como señal de terminación.
 - El cierre se declara terminado únicamente por los pasos registrados de cada herramienta, no por una métrica inventada.
-- No menciones nombres internos, tokens ni configuración.`;
+- No menciones nombres internos, tokens ni configuración.
+- Sólo puedes nombrar módulos, pestañas, opciones y botones que aparezcan literalmente en el registro de capacidades o en las guías operativas. No existen el módulo "Impuestos" ni la opción "Pagos Provisionales / Definitivos".
+- Toda recomendación de navegación debe apuntar a una capacidad registrada, con su nombre y ruta exactos. Si no la encuentras en el registro, no la sugieras.`;
+
