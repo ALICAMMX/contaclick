@@ -493,3 +493,52 @@ No se modificaron datos reales.
   bloqueada, sin selección, sin credencial, cuota agotada, servicio sin saldo).
 - **Regresiones**: `src/lib/riesgo/score.test.ts` y
   `src/lib/sat/estado-servicio.test.ts` (12 casos) blindan estos puntos.
+
+## Auditoría de madurez funcional y presentación de herramientas (2026-08-05)
+
+**Fuente única de capacidades.** Se creó `src/lib/capabilities/registry.ts` con
+identificador, nombre, ruta, módulo, grupo, estado de madurez, planes
+autorizados, permiso, dependencias externas (IA, SAT, PAC, correo,
+almacenamiento, banco), si admite datos reales o sintéticos, visibilidad en
+menú, mensaje a mostrar cuando no está disponible, fecha de validación y
+responsable. Incluye también el registro de los 8 agentes con su disparador,
+datos que usan, acciones externas, consumo de créditos, aprobación humana,
+bitácora y comportamiento ante fallo. La resolución de acceso vive en
+`src/lib/capabilities/access.ts` y falla cerrado.
+
+**Inventario resultante.** 41 capacidades registradas: 30 operativas u
+operativas con limitaciones, 7 beta, 1 demostración (Marketplace Legal),
+2 sin implementación (Inventarios y Precios de transferencia, ambas ocultas)
+y 1 obsoleta (`/app/tools/sat-risk`, reemplazada por `/app/riesgo`).
+
+**Inconsistencias corregidas.**
+- *Inventarios* anunciaba "próximamente" pero mostraba KPI ("184 SKUs",
+  "$418K") y un kardex con apariencia real. Se eliminó todo el dato simulado;
+  la pantalla ahora declara que no tiene implementación y ofrece alternativas.
+- *Marketplace Legal* mostraba despachos con nombre, calificación y botón
+  "Solicitar cotización" que no hacía nada. Ahora está etiquetado como
+  demostración, los nombres son genéricos y el botón está deshabilitado.
+- *Mapa de Lagunas Legales* se reclasificó como operativa con limitaciones: el
+  catálogo es contenido curado, pero las defensas que se activan sí se guardan.
+- *Mis Agentes* anunciaba "8 agentes" y sólo enlazaba 4. Ahora el contador y el
+  estado salen del registro, y cada agente declara datos, permisos, acciones
+  externas, créditos, bitácora y qué ocurre si falla.
+- *ModuleScaffold* mostraba simultáneamente la insignia "Vista previa" y el
+  botón "Avísame cuando esté listo" incluso en módulos operativos. Ahora recibe
+  el estado de madurez y los controles operativos y el "avísame" nunca coexisten.
+- *Catálogos* de Módulo 1, Módulo 2 y Legal mantenían tres listas independientes
+  con estados propios ("live" para herramientas beta). Los tres derivan ahora del
+  registro, igual que `src/lib/tools/registry.ts`, la paleta de comandos y el
+  catálogo de inicio, que además ocultan lo no implementado.
+- *Buzón Tributario* se renombró a "Bandeja de Notificaciones IA" en menús: no
+  se conecta al Buzón Tributario oficial.
+
+**Pruebas.** `src/lib/capabilities/capabilities.test.ts`: 27 casos que cubren
+unicidad del registro, existencia real de cada ruta anunciada, coherencia de
+contadores, ausencia de listas paralelas, acceso por plan y permiso, cambio de
+plan, URL directa a funciones sin implementación, herramientas beta y demo,
+separación de datos sintéticos y ausencia de controles incompatibles.
+Suite completa: 259 pruebas en verde (1 omitida). Typecheck limpio.
+
+No se modificaron datos reales, ni se ejecutaron sincronizaciones SAT, ni se
+consumió PAC o IA, ni se enviaron comunicaciones.
