@@ -102,7 +102,9 @@ describe("Conti — motores deterministas conectados", () => {
     expect(fund).toContain("113-E");
     expect(fund).toContain("113-F");
     expect(fund).toContain("113-J");
-    expect(JSON.stringify(r)).not.toMatch(/Anexo\s*8/i);
+    expect(fund).not.toMatch(/Anexo\s*8/i);
+    expect(r.normativa?.fuente).not.toMatch(/Anexo\s*8/i);
+    expect(r.normativa?.fuente).toMatch(/113-E/);
   });
 
   it("no concluye acreditamiento futuro: sólo informa la diferencia", () => {
