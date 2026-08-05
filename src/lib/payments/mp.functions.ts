@@ -3,7 +3,16 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 import { resolveActiveDespachoId } from "@/lib/despacho/resolve";
-import { PLANS, computeTotal, isValidPlan, isValidCycle } from "./plans";
+import {
+  PLANS,
+  calcularImportes,
+  esElegibleFundador,
+  isValidPlan,
+  isValidCycle,
+  PROGRAMA_FUNDADOR,
+  type PlanComprableId,
+} from "./plans";
+import { esFundadorRegistrado } from "./fundador.functions";
 
 const Input = z.object({
   plan_id: z.string().refine(isValidPlan, { message: "plan inválido" }),
@@ -28,7 +37,7 @@ export const createMpCheckout = createServerFn({ method: "POST" })
     }
 
     const despachoId = await resolveActiveDespachoId(supabase, userId);
-    const plan = PLANS[data.plan_id as keyof typeof PLANS];
+    const plan = PLANS[data.plan_id as PlanComprableId];
     const cycle = data.billing_cycle as "mensual" | "anual";
 
     // Revalidar cupón en servidor (autoridad)
@@ -50,13 +59,52 @@ export const createMpCheckout = createServerFn({ method: "POST" })
       porcentaje = Number(r.porcentaje ?? 0);
     }
 
-    const totals = computeTotal(plan, cycle, data.include_iva, porcentaje);
+    // Elegibilidad fundadora: SIEMPRE resuelta en servidor. El cliente no la envía.
+    const fund = await esFundadorRegistrado(supabase, despachoId);
+    const fundadorAplicable = esElegibleFundador({
+      planId: plan.id,
+      cycle,
+      esFundadorRegistrado: fund.registrado,
+    });
+
+    const totals = calcularImportes({
+      plan,
+      cycle,
+      includeIva: data.include_iva,
+      cuponPct: porcentaje,
+      fundadorAplicable,
+    });
+
+    // Idempotencia: si ya existe una suscripción viva para el mismo plan/ciclo,
+    // se reutiliza su liga de pago en lugar de generar un cobro nuevo.
+    const { data: existente } = await supabase
+      .from("mp_subscriptions")
+      .select("id, status, mp_init_point, mp_preapproval_id, amount_mxn")
+      .eq("despacho_id", despachoId)
+      .eq("plan_id", data.plan_id)
+      .eq("billing_cycle", cycle)
+      .in("status", ["pending", "authorized", "active"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (existente?.mp_init_point && Number(existente.amount_mxn) === totals.total) {
+      return {
+        init_point: existente.mp_init_point as string,
+        sandbox_init_point: null,
+        preapproval_id: (existente.mp_preapproval_id as string) ?? null,
+        reutilizada: true,
+      };
+    }
     const payerEmail = data.payer_email || (claims as { email?: string })?.email || "cliente@contaclick.cloud";
 
     const origin = siteOrigin();
     const backUrl = `${origin}/app/configuracion?pago=ok`;
 
-    const reasonExtra = porcentaje > 0 ? ` (-${porcentaje}% cupón)` : "";
+    const reasonExtra = totals.fundadorAplicado
+      ? ` (Programa Fundador -${PROGRAMA_FUNDADOR.descuentoPct}%)`
+      : porcentaje > 0
+        ? ` (-${porcentaje}% cupón)`
+        : "";
     const preApprovalData = {
       reason: `ContaClick ${plan.name} — ${cycle === "mensual" ? "Mensual" : "Anual"}${data.include_iva ? " (IVA incl.)" : ""}${reasonExtra}`,
       auto_recurring: {
@@ -74,7 +122,10 @@ export const createMpCheckout = createServerFn({ method: "POST" })
         billing_cycle: cycle,
         include_iva: data.include_iva,
         cupon_id: cuponId,
-        descuento_pct: porcentaje,
+        descuento_pct: totals.descuentoPct,
+        fundador: totals.fundadorAplicado,
+        total_centavos: totals.totalCents,
+        moneda: totals.moneda,
       }),
     };
 
@@ -115,7 +166,7 @@ export const createMpCheckout = createServerFn({ method: "POST" })
       .maybeSingle();
 
     // Registrar redención del cupón (única por despacho gracias al unique constraint)
-    if (cuponId) {
+    if (cuponId && !totals.fundadorAplicado) {
       const { error: redErr } = await supabaseAdmin.from("cupon_redenciones").insert({
         cupon_id: cuponId,
         despacho_id: despachoId,
@@ -144,5 +195,6 @@ export const createMpCheckout = createServerFn({ method: "POST" })
       init_point: result.init_point,
       sandbox_init_point: result.sandbox_init_point ?? null,
       preapproval_id: result.id ?? null,
+      reutilizada: false,
     };
   });
