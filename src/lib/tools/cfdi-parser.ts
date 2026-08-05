@@ -89,6 +89,7 @@ export function parseCfdi(xml: string): CfdiParsed {
     valorUnitario: num(attr(t, "ValorUnitario")),
     importe: num(attr(t, "Importe")),
     claveProdServ: attr(t, "ClaveProdServ"),
+    objetoImp: attr(t, "ObjetoImp"),
   }));
 
   // Puede haber varios <Impuestos>: uno por Concepto y el resumen a nivel Comprobante.
@@ -107,6 +108,10 @@ export function parseCfdi(xml: string): CfdiParsed {
     metodoPago: attr(comprobante, "MetodoPago"),
     moneda: attr(comprobante, "Moneda"),
     tipoComprobante: attr(comprobante, "TipoDeComprobante"),
+    exportacion: attr(comprobante, "Exportacion"),
+    sello: attr(comprobante, "Sello"),
+    noCertificado: attr(comprobante, "NoCertificado"),
+    certificado: attr(comprobante, "Certificado"),
     subTotal: num(attr(comprobante, "SubTotal")),
     total: num(attr(comprobante, "Total")),
     descuento: num(attr(comprobante, "Descuento")),
@@ -124,6 +129,8 @@ export function parseCfdi(xml: string): CfdiParsed {
     },
     uuid: attr(tfd, "UUID"),
     fechaTimbrado: attr(tfd, "FechaTimbrado"),
+    selloSAT: attr(tfd, "SelloSAT"),
+    noCertificadoSAT: attr(tfd, "NoCertificadoSAT"),
     conceptos,
     impuestos: {
       totalTrasladados: num(attr(impuestosTag, "TotalImpuestosTrasladados")),
@@ -141,4 +148,5 @@ export function parseCfdi(xml: string): CfdiParsed {
   if (!result.emisor.rfc) warnings.push("Falta RFC del emisor.");
   if (!result.receptor.rfc) warnings.push("Falta RFC del receptor.");
   return result;
+}
 }
