@@ -1,56 +1,35 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { ModuleScaffold, KpiTile, DemoCard } from "@/components/ModuleScaffold";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ModuleScaffold } from "@/components/ModuleScaffold";
 import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { Boxes } from "lucide-react";
+import { UnavailableNotice } from "@/components/CapabilityCard";
+import { getCapability } from "@/lib/capabilities/registry";
 
 export const Route = createFileRoute("/app/admin/inventarios")({ component: InvPage });
 
-const ITEMS = [
-  { sku: "MAT-0021", desc: "Resina industrial grado A", e: 1240, s: 980, exist: 260, costo: 184, valor: 47840 },
-  { sku: "MAT-0035", desc: "Empaque corrugado 30x40", e: 5400, s: 4980, exist: 420, costo: 12, valor: 5040 },
-  { sku: "REF-0102", desc: "Refacción válvula 1/2\"", e: 320, s: 280, exist: 40, costo: 645, valor: 25800 },
-  { sku: "INS-0044", desc: "Insumo limpieza industrial", e: 180, s: 162, exist: 18, costo: 380, valor: 6840 },
-];
-
+// Sin implementación real: esta pantalla no muestra KPI ni kardex simulados,
+// porque un dato inventado no puede parecerse a información del expediente.
 function InvPage() {
+  const cap = getCapability("inventarios");
   return (
     <ModuleScaffold
       title="Inventarios"
-      subtitle="Kardex derivado automáticamente de tus CFDI emitidos y recibidos. Sin captura, sin doble registro."
+      subtitle="Kardex derivado de CFDI emitidos y recibidos. Función en diseño: todavía no procesa información de tus expedientes."
       icon={<Boxes className="h-5 w-5" />}
+      estado="proximamente"
       actions={<HerramientaHelp slug="admin-inventarios" />}
     >
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KpiTile label="SKUs activos" value="184" accent="primary" />
-        <KpiTile label="Valor inventario" value="$418K" accent="gold" />
-        <KpiTile label="Rotación promedio" value="42d" accent="success" />
-        <KpiTile label="Stock bajo mínimos" value="6" accent="warning" />
-      </div>
+      <UnavailableNotice mensaje={cap?.mensajeNoDisponible} />
 
-      <DemoCard title="Kardex generado desde CFDI · últimos 30d" className="mt-6">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border/40">
-              <tr className="[&>th]:py-2 [&>th]:text-left [&>th]:font-medium">
-                <th>SKU</th><th>Descripción</th><th className="text-right">Entradas</th><th className="text-right">Salidas</th><th className="text-right">Existencia</th><th className="text-right">Costo</th><th className="text-right">Valor</th>
-              </tr>
-            </thead>
-            <tbody className="text-xs">
-              {ITEMS.map((i) => (
-                <tr key={i.sku} className="border-b border-border/30 [&>td]:py-2.5">
-                  <td className="font-mono text-primary">{i.sku}</td>
-                  <td>{i.desc}</td>
-                  <td className="text-right font-mono text-emerald-300">+{i.e}</td>
-                  <td className="text-right font-mono text-amber-300">−{i.s}</td>
-                  <td className="text-right font-mono">{i.exist}</td>
-                  <td className="text-right font-mono text-muted-foreground">${i.costo}</td>
-                  <td className="text-right font-mono">${i.valor.toLocaleString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </DemoCard>
+      <div className="rounded-xl border border-border/60 bg-card/50 p-5 text-sm text-muted-foreground space-y-2">
+        <div className="text-xs uppercase tracking-wider text-muted-foreground">Mientras tanto</div>
+        <p>
+          Puedes obtener el detalle de conceptos comprados y vendidos desde el{" "}
+          <Link to="/app/tools/xml-bulk-reader" className="text-primary hover:underline">Lector masivo de XML</Link>{" "}
+          y controlar la inversión en bienes desde{" "}
+          <Link to="/app/admin/activos" className="text-primary hover:underline">Activos Fijos</Link>.
+        </p>
+      </div>
     </ModuleScaffold>
   );
 }
