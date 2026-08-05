@@ -5,6 +5,8 @@ import { z } from "zod";
 import { resolveActiveDespachoId } from "@/lib/despacho/resolve";
 import { assertWithinLimit, recordIaUsage, UsageLimitError } from "@/lib/usage/limits";
 import { checkRateLimit, rateLimitMessage } from "@/lib/security/rate-limit";
+import { aplicarContrato } from "@/lib/conti/contrato";
+
 
 const Schema = z.object({
   messages: z.array(z.object({
