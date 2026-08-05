@@ -1,18 +1,14 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { FileSignature, Store, Gavel, Bell, MessagesSquare } from "lucide-react";
+import { createFileRoute } from "@tanstack/react-router";
+import { catalogo, contadores } from "@/lib/capabilities/registry";
+import { CapabilityCard, SyntheticDataBanner } from "@/components/CapabilityCard";
 
 export const Route = createFileRoute("/app/legal/")({ component: LegalCatalog });
 
-const TOOLS = [
-  { t: "Consulta a la Ley (IA)", d: "Pregunta en lenguaje natural y recibe respuesta con cita del artículo exacto (CFF, LISR, LIVA, RMF).", icon: MessagesSquare, href: "/app/legal/consulta-ia", group: "Análisis" },
-  { t: "Mapa de Lagunas Legales", d: "Detecta huecos normativos y conflictos entre LISR, LIVA y CFF.", icon: Gavel, href: "/app/legal/lagunas", group: "Análisis" },
-  { t: "Redactor de Escritos", d: "Genera escritos de defensa con fundamento TFJA y SCJN.", icon: FileSignature, href: "/app/legal/redactor", group: "Redacción" },
-  { t: "Marketplace Legal", d: "Conecta con despachos especializados que validan y firman estrategias.", icon: Store, href: "/app/legal/marketplace", group: "Red profesional" },
-];
-
+const TOOLS = catalogo("legal");
 const GROUPS = ["Análisis", "Redacción", "Red profesional"];
 
 function LegalCatalog() {
+  const c = contadores("legal");
   return (
     <div className="space-y-8">
       <header className="flex flex-wrap items-end justify-between gap-4">
@@ -22,14 +18,22 @@ function LegalCatalog() {
           </div>
           <h1 className="serif text-3xl text-foreground">Inteligencia Legal</h1>
           <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-            Detecta oportunidades de devolución y defensa cruzando tu expediente con TFJA, SCJN y DOF.
+            Análisis y redacción con fundamento. Disponible en los planes Profesional y Despacho.
           </p>
         </div>
-        <span className="px-2.5 py-1 rounded-full glass-gold text-xs font-medium">Suscripción Despacho Pro</span>
+        <div className="flex items-center gap-2 text-xs">
+          {c.beta > 0 && <span className="px-2.5 py-1 rounded-full border border-primary/30 bg-primary/10 text-primary font-medium">{c.beta} beta</span>}
+          {c.demo > 0 && <span className="px-2.5 py-1 rounded-full border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 font-medium">{c.demo} demostración</span>}
+        </div>
       </header>
 
+      {c.demo > 0 && (
+        <SyntheticDataBanner mensaje="Dos funciones de este módulo (Mapa de Lagunas y Marketplace) son demostrativas: su contenido es ilustrativo, no analiza tus expedientes y no genera entregables." />
+      )}
+
       {GROUPS.map((g) => {
-        const items = TOOLS.filter((t) => t.group === g);
+        const items = TOOLS.filter((t) => t.grupo === g);
+        if (!items.length) return null;
         return (
           <section key={g} className="space-y-3">
             <div className="flex items-center gap-3">
@@ -38,31 +42,7 @@ function LegalCatalog() {
               <span className="text-[10px] text-muted-foreground tabular-nums">{items.length}</span>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {items.map((s) => {
-                const Icon = s.icon;
-                return (
-                  <Link
-                    key={s.t}
-                    to={s.href}
-                    className="group rounded-xl border border-border bg-card p-5 hover:shadow-[var(--shadow-card)] hover:-translate-y-0.5 transition-all flex flex-col"
-                    style={{ borderColor: "var(--border)" }}
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="h-10 w-10 rounded-lg grid place-items-center" style={{ background: "color-mix(in oklab, var(--module-legal) 15%, transparent)", color: "var(--module-legal)" }}>
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider px-2 py-1 rounded-full border border-border text-muted-foreground">
-                        <Bell className="h-3 w-3" /> Demo
-                      </span>
-                    </div>
-                    <div className="font-medium mb-1">{s.t}</div>
-                    <p className="text-xs text-muted-foreground flex-1">{s.d}</p>
-                    <div className="text-xs font-medium mt-4 inline-flex items-center gap-1" style={{ color: "var(--module-legal)" }}>
-                      Ver maqueta <span className="transition-transform group-hover:translate-x-0.5">→</span>
-                    </div>
-                  </Link>
-                );
-              })}
+              {items.map((t) => <CapabilityCard key={t.id} capability={t} accent="legal" />)}
             </div>
           </section>
         );
