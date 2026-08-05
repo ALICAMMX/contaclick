@@ -31,8 +31,13 @@ export type Capability = {
   modulo: Modulo;
   grupo: string;
   madurez: Madurez;
-  /** Planes que pueden abrirla. Vacío = todos los planes. */
+  /**
+   * @deprecated Regla comercial 2026: TODAS las herramientas están incluidas en
+   * todos los planes. Debe permanecer vacío; se conserva sólo por compatibilidad
+   * de tipos y lo verifica la suite de pruebas.
+   */
   planes: PlanId[];
+
   permiso: Permiso;
   dependencias: Dependencia[];
   /** true si procesa/produce información real del despacho. */
