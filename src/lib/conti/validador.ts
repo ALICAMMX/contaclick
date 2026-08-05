@@ -6,7 +6,7 @@
 // afirmaciones fiscales prohibidas. Lo que no pasa, no se publica.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { CAPABILITIES, getCapabilityByRoute } from "@/lib/capabilities/registry";
+import { CAPABILITIES } from "@/lib/capabilities/registry";
 import { HELP_REGISTRY } from "@/lib/help/registry";
 import { navegacionPara, EFOS_ALCANCE, type Navegacion } from "./guia";
 import { filtraExpediente, type ExpedienteContexto } from "./contexto";
