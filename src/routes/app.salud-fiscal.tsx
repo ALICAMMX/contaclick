@@ -185,15 +185,17 @@ const semBg: Record<string, string> = {
   amarillo: "from-amber-500/20 to-amber-500/5 border-amber-500/40 text-amber-300",
   naranja: "from-orange-500/20 to-orange-500/5 border-orange-500/40 text-orange-300",
   rojo: "from-red-500/20 to-red-500/5 border-red-500/40 text-red-300",
+  sin_datos: "from-muted/40 to-transparent border-border text-muted-foreground",
 };
 const semLabel: Record<string, string> = {
   verde: "Salud excelente", amarillo: "Salud estable", naranja: "Riesgo moderado", rojo: "Riesgo alto",
+  sin_datos: TEXTO_SIN_DATOS,
 };
 
 function ScoreHero({ salud }: { salud: SaludFiscal }) {
   const pct = salud.score;
-  const dash = (pct / 100) * 251.2;
-  const color = salud.semaforo === "verde" ? "#22c55e" : salud.semaforo === "amarillo" ? "#eab308" : salud.semaforo === "naranja" ? "#f97316" : "#ef4444";
+  const dash = ((pct ?? 0) / 100) * 251.2;
+  const color = salud.semaforo === "verde" ? "#22c55e" : salud.semaforo === "amarillo" ? "#eab308" : salud.semaforo === "naranja" ? "#f97316" : salud.semaforo === "rojo" ? "#ef4444" : "hsl(var(--muted-foreground))";
   return (
     <div className={`rounded-2xl border bg-gradient-to-br p-6 ${semBg[salud.semaforo]}`}>
       <div className="flex items-center justify-between gap-6 flex-wrap">
@@ -201,20 +203,29 @@ function ScoreHero({ salud }: { salud: SaludFiscal }) {
           <div className="relative w-32 h-32 shrink-0">
             <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
               <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeOpacity="0.15" strokeWidth="10" />
-              <circle cx="50" cy="50" r="40" fill="none" stroke={color} strokeWidth="10" strokeLinecap="round"
-                strokeDasharray={`${dash} 251.2`} />
+              {pct !== null && (
+                <circle cx="50" cy="50" r="40" fill="none" stroke={color} strokeWidth="10" strokeLinecap="round"
+                  strokeDasharray={`${dash} 251.2`} />
+              )}
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <div className="text-3xl font-bold">{salud.score}</div>
-              <div className="text-[10px] uppercase opacity-70">de 100</div>
+              <div className="text-3xl font-bold">{pct ?? "—"}</div>
+              <div className="text-[10px] uppercase opacity-70">{pct === null ? "sin score" : "de 100"}</div>
             </div>
           </div>
           <div>
             <div className="text-xs uppercase tracking-wide opacity-80">Score de Salud Fiscal</div>
             <div className="text-2xl font-semibold mt-1">{semLabel[salud.semaforo]}</div>
-            <div className="text-sm mt-2 flex items-center gap-1">
-              {salud.variacion_mes >= 0 ? <ArrowUpRight className="h-4 w-4 text-emerald-400" /> : <ArrowDownRight className="h-4 w-4 text-red-400" />}
-              <span>{salud.variacion_mes >= 0 ? "+" : ""}{salud.variacion_mes} pts vs mes anterior</span>
+            {salud.variacion_mes === null ? (
+              <div className="text-sm mt-2 opacity-80">Sin comparativo con el mes anterior</div>
+            ) : (
+              <div className="text-sm mt-2 flex items-center gap-1">
+                {salud.variacion_mes >= 0 ? <ArrowUpRight className="h-4 w-4 text-emerald-400" /> : <ArrowDownRight className="h-4 w-4 text-red-400" />}
+                <span>{salud.variacion_mes >= 0 ? "+" : ""}{salud.variacion_mes} pts vs mes anterior</span>
+              </div>
+            )}
+            <div className="text-xs opacity-70 mt-1">
+              Cobertura del modelo: {salud.cobertura.porcentaje}% ({salud.cobertura.dimensionesEvaluadas} de {salud.cobertura.dimensionesAplicables} áreas evaluadas · mínimo {salud.cobertura.minimo}%)
             </div>
           </div>
         </div>
@@ -228,7 +239,59 @@ function ScoreHero({ salud }: { salud: SaludFiscal }) {
   );
 }
 
+/** Explica por qué no hay score y enlaza a las herramientas que lo desbloquean. */
+function SinDatosPanel({ salud }: { salud: SaludFiscal }) {
+  return (
+    <div className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-6">
+      <div className="flex items-start gap-3">
+        <Info className="h-5 w-5 text-amber-400 mt-0.5 shrink-0" />
+        <div className="space-y-3 flex-1">
+          <div>
+            <div className="font-medium text-base">{TEXTO_SIN_DATOS}</div>
+            <p className="text-sm text-muted-foreground mt-1">{salud.cobertura.mensaje}</p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Un score alto exige evidencia. La ausencia de información nunca se interpreta como cumplimiento:
+              por eso este expediente no recibe calificación todavía.
+            </p>
+          </div>
+          {salud.cobertura.faltantes.length > 0 && (
+            <div>
+              <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Información faltante</div>
+              <ul className="space-y-2">
+                {salud.cobertura.faltantes.map((f, i) => (
+                  <li key={i} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2">
+                    <span className="text-sm">{f.que}</span>
+                    <Button size="sm" variant="outline" asChild><Link to={f.ruta}>{f.cta}</Link></Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SubScoreCard({ s }: { s: SaludFiscal["subscores"][number] }) {
+  if (s.score === null) {
+    return (
+      <div className="rounded-xl border border-dashed border-border bg-card/50 p-4">
+        <div className="flex items-center justify-between">
+          <div className="text-sm font-medium">{s.label}</div>
+          <div className="text-xs text-muted-foreground">peso {s.peso}%</div>
+        </div>
+        <div className="text-lg font-semibold mt-2 text-muted-foreground">No evaluable</div>
+        <div className="h-1.5 bg-muted/40 rounded mt-3" />
+        <p className="text-xs text-muted-foreground mt-3">Sin información suficiente para evaluar esta área. No suma ni resta puntos.</p>
+        {s.faltante && (
+          <Button size="sm" variant="outline" className="mt-3 h-7 text-xs" asChild>
+            <Link to={s.faltante.ruta}>{s.faltante.cta}</Link>
+          </Button>
+        )}
+      </div>
+    );
+  }
   const color = s.score >= 85 ? "text-emerald-400" : s.score >= 70 ? "text-amber-400" : s.score >= 50 ? "text-orange-400" : "text-red-400";
   const bar = s.score >= 85 ? "bg-emerald-500" : s.score >= 70 ? "bg-amber-500" : s.score >= 50 ? "bg-orange-500" : "bg-red-500";
   return (
@@ -247,6 +310,7 @@ function SubScoreCard({ s }: { s: SaludFiscal["subscores"][number] }) {
     </div>
   );
 }
+
 
 function ComparativoTabla({ c }: { c: SaludFiscal["comparativo"] }) {
   const fmt = (n: number) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
