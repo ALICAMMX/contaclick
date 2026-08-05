@@ -98,12 +98,55 @@ const REGLAS_SIN_EXPEDIENTE: ReglaTexto[] = [
 const CIFRA_CALCULADA =
   /\b(ISR\s+causado|ISR\s+a\s+cargo|pago\s+mensual|retenci[oó]n|IVA\s+a\s+cargo|IVA\s+a\s+favor|impuesto\s+a\s+pagar)\b\s*[:=]\s*\$?\s?[\d,]+(?:\.\d{2})?/gi;
 
+/** Atribución incorrecta del art. 113-F a la mecánica MENSUAL de RESICO. */
+const RESICO_113F_MENSUAL =
+  /[^.\n]*113-?\s?F[^.\n]*(?:pago\s+mensual|mensualmente|mensual)[^.\n]*(?:rest(?:a|ando|ar)|disminuy|menos\s+las\s+retenciones|se\s+determina)[^.\n]*\.?/gi;
+const RESICO_113F_CORRECTO =
+  "El pago mensual se determina conforme al art. 113-E de la LISR sobre los ingresos efectivamente cobrados, considerando la retención del 1.25% del art. 113-J; el art. 113-F corresponde a la determinación anual, en la que se disminuyen los pagos mensuales y las retenciones.";
+
+/** Promesas de cobertura total del validador 69-B. */
+const EFOS_GARANTIA =
+  /[^.\n]*(?:ning[uú]n\s+proveedor[^.\n]*(?:lista[s]?\s+negra|69-?B)|asegur[a-z]*[^.\n]*(?:lista[s]?\s+negra|69-?B)|garantiz[a-z]*[^.\n]*69-?B)[^.\n]*\.?/gi;
+
+/** Vocabulario de UI realmente registrado (nombres, módulos, botones, guías). */
+function vocabularioRegistrado(): Set<string> {
+  const v = new Set<string>();
+  const add = (s: string | undefined | null) => {
+    const t = (s ?? "").trim().toLowerCase();
+    if (t.length > 1) v.add(t);
+  };
+  for (const c of CAPABILITIES) {
+    add(c.nombre);
+    add(c.modulo);
+    add(c.grupo);
+    add(c.grupo.replace(/^\d+\s*·\s*/, ""));
+  }
+  for (const h of Object.values(HELP_REGISTRY)) {
+    add(h.title);
+    for (const p of h.tutorial) {
+      add(p.titulo);
+      for (const q of `${p.detalle} ${p.tip ?? ""}`.matchAll(/['"“”']([^'"“”'\n]{2,60})['"“”']/g)) add(q[1]);
+    }
+    for (const r of h.resultados) add(r.campo);
+  }
+  return v;
+}
+
+const VOCABULARIO = vocabularioRegistrado();
+
+/** Nombres de módulo/pestaña/opción/botón citados en la respuesta. */
+const NOMBRE_UI =
+  /\b(m[oó]dulo|pesta[ñn]a|opci[oó]n|bot[oó]n)\s+(?:llamad[oa]\s+)?["“'«]?([A-ZÁÉÍÓÚÑ][^"”'»\n.;:]{1,60}?)["”'»]?(?=[\s.,;:)\n]|$)/g;
+
 export type ResultadoValidacion = {
   content: string;
   violaciones: Violacion[];
   /** true cuando la respuesta filtró contexto de otro modo y debe regenerarse. */
   requiereRegeneracion: boolean;
+  /** Navegación publicada, siempre respaldada por el registro. */
+  navegacion: Navegacion[];
 };
+
 
 export function validarRespuestaConti(
   bruto: string,
