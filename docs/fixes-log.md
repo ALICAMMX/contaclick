@@ -585,3 +585,56 @@ No se modificaron suscripciones reales ni se generaron cobros.
 - **Validador 69-B / EFOS**: con cero proveedores el escaneo muestra "No evaluable" en lugar de verde; los KPIs quedan en "—" y se explica cómo cargar CFDI.
 - **Conti**: el botón flotante pasa de 80px/z-60 a 56px/z-30 para no tapar controles ni modales.
 - **Precios**: el conteo del encabezado y el desglose por módulo se calculan del mismo subconjunto de capacidades (se excluye el módulo `plataforma`), eliminando la discrepancia 45 vs 42.
+
+## Reconstrucción de Conti — Fase 1 (consulta, orientación y navegación)
+
+**Problema.** Conti afirmaba un "Nivel de confianza: Alto (95–100%)" al cierre de
+cada respuesta técnica. Ese porcentaje no procedía de ninguna medición: era texto
+que el propio prompt le ordenaba escribir. Además mantenía su propia lista de
+herramientas y rutas, podía recomendar funciones en demostración como si fueran
+operativas, y recibía el contexto del expediente desde el navegador.
+
+**Correcciones.**
+
+1. **Modos explícitos** (`src/lib/conti/modos.ts`). Tres modos que elige la
+   persona, nunca el modelo: *Guía de ContaClick*, *Consulta fiscal general* y
+   *Trabajar con expediente*. El modo activo se muestra de forma permanente en el
+   encabezado del chat y el modo de expediente se bloquea sin expediente activo.
+2. **Eliminación de la confianza numérica** (`src/lib/conti/evidencia.ts`). Se
+   suprime cualquier porcentaje de certeza que el modelo genere y se sustituye
+   por el bloque **Base de la respuesta**, que declara la fuente real
+   (catálogo normativo, motor determinista, registro de plataforma, criterio
+   general o información insuficiente). Los porcentajes fiscales legítimos
+   (16% de IVA, 10% de retención) no se tocan.
+3. **Contrato de respuesta** (`src/lib/conti/contrato.ts`). Anatomía fija:
+   respuesta directa, fundamento, qué hacer en ContaClick, qué falta o se supone,
+   y base de la respuesta. El saneamiento se aplica en el servidor aunque el
+   prompt ya lo prohíba: el prompt instruye, el código garantiza.
+4. **Capacidades como única fuente de verdad** (`src/lib/conti/capacidades.ts`).
+   El prompt se construye del registro central. Cada herramienta viaja con su
+   madurez y su advertencia obligatoria; las obsoletas no se exponen y las
+   "próximamente" no se recomiendan.
+5. **Reglas fiscales de seguridad** (`src/lib/conti/normativa.ts`). Conti no
+   hace aritmética fiscal: cuando se le pide una cifra, deriva al motor
+   determinista sellado correspondiente y lo dice. El inventario de vigencias
+   cargadas se inyecta al prompt.
+6. **Aislamiento**. El navegador ya no envía el contexto del expediente, sólo su
+   id. El servidor valida con `assertClienteScope` y arma el contexto desde el
+   alcance verificado.
+7. **Telemetría y retroalimentación**. Tablas `conti_telemetria` (modo,
+   evidencia, si hubo saneamiento, si derivó a cálculo, tokens, latencia) y
+   `conti_feedback` (pulgar arriba/abajo por respuesta), ambas con RLS por
+   usuario. La telemetría no guarda el contenido de la conversación.
+8. **Salud Fiscal — residuo detectado en la auditoría**. La dimensión Riesgo SAT
+   tomaba puntos del campo `semaforo` del expediente, que puede venir de captura
+   manual: un expediente vacío con semáforo verde obtenía 90/100. Ahora sólo es
+   evaluable con hallazgos del motor de riesgo. Los textos "Sin alertas — buen
+   estado" y "Sin hallazgos relevantes" se sustituyen por "No evaluable" cuando
+   la cobertura es insuficiente.
+
+**Verificación.** 19 pruebas permanentes en `src/lib/conti/conti.test.ts`
+(saneamiento de confianza en cinco variantes, respeto a porcentajes fiscales
+reales, contrato sin duplicar el bloque de evidencia, degradación de modo sin
+expediente, derivación a motores deterministas con rutas existentes en el
+registro, y advertencia obligatoria en toda capacidad no operativa).
+Suite completa: 306 en verde.

@@ -5,6 +5,8 @@ import { z } from "zod";
 import { resolveActiveDespachoId } from "@/lib/despacho/resolve";
 import { assertWithinLimit, recordIaUsage, UsageLimitError } from "@/lib/usage/limits";
 import { checkRateLimit, rateLimitMessage } from "@/lib/security/rate-limit";
+import { aplicarContrato } from "@/lib/conti/contrato";
+
 
 const Schema = z.object({
   messages: z.array(z.object({
@@ -63,8 +65,11 @@ export const sendChat = createServerFn({ method: "POST" })
       }
 
       const json = await res.json() as any;
-      const content = json.choices?.[0]?.message?.content ?? "";
+      const bruto = json.choices?.[0]?.message?.content ?? "";
+      // Mismo contrato que Conti: sin porcentajes de confianza inventados.
+      const { content } = aplicarContrato(bruto, { modo: "consulta", evidencia: "general" });
       const usage = json.usage ?? {};
+
       if (despachoId) {
         try {
           await recordIaUsage(supabase, despachoId, userId, {

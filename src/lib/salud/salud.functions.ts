@@ -184,13 +184,16 @@ export const computeSaludFiscal = createServerFn({ method: "POST" })
       ? Math.max(0, Math.min(100, Math.round((tareasCompletadas / tareasList.length) * 100 - tareasVencidas * 8)))
       : null;
 
-    // Riesgo SAT: requiere alertas del motor de riesgo o semáforo asignado.
+    // Riesgo SAT: requiere que el motor de riesgo haya producido hallazgos.
+    // El campo `semaforo` del expediente NO cuenta como evidencia: puede venir
+    // de una captura manual o de un valor por omisión, y usarlo convertiría un
+    // expediente vacío en "riesgo bajo".
     const alertasAltas = al.filter((a) => a.nivel === "alto" || a.nivel === "critica").length;
     const semCli = cli.semaforo as string | null;
-    const haySemaforo = semCli === "rojo" || semCli === "amarillo" || semCli === "verde";
-    const hayRiesgo = al.length > 0 || haySemaforo;
+    const hayRiesgo = al.length > 0;
     const semBase = semCli === "rojo" ? 35 : semCli === "amarillo" ? 65 : semCli === "verde" ? 90 : 70;
     const scoreRiesgo = hayRiesgo ? Math.max(0, Math.min(100, semBase - alertasAltas * 8)) : null;
+
 
     // CFDI: requiere comprobantes cargados en el periodo.
     const cfdiCancelados = cfdis.filter((c) => c.estatus_sat === "cancelado").length;
