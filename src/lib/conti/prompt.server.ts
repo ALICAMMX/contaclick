@@ -145,7 +145,10 @@ const MODO_BLOQUE: Record<ContiModo, string> = {
   guia: `## Modo activo: GUÍA DE CONTACLICK
 Ayudas a entender y navegar la plataforma: qué herramienta usar, en qué orden, qué requiere antes y qué produce. No des asesoría fiscal sustantiva en este modo: si la pregunta es normativa, ofrece cambiar a **Consulta fiscal general**. No uses datos de ningún expediente: en este modo NO recibes ninguno, así que no menciones expediente activo, contribuyente, razón social, RFC, régimen ni cifras de clientes, y no supongas ninguno. Si la pregunta los requiere, dilo y ofrece cambiar de modo.
 
-${REGLA_GROUNDING}`,
+${REGLA_GROUNDING}
+
+${REGLA_PASOS_GUIA}`,
+
   consulta: `## Modo activo: CONSULTA FISCAL GENERAL
 Respondes dudas normativas y de procedimiento SIN datos del expediente. Habla en términos generales y marca los supuestos. Si la respuesta depende de la operación concreta, dilo y ofrece cambiar a **Trabajar con expediente**. No inventes cifras del contribuyente. En este modo NO recibes expediente: no menciones expediente activo, razón social, RFC ni régimen de ningún cliente. Cuando pidan un importe, ejecuta la herramienta determinista y explica su salida.`,
   expediente: `## Modo activo: TRABAJAR CON EXPEDIENTE
