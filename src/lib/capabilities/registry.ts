@@ -83,7 +83,7 @@ const CONTABLE: Capability[] = [
   cap({ id: "cfdi-validator", nombre: "Validador CFDI 4.0", ruta: "/app/tools/cfdi-validator", modulo: "contable", grupo: "2 · Ingesta de CFDI", madurez: "operativa", descripcion: "Valida estructura, RFC, totales y UUID." }),
   cap({ id: "cfdi-verifier", nombre: "Verificador de UUID", ruta: "/app/tools/cfdi-verifier", modulo: "contable", grupo: "2 · Ingesta de CFDI", madurez: "operativa_limitada", descripcion: "Valida el formato del UUID y prepara la consulta al SAT. La verificación en línea depende del webservice del SAT." }),
   cap({ id: "cfdi", nombre: "CFDI del expediente", ruta: "/app/cfdi", modulo: "contable", grupo: "2 · Ingesta de CFDI", madurez: "operativa", descripcion: "Bandeja unificada del cliente activo." }),
-  cap({ id: "sat-sync", nombre: "Descarga Masiva SAT", ruta: "/app/sat-sync", modulo: "contable", grupo: "2 · Ingesta de CFDI", madurez: "operativa", planes: ["pro", "despacho"], dependencias: ["sat", "pac", "almacenamiento"], descripcion: "Sincronización de CFDI con el SAT usando credencial del expediente." }),
+  cap({ id: "sat-sync", nombre: "Descarga Masiva SAT", ruta: "/app/sat-sync", modulo: "contable", grupo: "2 · Ingesta de CFDI", madurez: "operativa", dependencias: ["sat", "pac", "almacenamiento"], descripcion: "Sincronización de CFDI con el SAT usando credencial del expediente." }),
 
   cap({ id: "express-auditor", nombre: "Auditor express", ruta: "/app/tools/express-auditor", modulo: "contable", grupo: "3 · Auditoría y Conciliación", madurez: "operativa", descripcion: "Duplicados, NC huérfanas, cancelados, PPD sin pago y fuera de periodo." }),
   cap({ id: "conciliacion", nombre: "Conciliador bancario", ruta: "/app/conciliacion", modulo: "contable", grupo: "3 · Auditoría y Conciliación", madurez: "operativa", dependencias: ["banco", "almacenamiento"], descripcion: "Cruza estado de cuenta contra CFDI." }),
@@ -105,7 +105,7 @@ const CONTABLE: Capability[] = [
   cap({ id: "sat-risk", nombre: "Analizador de Riesgo SAT", ruta: "/app/tools/sat-risk", modulo: "contable", grupo: "5 · Defensa SAT", madurez: "obsoleta", visibleEnMenu: false, descripcion: "Alias histórico. Reemplazado por /app/riesgo." }),
 
   cap({ id: "reportes", nombre: "Reportes del expediente", ruta: "/app/reportes", modulo: "contable", grupo: "6 · Cierre & Entregables", madurez: "operativa", descripcion: "Papeles de trabajo en PDF y Excel." }),
-  cap({ id: "reporte-ejecutivo", nombre: "Reporte Ejecutivo + Agente IA", ruta: "/app/reporte-ejecutivo", modulo: "contable", grupo: "6 · Cierre & Entregables", madurez: "beta", planes: ["pro", "despacho"], dependencias: ["ia"], descripcion: "Reporte tipo CFO advisor con hallazgos y recomendaciones." }),
+  cap({ id: "reporte-ejecutivo", nombre: "Reporte Ejecutivo + Agente IA", ruta: "/app/reporte-ejecutivo", modulo: "contable", grupo: "6 · Cierre & Entregables", madurez: "beta", dependencias: ["ia"], descripcion: "Reporte tipo CFO advisor con hallazgos y recomendaciones." }),
   cap({ id: "oficio-generator", nombre: "Generador de oficios SAT", ruta: "/app/tools/oficio-generator", modulo: "contable", grupo: "6 · Cierre & Entregables", madurez: "operativa", descripcion: "Plantillas personalizadas con datos del expediente." }),
 
   cap({ id: "fiscal-assistant", nombre: "Asistente fiscal IA", ruta: "/app/tools/fiscal-assistant", modulo: "contable", grupo: "7 · IA siempre activa", madurez: "operativa", dependencias: ["ia"], descripcion: "Consulta de legislación con contexto del expediente." }),
@@ -128,10 +128,10 @@ const ADMINISTRATIVO: Capability[] = [
 
 // ── Módulo Inteligencia Legal ───────────────────────────────────────────────
 const LEGAL: Capability[] = [
-  cap({ id: "legal-consulta-ia", nombre: "Consulta a la Ley (IA)", ruta: "/app/legal/consulta-ia", modulo: "legal", grupo: "Análisis", madurez: "beta", planes: ["pro", "despacho"], dependencias: ["ia"], descripcion: "Respuesta con cita del artículo (CFF, LISR, LIVA, RMF)." }),
-  cap({ id: "legal-lagunas", nombre: "Mapa de Lagunas Legales", ruta: "/app/legal/lagunas", modulo: "legal", grupo: "Análisis", madurez: "operativa_limitada", planes: ["pro", "despacho"], descripcion: "Catálogo curado de huecos normativos; las defensas que actives sí se guardan en el expediente. El catálogo no se genera analizando tus datos." }),
-  cap({ id: "legal-redactor", nombre: "Redactor de Escritos", ruta: "/app/legal/redactor", modulo: "legal", grupo: "Redacción", madurez: "beta", planes: ["pro", "despacho"], dependencias: ["ia"], descripcion: "Borradores de defensa con fundamento. Requiere revisión de abogado." }),
-  cap({ id: "legal-marketplace", nombre: "Marketplace Legal", ruta: "/app/legal/marketplace", modulo: "legal", grupo: "Red profesional", madurez: "demostracion", planes: ["pro", "despacho"], descripcion: "Directorio ilustrativo. Los despachos mostrados son ejemplos, no proveedores contratables todavía." }),
+  cap({ id: "legal-consulta-ia", nombre: "Consulta a la Ley (IA)", ruta: "/app/legal/consulta-ia", modulo: "legal", grupo: "Análisis", madurez: "beta", dependencias: ["ia"], descripcion: "Respuesta con cita del artículo (CFF, LISR, LIVA, RMF)." }),
+  cap({ id: "legal-lagunas", nombre: "Mapa de Lagunas Legales", ruta: "/app/legal/lagunas", modulo: "legal", grupo: "Análisis", madurez: "operativa_limitada", descripcion: "Catálogo curado de huecos normativos; las defensas que actives sí se guardan en el expediente. El catálogo no se genera analizando tus datos." }),
+  cap({ id: "legal-redactor", nombre: "Redactor de Escritos", ruta: "/app/legal/redactor", modulo: "legal", grupo: "Redacción", madurez: "beta", dependencias: ["ia"], descripcion: "Borradores de defensa con fundamento. Requiere revisión de abogado." }),
+  cap({ id: "legal-marketplace", nombre: "Marketplace Legal", ruta: "/app/legal/marketplace", modulo: "legal", grupo: "Red profesional", madurez: "demostracion", descripcion: "Directorio ilustrativo. Los despachos mostrados son ejemplos, no proveedores contratables todavía." }),
 ];
 
 // ── Plataforma (no son herramientas de catálogo) ────────────────────────────
