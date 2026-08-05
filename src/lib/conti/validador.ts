@@ -6,6 +6,7 @@
 // afirmaciones fiscales prohibidas. Lo que no pasa, no se publica.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { getCapabilityByRoute } from "@/lib/capabilities/registry";
 import { filtraExpediente, type ExpedienteContexto } from "./contexto";
 import type { ContiModo } from "./modos";
 
@@ -53,7 +54,7 @@ const REGLAS_TEXTO: ReglaTexto[] = [
   {
     regla: "efectivo_regla_general",
     detalle: "El límite de pagos en efectivo depende del supuesto fiscal.",
-    re: /[^.\n]*(?:efectivo)[^.\n]*\$?\s*2[,.]?000[^.\n]*\.?/gi,
+    re: /[^.\n]*(?:efectivo)[^.\n]*(?:\$?\s*2[,.]?000|\$?\s*2\s?k\b)[^.\n]*\.?/gi,
     sustituto:
       "El límite de pagos en efectivo depende del supuesto (concepto, tipo de erogación y régimen); identifica la norma y la excepción aplicables antes de aplicarlo.",
   },
@@ -140,7 +141,24 @@ export function validarRespuestaConti(
     });
   }
 
-  // 3. Cifras publicadas sin ejecución de motor.
+  // 3. Rutas internas que no existen en el registro de capacidades.
+  const RUTA_MD = /\[([^\]]+)\]\((\/app\/[^)\s]*)\)/g;
+  const inexistentes = new Set<string>();
+  content = content.replace(RUTA_MD, (_m, texto: string, ruta: string) => {
+    const limpia = ruta.replace(/[).,]+$/, "");
+    if (getCapabilityByRoute(limpia)) return `[${texto}](${limpia})`;
+    inexistentes.add(limpia);
+    return texto;
+  });
+  if (inexistentes.size > 0) {
+    violaciones.push({
+      regla: "ruta_inexistente",
+      detalle: `Rutas no registradas retiradas: ${[...inexistentes].join(", ")}.`,
+      accion: "eliminado",
+    });
+  }
+
+  // 4. Cifras publicadas sin ejecución de motor.
   if (opts.motoresEjecutados.length === 0 && CIFRA_CALCULADA.test(content)) {
     content = content.replace(
       new RegExp(CIFRA_CALCULADA.source, CIFRA_CALCULADA.flags),

@@ -43,7 +43,7 @@ function deriveTitle(text: string): string {
 
 /** Evidencia declarada por defecto según el modo activo. */
 function evidenciaBase(modo: ContiModo): NivelEvidencia {
-  if (modo === "expediente") return "plataforma";
+  if (modo === "expediente") return "expediente";
   if (modo === "guia") return "plataforma";
   return "general";
 }
