@@ -69,7 +69,9 @@ const LIMITACIONES_ESPECIFICAS: Record<HerramientaConti, string[]> = {
   conti_calcular_resico: [
     "Si la retención excede el ISR causado, el motor sólo informa la diferencia aritmética. NO concluye saldo a favor, acreditamiento ni compensación en meses posteriores: ese tratamiento no está resuelto por este motor.",
     "La tabla del art. 113-E LISR no proviene del Anexo 8 de la RMF; no la atribuyas a ese anexo.",
+    "El pago mensual se determina conforme al art. 113-E considerando la retención del art. 113-J. NO atribuyas al art. 113-F la resta mensual de retenciones: el 113-F es la determinación anual.",
   ],
+
   conti_calcular_iva: ["No contempla región fronteriza, tasa 0% ni actos exentos."],
 };
 
