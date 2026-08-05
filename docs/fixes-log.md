@@ -506,8 +506,8 @@ datos que usan, acciones externas, consumo de créditos, aprobación humana,
 bitácora y comportamiento ante fallo. La resolución de acceso vive en
 `src/lib/capabilities/access.ts` y falla cerrado.
 
-**Inventario resultante.** 41 capacidades registradas: 30 operativas u
-operativas con limitaciones, 7 beta, 1 demostración (Marketplace Legal),
+**Inventario resultante.** 50 capacidades registradas: 37 operativas
+(31 plenas y 6 con limitaciones), 9 beta, 1 demostración (Marketplace Legal),
 2 sin implementación (Inventarios y Precios de transferencia, ambas ocultas)
 y 1 obsoleta (`/app/tools/sat-risk`, reemplazada por `/app/riesgo`).
 
