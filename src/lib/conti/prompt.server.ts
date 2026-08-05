@@ -79,13 +79,14 @@ function digestGuias(): string {
         .join("\n");
       const necesita = t.dependencias.necesita.map((d) => d.tool).join("; ") || "ninguna";
       const datos = t.dependencias.datosMinimos.join("; ");
-      return [
+      return [[
         `### ${t.title} — [abrir](${ruta}) — madurez: ${estado}`,
         `Qué hace: ${t.queHace}`,
         `Pasos:\n${pasos}`,
         `Requiere antes: ${necesita}`,
         `Datos mínimos: ${datos}`,
-      ].join("\n");
+      ].join("\n")];
+
     })
     .join("\n\n");
 }
