@@ -11,6 +11,7 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { TOOLS } from "@/lib/tools/registry";
+import { getCapabilityByRoute } from "@/lib/capabilities/registry";
 
 type NavItem = { label: string; route: string; hint?: string };
 
@@ -55,7 +56,7 @@ const EXTRA_TOOLS: { label: string; route: string; hint: string; category: strin
   { label: "Resumen Fiscal", route: "/app/reportes/resumen-fiscal", hint: "Vista mensual consolidada", category: "Reportes" },
 
   // Agentes IA
-  { label: "Mis Agentes IA", route: "/app/contable/agentes", hint: "Vista previa", category: "Agentes IA" },
+  { label: "Mis Agentes IA", route: "/app/contable/agentes", hint: "4 operativos · 4 en desarrollo", category: "Agentes IA" },
   { label: "Agente CFDI", route: "/app/contable/agente-cfdi", hint: "Vigila comprobantes", category: "Agentes IA" },
   { label: "Agente Auditor", route: "/app/contable/agente-auditor", hint: "Hallazgos de cierre", category: "Agentes IA" },
   { label: "Agente Cierre", route: "/app/contable/agente-cierre", hint: "Cierre mensual", category: "Agentes IA" },
@@ -64,18 +65,24 @@ const EXTRA_TOOLS: { label: string; route: string; hint: string; category: strin
   // Legal
   { label: "Lagunas Legales", route: "/app/legal/lagunas", hint: "TFJA / SCJN", category: "Legal" },
   { label: "Redactor de Escritos", route: "/app/legal/redactor", hint: "IA con fundamento", category: "Legal" },
-  { label: "Marketplace Legal", route: "/app/legal/marketplace", hint: "Despachos especializados", category: "Legal" },
+  { label: "Marketplace Legal", route: "/app/legal/marketplace", hint: "Demostración", category: "Legal" },
 
   // Administrativo & RH
   { label: "Tesorería", route: "/app/admin/tesoreria", hint: "Flujo de caja", category: "Administrativo" },
   { label: "Gestor de Trámites", route: "/app/admin/tramites", hint: "Kanban con semáforo", category: "Administrativo" },
-  { label: "Buzón Tributario", route: "/app/admin/buzon", hint: "Notificaciones SAT", category: "Administrativo" },
+  { label: "Bandeja de Notificaciones IA", route: "/app/admin/buzon", hint: "Analiza PDFs de notificaciones", category: "Administrativo" },
   { label: "Correspondencia", route: "/app/admin/correspondencia", hint: "Minutas y oficios", category: "Administrativo" },
   { label: "Nómina IA", route: "/app/admin/nomina", hint: "SDI · IMSS · ISR", category: "Administrativo" },
   { label: "Cumplimiento Laboral", route: "/app/admin/cumplimiento", hint: "IMSS · INFONAVIT", category: "Administrativo" },
   { label: "Activos Fijos", route: "/app/admin/activos", hint: "MOI · depreciación", category: "Administrativo" },
   { label: "Inventarios", route: "/app/admin/inventarios", hint: "Kardex desde CFDI", category: "Administrativo" },
 ];
+
+// La paleta no puede ofrecer atajos a funciones que el registro oculta.
+const VISIBLE_EXTRA = EXTRA_TOOLS.filter((t) => {
+  const c = getCapabilityByRoute(t.route);
+  return !c || (c.visibleEnMenu && c.madurez !== "obsoleta");
+});
 
 export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const navigate = useNavigate();
@@ -118,7 +125,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
         </CommandGroup>
         <CommandSeparator />
         <CommandGroup heading="Módulos nuevos y agentes IA">
-          {EXTRA_TOOLS.map((t) => (
+          {VISIBLE_EXTRA.map((t) => (
             <CommandItem key={t.route} value={`${t.label} ${t.hint} ${t.category}`} onSelect={() => go(t.route)}>
               <ArrowRight className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
               <span>{t.label}</span>

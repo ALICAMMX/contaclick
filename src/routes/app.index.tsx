@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listClientes } from "@/lib/clientes.functions";
 import { useEffect, useRef, useState } from "react";
+import { getCapabilityByRoute } from "@/lib/capabilities/registry";
 
 export const Route = createFileRoute("/app/")({ component: Hub });
 
@@ -159,7 +160,7 @@ const ALL_TOOLS: { label: string; href: string; icon: any; group: string }[] = [
   // Administrativo & RH
   { label: "Tesorería", href: "/app/admin/tesoreria", icon: TrendingUp, group: "Administrativo & RH" },
   { label: "Gestor de Trámites", href: "/app/admin/tramites", icon: FileText, group: "Administrativo & RH" },
-  { label: "Buzón Tributario", href: "/app/admin/buzon", icon: Mail, group: "Administrativo & RH" },
+  { label: "Bandeja de Notificaciones IA", href: "/app/admin/buzon", icon: Mail, group: "Administrativo & RH" },
   { label: "Correspondencia", href: "/app/admin/correspondencia", icon: MessageSquare, group: "Administrativo & RH" },
   { label: "Nómina IA", href: "/app/admin/nomina", icon: Users, group: "Administrativo & RH" },
   { label: "Cumplimiento Laboral", href: "/app/admin/cumplimiento", icon: ShieldCheck, group: "Administrativo & RH" },
