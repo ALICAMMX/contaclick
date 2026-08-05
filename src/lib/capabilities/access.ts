@@ -26,6 +26,7 @@ const RANGO: Record<Permiso, number> = { miembro: 0, admin_despacho: 1, super_ad
 
 export function resolverAcceso(input: {
   id: string;
+  /** Se recibe sólo para trazabilidad: NINGÚN plan restringe herramientas. */
   plan: PlanId | null;
   permiso: Permiso;
 }): AccesoCapability {
@@ -42,13 +43,10 @@ export function resolverAcceso(input: {
     };
   }
 
-  if (capability.planes.length && (!input.plan || !capability.planes.includes(input.plan))) {
-    return {
-      permitido: false, navegable: false, motivo: "plan_insuficiente",
-      mensaje: "Esta herramienta no está incluida en tu plan actual.",
-      capability,
-    };
-  }
+  // Regla comercial: todos los planes incluyen todas las herramientas.
+  // La diferencia entre planes es capacidad (RFC y cuotas operativas),
+  // y esa se aplica en @/lib/entitlements/service, no aquí.
+
 
   if (capability.madurez === "obsoleta") {
     return { permitido: false, navegable: false, motivo: "obsoleta", mensaje: "Esta herramienta fue reemplazada.", capability };
