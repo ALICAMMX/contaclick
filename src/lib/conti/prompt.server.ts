@@ -11,6 +11,8 @@ import { digestCapacidades } from "./capacidades";
 import { digestNormativo, REGLA_CALCULO } from "./normativa";
 import { REGLA_HERRAMIENTAS } from "./motores";
 import { REGLA_GROUNDING } from "./validador";
+import { REGLA_PASOS_GUIA, digestPasosGuia } from "./guia";
+
 import { construirPayloadConti, textoExpediente, type ExpedienteContexto } from "./contexto";
 import { CONTRATO_RESPUESTA } from "./contrato";
 import { MODO_INFO, SIN_EXPEDIENTE_MSG, type ContiModo } from "./modos";
