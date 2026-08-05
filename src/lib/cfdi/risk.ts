@@ -26,6 +26,30 @@ export function analyzeCfdi(c: CfdiParsed, ctx?: { rfcCliente?: string }): RiskF
   if (!c.emisor.rfc) out.push({ code: "SIN_RFC_EMISOR", level: "alto", message: "Falta RFC del emisor." });
   if (!c.receptor.rfc) out.push({ code: "SIN_RFC_RECEPTOR", level: "alto", message: "Falta RFC del receptor." });
 
+  // Integridad del sellado (art. 29 CFF, fracc. III y IV)
+  if (!c.sello) out.push({ code: "SIN_SELLO", level: "alto", message: "El comprobante no trae sello digital del emisor." });
+  if (!c.certificado || !c.noCertificado) {
+    out.push({ code: "SIN_CERTIFICADO", level: "alto", message: "Falta el certificado de sello digital (CSD) o su número." });
+  }
+  if (c.uuid && !c.selloSAT) {
+    out.push({ code: "SIN_SELLO_SAT", level: "alto", message: "El timbre no contiene SelloSAT: el timbrado no puede verificarse." });
+  }
+
+  // Campos obligatorios en CFDI 4.0
+  if (!c.exportacion) out.push({ code: "SIN_EXPORTACION", level: "medio", message: "Falta el atributo Exportacion, obligatorio en CFDI 4.0." });
+  if (!c.receptor.regimenFiscalReceptor) {
+    out.push({ code: "SIN_REGIMEN_RECEPTOR", level: "medio", message: "Falta RegimenFiscalReceptor, obligatorio en CFDI 4.0." });
+  }
+  if (!c.receptor.domicilioFiscalReceptor) {
+    out.push({ code: "SIN_DOMICILIO_RECEPTOR", level: "medio", message: "Falta DomicilioFiscalReceptor (código postal), obligatorio en CFDI 4.0." });
+  }
+  if (c.conceptos.length === 0) {
+    out.push({ code: "SIN_CONCEPTOS", level: "alto", message: "El comprobante no tiene conceptos." });
+  } else if (c.conceptos.some((x) => !x.objetoImp)) {
+    out.push({ code: "SIN_OBJETO_IMP", level: "medio", message: "Hay conceptos sin ObjetoImp, obligatorio en CFDI 4.0." });
+  }
+
+
   // PUE con forma de pago 99 (por definir) suele ser inconsistente.
   if (c.metodoPago === "PUE" && c.formaPago === "99") {
     out.push({ code: "PUE_FORMA_99", level: "medio", message: "Método PUE con forma 99 (por definir) es inconsistente." });
