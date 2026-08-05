@@ -69,10 +69,15 @@ export type SaludFiscal = {
   notFound?: false;
   cliente: { id: string; rfc: string; razon_social: string };
   periodo: string; // YYYY-MM
-  score: number; // 0..100 más alto = mejor
-  semaforo: "verde" | "amarillo" | "naranja" | "rojo";
-  variacion_mes: number; // diff vs mes anterior
-  tendencia: number[]; // últimos 12 meses
+  /** 0..100 más alto = mejor. null cuando no hay cobertura mínima de información. */
+  score: number | null;
+  semaforo: SemaforoSalud;
+  /** Auditoría del cálculo: qué se pudo evaluar y qué falta. */
+  cobertura: CoberturaSalud;
+  /** diff vs mes anterior; null si alguno de los dos periodos no tiene score. */
+  variacion_mes: number | null;
+  /** últimos 12 meses; null en los meses sin score publicable. */
+  tendencia: (number | null)[];
   subscores: SubScore[];
   alertas: SaludAlerta[];
   comparativo: SaludComparativo;
@@ -83,12 +88,6 @@ export type SaludFiscal = {
 
 const PESOS = { cumplimiento: 25, riesgo_sat: 25, cfdi: 15, bancos: 15, laboral: 10, documental: 10 } as const;
 
-function semaforoOf(score: number): "verde" | "amarillo" | "naranja" | "rojo" {
-  if (score >= 85) return "verde";
-  if (score >= 70) return "amarillo";
-  if (score >= 50) return "naranja";
-  return "rojo";
-}
 
 function ymd(d: Date): string {
   return d.toISOString().slice(0, 10);
