@@ -2,6 +2,14 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
+import {
+  calcularSaludScore,
+  type CoberturaSalud,
+  type DimensionSalud,
+  type EstadoDimension,
+  type FaltanteSalud,
+  type SemaforoSalud,
+} from "./cobertura";
 
 function extractJsonObject(raw: string) {
   const text = String(raw ?? "").trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
