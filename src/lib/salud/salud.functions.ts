@@ -261,7 +261,8 @@ export const computeSaludFiscal = createServerFn({ method: "POST" })
         { que: "CFDI de nómina o expediente laboral", ruta: "/app/admin/nomina", cta: "Auditar nómina" }),
       dim("documental", "Salud Documental", PESOS.documental, scoreDoc,
         [`${alertasDoc} pendientes documentales`],
-        { que: "Revisión documental del expediente (e.firma, CSD, constancias)", ruta: "/app/expedientes", cta: "Completar expediente" }),
+        { que: "Revisión documental del expediente (e.firma, CSD, constancias)", ruta: "/app/clientes", cta: "Completar expediente" }),
+
     ];
 
     const { score: scoreGlobal, semaforo, cobertura } = calcularSaludScore(subscores as unknown as DimensionSalud[]);
