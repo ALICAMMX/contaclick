@@ -172,6 +172,14 @@ const ALL_TOOLS: { label: string; href: string; icon: any; group: string }[] = [
   { label: "Marketplace Legal", href: "/app/legal/marketplace", icon: Store, group: "Inteligencia Legal" },
 ];
 
+// El inicio nunca anuncia funciones que el registro central marca como ocultas
+// (sin implementación u obsoletas), y etiqueta las que no son plenamente operativas.
+const VISIBLE_TOOLS = ALL_TOOLS.flatMap((t) => {
+  const c = getCapabilityByRoute(t.href);
+  if (c && (!c.visibleEnMenu || c.madurez === "obsoleta")) return [];
+  return [{ ...t, madurez: c?.madurez ?? null }];
+});
+
 const ALL_GROUPS = [
   "Operación diaria",
   "Fiscal · SAT",
@@ -188,12 +196,12 @@ function AllToolsCatalog() {
     <section className="space-y-6">
       <div className="flex items-center gap-2">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Todas las herramientas · {ALL_TOOLS.length}
+          Todas las herramientas · {VISIBLE_TOOLS.length}
         </h3>
         <div className="h-px flex-1 bg-border" />
       </div>
       {ALL_GROUPS.map((g) => {
-        const items = ALL_TOOLS.filter((t) => t.group === g);
+        const items = VISIBLE_TOOLS.filter((t) => t.group === g);
         if (!items.length) return null;
         return (
           <div key={g} className="space-y-2">
@@ -209,6 +217,11 @@ function AllToolsCatalog() {
                   >
                     <I className="h-4 w-4 text-primary shrink-0" />
                     <span className="truncate">{q.label}</span>
+                    {q.madurez && q.madurez !== "operativa" && q.madurez !== "operativa_limitada" && (
+                      <span className="ml-auto shrink-0 text-[9px] uppercase tracking-wider text-muted-foreground">
+                        {q.madurez === "beta" ? "beta" : "demo"}
+                      </span>
+                    )}
                   </Link>
                 );
               })}
@@ -313,7 +326,7 @@ function ExpedienteBar() {
 
 function ModuleCard({ m }: { m: typeof MODULES[number] }) {
   const Icon = m.icon;
-  const toolCount = ALL_TOOLS.filter((t) => (m.groups as readonly string[]).includes(t.group)).length;
+  const toolCount = VISIBLE_TOOLS.filter((t) => (m.groups as readonly string[]).includes(t.group)).length;
   return (
     <Link
       to={m.href}
