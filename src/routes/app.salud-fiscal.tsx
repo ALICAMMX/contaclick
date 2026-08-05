@@ -82,10 +82,12 @@ function SaludFiscalPage() {
           <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isFetching}>
             <RefreshCw className={`h-4 w-4 mr-1 ${isFetching ? "animate-spin" : ""}`} /> Recalcular
           </Button>
-          <Button size="sm" variant="outline" onClick={() => aiMut.mutate()} disabled={aiMut.isPending || !data}>
+          <Button size="sm" variant="outline" onClick={() => aiMut.mutate()} disabled={aiMut.isPending || !data || data.score === null}
+            title={data && data.score === null ? "Sin cobertura mínima de información no se ejecuta el análisis IA." : undefined}>
             <Brain className="h-4 w-4 mr-1" /> {aiMut.isPending ? "Analizando…" : "Analizar con IA"}
           </Button>
-          <Button size="sm" variant="hero" onClick={() => data && descargarReporteSalud(data)} disabled={!data}>
+          <Button size="sm" variant="hero" onClick={() => data && descargarReporteSalud(data)} disabled={!data || data.score === null}
+            title={data && data.score === null ? "No se emite reporte ejecutivo sin información suficiente." : undefined}>
             <Download className="h-4 w-4 mr-1" /> Reporte ejecutivo
           </Button>
         </div>
