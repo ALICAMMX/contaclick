@@ -63,8 +63,11 @@ export const sendChat = createServerFn({ method: "POST" })
       }
 
       const json = await res.json() as any;
-      const content = json.choices?.[0]?.message?.content ?? "";
+      const bruto = json.choices?.[0]?.message?.content ?? "";
+      // Mismo contrato que Conti: sin porcentajes de confianza inventados.
+      const { content } = aplicarContrato(bruto, { modo: "consulta", evidencia: "general" });
       const usage = json.usage ?? {};
+
       if (despachoId) {
         try {
           await recordIaUsage(supabase, despachoId, userId, {
