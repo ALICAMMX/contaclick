@@ -9,14 +9,16 @@
 export type NivelEvidencia =
   | "normativa" // catálogo normativo versionado de la plataforma
   | "motor" // motor determinista de ContaClick (ISR, IVA, RESICO, riesgo, salud)
-  | "plataforma" // registro de capacidades / datos del expediente
+  | "plataforma" // registro de capacidades y guías de la plataforma
+  | "expediente" // datos del expediente activo, ya validados por alcance
   | "general" // conocimiento fiscal general, sin fuente verificada en plataforma
   | "insuficiente"; // no hay elementos para responder
 
 export const EVIDENCIA_LABEL: Record<NivelEvidencia, string> = {
   normativa: "Catálogo normativo de ContaClick (vigencia verificada)",
   motor: "Motor determinista de ContaClick",
-  plataforma: "Registro de la plataforma / expediente activo",
+  plataforma: "Registro de capacidades y guías de ContaClick",
+  expediente: "Expediente activo (alcance validado)",
   general: "Criterio fiscal general — requiere verificación en fuente oficial",
   insuficiente: "Sin información suficiente",
 };

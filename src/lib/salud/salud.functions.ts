@@ -312,6 +312,19 @@ export const computeSaludFiscal = createServerFn({ method: "POST" })
     if (ivaAAct > ivaTAct * 1.2 && ivaAAct > 0)
       recomendaciones.push({ titulo: "Preparar trámite de devolución de IVA", detalle: "Revisar requisitos y armar papeles de trabajo.", accion: "generar_estrategia" });
 
+    // Sin cobertura mínima, la acción pendiente es CONSEGUIR cobertura: nunca
+    // se muestra "no hay acciones pendientes" por falta de información.
+    if (!cobertura.suficiente) {
+      for (const f of cobertura.faltantes) {
+        recomendaciones.unshift({
+          titulo: `Cargar información: ${f.que}`,
+          detalle: `Sin este dato la dimensión queda como No evaluable. ${f.cta} en ${f.ruta}.`,
+          accion: "revisar_operacion",
+        });
+      }
+    }
+
+
     // ===== Historial =====
     const histRows = hist ?? [];
     const periodoActual = ym(today);

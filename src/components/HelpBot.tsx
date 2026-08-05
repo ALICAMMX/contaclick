@@ -60,20 +60,17 @@ function getFirstName(user: any): string {
   return "";
 }
 
-function buildWelcome(name: string, expedienteNombre?: string | null): string {
+function buildWelcome(name: string): string {
   const saludo = name ? `Hola, **${name}**.` : "Hola.";
-  const exp = expedienteNombre
-    ? `\n\nExpediente activo: **${expedienteNombre}**.`
-    : "\n\nNo hay expediente activo: para consultas sobre un contribuyente concreto, selecciónalo en la barra superior.";
   return `${saludo} Soy **Conti**, el copiloto fiscal de ContaClick.
 
 Trabajo en tres modos y tú eliges cuál:
 
-- **Guía de ContaClick** — qué herramienta usar, en qué orden y qué necesita cada una.
+- **Guía de ContaClick** — qué herramienta usar, en qué orden y qué necesita cada una. No usa datos de clientes.
 - **Consulta fiscal general** — dudas normativas sin datos de un expediente.
 - **Trabajar con expediente** — sobre el expediente activo y sólo sobre él.
 
-En esta etapa oriento y explico: no ejecuto acciones ni firmo cifras. Cuando falte información te lo digo en lugar de suponer.${exp}`;
+Al cambiar de modo empiezo una conversación nueva: el contexto no se arrastra entre modos. Cuando falte información te lo digo en lugar de suponer.`;
 }
 
 export function HelpBot() {
@@ -82,8 +79,8 @@ export function HelpBot() {
   const firstName = useMemo(() => getFirstName(user), [user]);
   const expedienteNombre = cliente?.razon_social ?? null;
   const welcome = useMemo<Msg>(
-    () => ({ role: "assistant", content: buildWelcome(firstName, expedienteNombre) }),
-    [firstName, expedienteNombre],
+    () => ({ role: "assistant", content: buildWelcome(firstName) }),
+    [firstName],
   );
 
   const [modo, setModo] = useState<ContiModo>("guia");
@@ -251,7 +248,12 @@ export function HelpBot() {
     setLoading(true);
     try {
       const res = await send({
-        data: { threadId: activeId, messages: next, modo, clienteId: cliente?.id ?? null },
+        data: {
+          threadId: activeId,
+          messages: next,
+          modo,
+          clienteId: modo === "expediente" ? (cliente?.id ?? null) : null,
+        },
       });
       if (res.error) {
         toast.error(res.error);
@@ -384,7 +386,9 @@ export function HelpBot() {
                   <Sparkles className="h-3 w-3 text-primary shrink-0" />
                 </div>
                 <div className="text-[11px] text-muted-foreground truncate">
-                  {etiquetaModo(modo, expedienteNombre)}
+                  {modo === "expediente"
+                    ? etiquetaModo(modo, expedienteNombre)
+                    : "Sin expediente · este modo no utiliza datos de clientes"}
                   {activeId ? ` · ${threads.find((t) => t.id === activeId)?.title ?? "Conversación"}` : ""}
                 </div>
 
@@ -417,7 +421,14 @@ export function HelpBot() {
                   return (
                     <button
                       key={m}
-                      onClick={() => !bloqueado && setModo(m)}
+                      onClick={() => {
+                        if (bloqueado || m === modo) return;
+                        setModo(m);
+                        // El modo forma parte de la llave de la conversación:
+                        // cambiar de modo abre un hilo nuevo, sin contexto previo.
+                        setActiveId(null);
+                        setMessages([welcome]);
+                      }}
                       disabled={bloqueado}
                       title={
                         bloqueado
@@ -439,6 +450,18 @@ export function HelpBot() {
               <p className="text-[10px] text-muted-foreground mt-1.5 leading-snug">
                 {MODO_INFO[modo].descripcion}
               </p>
+              {modo === "expediente" ? (
+                <div className="mt-1.5 rounded-md border border-primary/30 bg-primary/10 px-2 py-1.5 text-[10px] leading-snug">
+                  <span className="font-medium">Contexto que se usará:</span>{" "}
+                  {cliente
+                    ? `${cliente.razon_social ?? cliente.rfc} · RFC ${cliente.rfc} · periodo ${new Date().toISOString().slice(0, 7)}`
+                    : "sin expediente activo"}
+                </div>
+              ) : (
+                <div className="mt-1.5 rounded-md border border-border/60 bg-muted/30 px-2 py-1.5 text-[10px] leading-snug text-muted-foreground">
+                  Este modo no recibe datos de clientes: sin RFC, sin razón social y sin cifras del expediente.
+                </div>
+              )}
             </div>
 
             <div className="flex-1 overflow-y-auto p-3 space-y-3">

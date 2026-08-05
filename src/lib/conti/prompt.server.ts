@@ -9,6 +9,9 @@ import { HELP_REGISTRY } from "@/lib/help/registry";
 import { getCapabilityByRoute } from "@/lib/capabilities/registry";
 import { digestCapacidades } from "./capacidades";
 import { digestNormativo, REGLA_CALCULO } from "./normativa";
+import { REGLA_HERRAMIENTAS } from "./motores";
+import { REGLA_GROUNDING } from "./validador";
+import { construirPayloadConti, textoExpediente, type ExpedienteContexto } from "./contexto";
 import { CONTRATO_RESPUESTA } from "./contrato";
 import { MODO_INFO, SIN_EXPEDIENTE_MSG, type ContiModo } from "./modos";
 
@@ -119,6 +122,8 @@ No inventes una fuente fuera de esta lista, y no cites la plataforma como si fue
 
 ${REGLA_CALCULO}
 
+${REGLA_HERRAMIENTAS}
+
 ## Cómo leer Salud Fiscal y Riesgo SAT
 - Si el score es \`null\`, el resultado es "Sin información suficiente": no lo interpretes ni lo estimes.
 - Riesgo SAT sin cobertura mínima es "No evaluable", nunca "riesgo bajo".
@@ -138,38 +143,45 @@ Español neutro mexicano, markdown, listas numeradas para procedimientos, nombre
 
 const MODO_BLOQUE: Record<ContiModo, string> = {
   guia: `## Modo activo: GUÍA DE CONTACLICK
-Ayudas a entender y navegar la plataforma: qué herramienta usar, en qué orden, qué requiere antes y qué produce. No des asesoría fiscal sustantiva en este modo: si la pregunta es normativa, ofrece cambiar a **Consulta fiscal general**. No uses datos de ningún expediente.`,
+Ayudas a entender y navegar la plataforma: qué herramienta usar, en qué orden, qué requiere antes y qué produce. No des asesoría fiscal sustantiva en este modo: si la pregunta es normativa, ofrece cambiar a **Consulta fiscal general**. No uses datos de ningún expediente: en este modo NO recibes ninguno, así que no menciones expediente activo, contribuyente, razón social, RFC, régimen ni cifras de clientes, y no supongas ninguno. Si la pregunta los requiere, dilo y ofrece cambiar de modo.
+
+${REGLA_GROUNDING}`,
   consulta: `## Modo activo: CONSULTA FISCAL GENERAL
-Respondes dudas normativas y de procedimiento SIN datos del expediente. Habla en términos generales y marca los supuestos. Si la respuesta depende de la operación concreta, dilo y ofrece cambiar a **Trabajar con expediente**. No inventes cifras del contribuyente.`,
+Respondes dudas normativas y de procedimiento SIN datos del expediente. Habla en términos generales y marca los supuestos. Si la respuesta depende de la operación concreta, dilo y ofrece cambiar a **Trabajar con expediente**. No inventes cifras del contribuyente. En este modo NO recibes expediente: no menciones expediente activo, razón social, RFC ni régimen de ningún cliente. Cuando pidan un importe, ejecuta la herramienta determinista y explica su salida.`,
   expediente: `## Modo activo: TRABAJAR CON EXPEDIENTE
 Trabajas sobre el expediente activo inyectado abajo y sólo sobre él. Usa exclusivamente los resultados que los motores de la plataforma ya calcularon; no deduzcas cifras que nadie calculó. Si el dato que necesitas no está cargado, dilo y enlaza la herramienta que lo carga.`,
 };
 
 export function buildContiPrompt(opts: {
   modo: ContiModo;
-  expediente: string | null;
-  hayExpediente: boolean;
+  expediente: ExpedienteContexto | null;
 }): string {
+  // El payload decide qué existe; el prompt sólo lo redacta.
+  const payload = construirPayloadConti(opts.modo, opts.expediente);
   const partes = [
     BASE,
-    MODO_BLOQUE[opts.modo],
-    `Fuentes autorizadas en este modo: ${MODO_INFO[opts.modo].fuentes.join(", ")}.`,
+    MODO_BLOQUE[payload.modo],
+    `Fuentes autorizadas en este modo: ${MODO_INFO[payload.modo].fuentes.join(", ")}.`,
   ];
 
-  if (opts.modo === "expediente") {
+  if (payload.modo === "expediente") {
+    const texto = textoExpediente(payload);
     partes.push(
-      opts.hayExpediente && opts.expediente
-        ? `## Expediente activo\n${opts.expediente}\nTodo lo que respondas se refiere únicamente a este expediente.`
+      texto
+        ? `## Expediente activo\n${texto}\nTodo lo que respondas se refiere únicamente a este expediente.`
         : `## Expediente activo\nNo hay expediente activo. Responde exactamente: "${SIN_EXPEDIENTE_MSG}"`,
     );
   }
 
-  partes.push(
-    `---\n## Registro de capacidades (única lista válida de herramientas)\n${digestCapacidades()}`,
-  );
-  partes.push(`---\n## Vigencias normativas cargadas\n${digestNormativo()}`);
-
-  if (opts.modo !== "consulta") {
+  if (payload.capacidades) {
+    partes.push(
+      `---\n## Registro de capacidades (única lista válida de herramientas)\n${digestCapacidades()}`,
+    );
+  }
+  if (payload.normativa) {
+    partes.push(`---\n## Vigencias normativas cargadas\n${digestNormativo()}`);
+  }
+  if (payload.guias) {
     partes.push(`---\n## Guías operativas\n${digestGuias()}`);
   }
 

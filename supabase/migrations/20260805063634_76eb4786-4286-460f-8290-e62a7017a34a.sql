@@ -1,0 +1,1 @@
+ALTER TABLE public.bot_ayuda_threads ADD COLUMN IF NOT EXISTS modo TEXT NOT NULL DEFAULT 'guia';

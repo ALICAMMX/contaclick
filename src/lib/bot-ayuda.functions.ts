@@ -10,6 +10,18 @@ import { normalizarModo, SIN_EXPEDIENTE_MSG, type ContiModo } from "@/lib/conti/
 import { aplicarContrato } from "@/lib/conti/contrato";
 import { detectarCalculo } from "@/lib/conti/normativa";
 import type { NivelEvidencia } from "@/lib/conti/evidencia";
+import {
+  construirPayloadConti,
+  depurarHistorial,
+  mismaConversacion,
+  type ExpedienteContexto,
+} from "@/lib/conti/contexto";
+import {
+  HERRAMIENTAS_CONTI,
+  ejecutarHerramientaConti,
+  serializarResultado,
+} from "@/lib/conti/motores";
+import { validarRespuestaConti } from "@/lib/conti/validador";
 
 const MsgSchema = z.object({
   role: z.enum(["user", "assistant"]),
@@ -31,7 +43,7 @@ function deriveTitle(text: string): string {
 
 /** Evidencia declarada por defecto según el modo activo. */
 function evidenciaBase(modo: ContiModo): NivelEvidencia {
-  if (modo === "expediente") return "plataforma";
+  if (modo === "expediente") return "expediente";
   if (modo === "guia") return "plataforma";
   return "general";
 }
@@ -72,27 +84,24 @@ export const sendBotAyuda = createServerFn({ method: "POST" })
     }
 
     // ── Alcance del expediente: cerrado por defecto ──────────────────────────
-    // El texto del expediente se arma en el servidor a partir del alcance
-    // validado. Nada que el cliente envíe puede ampliar lo que Conti ve.
-    let expedienteTexto: string | null = null;
-    let expedienteNombre: string | null = null;
+    // Sólo el modo expediente puede resolver un expediente, y sólo después de
+    // validar membresía y alcance. En Guía y Consulta ni siquiera se consulta.
+    let expediente: ExpedienteContexto | null = null;
     if (modoPedido === "expediente" && data.clienteId) {
       try {
         const scope = await assertClienteScope(supabase, userId, data.clienteId);
         const { data: cli } = await supabase
           .from("clientes")
-          .select("rfc, razon_social, regimen_fiscal, tipo_persona, semaforo")
+          .select("regimen_fiscal, tipo_persona")
           .eq("id", scope.cliente_id)
           .maybeSingle();
-        expedienteNombre = scope.razon_social ?? scope.rfc;
-        expedienteTexto = [
-          `Razón social: ${scope.razon_social ?? "—"}`,
-          `RFC: ${scope.rfc}`,
-          cli?.regimen_fiscal ? `Régimen fiscal: ${cli.regimen_fiscal}` : null,
-          cli?.tipo_persona ? `Tipo de persona: ${cli.tipo_persona}` : null,
-        ]
-          .filter(Boolean)
-          .join("\n");
+        expediente = {
+          clienteId: scope.cliente_id,
+          rfc: scope.rfc,
+          razonSocial: scope.razon_social ?? null,
+          regimenFiscal: (cli?.regimen_fiscal as string | null) ?? null,
+          tipoPersona: (cli?.tipo_persona as string | null) ?? null,
+        };
       } catch (e: any) {
         return {
           error: e?.message ?? SIN_EXPEDIENTE_MSG,
@@ -103,17 +112,29 @@ export const sendBotAyuda = createServerFn({ method: "POST" })
       }
     }
 
-    const hayExpediente = Boolean(expedienteTexto);
+    const hayExpediente = Boolean(expediente);
     const modo = normalizarModo(modoPedido, hayExpediente);
+    const payload = construirPayloadConti(modo, expediente);
 
-    // Ensure thread exists
+    // El modo forma parte de la llave de la conversación: si el hilo abierto se
+    // creó en otro modo, se abre uno nuevo y no se arrastra el contexto.
     let threadId = data.threadId ?? null;
+    if (threadId) {
+      const { data: th } = await supabase
+        .from("bot_ayuda_threads")
+        .select("id, modo")
+        .eq("id", threadId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (!th || !mismaConversacion((th as any)?.modo ?? null, modo)) threadId = null;
+    }
     const firstUser = [...data.messages].reverse().find((m) => m.role === "user");
+    const hiloNuevo = !threadId;
     if (!threadId) {
       const title = deriveTitle(firstUser?.content ?? "Nueva conversación");
       const { data: t, error } = await supabase
         .from("bot_ayuda_threads")
-        .insert({ user_id: userId, title })
+        .insert({ user_id: userId, title, modo })
         .select("id")
         .single();
       if (error || !t) {
@@ -123,59 +144,136 @@ export const sendBotAyuda = createServerFn({ method: "POST" })
       threadId = t.id as string;
     }
 
+    // Historial depurado: en Guía y Consulta ningún turno previo puede
+    // transportar RFC, razón social ni menciones al expediente.
+    const historial = depurarHistorial(
+      hiloNuevo && firstUser ? [{ role: "user" as const, content: firstUser.content }] : data.messages,
+      modo,
+      expediente,
+    );
+
     const model = "google/gemini-3-flash-preview";
-    const ultimo = data.messages[data.messages.length - 1];
+    const ultimo = historial[historial.length - 1];
     const derivacion = detectarCalculo(ultimo?.role === "user" ? ultimo.content : "");
+    const motoresEjecutados: string[] = [];
 
     try {
       const { buildContiPrompt } = await import("./conti/prompt.server");
-      const sysMessages: Array<{ role: "system"; content: string }> = [
-        {
-          role: "system",
-          content: buildContiPrompt({ modo, expediente: expedienteTexto, hayExpediente }),
-        },
-      ];
+      const sistema = buildContiPrompt({ modo, expediente: payload.expediente });
+      const sysMessages: Array<{ role: "system"; content: string }> = [{ role: "system", content: sistema }];
       if (derivacion.requiere) {
         sysMessages.push({
           role: "system",
-          content: derivacion.ruta
-            ? `AVISO DEL SISTEMA: la última pregunta pide una cifra fiscal. NO la calcules tú. Explica el procedimiento y deriva a [${derivacion.herramienta}](${derivacion.ruta}), que aplica la tabla vigente y sella el resultado.`
-            : `AVISO DEL SISTEMA: la última pregunta pide una cifra fiscal y no hay motor determinista para ese caso. Explica el procedimiento sin producir el número y advierte que debe validarse con un cálculo formal.`,
+          content:
+            "AVISO DEL SISTEMA: la última pregunta pide una cifra fiscal. NO la calcules tú: llama a la herramienta determinista correspondiente y explica su salida. Si ninguna aplica, di que el cálculo está bloqueado.",
         });
       }
 
-      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model,
-          messages: [...sysMessages, ...data.messages],
-        }),
-      });
+      const llamar = async (mensajes: any[]) => {
+        const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ model, messages: mensajes, tools: HERRAMIENTAS_CONTI, tool_choice: "auto" }),
+        });
+        return res;
+      };
 
-      if (res.status === 429)
-        return { error: "Demasiadas solicitudes. Intenta de nuevo en un momento.", content: "", threadId, modo };
-      if (res.status === 402)
-        return { error: "Se agotaron los créditos de IA en tu workspace.", content: "", threadId, modo };
+      let conversacion: any[] = [...sysMessages, ...historial];
+      let res = await llamar(conversacion);
+
+      const errHttp = (r: Response) => {
+        if (r.status === 429) return "Demasiadas solicitudes. Intenta de nuevo en un momento.";
+        if (r.status === 402) return "Se agotaron los créditos de IA en tu workspace.";
+        return null;
+      };
+
+      let e1 = errHttp(res);
+      if (e1) return { error: e1, content: "", threadId, modo };
       if (!res.ok) {
-        const txt = await res.text();
-        console.error("AI gateway error", res.status, txt);
+        console.error("AI gateway error", res.status, await res.text());
         return { error: "Error del servicio de IA.", content: "", threadId, modo };
       }
 
-      const json = (await res.json()) as any;
-      const bruto: string = json.choices?.[0]?.message?.content ?? "";
-      const usage = json.usage ?? {};
+      let json = (await res.json()) as any;
+      let usageIn = json.usage?.prompt_tokens ?? 0;
+      let usageOut = json.usage?.completion_tokens ?? 0;
+      let msg = json.choices?.[0]?.message ?? {};
+
+      // ── Bucle de herramientas deterministas ─────────────────────────────
+      let vueltas = 0;
+      while (Array.isArray(msg.tool_calls) && msg.tool_calls.length > 0 && vueltas < 3) {
+        vueltas++;
+        conversacion = [...conversacion, msg];
+        for (const tc of msg.tool_calls) {
+          let args: Record<string, unknown> = {};
+          try {
+            args = JSON.parse(tc.function?.arguments ?? "{}");
+          } catch {
+            args = {};
+          }
+          const salida = ejecutarHerramientaConti(tc.function?.name ?? "", args);
+          if (salida.ok) motoresEjecutados.push(salida.herramienta);
+          conversacion.push({
+            role: "tool",
+            tool_call_id: tc.id,
+            content: serializarResultado(salida),
+          });
+        }
+        res = await llamar(conversacion);
+        e1 = errHttp(res);
+        if (e1) return { error: e1, content: "", threadId, modo };
+        if (!res.ok) {
+          console.error("AI gateway error", res.status, await res.text());
+          return { error: "Error del servicio de IA.", content: "", threadId, modo };
+        }
+        json = (await res.json()) as any;
+        usageIn += json.usage?.prompt_tokens ?? 0;
+        usageOut += json.usage?.completion_tokens ?? 0;
+        msg = json.choices?.[0]?.message ?? {};
+      }
+
+      let bruto: string = msg.content ?? "";
+
+      // ── Validación estructural ──────────────────────────────────────────
+      let val = validarRespuestaConti(bruto, { modo, expediente, motoresEjecutados });
+      if (val.requiereRegeneracion) {
+        // Se regenera SIN el contexto contaminado y con la prohibición explícita.
+        const limpio = [
+          ...sysMessages,
+          {
+            role: "system",
+            content:
+              "AVISO DEL SISTEMA: tu respuesta anterior fue rechazada por incluir datos de expediente en un modo que no los admite. Reescríbela sin mencionar expediente activo, contribuyente, razón social, RFC ni régimen, y sin suponer ninguno.",
+          },
+          ...(firstUser ? [{ role: "user" as const, content: firstUser.content }] : []),
+        ];
+        const res2 = await llamar(limpio);
+        if (res2.ok) {
+          const j2 = (await res2.json()) as any;
+          usageIn += j2.usage?.prompt_tokens ?? 0;
+          usageOut += j2.usage?.completion_tokens ?? 0;
+          bruto = j2.choices?.[0]?.message?.content ?? "";
+          val = validarRespuestaConti(bruto, { modo, expediente, motoresEjecutados });
+        }
+      }
 
       // Contrato de respuesta: sin porcentajes de confianza, con base declarada.
-      const { content, meta } = aplicarContrato(bruto, {
+      const evidencia: NivelEvidencia = motoresEjecutados.length > 0 ? "motor" : evidenciaBase(modo);
+      const { content, meta } = aplicarContrato(val.content, {
         modo,
-        evidencia: derivacion.requiere ? "motor" : evidenciaBase(modo),
-        detalleEvidencia: hayExpediente ? `Expediente activo: ${expedienteNombre}` : null,
+        evidencia,
+        detalleEvidencia:
+          modo === "expediente" && expediente
+            ? `Expediente activo: ${expediente.razonSocial ?? expediente.rfc}`
+            : motoresEjecutados.length > 0
+              ? `Motores ejecutados: ${[...new Set(motoresEjecutados)].join(", ")}`
+              : modo === "guia"
+                ? "Registro de capacidades de ContaClick"
+                : "Catálogo normativo de ContaClick",
       });
 
       // Persist last user msg + assistant reply
-      const lastUser = data.messages[data.messages.length - 1];
+      const lastUser = historial[historial.length - 1];
       const rows: any[] = [];
       if (lastUser?.role === "user") {
         rows.push({ thread_id: threadId, user_id: userId, role: "user", content: lastUser.content });
@@ -197,11 +295,11 @@ export const sendBotAyuda = createServerFn({ method: "POST" })
         modo,
         con_expediente: hayExpediente,
         evidencia: meta.evidencia,
-        saneada: meta.saneada,
+        saneada: meta.saneada || val.violaciones.length > 0,
         derivo_calculo: derivacion.requiere,
         modelo: model,
-        tokens_in: usage.prompt_tokens ?? 0,
-        tokens_out: usage.completion_tokens ?? 0,
+        tokens_in: usageIn,
+        tokens_out: usageOut,
         latencia_ms: Date.now() - t0,
       });
       if (telErr) console.error("conti telemetria insert failed", telErr);
@@ -211,14 +309,21 @@ export const sendBotAyuda = createServerFn({ method: "POST" })
           await recordIaUsage(supabase, despachoId, userId, {
             tool: "bot_ayuda",
             model,
-            tokens_in: usage.prompt_tokens ?? 0,
-            tokens_out: usage.completion_tokens ?? 0,
+            tokens_in: usageIn,
+            tokens_out: usageOut,
           });
         } catch (e) {
           console.error("recordIaUsage failed", e);
         }
       }
-      return { error: null as string | null, content, threadId, modo };
+      return {
+        error: null as string | null,
+        content,
+        threadId,
+        modo,
+        motores: [...new Set(motoresEjecutados)],
+        violaciones: val.violaciones.map((v) => v.regla),
+      };
     } catch (e) {
       console.error("sendBotAyuda failed", e);
       return { error: "Error de red al consultar la IA.", content: "", threadId, modo };
