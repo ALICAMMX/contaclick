@@ -12,7 +12,7 @@ export function ModuleScaffold({
   title,
   subtitle,
   icon,
-  estado = "proximamente",
+  estado = "operativa",
   badge,
   children,
   actions,
@@ -26,7 +26,7 @@ export function ModuleScaffold({
   actions?: ReactNode;
 }) {
   const proxima = estado === "proximamente";
-  const etiqueta = badge ?? (estado === "operativa" ? null : MADUREZ_LABEL[estado]);
+  const etiqueta = badge !== undefined ? badge : estado === "operativa" ? null : MADUREZ_LABEL[estado];
   const tono =
     estado === "beta" ? "border-primary/40 bg-primary/10 text-primary"
       : estado === "demostracion" ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-200"
