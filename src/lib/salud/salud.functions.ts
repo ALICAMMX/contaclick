@@ -314,21 +314,22 @@ export const computeSaludFiscal = createServerFn({ method: "POST" })
     const periodoActual = ym(today);
     const periodoPrev = ym(startPrev);
     const histMap = new Map<string, number>();
-    for (const h of histRows) histMap.set(h.periodo as string, h.score as number);
-    histMap.set(periodoActual, scoreGlobal);
-    const tendencia: number[] = [];
+    for (const h of histRows) if (h.score !== null) histMap.set(h.periodo as string, h.score as number);
+    if (scoreGlobal !== null) histMap.set(periodoActual, scoreGlobal);
+    const tendencia: (number | null)[] = [];
     for (let i = 11; i >= 0; i--) {
       const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      tendencia.push(histMap.get(ym(d)) ?? 0);
+      tendencia.push(histMap.get(ym(d)) ?? null);
     }
-    const scorePrev = histMap.get(periodoPrev) ?? scoreGlobal;
-    const variacion = scoreGlobal - scorePrev;
+    const scorePrev = histMap.get(periodoPrev) ?? null;
+    const variacion = scoreGlobal !== null && scorePrev !== null ? scoreGlobal - scorePrev : null;
 
     const result: SaludFiscal = {
       cliente: { id: cli.id, rfc: cli.rfc, razon_social: cli.razon_social },
       periodo: periodoActual,
       score: scoreGlobal,
-      semaforo: semaforoOf(scoreGlobal),
+      semaforo,
+      cobertura,
       variacion_mes: variacion,
       tendencia,
       subscores,
@@ -337,12 +338,15 @@ export const computeSaludFiscal = createServerFn({ method: "POST" })
       hallazgos,
       recomendaciones,
       historial: histRows
+        .filter((h) => h.score !== null)
         .map((h) => ({ periodo: h.periodo as string, score: h.score as number, semaforo: h.semaforo as string }))
         .reverse(),
     };
 
-    // Persist snapshot del periodo (idempotente por unique cliente_id+periodo)
-    if (data.persist !== false) {
+    // Persist snapshot del periodo (idempotente por unique cliente_id+periodo).
+    // Sin cobertura mínima NO se guarda score: un snapshot falso contaminaría
+    // la tendencia histórica y el comparativo de meses siguientes.
+    if (data.persist !== false && scoreGlobal !== null) {
       await supabase.from("salud_fiscal_snapshots").upsert({
         despacho_id: cli.despacho_id as string,
         cliente_id: cli.id,
@@ -357,6 +361,7 @@ export const computeSaludFiscal = createServerFn({ method: "POST" })
         computed_by: userId,
       } as any, { onConflict: "cliente_id,periodo" });
     }
+
 
     return result;
   });
