@@ -673,3 +673,12 @@ Implementado en `src/lib/conti/contexto.ts`: `construirPayloadConti` decide qué
 **Verificación.** 331 pruebas en verde (49 de Conti, 28 nuevas de aislamiento/motores/validador). Smoke test sintético en preview con las tres consultas (cierre mensual en Guía, RESICO $10,000 en Consulta, ruta obsoleta `/app/tools/sat-risk`): ninguna mencionó expediente, RESICO ejecutó el motor y devolvió 100/125/0/25, y la ruta obsoleta se redirigió a `/app/riesgo`. No se tocaron datos, PAC, SAT ni correo reales.
 
 **Riesgos pendientes.** El typecheck del proyecto arrastra errores previos y ajenos a este cambio en enlaces a `/auth` (parámetro `search` requerido). El modelo todavía puede proponer pasos operativos genéricos en Guía; el validador retira rutas y umbrales inventados, pero la redacción de pasos no queda sellada campo por campo.
+
+## 2026-08-05 — Conti Fase 1.2: grounding de Guía, fundamento RESICO y Salud Fiscal
+
+- **Fundamento RESICO**: `motores.ts` ahora describe 113-E (ingresos cobrados, tabla y cálculo mensual), 113-J (retención 1.25% considerada en el mensual) y 113-F (sólo determinación anual). Nueva regla del validador `resico_113f_mensual` sustituye cualquier texto que atribuya la resta mensual al 113-F. El resultado del motor no cambió ($100 / $125 / $0 / $25).
+- **Rutas y nombres inventados**: el validador reescribe todo enlace con el nombre y la ruta registrados y devuelve `navegacion[]` con `capabilityId`, nombre, ruta y madurez; sin capabilityId la recomendación se elimina. Nueva regla `nombre_ui_inexistente` que retira módulos/pestañas/opciones/botones fuera del vocabulario registrado (p. ej. módulo "Impuestos", opción "Pagos Provisionales / Definitivos").
+- **Guía sellada**: nuevo `src/lib/conti/guia.ts` con el contrato por paso (capabilityId, nombre, ruta, madurez, descripción, prerequisites, availableActions, completionCriteria, limitations, externalDependencies, evidenceSource) inyectado al modelo. `Capability.criteriosTerminacion` es la única fuente de criterios de cierre; vacío ⇒ texto obligatorio de "sin criterio automático registrado".
+- **EFOS**: alcance registrado obligatorio; se sustituyen promesas de "ningún proveedor en listas negras".
+- **Salud Fiscal**: la ruta faltante documental apuntaba a `/app/expedientes` (no registrada) → `/app/clientes`; la UI ya no dice "No hay acciones pendientes" sin cobertura.
+- 352 pruebas en verde, 16 nuevas en `src/lib/conti/grounding.test.ts`. No se tocó aislamiento de modos, router ni cableado de motores.
