@@ -1,39 +1,67 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { FileSearch, Upload, CheckCircle2, AlertTriangle, Save } from "lucide-react";
+import { FileSearch, Upload, CheckCircle2, AlertTriangle, Save, FlaskConical, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ToolShell } from "@/components/ToolShell";
 import { DemoCaseButtons } from "@/components/DemoCaseButtons";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { parseCfdi, type CfdiParsed } from "@/lib/tools/cfdi-parser";
+import { analyzeCfdi, maxLevel, type RiskFinding } from "@/lib/cfdi/risk";
+import { consultarEfos, EFECTO_POR_SITUACION } from "@/lib/efos/lista-demo";
+import { AVISO_SINTETICO } from "@/lib/demo/cfdi-fixtures";
 import { saveToolRun } from "@/lib/tool-runs.functions";
 import { RejectModal } from "@/components/RejectModal";
 import { emptyReport, type RejectReport } from "@/lib/cfdi/dedup-xml";
 
 export const Route = createFileRoute("/app/tools/cfdi-validator")({
   component: CfdiValidator,
+  head: () => ({
+    meta: [
+      { title: "Validador CFDI 4.0 · ContaClick IA" },
+      { name: "description", content: "Valida la estructura, el sellado, los campos obligatorios y la aritmética de un CFDI 4.0 antes de contabilizarlo." },
+    ],
+  }),
 });
 
 function CfdiValidator() {
   const { cliente } = useActiveCliente();
   const [parsed, setParsed] = useState<CfdiParsed | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [sintetico, setSintetico] = useState(false);
   const [report, setReport] = useState<RejectReport | null>(null);
   const save = useServerFn(saveToolRun);
 
-  const processXml = async (text: string, name: string, opts?: { skipRfcCheck?: boolean }) => {
+  /** Hallazgos deterministas del comprobante cargado. */
+  const findings: RiskFinding[] = useMemo(
+    () => (parsed ? analyzeCfdi(parsed, { rfcCliente: sintetico ? undefined : cliente?.rfc }) : []),
+    [parsed, cliente?.rfc, sintetico],
+  );
+
+  /** Revisión 69-B de emisor y receptor contra el listado cargado. */
+  const efos = useMemo(() => {
+    if (!parsed) return [];
+    const partes = [
+      { rol: "Emisor", rfc: parsed.emisor.rfc },
+      { rol: "Receptor", rfc: parsed.receptor.rfc },
+    ].filter((p) => !!p.rfc) as { rol: string; rfc: string }[];
+    return partes
+      .map((p) => ({ ...p, consulta: consultarEfos(p.rfc) }))
+      .filter((p) => p.consulta.estado !== "sin_coincidencia");
+  }, [parsed]);
+
+  const processXml = async (text: string, name: string, opts?: { sintetico?: boolean }) => {
     let result: CfdiParsed;
     try {
       result = parseCfdi(text);
     } catch (e: any) {
       const rep = emptyReport(cliente?.rfc?.toUpperCase() ?? "");
       rep.errores.push({ archivo: name, motivo: "No se pudo leer el XML", detalle: e?.message ?? "" });
-      setReport(rep); setParsed(null); setFileName(null);
+      setReport(rep); setParsed(null); setFileName(null); setSintetico(false);
       return;
     }
-    if (cliente && !opts?.skipRfcCheck) {
+    if (cliente && !opts?.sintetico) {
       const rfc = cliente.rfc.toUpperCase();
       const emisor = (result.emisor.rfc ?? "").toUpperCase();
       const receptor = (result.receptor.rfc ?? "").toUpperCase();
@@ -41,11 +69,11 @@ function CfdiValidator() {
         const rep = emptyReport(rfc);
         rep.rfcAjeno.push({ archivo: name, motivo: "RFC ajeno al expediente",
           detalle: `Emisor ${emisor || "—"} · Receptor ${receptor || "—"}` });
-        setReport(rep); setParsed(null); setFileName(null);
+        setReport(rep); setParsed(null); setFileName(null); setSintetico(false);
         return;
       }
     }
-    setFileName(name); setParsed(result);
+    setFileName(name); setParsed(result); setSintetico(!!opts?.sintetico);
   };
 
   const onFile = async (file: File) => {
@@ -54,7 +82,7 @@ function CfdiValidator() {
   };
 
   const onSave = async () => {
-    if (!parsed) return;
+    if (!parsed || sintetico) return;
     try {
       await save({ data: { cliente_id: cliente?.id ?? null, tool_key: "cfdi-validator", input: { fileName }, output: parsed as any, notes: parsed.uuid ?? null } });
       toast.success("Resultado guardado en el expediente");
@@ -62,6 +90,13 @@ function CfdiValidator() {
       toast.error(e?.message ?? "No se pudo guardar");
     }
   };
+
+  const nivel = maxLevel(findings);
+  const nivelClass =
+    nivel === "alto" ? "border-destructive/50 bg-destructive/5"
+      : nivel === "medio" ? "border-warning/40 bg-warning/5"
+        : nivel === "bajo" ? "border-border bg-card/50"
+          : "border-success/30 bg-success/5";
 
   return (
     <ToolShell helpSlug="cfdi-validator"
@@ -71,7 +106,9 @@ function CfdiValidator() {
     >
       <DemoCaseButtons
         toolKey="cfdi-validator"
-        onLoad={(payload, variant) => processXml(payload.xml, variant === "ok" ? "ejemplo-ok.xml" : "ejemplo-riesgo.xml", { skipRfcCheck: true })}
+        onLoad={(payload, variant) =>
+          processXml(payload.xml, variant === "ok" ? "ejemplo-integro.xml" : "ejemplo-riesgo.xml", { sintetico: true })
+        }
       />
       <label className="block rounded-xl border-2 border-dashed border-border bg-card/30 p-10 text-center hover:border-primary/50 transition-colors cursor-pointer">
         <input type="file" accept=".xml,text/xml,application/xml" className="hidden"
@@ -85,10 +122,73 @@ function CfdiValidator() {
 
       {parsed && (
         <div className="space-y-4">
+          {sintetico && (
+            <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 flex items-start gap-2 text-sm">
+              <FlaskConical className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+              <div>
+                <div className="font-medium">Ejemplo sintético</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{AVISO_SINTETICO}</div>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between">
             <h3 className="font-semibold">Resultado</h3>
-            <Button variant="glass" size="sm" onClick={onSave}><Save className="h-3.5 w-3.5" /> Guardar en expediente</Button>
+            {!sintetico && (
+              <Button variant="glass" size="sm" onClick={onSave}><Save className="h-3.5 w-3.5" /> Guardar en expediente</Button>
+            )}
           </div>
+
+          {/* Hallazgos deterministas */}
+          <div className={`rounded-lg border p-4 space-y-2 ${nivelClass}`}>
+            {findings.length === 0 ? (
+              <div className="flex items-center gap-2 text-sm">
+                <CheckCircle2 className="h-4 w-4 text-success" />
+                CFDI válido: estructura 4.0 completa, sellado presente, campos obligatorios y aritmética correctos. Sin hallazgos.
+              </div>
+            ) : (
+              <>
+                <div className="text-sm font-medium">
+                  {findings.length} {findings.length === 1 ? "hallazgo" : "hallazgos"} · nivel máximo: {nivel}
+                </div>
+                <ul className="space-y-1.5">
+                  {findings.map((f) => (
+                    <li key={f.code} className="flex items-start gap-2 text-sm">
+                      <AlertTriangle className={`h-4 w-4 shrink-0 mt-0.5 ${f.level === "alto" ? "text-destructive" : f.level === "medio" ? "text-warning" : "text-muted-foreground"}`} />
+                      <span>
+                        <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground mr-1.5">{f.code}</span>
+                        {f.message}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+
+          {/* Revisión 69-B */}
+          {efos.length > 0 && (
+            <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-4 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <ShieldAlert className="h-4 w-4 text-destructive" /> Revisión 69-B (art. 69-B CFF)
+              </div>
+              {efos.map((e, i) => (
+                <div key={i} className="text-sm">
+                  {e.consulta.estado === "en_lista" ? (
+                    <>
+                      <span className="font-medium">{e.rol} <span className="font-mono">{e.rfc}</span></span> ·{" "}
+                      {EFECTO_POR_SITUACION[e.consulta.registro.situacion].etiqueta} (DOF {e.consulta.registro.publicacion_dof})
+                      <div className="text-xs text-muted-foreground mt-0.5">{EFECTO_POR_SITUACION[e.consulta.registro.situacion].efecto}</div>
+                    </>
+                  ) : (
+                    <div className="text-xs text-muted-foreground">
+                      {e.rol} <span className="font-mono">{e.rfc}</span>: {"mensaje" in e.consulta ? e.consulta.mensaje : "Listado no vigente."}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           {parsed.warnings.length > 0 && (
             <div className="rounded-lg border border-warning/40 bg-warning/5 p-4 space-y-1.5">
@@ -100,11 +200,6 @@ function CfdiValidator() {
             </div>
           )}
 
-          {parsed.warnings.length === 0 && (
-            <div className="rounded-lg border border-success/30 bg-success/5 p-4 flex items-center gap-2 text-sm">
-              <CheckCircle2 className="h-4 w-4 text-success" /> CFDI válido y sin observaciones automáticas.
-            </div>
-          )}
 
           <div className="grid sm:grid-cols-2 gap-4">
             <Card title="Comprobante">
