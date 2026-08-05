@@ -6,9 +6,12 @@
 // afirmaciones fiscales prohibidas. Lo que no pasa, no se publica.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { getCapabilityByRoute } from "@/lib/capabilities/registry";
+import { CAPABILITIES, getCapabilityByRoute } from "@/lib/capabilities/registry";
+import { HELP_REGISTRY } from "@/lib/help/registry";
+import { navegacionPara, EFOS_ALCANCE, type Navegacion } from "./guia";
 import { filtraExpediente, type ExpedienteContexto } from "./contexto";
 import type { ContiModo } from "./modos";
+
 
 export type Violacion = {
   regla: string;
