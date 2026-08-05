@@ -7,6 +7,7 @@
 //
 // No toca la base real: simula el cliente Supabase.
 // =====================================================================
+import { PLANS } from "@/lib/payments/plans";
 import { describe, it, expect } from "vitest";
 import {
   getEntitlements,
@@ -195,9 +196,11 @@ describe("plan", () => {
     expect(limiteDe(antes, "rfcs")).toBe(5);
 
     base.despacho!.plan_id = "plan-pro";
+    // El límite lo define la fuente única de verdad (plans.ts), no la fila de BD.
     base.despacho!.planes = { clave: "pro", nombre: "Profesional", limites: { rfcs: 50, ia_msgs: 1500 } };
     const despues = await getEntitlements(makeSupabase(base), DESPACHO);
-    expect(limiteDe(despues, "rfcs")).toBe(50);
+    expect(limiteDe(despues, "rfcs")).toBe(PLANS.pro.maxRfcs);
+    expect(limiteDe(despues, "rfcs")).toBe(25);
     expect(despues.uso.ia_requests).toBe(90); // el uso del periodo no se reinicia al cambiar de plan
     expect(despues.periodo).toBe(periodoActual());
   });
@@ -318,12 +321,12 @@ describe("excepciones comerciales", () => {
         estado: "activa",
         trial_ends_at: null,
         plan_id: "p",
-        planes: { clave: "pro", nombre: "Pro", limites: { rfcs: 100, ia_msgs: 100 } },
+        planes: { clave: "despacho", nombre: "Despacho", limites: { rfcs: 100, ia_msgs: 100 } },
       },
       excepciones: [exc({ valor_num: 10 })],
     });
     const ent = await getEntitlements(makeSupabase(d), DESPACHO);
-    expect(limiteDe(ent, "rfcs")).toBe(100);
+    expect(limiteDe(ent, "rfcs")).toBe(PLANS.despacho.maxRfcs);
   });
 
   it("excepción vencida deja de aplicar automáticamente", async () => {
