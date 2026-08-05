@@ -11,6 +11,7 @@
 // =====================================================================
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { PLANS, isValidPlan, type PlanId } from "@/lib/payments/plans";
 
 export type Recurso = "ia_requests" | "ia_tokens" | "rfcs" | "sat_solicitudes";
 export type FrecuenciaSat = "manual" | "mensual" | "semanal" | "diaria";
@@ -25,6 +26,7 @@ export interface Limites {
   max_miembros?: number;
   sat_solicitudes_mes?: number;
   sat_frecuencia_max?: FrecuenciaSat;
+  almacenamiento_gb?: number;
 }
 
 export interface ExcepcionVigente {
