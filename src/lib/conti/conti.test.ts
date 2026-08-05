@@ -53,6 +53,24 @@ describe("Conti — prohibición de confianza numérica", () => {
   });
 });
 
+describe("Conti — base de evidencia por modo", () => {
+  it("la base de Guía no menciona expediente", () => {
+    const { content } = aplicarContrato("Usa la conciliación bancaria.", {
+      modo: "guia",
+      evidencia: "plataforma",
+    });
+    expect(content.toLowerCase()).not.toContain("expediente");
+  });
+
+  it("la base de Consulta no menciona expediente", () => {
+    const { content } = aplicarContrato("El IVA general es 16%.", {
+      modo: "consulta",
+      evidencia: "general",
+    });
+    expect(content.toLowerCase()).not.toContain("expediente");
+  });
+});
+
 describe("Conti — modos explícitos", () => {
   it("el modo expediente cae a consulta cuando no hay expediente activo", () => {
     expect(normalizarModo("expediente", false)).toBe("consulta");

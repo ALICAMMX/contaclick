@@ -245,6 +245,25 @@ describe("Conti — validador de respuestas", () => {
     expect(v.content).not.toContain("pac_token");
   });
 
+  it("retira rutas internas que no existen en el registro", () => {
+    const v = validarRespuestaConti(
+      "Ve a [Declaraciones Mensuales](/app/impuestos/mensuales) y presenta el pago.",
+      base,
+    );
+    expect(v.content).not.toContain("/app/impuestos/mensuales");
+    expect(v.violaciones.map((x) => x.regla)).toContain("ruta_inexistente");
+  });
+
+  it("conserva las rutas registradas", () => {
+    const v = validarRespuestaConti("Abre [Riesgo SAT](/app/riesgo).", base);
+    expect(v.content).toContain("(/app/riesgo)");
+  });
+
+  it("también atrapa el límite de efectivo escrito como $2k", () => {
+    const v = validarRespuestaConti("No deducibles: pagos en efectivo >$2k.", base);
+    expect(v.content).toMatch(/depende del supuesto/i);
+  });
+
   it("una respuesta correcta de Guía pasa sin correcciones", () => {
     const v = validarRespuestaConti(
       "Abre [Conciliación bancaria](/app/conciliacion) y carga el estado de cuenta del periodo.",
