@@ -542,3 +542,38 @@ Suite completa: 259 pruebas en verde (1 omitida). Typecheck limpio.
 
 No se modificaron datos reales, ni se ejecutaron sincronizaciones SAT, ni se
 consumió PAC o IA, ni se enviaron comunicaciones.
+
+## Modelo comercial unificado (planes, precios, entitlements, fundador)
+
+**Problema.** Existían listas de precios y de capacidades paralelas (`precios.tsx`,
+`app.checkout.tsx`, tabla `planes`, registro de capacidades). Herramientas se
+presentaban como exclusivas de ciertos planes, los importes usaban punto
+flotante y el descuento fundador podía inducirse desde el frontend.
+
+**Correcciones.**
+1. `src/lib/payments/plans.ts` es la fuente única de verdad: planes, RFC máximos
+   (Starter 5, Pro 25, Despacho 100, Enterprise a medida), precios de lista en
+   centavos enteros ($499 / $1,290 / $2,490 mensual; anualidad = 10 mensualidades),
+   IVA 16% sumado en checkout y capacidad operativa por plan.
+2. Regla comercial aplicada: **todos los planes incluyen todas las herramientas**.
+   Se eliminó el gating por plan en `capabilities/access.ts` y `registry.ts`.
+   Lo único que escala es la capacidad (RFC, IA, SAT, almacenamiento, usuarios).
+3. `entitlements/service.ts` deriva los límites del plan desde `plans.ts`; la
+   tabla `planes` ya no puede contradecir la fuente única. Orden de precedencia:
+   default < fila BD < plans.ts < override comercial < excepción vigente.
+4. Programa Fundador: 40% sobre la anualidad ($2,994 / $7,740 / $14,940), sólo
+   ciclo anual, sólo dentro de vigencia y sólo para cuentas registradas en
+   `programa_fundador`. La elegibilidad se resuelve **en servidor**
+   (`fundador.functions.ts`); el checkout sólo la refleja. No es vitalicio:
+   se documenta por cuenta con `renovaciones_cubiertas`.
+5. Mercado Pago (`mp.functions.ts`): importes desde `calcularImportes`, cupón y
+   descuento fundador no se acumulan (gana el mayor) y se reutiliza la liga de
+   pago viva del mismo plan/ciclo para evitar cobros duplicados.
+6. `/precios` reconstruida: comparativa por capacidad, catálogo completo derivado
+   del registro de capacidades con etiquetas honestas (beta / alcance limitado /
+   en desarrollo) y bloque de Programa Fundador con condiciones explícitas.
+
+**Verificación.** 16 pruebas nuevas en `src/lib/payments/plans.test.ts` (precios,
+IVA, redondeo entero, no acumulación de descuentos, vigencia fundadora) y
+actualización de las pruebas de capacidades y entitlements. Suite: 275 en verde.
+No se modificaron suscripciones reales ni se generaron cobros.

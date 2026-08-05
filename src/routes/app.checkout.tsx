@@ -7,7 +7,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { PLANS, computeTotal, isValidPlan, isValidCycle, type BillingCycle, type PlanId } from "@/lib/payments/plans";
+import {
+  PLANS,
+  PLANES_COMPRABLES,
+  PROGRAMA_FUNDADOR,
+  calcularImportes,
+  equivalenteMensualCents,
+  isValidPlan,
+  isValidCycle,
+  mxnDesdeCents,
+  type BillingCycle,
+  type PlanComprableId,
+} from "@/lib/payments/plans";
+import { getElegibilidadFundador } from "@/lib/payments/fundador.functions";
 import { createMpCheckout } from "@/lib/payments/mp.functions";
 import { validarCupon } from "@/lib/payments/cupones.functions";
 
@@ -28,10 +40,12 @@ function CheckoutPage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
 
-  const initialPlan: PlanId = isValidPlan(search.plan ?? "") ? (search.plan as PlanId) : "pro";
+  const initialPlan: PlanComprableId = isValidPlan(search.plan ?? "")
+    ? (search.plan as PlanComprableId)
+    : "pro";
   const initialCycle: BillingCycle = isValidCycle(search.cycle ?? "") ? (search.cycle as BillingCycle) : "mensual";
 
-  const [planId, setPlanId] = useState<PlanId>(initialPlan);
+  const [planId, setPlanId] = useState<PlanComprableId>(initialPlan);
   const [cycle, setCycle] = useState<BillingCycle>(initialCycle);
   const [includeIva, setIncludeIva] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -48,11 +62,30 @@ function CheckoutPage() {
   useEffect(() => { if (cupon) setCupon(null); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [planId, cycle]);
 
   const plan = PLANS[planId];
+
+  // La elegibilidad fundadora la decide el backend; el frontend sólo la refleja.
+  const checarFundador = useServerFn(getElegibilidadFundador);
+  const [fundador, setFundador] = useState(false);
+  useEffect(() => {
+    let vivo = true;
+    checarFundador({ data: { plan_id: planId, billing_cycle: cycle } })
+      .then((r) => { if (vivo) setFundador(!!r.elegible); })
+      .catch(() => { if (vivo) setFundador(false); });
+    return () => { vivo = false; };
+  }, [planId, cycle, checarFundador]);
+
   const totals = useMemo(
-    () => computeTotal(plan, cycle, includeIva, cupon?.porcentaje ?? 0),
-    [plan, cycle, includeIva, cupon],
+    () =>
+      calcularImportes({
+        plan,
+        cycle,
+        includeIva,
+        cuponPct: cupon?.porcentaje ?? 0,
+        fundadorAplicable: fundador,
+      }),
+    [plan, cycle, includeIva, cupon, fundador],
   );
-  const monthlyEq = cycle === "anual" ? Math.round(totals.total / 12) : null;
+  const monthlyEq = cycle === "anual" ? equivalenteMensualCents(totals.totalCents) / 100 : null;
 
   const start = useServerFn(createMpCheckout);
   const validar = useServerFn(validarCupon);
@@ -113,14 +146,15 @@ function CheckoutPage() {
           <section className="rounded-2xl border border-border/60 bg-card p-5">
             <h2 className="font-medium mb-3">1. Elige tu plan</h2>
             <div className="grid sm:grid-cols-3 gap-3">
-              {(Object.values(PLANS) as typeof PLANS[PlanId][]).map((p) => {
+              {PLANES_COMPRABLES.map((id) => {
+                const p = PLANS[id];
                 const active = p.id === planId;
-                const cardPrice = cycle === "mensual" ? p.mensual : p.anual;
-                const cardMonthlyEq = cycle === "anual" ? Math.round(p.anual / 12) : null;
+                const cardCents = (cycle === "mensual" ? p.mensualCents : p.anualCents) ?? 0;
+                const cardMonthlyEq = cycle === "anual" ? equivalenteMensualCents(cardCents) : null;
                 return (
                   <button
                     key={p.id}
-                    onClick={() => setPlanId(p.id)}
+                    onClick={() => setPlanId(id)}
                     className={`text-left rounded-xl border p-4 transition-colors ${
                       active
                         ? "border-primary bg-primary/5 ring-2 ring-primary/30"
@@ -129,15 +163,18 @@ function CheckoutPage() {
                   >
                     <div className="text-sm font-semibold">{p.name}</div>
                     <div className="text-xs text-muted-foreground mt-1">{p.description}</div>
+                    <div className="text-[11px] text-muted-foreground mt-1">
+                      Hasta {p.maxRfcs} RFC activos · todas las herramientas incluidas
+                    </div>
                     <div className="mt-3 text-lg font-bold">
-                      ${cardPrice.toLocaleString("es-MX")}
+                      {mxnDesdeCents(cardCents)}
                       <span className="text-xs font-normal text-muted-foreground">
                         {" "}/{cycle === "mensual" ? "mes" : "año"}
                       </span>
                     </div>
                     {cardMonthlyEq && (
                       <div className="text-[11px] text-muted-foreground mt-0.5">
-                        ≈ ${cardMonthlyEq.toLocaleString("es-MX")} / mes
+                        ≈ {mxnDesdeCents(cardMonthlyEq)} / mes
                       </div>
                     )}
                   </button>
@@ -229,9 +266,16 @@ function CheckoutPage() {
           <h2 className="font-medium mb-4">Resumen</h2>
           <div className="space-y-2 text-sm">
             <Row label="Plan" value={plan.name} />
+            <Row label="RFC incluidos" value={`Hasta ${plan.maxRfcs} activos`} />
             <Row label="Ciclo" value={cycle === "mensual" ? "Mensual" : "Anual"} />
             <Row label="Precio base" value={mxn(totals.base)} />
-            {cupon && (
+            {totals.fundadorAplicado && (
+              <Row
+                label={`Programa Fundador (-${PROGRAMA_FUNDADOR.descuentoPct}%)`}
+                value={`- ${mxn(totals.descuento)}`}
+              />
+            )}
+            {cupon && !totals.fundadorAplicado && (
               <Row label={`Cupón ${cupon.codigo.toUpperCase()} (-${cupon.porcentaje}%)`} value={`- ${mxn(totals.descuento)}`} />
             )}
             <Row label="Subtotal" value={mxn(totals.subtotal)} />

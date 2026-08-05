@@ -111,17 +111,20 @@ describe("Acceso por plan, permiso y madurez (falla cerrado)", () => {
     expect(r).toMatchObject({ permitido: true, motivo: "ok" });
   });
 
-  it("bloquea por plan insuficiente", () => {
-    const r = resolverAcceso({ id: "legal-redactor", plan: "starter", permiso: "miembro" });
-    expect(r.permitido).toBe(false);
-    expect(r.motivo).toBe("plan_insuficiente");
-    expect(r.navegable).toBe(false);
+  it("el plan NUNCA bloquea una herramienta: todos los planes incluyen todo", () => {
+    for (const id of ["legal-redactor", "sat-sync", "conciliacion-integral"]) {
+      const starter = resolverAcceso({ id, plan: "starter", permiso: "miembro" });
+      const despacho = resolverAcceso({ id, plan: "despacho", permiso: "miembro" });
+      expect(starter.motivo).not.toBe("plan_insuficiente");
+      expect(starter.permitido).toBe(despacho.permitido);
+      expect(starter.navegable).toBe(despacho.navegable);
+    }
   });
 
-  it("el cambio de plan habilita la herramienta", () => {
-    expect(resolverAcceso({ id: "legal-redactor", plan: "pro", permiso: "miembro" }).permitido).toBe(true);
-    expect(resolverAcceso({ id: "sat-sync", plan: "starter", permiso: "miembro" }).permitido).toBe(false);
-    expect(resolverAcceso({ id: "sat-sync", plan: "despacho", permiso: "miembro" }).permitido).toBe(true);
+  it("sin plan (trial) el acceso es idéntico al de un plan de pago", () => {
+    const sinPlan = resolverAcceso({ id: "legal-redactor", plan: null, permiso: "miembro" });
+    const conPlan = resolverAcceso({ id: "legal-redactor", plan: "pro", permiso: "miembro" });
+    expect(sinPlan.permitido).toBe(conPlan.permitido);
   });
 
   it("bloquea por permiso insuficiente", () => {

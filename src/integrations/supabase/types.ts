@@ -2744,6 +2744,71 @@ export type Database = {
         }
         Relationships: []
       }
+      programa_fundador: {
+        Row: {
+          creado_por: string | null
+          created_at: string
+          descuento_pct: number
+          despacho_id: string
+          estado: string
+          fecha_ingreso: string
+          fecha_renovacion: string | null
+          id: string
+          notas: string | null
+          plan_id: string | null
+          precio_anual_acordado_centavos: number | null
+          proxima_sesion_feedback: string | null
+          renovaciones_cubiertas: number
+          responsable_onboarding: string | null
+          ultima_sesion_feedback: string | null
+          updated_at: string
+        }
+        Insert: {
+          creado_por?: string | null
+          created_at?: string
+          descuento_pct?: number
+          despacho_id: string
+          estado?: string
+          fecha_ingreso?: string
+          fecha_renovacion?: string | null
+          id?: string
+          notas?: string | null
+          plan_id?: string | null
+          precio_anual_acordado_centavos?: number | null
+          proxima_sesion_feedback?: string | null
+          renovaciones_cubiertas?: number
+          responsable_onboarding?: string | null
+          ultima_sesion_feedback?: string | null
+          updated_at?: string
+        }
+        Update: {
+          creado_por?: string | null
+          created_at?: string
+          descuento_pct?: number
+          despacho_id?: string
+          estado?: string
+          fecha_ingreso?: string
+          fecha_renovacion?: string | null
+          id?: string
+          notas?: string | null
+          plan_id?: string | null
+          precio_anual_acordado_centavos?: number | null
+          proxima_sesion_feedback?: string | null
+          renovaciones_cubiertas?: number
+          responsable_onboarding?: string | null
+          ultima_sesion_feedback?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "programa_fundador_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: true
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rate_limits: {
         Row: {
           bucket: string

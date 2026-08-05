@@ -11,6 +11,7 @@
 // =====================================================================
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { PLANS, isValidPlan, type PlanId } from "@/lib/payments/plans";
 
 export type Recurso = "ia_requests" | "ia_tokens" | "rfcs" | "sat_solicitudes";
 export type FrecuenciaSat = "manual" | "mensual" | "semanal" | "diaria";
@@ -25,6 +26,7 @@ export interface Limites {
   max_miembros?: number;
   sat_solicitudes_mes?: number;
   sat_frecuencia_max?: FrecuenciaSat;
+  almacenamiento_gb?: number;
 }
 
 export interface ExcepcionVigente {
@@ -243,12 +245,29 @@ export async function getEntitlements(
       ? "Tu cuenta está suspendida. Contacta a soporte para reactivarla."
       : "Tu prueba gratuita venció. Elige un plan para volver a operar; tus expedientes siguen guardados.";
 
-  // --- Límites efectivos: default < plan < override comercial < excepción ---
+  // --- Límites efectivos: default < plan (SOT) < override comercial < excepción ---
+  // La fuente única de verdad de capacidad por plan es src/lib/payments/plans.ts.
+  // La tabla `planes` sólo aporta valores para claves que aún no existan ahí.
+  const claveDb = String((d as any).planes?.clave ?? d.plan_id ?? "");
+  const planSot = isValidPlan(claveDb) || claveDb === "enterprise" ? PLANS[claveDb as PlanId] : null;
+  const limitesSot: Partial<Limites> = planSot
+    ? {
+        rfcs: planSot.maxRfcs,
+        ia_msgs: planSot.capacidadOperativa.ia_msgs,
+        ia_tokens: planSot.capacidadOperativa.ia_tokens,
+        sat_solicitudes_mes: planSot.capacidadOperativa.sat_solicitudes_mes,
+        sat_frecuencia_max: planSot.capacidadOperativa.sat_frecuencia_max,
+        almacenamiento_gb: planSot.capacidadOperativa.almacenamiento_gb,
+        max_miembros: planSot.capacidadOperativa.max_miembros,
+      }
+    : {};
   const limites_base: Limites = {
     ...DEFAULT_LIMITS,
     ...(((d as any).planes?.limites as Limites | undefined) ?? {}),
+    ...limitesSot,
     ...(((d as any).limites_override as Partial<Limites> | null) ?? {}),
   };
+
   const limites: Limites = { ...limites_base };
   for (const e of excepciones) {
     const campo = EXC_A_LIMITE[e.tipo];
