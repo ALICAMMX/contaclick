@@ -210,6 +210,10 @@ function CfdiValidator() {
               <Row k="Forma de pago" v={parsed.formaPago} req />
               <Row k="Método de pago" v={parsed.metodoPago} req />
               <Row k="Moneda" v={parsed.moneda} req />
+              <Row k="Exportación" v={parsed.exportacion} req />
+              <Row k="Sello emisor" v={parsed.sello ? "Presente" : undefined} req />
+              <Row k="No. certificado" v={parsed.noCertificado} req />
+              <Row k="Sello SAT" v={parsed.selloSAT ? "Presente" : undefined} req />
             </Card>
             <Card title="Totales">
               <Row k="Subtotal" v={fmtMoney(parsed.subTotal)} req={parsed.subTotal == null} />
