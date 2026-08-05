@@ -577,3 +577,11 @@ flotante y el descuento fundador podía inducirse desde el frontend.
 IVA, redondeo entero, no acumulación de descuentos, vigencia fundadora) y
 actualización de las pruebas de capacidades y entitlements. Suite: 275 en verde.
 No se modificaron suscripciones reales ni se generaron cobros.
+
+## Prueba operativa en vivo — defectos de confianza
+
+- **Salud Fiscal**: ninguna dimensión suma puntos por ausencia de evidencia. Nuevo motor `src/lib/salud/cobertura.ts` con cobertura mínima 50%; por debajo de ese umbral el score es `null` y la UI muestra "Sin información suficiente" (dashboard, portal y PDF). No se persisten snapshots sin score.
+- **Validador CFDI**: fixtures sintéticos completos (`src/lib/demo/cfdi-fixtures.ts`). El parser extrae sello, certificado, no. de certificado y sello SAT. `risk.ts` agrega validaciones de sellado y de campos obligatorios 4.0 (Exportacion, RegimenFiscalReceptor, DomicilioFiscalReceptor, ObjetoImp). El caso "íntegro" arroja cero hallazgos; el caso "riesgo" arroja los defectos declarados. Panel de hallazgos con código y nivel, aviso de ejemplo sintético (no se guarda en expediente) y revisión 69-B de emisor/receptor.
+- **Validador 69-B / EFOS**: con cero proveedores el escaneo muestra "No evaluable" en lugar de verde; los KPIs quedan en "—" y se explica cómo cargar CFDI.
+- **Conti**: el botón flotante pasa de 80px/z-60 a 56px/z-30 para no tapar controles ni modales.
+- **Precios**: el conteo del encabezado y el desglose por módulo se calculan del mismo subconjunto de capacidades (se excluye el módulo `plataforma`), eliminando la discrepancia 45 vs 42.
