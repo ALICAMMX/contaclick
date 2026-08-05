@@ -149,4 +149,3 @@ export function parseCfdi(xml: string): CfdiParsed {
   if (!result.receptor.rfc) warnings.push("Falta RFC del receptor.");
   return result;
 }
-}
