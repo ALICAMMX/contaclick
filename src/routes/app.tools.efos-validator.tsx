@@ -202,6 +202,7 @@ function EfosValidator() {
 
 function ScanReport({ data }: { data: Awaited<ReturnType<typeof scanClienteEfos>> }) {
   const hayMatches = data.matches.length > 0;
+  const evaluable = data.proveedores_totales > 0 && data.cfdi_totales > 0;
   const definitivos = data.matches.filter((m) => m.efos.situacion === "definitivo").length;
   return (
     <div className="space-y-3">
@@ -210,21 +211,41 @@ function ScanReport({ data }: { data: Awaited<ReturnType<typeof scanClienteEfos>
         <Kpi label="CFDI analizados" value={data.cfdi_totales.toLocaleString("es-MX")} />
         <Kpi
           label="En lista 69-B"
-          value={data.matches.length.toString()}
-          tone={data.matches.length ? "bad" : "ok"}
+          value={evaluable ? data.matches.length.toString() : "—"}
+          tone={evaluable ? (data.matches.length ? "bad" : "ok") : undefined}
         />
         <Kpi
           label="Monto en riesgo"
-          value={`$${data.monto_en_riesgo.toLocaleString("es-MX", { maximumFractionDigits: 0 })}`}
-          tone={data.monto_en_riesgo > 0 ? "bad" : "ok"}
+          value={evaluable ? `$${data.monto_en_riesgo.toLocaleString("es-MX", { maximumFractionDigits: 0 })}` : "—"}
+          tone={evaluable ? (data.monto_en_riesgo > 0 ? "bad" : "ok") : undefined}
         />
       </div>
 
-      {!hayMatches && (
-        <div className="rounded-lg border border-success/30 bg-success/5 p-4 flex items-center gap-2 text-sm text-success">
-          <ShieldCheck className="h-4 w-4" /> Ningún proveedor del expediente está en la lista 69-B.
+      {!evaluable && (
+        <div className="rounded-lg border border-border/60 bg-card/40 p-4 text-sm space-y-1">
+          <div className="flex items-center gap-2 font-medium">
+            <AlertTriangle className="h-4 w-4 text-muted-foreground" /> No evaluable
+          </div>
+          <p className="text-muted-foreground text-xs">
+            El expediente no tiene CFDI recibidos cargados, así que no hay proveedores que cruzar contra la lista 69-B.
+            Esto <strong>no</strong> significa que el expediente esté limpio: significa que aún no hay información para revisar.
+          </p>
+          <p className="text-muted-foreground text-xs">
+            Carga CFDI recibidos (Descarga SAT o subida de XML) y vuelve a ejecutar el escaneo.
+          </p>
         </div>
       )}
+
+      {evaluable && !hayMatches && (
+        <div className="rounded-lg border border-success/30 bg-success/5 p-4 flex items-start gap-2 text-sm text-success">
+          <ShieldCheck className="h-4 w-4 mt-0.5 shrink-0" />
+          <span>
+            Ninguno de los {data.proveedores_totales.toLocaleString("es-MX")} proveedores del expediente está en la lista 69-B
+            ({data.cfdi_totales.toLocaleString("es-MX")} CFDI analizados).
+          </span>
+        </div>
+      )}
+
 
       {hayMatches && (
         <>

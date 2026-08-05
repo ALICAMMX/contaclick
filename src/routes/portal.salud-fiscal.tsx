@@ -53,6 +53,27 @@ function PortalSaludPage() {
     return <div className="flex items-center gap-2 text-sm text-muted-foreground"><Sparkles className="h-4 w-4 animate-pulse text-primary" /> Cargando tu salud fiscal…</div>;
   }
 
+  if (salud.score === null) {
+    return (
+      <div className="space-y-6">
+        <header>
+          <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
+            <Activity className="h-6 w-6 text-primary" /> Mi Salud Fiscal
+          </h1>
+        </header>
+        <div className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-6">
+          <div className="text-lg font-medium">Sin información suficiente</div>
+          <p className="text-sm text-muted-foreground mt-2">
+            Todavía no hay datos suficientes en tu expediente para calcular una calificación confiable
+            ({salud.cobertura.porcentaje}% de cobertura, mínimo {salud.cobertura.minimo}%). Tu despacho te
+            indicará qué información hace falta.
+          </p>
+        </div>
+        <Button size="sm" variant="outline" asChild><Link to="/portal">Volver al inicio</Link></Button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <header>
@@ -67,10 +88,14 @@ function PortalSaludPage() {
           <div className="text-6xl font-bold">{salud.score}<span className="text-2xl opacity-50">/100</span></div>
           <div>
             <div className="text-lg font-medium">{semLabel[salud.semaforo]}</div>
-            <div className="text-sm mt-1 flex items-center gap-1">
-              {salud.variacion_mes >= 0 ? <ArrowUpRight className="h-4 w-4 text-emerald-400" /> : <ArrowDownRight className="h-4 w-4 text-red-400" />}
-              {salud.variacion_mes >= 0 ? "+" : ""}{salud.variacion_mes} pts vs mes anterior
-            </div>
+            {salud.variacion_mes === null ? (
+              <div className="text-sm mt-1 opacity-80">Sin comparativo con el mes anterior</div>
+            ) : (
+              <div className="text-sm mt-1 flex items-center gap-1">
+                {salud.variacion_mes >= 0 ? <ArrowUpRight className="h-4 w-4 text-emerald-400" /> : <ArrowDownRight className="h-4 w-4 text-red-400" />}
+                {salud.variacion_mes >= 0 ? "+" : ""}{salud.variacion_mes} pts vs mes anterior
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -79,6 +104,15 @@ function PortalSaludPage() {
         <h2 className="text-sm uppercase tracking-wide text-muted-foreground mb-3">Áreas evaluadas</h2>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {salud.subscores.map((s) => {
+            if (s.score === null) {
+              return (
+                <div key={s.key} className="rounded-xl border border-dashed border-border bg-card/50 p-4">
+                  <div className="text-sm font-medium">{s.label}</div>
+                  <div className="text-base font-semibold mt-1 text-muted-foreground">No evaluable</div>
+                  <p className="text-xs text-muted-foreground mt-2">Falta información para evaluar esta área.</p>
+                </div>
+              );
+            }
             const bar = s.score >= 85 ? "bg-emerald-500" : s.score >= 70 ? "bg-amber-500" : s.score >= 50 ? "bg-orange-500" : "bg-red-500";
             return (
               <div key={s.key} className="rounded-xl border border-border bg-card p-4">
@@ -90,6 +124,7 @@ function PortalSaludPage() {
           })}
         </div>
       </section>
+
 
       {salud.alertas.length > 0 && (
         <section>

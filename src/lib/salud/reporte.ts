@@ -43,21 +43,28 @@ export function descargarReporteSalud(salud: SaludFiscal) {
   doc.roundedRect(40, y, 180, 90, 8, 8, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(36);
-  doc.text(`${salud.score}`, 60, y + 50);
-  doc.setFontSize(14);
-  doc.text("/100", 130, y + 50);
+  doc.setFontSize(salud.score === null ? 16 : 36);
+  doc.text(salud.score === null ? "Sin información" : `${salud.score}`, 60, y + 50);
+  if (salud.score !== null) {
+    doc.setFontSize(14);
+    doc.text("/100", 130, y + 50);
+  }
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.text(`Semáforo: ${salud.semaforo.toUpperCase()}`, 60, y + 70);
-  doc.text(`Variación: ${salud.variacion_mes >= 0 ? "+" : ""}${salud.variacion_mes}`, 60, y + 84);
+  doc.text(
+    salud.variacion_mes === null ? "Variación: no comparable" : `Variación: ${salud.variacion_mes >= 0 ? "+" : ""}${salud.variacion_mes}`,
+    60,
+    y + 84,
+  );
+
 
   // Subscores tabla
   autoTable(doc, {
     startY: y,
     margin: { left: 240, right: 40 },
     head: [["Área", "Score", "Peso"]],
-    body: salud.subscores.map((s) => [s.label, `${s.score}/100`, `${s.peso}%`]),
+    body: salud.subscores.map((s) => [s.label, s.score === null ? "No evaluable" : `${s.score}/100`, `${s.peso}%`]),
     styles: { fontSize: 9, cellPadding: 4 },
     headStyles: { fillColor: [30, 41, 59] },
   });

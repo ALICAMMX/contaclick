@@ -4,8 +4,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { computeSaludFiscal, analizarSaludConIA, crearTareaDesdeSalud, type SaludFiscal, type SaludRecomendacion } from "@/lib/salud/salud.functions";
+import { TEXTO_SIN_DATOS } from "@/lib/salud/cobertura";
 import { descargarReporteSalud } from "@/lib/salud/reporte";
-import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, Brain, CheckCircle2, Download, FileSearch, Plus, RefreshCw, Sparkles, TrendingUp } from "lucide-react";
+import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, Brain, CheckCircle2, Download, FileSearch, Info, Plus, RefreshCw, Sparkles, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { HerramientaHelp } from "@/components/HerramientaHelp";
@@ -82,10 +83,12 @@ function SaludFiscalPage() {
           <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isFetching}>
             <RefreshCw className={`h-4 w-4 mr-1 ${isFetching ? "animate-spin" : ""}`} /> Recalcular
           </Button>
-          <Button size="sm" variant="outline" onClick={() => aiMut.mutate()} disabled={aiMut.isPending || !data}>
+          <Button size="sm" variant="outline" onClick={() => aiMut.mutate()} disabled={aiMut.isPending || !data || data.score === null}
+            title={data && data.score === null ? "Sin cobertura mínima de información no se ejecuta el análisis IA." : undefined}>
             <Brain className="h-4 w-4 mr-1" /> {aiMut.isPending ? "Analizando…" : "Analizar con IA"}
           </Button>
-          <Button size="sm" variant="hero" onClick={() => data && descargarReporteSalud(data)} disabled={!data}>
+          <Button size="sm" variant="hero" onClick={() => data && descargarReporteSalud(data)} disabled={!data || data.score === null}
+            title={data && data.score === null ? "No se emite reporte ejecutivo sin información suficiente." : undefined}>
             <Download className="h-4 w-4 mr-1" /> Reporte ejecutivo
           </Button>
         </div>
@@ -97,6 +100,9 @@ function SaludFiscalPage() {
       {data && (
         <>
           <ScoreHero salud={data} />
+          {data.score === null && <SinDatosPanel salud={data} />}
+
+
 
           <section>
             <h2 className="text-sm uppercase tracking-wide text-muted-foreground mb-3">Subscores por área</h2>
@@ -183,15 +189,17 @@ const semBg: Record<string, string> = {
   amarillo: "from-amber-500/20 to-amber-500/5 border-amber-500/40 text-amber-300",
   naranja: "from-orange-500/20 to-orange-500/5 border-orange-500/40 text-orange-300",
   rojo: "from-red-500/20 to-red-500/5 border-red-500/40 text-red-300",
+  sin_datos: "from-muted/40 to-transparent border-border text-muted-foreground",
 };
 const semLabel: Record<string, string> = {
   verde: "Salud excelente", amarillo: "Salud estable", naranja: "Riesgo moderado", rojo: "Riesgo alto",
+  sin_datos: TEXTO_SIN_DATOS,
 };
 
 function ScoreHero({ salud }: { salud: SaludFiscal }) {
   const pct = salud.score;
-  const dash = (pct / 100) * 251.2;
-  const color = salud.semaforo === "verde" ? "#22c55e" : salud.semaforo === "amarillo" ? "#eab308" : salud.semaforo === "naranja" ? "#f97316" : "#ef4444";
+  const dash = ((pct ?? 0) / 100) * 251.2;
+  const color = salud.semaforo === "verde" ? "#22c55e" : salud.semaforo === "amarillo" ? "#eab308" : salud.semaforo === "naranja" ? "#f97316" : salud.semaforo === "rojo" ? "#ef4444" : "hsl(var(--muted-foreground))";
   return (
     <div className={`rounded-2xl border bg-gradient-to-br p-6 ${semBg[salud.semaforo]}`}>
       <div className="flex items-center justify-between gap-6 flex-wrap">
@@ -199,20 +207,29 @@ function ScoreHero({ salud }: { salud: SaludFiscal }) {
           <div className="relative w-32 h-32 shrink-0">
             <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
               <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeOpacity="0.15" strokeWidth="10" />
-              <circle cx="50" cy="50" r="40" fill="none" stroke={color} strokeWidth="10" strokeLinecap="round"
-                strokeDasharray={`${dash} 251.2`} />
+              {pct !== null && (
+                <circle cx="50" cy="50" r="40" fill="none" stroke={color} strokeWidth="10" strokeLinecap="round"
+                  strokeDasharray={`${dash} 251.2`} />
+              )}
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <div className="text-3xl font-bold">{salud.score}</div>
-              <div className="text-[10px] uppercase opacity-70">de 100</div>
+              <div className="text-3xl font-bold">{pct ?? "—"}</div>
+              <div className="text-[10px] uppercase opacity-70">{pct === null ? "sin score" : "de 100"}</div>
             </div>
           </div>
           <div>
             <div className="text-xs uppercase tracking-wide opacity-80">Score de Salud Fiscal</div>
             <div className="text-2xl font-semibold mt-1">{semLabel[salud.semaforo]}</div>
-            <div className="text-sm mt-2 flex items-center gap-1">
-              {salud.variacion_mes >= 0 ? <ArrowUpRight className="h-4 w-4 text-emerald-400" /> : <ArrowDownRight className="h-4 w-4 text-red-400" />}
-              <span>{salud.variacion_mes >= 0 ? "+" : ""}{salud.variacion_mes} pts vs mes anterior</span>
+            {salud.variacion_mes === null ? (
+              <div className="text-sm mt-2 opacity-80">Sin comparativo con el mes anterior</div>
+            ) : (
+              <div className="text-sm mt-2 flex items-center gap-1">
+                {salud.variacion_mes >= 0 ? <ArrowUpRight className="h-4 w-4 text-emerald-400" /> : <ArrowDownRight className="h-4 w-4 text-red-400" />}
+                <span>{salud.variacion_mes >= 0 ? "+" : ""}{salud.variacion_mes} pts vs mes anterior</span>
+              </div>
+            )}
+            <div className="text-xs opacity-70 mt-1">
+              Cobertura del modelo: {salud.cobertura.porcentaje}% ({salud.cobertura.dimensionesEvaluadas} de {salud.cobertura.dimensionesAplicables} áreas evaluadas · mínimo {salud.cobertura.minimo}%)
             </div>
           </div>
         </div>
@@ -226,7 +243,59 @@ function ScoreHero({ salud }: { salud: SaludFiscal }) {
   );
 }
 
+/** Explica por qué no hay score y enlaza a las herramientas que lo desbloquean. */
+function SinDatosPanel({ salud }: { salud: SaludFiscal }) {
+  return (
+    <div className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-6">
+      <div className="flex items-start gap-3">
+        <Info className="h-5 w-5 text-amber-400 mt-0.5 shrink-0" />
+        <div className="space-y-3 flex-1">
+          <div>
+            <div className="font-medium text-base">{TEXTO_SIN_DATOS}</div>
+            <p className="text-sm text-muted-foreground mt-1">{salud.cobertura.mensaje}</p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Un score alto exige evidencia. La ausencia de información nunca se interpreta como cumplimiento:
+              por eso este expediente no recibe calificación todavía.
+            </p>
+          </div>
+          {salud.cobertura.faltantes.length > 0 && (
+            <div>
+              <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Información faltante</div>
+              <ul className="space-y-2">
+                {salud.cobertura.faltantes.map((f, i) => (
+                  <li key={i} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2">
+                    <span className="text-sm">{f.que}</span>
+                    <Button size="sm" variant="outline" asChild><Link to={f.ruta}>{f.cta}</Link></Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SubScoreCard({ s }: { s: SaludFiscal["subscores"][number] }) {
+  if (s.score === null) {
+    return (
+      <div className="rounded-xl border border-dashed border-border bg-card/50 p-4">
+        <div className="flex items-center justify-between">
+          <div className="text-sm font-medium">{s.label}</div>
+          <div className="text-xs text-muted-foreground">peso {s.peso}%</div>
+        </div>
+        <div className="text-lg font-semibold mt-2 text-muted-foreground">No evaluable</div>
+        <div className="h-1.5 bg-muted/40 rounded mt-3" />
+        <p className="text-xs text-muted-foreground mt-3">Sin información suficiente para evaluar esta área. No suma ni resta puntos.</p>
+        {s.faltante && (
+          <Button size="sm" variant="outline" className="mt-3 h-7 text-xs" asChild>
+            <Link to={s.faltante.ruta}>{s.faltante.cta}</Link>
+          </Button>
+        )}
+      </div>
+    );
+  }
   const color = s.score >= 85 ? "text-emerald-400" : s.score >= 70 ? "text-amber-400" : s.score >= 50 ? "text-orange-400" : "text-red-400";
   const bar = s.score >= 85 ? "bg-emerald-500" : s.score >= 70 ? "bg-amber-500" : s.score >= 50 ? "bg-orange-500" : "bg-red-500";
   return (
@@ -245,6 +314,7 @@ function SubScoreCard({ s }: { s: SaludFiscal["subscores"][number] }) {
     </div>
   );
 }
+
 
 function ComparativoTabla({ c }: { c: SaludFiscal["comparativo"] }) {
   const fmt = (n: number) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
@@ -288,11 +358,25 @@ function ComparativoTabla({ c }: { c: SaludFiscal["comparativo"] }) {
   );
 }
 
-function TendenciaChart({ valores }: { valores: number[] }) {
+function TendenciaChart({ valores }: { valores: (number | null)[] }) {
   const max = 100;
   const w = 600, h = 120, pad = 10;
   const step = (w - pad * 2) / Math.max(1, valores.length - 1);
-  const points = valores.map((v, i) => `${pad + i * step},${h - pad - (v / max) * (h - pad * 2)}`);
+  const y = (v: number) => h - pad - (v / max) * (h - pad * 2);
+  // Los meses sin score publicable se omiten: dibujar un 0 fingiría un desplome.
+  const puntos = valores
+    .map((v, i) => (v === null ? null : { x: pad + i * step, y: y(v) }))
+    .filter((p): p is { x: number; y: number } => p !== null);
+  const points = puntos.map((p) => `${p.x},${p.y}`);
+
+  if (puntos.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-border bg-card/50 p-6 text-center text-sm text-muted-foreground">
+        Aún no hay meses con score publicable. La serie histórica comienza cuando el expediente alcanza la cobertura mínima de información.
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-xl border border-border bg-card p-3">
       <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-32">
@@ -303,18 +387,21 @@ function TendenciaChart({ valores }: { valores: number[] }) {
           </linearGradient>
         </defs>
         <polyline fill="url(#grad)" stroke="none"
-          points={`${pad},${h - pad} ${points.join(" ")} ${w - pad},${h - pad}`} />
+          points={`${puntos[0].x},${h - pad} ${points.join(" ")} ${puntos[puntos.length - 1].x},${h - pad}`} />
         <polyline fill="none" stroke="hsl(var(--primary))" strokeWidth="2" points={points.join(" ")} />
-        {valores.map((v, i) => (
-          <circle key={i} cx={pad + i * step} cy={h - pad - (v / max) * (h - pad * 2)} r="3" fill="hsl(var(--primary))" />
+        {puntos.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r="3" fill="hsl(var(--primary))" />
         ))}
       </svg>
       <div className="flex justify-between text-[10px] text-muted-foreground mt-1 px-2">
-        <span>hace 12m</span><span className="flex items-center gap-1"><TrendingUp className="h-3 w-3" /> Score</span><span>actual</span>
+        <span>hace 12m</span>
+        <span className="flex items-center gap-1"><TrendingUp className="h-3 w-3" /> Score ({puntos.length}/12 meses con datos)</span>
+        <span>actual</span>
       </div>
     </div>
   );
 }
+
 
 function AlertaItem({ a }: { a: SaludFiscal["alertas"][number] }) {
   const color = a.nivel === "critica" || a.nivel === "alta" ? "border-red-500/40 bg-red-500/5 text-red-300" :

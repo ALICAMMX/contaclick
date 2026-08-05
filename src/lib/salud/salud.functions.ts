@@ -2,6 +2,14 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
+import {
+  calcularSaludScore,
+  type CoberturaSalud,
+  type DimensionSalud,
+  type EstadoDimension,
+  type FaltanteSalud,
+  type SemaforoSalud,
+} from "./cobertura";
 
 function extractJsonObject(raw: string) {
   const text = String(raw ?? "").trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
@@ -20,9 +28,12 @@ const Input = z.object({
 export type SubScore = {
   key: "cumplimiento" | "riesgo_sat" | "cfdi" | "bancos" | "laboral" | "documental";
   label: string;
-  score: number; // 0..100 (más alto = mejor)
+  /** 0..100 (más alto = mejor). null cuando no hay información para evaluarla. */
+  score: number | null;
   peso: number; // %
+  estado: EstadoDimension;
   detalles: string[];
+  faltante: FaltanteSalud | null;
 };
 
 export type SaludAlerta = {
@@ -58,10 +69,15 @@ export type SaludFiscal = {
   notFound?: false;
   cliente: { id: string; rfc: string; razon_social: string };
   periodo: string; // YYYY-MM
-  score: number; // 0..100 más alto = mejor
-  semaforo: "verde" | "amarillo" | "naranja" | "rojo";
-  variacion_mes: number; // diff vs mes anterior
-  tendencia: number[]; // últimos 12 meses
+  /** 0..100 más alto = mejor. null cuando no hay cobertura mínima de información. */
+  score: number | null;
+  semaforo: SemaforoSalud;
+  /** Auditoría del cálculo: qué se pudo evaluar y qué falta. */
+  cobertura: CoberturaSalud;
+  /** diff vs mes anterior; null si alguno de los dos periodos no tiene score. */
+  variacion_mes: number | null;
+  /** últimos 12 meses; null en los meses sin score publicable. */
+  tendencia: (number | null)[];
   subscores: SubScore[];
   alertas: SaludAlerta[];
   comparativo: SaludComparativo;
@@ -72,12 +88,6 @@ export type SaludFiscal = {
 
 const PESOS = { cumplimiento: 25, riesgo_sat: 25, cfdi: 15, bancos: 15, laboral: 10, documental: 10 } as const;
 
-function semaforoOf(score: number): "verde" | "amarillo" | "naranja" | "rojo" {
-  if (score >= 85) return "verde";
-  if (score >= 70) return "amarillo";
-  if (score >= 50) return "naranja";
-  return "rojo";
-}
 
 function ymd(d: Date): string {
   return d.toISOString().slice(0, 10);
@@ -161,20 +171,28 @@ export const computeSaludFiscal = createServerFn({ method: "POST" })
       margen_pct: { actual: margenAct, anterior: margenPrev },
     };
 
-    // ===== Subscores =====
-    // Cumplimiento: tareas vencidas + alertas críticas
+    // ===== Dimensiones =====
+    // REGLA: una dimensión sólo recibe puntos cuando existe evidencia real.
+    // Sin evidencia se marca "no_evaluable" (score null) y se excluye del
+    // promedio ponderado — nunca se interpreta como 0 ni como 100.
+
+    // Cumplimiento: requiere tareas/obligaciones registradas.
     const tareasVencidas = tareasList.filter((t) => t.estatus !== "completada" && t.due_date && new Date(t.due_date) < today).length;
     const tareasCompletadas = tareasList.filter((t) => t.estatus === "completada").length;
-    const tareasTotales = tareasList.length || 1;
-    const tasaCumpl = tareasCompletadas / tareasTotales;
-    const scoreCumpl = Math.max(0, Math.min(100, Math.round(tasaCumpl * 100 - tareasVencidas * 8)));
+    const hayTareas = tareasList.length > 0;
+    const scoreCumpl = hayTareas
+      ? Math.max(0, Math.min(100, Math.round((tareasCompletadas / tareasList.length) * 100 - tareasVencidas * 8)))
+      : null;
 
-    // Riesgo SAT: alertas altas + semáforo cliente
+    // Riesgo SAT: requiere alertas del motor de riesgo o semáforo asignado.
     const alertasAltas = al.filter((a) => a.nivel === "alto" || a.nivel === "critica").length;
-    const semBase = cli.semaforo === "rojo" ? 35 : cli.semaforo === "amarillo" ? 65 : cli.semaforo === "verde" ? 90 : 70;
-    const scoreRiesgo = Math.max(0, Math.min(100, semBase - alertasAltas * 8));
+    const semCli = cli.semaforo as string | null;
+    const haySemaforo = semCli === "rojo" || semCli === "amarillo" || semCli === "verde";
+    const hayRiesgo = al.length > 0 || haySemaforo;
+    const semBase = semCli === "rojo" ? 35 : semCli === "amarillo" ? 65 : semCli === "verde" ? 90 : 70;
+    const scoreRiesgo = hayRiesgo ? Math.max(0, Math.min(100, semBase - alertasAltas * 8)) : null;
 
-    // CFDI salud
+    // CFDI: requiere comprobantes cargados en el periodo.
     const cfdiCancelados = cfdis.filter((c) => c.estatus_sat === "cancelado").length;
     const hashes = new Set<string>();
     let cfdiDup = 0;
@@ -184,41 +202,67 @@ export const computeSaludFiscal = createServerFn({ method: "POST" })
         else hashes.add(c.archivo_hash);
       }
     }
-    const totalCfdi = cfdis.length || 1;
-    const tasaIncidencias = (cfdiCancelados + cfdiDup) / totalCfdi;
-    const scoreCfdi = Math.max(0, Math.min(100, Math.round(100 - tasaIncidencias * 100 - (cfdis.length === 0 ? 20 : 0))));
+    const hayCfdi = cfdis.length > 0;
+    const tasaIncidencias = hayCfdi ? (cfdiCancelados + cfdiDup) / cfdis.length : 0;
+    const scoreCfdi = hayCfdi ? Math.max(0, Math.min(100, Math.round(100 - tasaIncidencias * 100))) : null;
 
-    // Bancos: conciliaciones pendientes/diferencias
+    // Bancos: requiere al menos una conciliación cargada.
     const concPend = concList.filter((c) => c.estatus !== "confirmada" && c.estatus !== "conciliada").length;
     const concDif = concList.filter((c) => Math.abs(Number(c.diferencia ?? 0)) > 0).length;
-    const scoreBancos = Math.max(0, Math.min(100, 100 - concPend * 6 - concDif * 4));
+    const hayBancos = concList.length > 0;
+    const scoreBancos = hayBancos ? Math.max(0, Math.min(100, 100 - concPend * 6 - concDif * 4)) : null;
 
-    // Laboral
+    // Laboral: requiere CFDI de nómina o incidencias laborales registradas.
     const alertasLab = al.filter((a) => (a.tipo ?? "").toLowerCase().includes("nomina") || (a.tipo ?? "").toLowerCase().includes("imss")).length;
-    const scoreLaboral = Math.max(0, Math.min(100, 90 - alertasLab * 12));
+    const cfdiNomina = cfdis.filter((c) => c.tipo_cfdi === "N").length;
+    const hayLaboral = cfdiNomina > 0 || alertasLab > 0;
+    const scoreLaboral = hayLaboral ? Math.max(0, Math.min(100, 100 - alertasLab * 12)) : null;
 
-    // Documental
+    // Documental: requiere que el motor de alertas haya evaluado el expediente.
     const alertasDoc = al.filter((a) => (a.tipo ?? "").toLowerCase().includes("documento") || (a.tipo ?? "").toLowerCase().includes("efirma") || (a.tipo ?? "").toLowerCase().includes("csd")).length;
-    const scoreDoc = Math.max(0, Math.min(100, 92 - alertasDoc * 14));
+    const hayDocumental = al.length > 0;
+    const scoreDoc = hayDocumental ? Math.max(0, Math.min(100, 100 - alertasDoc * 14)) : null;
+
+    const dim = (
+      key: SubScore["key"],
+      label: string,
+      peso: number,
+      score: number | null,
+      detalles: string[],
+      faltante: FaltanteSalud,
+    ): SubScore => ({
+      key,
+      label,
+      peso,
+      score,
+      estado: score === null ? "no_evaluable" : score >= 70 ? "favorable" : "desfavorable",
+      detalles: score === null ? ["Sin información suficiente para evaluar esta área."] : detalles,
+      faltante: score === null ? faltante : null,
+    });
 
     const subscores: SubScore[] = [
-      { key: "cumplimiento", label: "Cumplimiento Fiscal", score: scoreCumpl, peso: PESOS.cumplimiento,
-        detalles: [`${tareasCompletadas}/${tareasList.length || 0} tareas cerradas`, `${tareasVencidas} tareas vencidas`] },
-      { key: "riesgo_sat", label: "Riesgo SAT", score: scoreRiesgo, peso: PESOS.riesgo_sat,
-        detalles: [`${alertasAltas} alertas críticas`, `Semáforo expediente: ${cli.semaforo ?? "—"}`] },
-      { key: "cfdi", label: "Salud CFDI", score: scoreCfdi, peso: PESOS.cfdi,
-        detalles: [`${cfdis.length} CFDI del mes`, `${cfdiCancelados} cancelados · ${cfdiDup} duplicados`] },
-      { key: "bancos", label: "Salud Bancaria", score: scoreBancos, peso: PESOS.bancos,
-        detalles: [`${concPend} conciliaciones pendientes`, `${concDif} con diferencias`] },
-      { key: "laboral", label: "Salud Laboral", score: scoreLaboral, peso: PESOS.laboral,
-        detalles: [`${alertasLab} incidencias laborales`] },
-      { key: "documental", label: "Salud Documental", score: scoreDoc, peso: PESOS.documental,
-        detalles: [`${alertasDoc} pendientes documentales`] },
+      dim("cumplimiento", "Cumplimiento Fiscal", PESOS.cumplimiento, scoreCumpl,
+        [`${tareasCompletadas}/${tareasList.length} tareas cerradas`, `${tareasVencidas} tareas vencidas`],
+        { que: "Obligaciones y tareas del expediente", ruta: "/app/calendario", cta: "Generar calendario fiscal" }),
+      dim("riesgo_sat", "Riesgo SAT", PESOS.riesgo_sat, scoreRiesgo,
+        [`${alertasAltas} alertas críticas`, `Semáforo expediente: ${semCli ?? "—"}`],
+        { que: "Evaluación de los criterios de riesgo SAT", ruta: "/app/riesgo", cta: "Evaluar riesgo SAT" }),
+      dim("cfdi", "Salud CFDI", PESOS.cfdi, scoreCfdi,
+        [`${cfdis.length} CFDI del mes`, `${cfdiCancelados} cancelados · ${cfdiDup} duplicados`],
+        { que: "CFDI del periodo", ruta: "/app/sat-sync", cta: "Descargar o cargar CFDI" }),
+      dim("bancos", "Salud Bancaria", PESOS.bancos, scoreBancos,
+        [`${concPend} conciliaciones pendientes`, `${concDif} con diferencias`],
+        { que: "Estados de cuenta conciliados", ruta: "/app/conciliacion", cta: "Conciliar banco" }),
+      dim("laboral", "Salud Laboral", PESOS.laboral, scoreLaboral,
+        [`${cfdiNomina} CFDI de nómina`, `${alertasLab} incidencias laborales`],
+        { que: "CFDI de nómina o expediente laboral", ruta: "/app/admin/nomina", cta: "Auditar nómina" }),
+      dim("documental", "Salud Documental", PESOS.documental, scoreDoc,
+        [`${alertasDoc} pendientes documentales`],
+        { que: "Revisión documental del expediente (e.firma, CSD, constancias)", ruta: "/app/expedientes", cta: "Completar expediente" }),
     ];
 
-    const scoreGlobal = Math.round(
-      subscores.reduce((acc, s) => acc + (s.score * s.peso) / 100, 0),
-    );
+    const { score: scoreGlobal, semaforo, cobertura } = calcularSaludScore(subscores as unknown as DimensionSalud[]);
+
 
     // ===== Alertas (top) =====
     const saludAlertas: SaludAlerta[] = al.slice(0, 6).map((a) => ({
@@ -270,21 +314,22 @@ export const computeSaludFiscal = createServerFn({ method: "POST" })
     const periodoActual = ym(today);
     const periodoPrev = ym(startPrev);
     const histMap = new Map<string, number>();
-    for (const h of histRows) histMap.set(h.periodo as string, h.score as number);
-    histMap.set(periodoActual, scoreGlobal);
-    const tendencia: number[] = [];
+    for (const h of histRows) if (h.score !== null) histMap.set(h.periodo as string, h.score as number);
+    if (scoreGlobal !== null) histMap.set(periodoActual, scoreGlobal);
+    const tendencia: (number | null)[] = [];
     for (let i = 11; i >= 0; i--) {
       const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      tendencia.push(histMap.get(ym(d)) ?? 0);
+      tendencia.push(histMap.get(ym(d)) ?? null);
     }
-    const scorePrev = histMap.get(periodoPrev) ?? scoreGlobal;
-    const variacion = scoreGlobal - scorePrev;
+    const scorePrev = histMap.get(periodoPrev) ?? null;
+    const variacion = scoreGlobal !== null && scorePrev !== null ? scoreGlobal - scorePrev : null;
 
     const result: SaludFiscal = {
       cliente: { id: cli.id, rfc: cli.rfc, razon_social: cli.razon_social },
       periodo: periodoActual,
       score: scoreGlobal,
-      semaforo: semaforoOf(scoreGlobal),
+      semaforo,
+      cobertura,
       variacion_mes: variacion,
       tendencia,
       subscores,
@@ -293,12 +338,15 @@ export const computeSaludFiscal = createServerFn({ method: "POST" })
       hallazgos,
       recomendaciones,
       historial: histRows
+        .filter((h) => h.score !== null)
         .map((h) => ({ periodo: h.periodo as string, score: h.score as number, semaforo: h.semaforo as string }))
         .reverse(),
     };
 
-    // Persist snapshot del periodo (idempotente por unique cliente_id+periodo)
-    if (data.persist !== false) {
+    // Persist snapshot del periodo (idempotente por unique cliente_id+periodo).
+    // Sin cobertura mínima NO se guarda score: un snapshot falso contaminaría
+    // la tendencia histórica y el comparativo de meses siguientes.
+    if (data.persist !== false && scoreGlobal !== null) {
       await supabase.from("salud_fiscal_snapshots").upsert({
         despacho_id: cli.despacho_id as string,
         cliente_id: cli.id,
@@ -313,6 +361,7 @@ export const computeSaludFiscal = createServerFn({ method: "POST" })
         computed_by: userId,
       } as any, { onConflict: "cliente_id,periodo" });
     }
+
 
     return result;
   });

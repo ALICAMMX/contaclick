@@ -10,6 +10,11 @@ export type CfdiParsed = {
   metodoPago?: string;
   moneda?: string;
   tipoComprobante?: string;
+  exportacion?: string;
+  /** Sello digital del emisor (cadena base64). Vacío = comprobante no sellado. */
+  sello?: string;
+  noCertificado?: string;
+  certificado?: string;
   subTotal?: number;
   total?: number;
   descuento?: number;
@@ -17,7 +22,10 @@ export type CfdiParsed = {
   receptor: { rfc?: string; nombre?: string; usoCFDI?: string; regimenFiscalReceptor?: string; domicilioFiscalReceptor?: string };
   uuid?: string;
   fechaTimbrado?: string;
-  conceptos: Array<{ descripcion?: string; cantidad?: number; valorUnitario?: number; importe?: number; claveProdServ?: string }>;
+  /** Datos del timbre (sólo presentes si el CFDI está timbrado). */
+  selloSAT?: string;
+  noCertificadoSAT?: string;
+  conceptos: Array<{ descripcion?: string; cantidad?: number; valorUnitario?: number; importe?: number; claveProdServ?: string; objetoImp?: string }>;
   impuestos: { totalTrasladados?: number; totalRetenidos?: number };
   /** UUIDs relacionados: DoctoRelacionado (Pago 2.0) o CfdiRelacionados. */
   relacionados: Array<{ uuid: string; tipo: "pago" | "relacion"; tipoRelacion?: string }>;
@@ -81,6 +89,7 @@ export function parseCfdi(xml: string): CfdiParsed {
     valorUnitario: num(attr(t, "ValorUnitario")),
     importe: num(attr(t, "Importe")),
     claveProdServ: attr(t, "ClaveProdServ"),
+    objetoImp: attr(t, "ObjetoImp"),
   }));
 
   // Puede haber varios <Impuestos>: uno por Concepto y el resumen a nivel Comprobante.
@@ -99,6 +108,10 @@ export function parseCfdi(xml: string): CfdiParsed {
     metodoPago: attr(comprobante, "MetodoPago"),
     moneda: attr(comprobante, "Moneda"),
     tipoComprobante: attr(comprobante, "TipoDeComprobante"),
+    exportacion: attr(comprobante, "Exportacion"),
+    sello: attr(comprobante, "Sello"),
+    noCertificado: attr(comprobante, "NoCertificado"),
+    certificado: attr(comprobante, "Certificado"),
     subTotal: num(attr(comprobante, "SubTotal")),
     total: num(attr(comprobante, "Total")),
     descuento: num(attr(comprobante, "Descuento")),
@@ -116,6 +129,8 @@ export function parseCfdi(xml: string): CfdiParsed {
     },
     uuid: attr(tfd, "UUID"),
     fechaTimbrado: attr(tfd, "FechaTimbrado"),
+    selloSAT: attr(tfd, "SelloSAT"),
+    noCertificadoSAT: attr(tfd, "NoCertificadoSAT"),
     conceptos,
     impuestos: {
       totalTrasladados: num(attr(impuestosTag, "TotalImpuestosTrasladados")),

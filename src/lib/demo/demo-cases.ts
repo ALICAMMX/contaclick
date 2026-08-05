@@ -3,6 +3,7 @@
 // vea qué arroja la herramienta en escenarios buenos vs en riesgo.
 
 import { EFOS_DEMO_RFCS } from "./perfiles";
+import { CFDI_INTEGRO_XML, CFDI_RIESGO_XML } from "./cfdi-fixtures";
 
 export type DemoCase = {
   label: string;
@@ -15,23 +16,22 @@ export type ToolDemoCases = {
   [variant: string]: DemoCase;
 };
 
-const xmlSimpleValido = `<?xml version="1.0" encoding="UTF-8"?>
-<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" Version="4.0" Serie="A" Folio="1001" Fecha="2025-06-15T10:00:00" SubTotal="10000.00" Total="11600.00" TipoDeComprobante="I" MetodoPago="PUE" FormaPago="03" Moneda="MXN" LugarExpedicion="64000" Exportacion="01" Sello="SELLO_DEMO_VALIDO">
-  <cfdi:Emisor Rfc="DEMOCEJ010101AA1" Nombre="Constructora Ejemplar SA de CV" RegimenFiscal="601"/>
-  <cfdi:Receptor Rfc="XAXX010101000" Nombre="PUBLICO EN GENERAL" DomicilioFiscalReceptor="64000" RegimenFiscalReceptor="616" UsoCFDI="G03"/>
-</cfdi:Comprobante>`;
-
-const xmlConProblemas = `<?xml version="1.0" encoding="UTF-8"?>
-<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" Version="4.0" Serie="X" Folio="9999" Fecha="2025-06-15T10:00:00" SubTotal="50000.00" Total="58000.00" TipoDeComprobante="I" MetodoPago="PUE" FormaPago="01" Moneda="MXN" LugarExpedicion="64000" Exportacion="01" Sello="">
-  <cfdi:Emisor Rfc="${EFOS_DEMO_RFCS.definitivo}" Nombre="Proveedor EFOS Definitivo Demo" RegimenFiscal="601"/>
-  <cfdi:Receptor Rfc="DEMOTRA950404DD4" Nombre="Transportes Riesgo Alto SA" DomicilioFiscalReceptor="64000" RegimenFiscalReceptor="601" UsoCFDI="G03"/>
-</cfdi:Comprobante>`;
-
 export const DEMO_CASES: Record<string, ToolDemoCases> = {
   "cfdi-validator": {
-    ok: { variant: "ok", label: "Caso OK — CFDI íntegro", hint: "Sello correcto, RFC propio, totales cuadran.", payload: { xml: xmlSimpleValido } },
-    riesgo: { variant: "riesgo", label: "Caso en riesgo — CFDI sin sello + EFOS", hint: "Sello vacío y proveedor en lista 69-B definitivos.", payload: { xml: xmlConProblemas } },
+    ok: {
+      variant: "ok",
+      label: "Caso OK — CFDI 4.0 íntegro",
+      hint: "Sellado, timbrado, con conceptos e impuestos; la aritmética cuadra. No debe arrojar hallazgos.",
+      payload: { xml: CFDI_INTEGRO_XML },
+    },
+    riesgo: {
+      variant: "riesgo",
+      label: "Caso en riesgo — sin timbre, PUE/99 y totales que no cuadran",
+      hint: "Sin TimbreFiscalDigital, sello vacío, PUE con forma 99, diferencia aritmética y emisor en lista 69-B.",
+      payload: { xml: CFDI_RIESGO_XML },
+    },
   },
+
   "efos-validator": {
     ok: { variant: "ok", label: "RFC limpio", hint: "Proveedor sin antecedentes en listas 69 / 69-B.", payload: { rfcs: ["DEMPRV001AA1", "DEMPRV002AA1"] } },
     riesgo: { variant: "riesgo", label: "RFC en listas 69-B", hint: "Detección de presunto + definitivo demo.", payload: { rfcs: [EFOS_DEMO_RFCS.presunto, EFOS_DEMO_RFCS.definitivo, "DEMPRV003AA1"] } },
