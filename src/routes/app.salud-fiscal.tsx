@@ -358,11 +358,25 @@ function ComparativoTabla({ c }: { c: SaludFiscal["comparativo"] }) {
   );
 }
 
-function TendenciaChart({ valores }: { valores: number[] }) {
+function TendenciaChart({ valores }: { valores: (number | null)[] }) {
   const max = 100;
   const w = 600, h = 120, pad = 10;
   const step = (w - pad * 2) / Math.max(1, valores.length - 1);
-  const points = valores.map((v, i) => `${pad + i * step},${h - pad - (v / max) * (h - pad * 2)}`);
+  const y = (v: number) => h - pad - (v / max) * (h - pad * 2);
+  // Los meses sin score publicable se omiten: dibujar un 0 fingiría un desplome.
+  const puntos = valores
+    .map((v, i) => (v === null ? null : { x: pad + i * step, y: y(v) }))
+    .filter((p): p is { x: number; y: number } => p !== null);
+  const points = puntos.map((p) => `${p.x},${p.y}`);
+
+  if (puntos.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-border bg-card/50 p-6 text-center text-sm text-muted-foreground">
+        Aún no hay meses con score publicable. La serie histórica comienza cuando el expediente alcanza la cobertura mínima de información.
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-xl border border-border bg-card p-3">
       <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-32">
@@ -373,18 +387,21 @@ function TendenciaChart({ valores }: { valores: number[] }) {
           </linearGradient>
         </defs>
         <polyline fill="url(#grad)" stroke="none"
-          points={`${pad},${h - pad} ${points.join(" ")} ${w - pad},${h - pad}`} />
+          points={`${puntos[0].x},${h - pad} ${points.join(" ")} ${puntos[puntos.length - 1].x},${h - pad}`} />
         <polyline fill="none" stroke="hsl(var(--primary))" strokeWidth="2" points={points.join(" ")} />
-        {valores.map((v, i) => (
-          <circle key={i} cx={pad + i * step} cy={h - pad - (v / max) * (h - pad * 2)} r="3" fill="hsl(var(--primary))" />
+        {puntos.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r="3" fill="hsl(var(--primary))" />
         ))}
       </svg>
       <div className="flex justify-between text-[10px] text-muted-foreground mt-1 px-2">
-        <span>hace 12m</span><span className="flex items-center gap-1"><TrendingUp className="h-3 w-3" /> Score</span><span>actual</span>
+        <span>hace 12m</span>
+        <span className="flex items-center gap-1"><TrendingUp className="h-3 w-3" /> Score ({puntos.length}/12 meses con datos)</span>
+        <span>actual</span>
       </div>
     </div>
   );
 }
+
 
 function AlertaItem({ a }: { a: SaludFiscal["alertas"][number] }) {
   const color = a.nivel === "critica" || a.nivel === "alta" ? "border-red-500/40 bg-red-500/5 text-red-300" :
