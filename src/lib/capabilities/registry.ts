@@ -129,7 +129,7 @@ const ADMINISTRATIVO: Capability[] = [
 // ── Módulo Inteligencia Legal ───────────────────────────────────────────────
 const LEGAL: Capability[] = [
   cap({ id: "legal-consulta-ia", nombre: "Consulta a la Ley (IA)", ruta: "/app/legal/consulta-ia", modulo: "legal", grupo: "Análisis", madurez: "beta", planes: ["pro", "despacho"], dependencias: ["ia"], descripcion: "Respuesta con cita del artículo (CFF, LISR, LIVA, RMF)." }),
-  cap({ id: "legal-lagunas", nombre: "Mapa de Lagunas Legales", ruta: "/app/legal/lagunas", modulo: "legal", grupo: "Análisis", madurez: "demostracion", planes: ["pro", "despacho"], descripcion: "Catálogo ilustrativo de huecos normativos. Contenido curado, no análisis de tu expediente." }),
+  cap({ id: "legal-lagunas", nombre: "Mapa de Lagunas Legales", ruta: "/app/legal/lagunas", modulo: "legal", grupo: "Análisis", madurez: "operativa_limitada", planes: ["pro", "despacho"], descripcion: "Catálogo curado de huecos normativos; las defensas que actives sí se guardan en el expediente. El catálogo no se genera analizando tus datos." }),
   cap({ id: "legal-redactor", nombre: "Redactor de Escritos", ruta: "/app/legal/redactor", modulo: "legal", grupo: "Redacción", madurez: "beta", planes: ["pro", "despacho"], dependencias: ["ia"], descripcion: "Borradores de defensa con fundamento. Requiere revisión de abogado." }),
   cap({ id: "legal-marketplace", nombre: "Marketplace Legal", ruta: "/app/legal/marketplace", modulo: "legal", grupo: "Red profesional", madurez: "demostracion", planes: ["pro", "despacho"], descripcion: "Directorio ilustrativo. Los despachos mostrados son ejemplos, no proveedores contratables todavía." }),
 ];

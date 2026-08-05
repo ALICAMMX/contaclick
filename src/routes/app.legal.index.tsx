@@ -28,7 +28,7 @@ function LegalCatalog() {
       </header>
 
       {c.demo > 0 && (
-        <SyntheticDataBanner mensaje="Dos funciones de este módulo (Mapa de Lagunas y Marketplace) son demostrativas: su contenido es ilustrativo, no analiza tus expedientes y no genera entregables." />
+        <SyntheticDataBanner mensaje="El Marketplace Legal es demostrativo: los despachos listados son ejemplos y todavía no es posible contratarlos ni enviarles información." />
       )}
 
       {GROUPS.map((g) => {
