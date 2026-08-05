@@ -4,8 +4,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { computeSaludFiscal, analizarSaludConIA, crearTareaDesdeSalud, type SaludFiscal, type SaludRecomendacion } from "@/lib/salud/salud.functions";
+import { TEXTO_SIN_DATOS } from "@/lib/salud/cobertura";
 import { descargarReporteSalud } from "@/lib/salud/reporte";
-import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, Brain, CheckCircle2, Download, FileSearch, Plus, RefreshCw, Sparkles, TrendingUp } from "lucide-react";
+import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, Brain, CheckCircle2, Download, FileSearch, Info, Plus, RefreshCw, Sparkles, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { HerramientaHelp } from "@/components/HerramientaHelp";
@@ -99,6 +100,9 @@ function SaludFiscalPage() {
       {data && (
         <>
           <ScoreHero salud={data} />
+          {data.score === null && <SinDatosPanel salud={data} />}
+
+
 
           <section>
             <h2 className="text-sm uppercase tracking-wide text-muted-foreground mb-3">Subscores por área</h2>
