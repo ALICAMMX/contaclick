@@ -64,7 +64,7 @@ export function descargarReporteSalud(salud: SaludFiscal) {
     startY: y,
     margin: { left: 240, right: 40 },
     head: [["Área", "Score", "Peso"]],
-    body: salud.subscores.map((s) => [s.label, `${s.score}/100`, `${s.peso}%`]),
+    body: salud.subscores.map((s) => [s.label, s.score === null ? "No evaluable" : `${s.score}/100`, `${s.peso}%`]),
     styles: { fontSize: 9, cellPadding: 4 },
     headStyles: { fillColor: [30, 41, 59] },
   });
