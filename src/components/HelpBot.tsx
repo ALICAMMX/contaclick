@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Bot, Send, X, Sparkles, Loader2, Minus, Plus, Trash2, MessageSquare, Menu } from "lucide-react";
+import {
+  Send, X, Sparkles, Loader2, Minus, Plus, Trash2, MessageSquare, Menu,
+  ThumbsUp, ThumbsDown, Compass, BookOpen, FolderOpen,
+} from "lucide-react";
+
 import logoC from "@/assets/contaclick-c.png.asset.json";
 
 function BotMark({ className = "h-5 w-5", spin = false }: { className?: string; spin?: boolean }) {
@@ -21,13 +25,28 @@ import {
   listBotAyudaThreads,
   loadBotAyudaThread,
   deleteBotAyudaThread,
+  registrarFeedbackConti,
 } from "@/lib/bot-ayuda.functions";
 import { useAuth } from "@/lib/auth";
 import { useActiveCliente } from "@/lib/active-cliente";
+import { etiquetaModo, MODO_INFO, type ContiModo } from "@/lib/conti/modos";
 import { toast } from "sonner";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type Thread = { id: string; title: string; updated_at: string };
+
+const MODO_ICONO: Record<ContiModo, typeof Compass> = {
+  guia: Compass,
+  consulta: BookOpen,
+  expediente: FolderOpen,
+};
+
+const MODO_CORTO: Record<ContiModo, string> = {
+  guia: "Guía",
+  consulta: "Consulta",
+  expediente: "Expediente",
+};
+
 
 function getFirstName(user: any): string {
   const meta = user?.user_metadata ?? {};
@@ -42,11 +61,19 @@ function getFirstName(user: any): string {
 }
 
 function buildWelcome(name: string, expedienteNombre?: string | null): string {
-  const saludo = name ? `¡Bienvenido(a), **${name}**!` : "¡Bienvenido(a)!";
-  const opcionD = expedienteNombre
-    ? `\n- **d)** ¿Quieres tratar algo del expediente **${expedienteNombre}**?`
-    : "";
-  return `${saludo} 👋\n\nSoy **Conti**, tu asistente IA de ContaClick. Estoy aquí para ayudarte: si es tu primera vez en ContaClick puedo darte una guía de cómo comenzar a usar tu herramienta. Ahora eres parte de nuestra familia y queremos tratarte como tal.\n\n**¿Por dónde quieres comenzar?**\n\n- **a)** Explicación de cómo funciona ContaClick\n- **b)** Cuáles son las funciones principales de ContaClick\n- **c)** Escribe algo personalizado en el chat y con todo gusto te respondo${opcionD}`;
+  const saludo = name ? `Hola, **${name}**.` : "Hola.";
+  const exp = expedienteNombre
+    ? `\n\nExpediente activo: **${expedienteNombre}**.`
+    : "\n\nNo hay expediente activo: para consultas sobre un contribuyente concreto, selecciónalo en la barra superior.";
+  return `${saludo} Soy **Conti**, el copiloto fiscal de ContaClick.
+
+Trabajo en tres modos y tú eliges cuál:
+
+- **Guía de ContaClick** — qué herramienta usar, en qué orden y qué necesita cada una.
+- **Consulta fiscal general** — dudas normativas sin datos de un expediente.
+- **Trabajar con expediente** — sobre el expediente activo y sólo sobre él.
+
+En esta etapa oriento y explico: no ejecuto acciones ni firmo cifras. Cuando falte información te lo digo en lugar de suponer.${exp}`;
 }
 
 export function HelpBot() {
@@ -58,16 +85,30 @@ export function HelpBot() {
     () => ({ role: "assistant", content: buildWelcome(firstName, expedienteNombre) }),
     [firstName, expedienteNombre],
   );
+
+  const [modo, setModo] = useState<ContiModo>("guia");
+
   const sugerencias = useMemo<string[]>(() => {
-    const base = [
-      "a) Explícame cómo funciona ContaClick",
-      "b) ¿Cuáles son las funciones principales de ContaClick?",
-    ];
-    if (expedienteNombre) {
-      base.push(`d) Quiero tratar algo del expediente ${expedienteNombre}`);
+    if (modo === "guia") {
+      return [
+        "¿Por dónde empiezo con un cliente nuevo en ContaClick?",
+        "¿Qué necesito antes de correr la conciliación integral?",
+        "¿Qué herramientas están todavía en beta?",
+      ];
     }
-    return base;
-  }, [expedienteNombre]);
+    if (modo === "consulta") {
+      return [
+        "¿Qué obligaciones tiene una persona física en RESICO?",
+        "¿Cómo se acredita el IVA de gastos a nombre de la empresa?",
+        "¿Qué revisa el SAT en una carta invitación por discrepancia fiscal?",
+      ];
+    }
+    return [
+      "¿Qué le falta a este expediente para poder evaluar su salud fiscal?",
+      "¿Qué debería revisar primero en este expediente?",
+      "¿Qué información hace falta para determinar su riesgo SAT?",
+    ];
+  }, [modo]);
 
   const [open, setOpen] = useState(false);
   const [threads, setThreads] = useState<Thread[]>([]);
@@ -77,11 +118,14 @@ export function HelpBot() {
   const [loading, setLoading] = useState(false);
   const [loadingThread, setLoadingThread] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [feedbackDado, setFeedbackDado] = useState<Record<number, boolean>>({});
 
   const send = useServerFn(sendBotAyuda);
   const listThreads = useServerFn(listBotAyudaThreads);
   const loadThread = useServerFn(loadBotAyudaThread);
   const delThread = useServerFn(deleteBotAyudaThread);
+  const enviarFeedback = useServerFn(registrarFeedbackConti);
+
 
   const panelRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -177,6 +221,25 @@ export function HelpBot() {
     }
   };
 
+  const handleFeedback = async (idx: number, util: boolean, contenido: string) => {
+    setFeedbackDado((p) => ({ ...p, [idx]: true }));
+    try {
+      await enviarFeedback({
+        data: {
+          threadId: activeId,
+          modo,
+          util,
+          motivo: null,
+          comentario: null,
+          respuesta: contenido.slice(0, 4000),
+        },
+      });
+      toast.success(util ? "Gracias, lo registramos." : "Gracias: revisaremos esta respuesta.");
+    } catch {
+      toast.error("No se pudo registrar tu comentario");
+    }
+  };
+
   const onSend = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || loading) return;
@@ -185,18 +248,19 @@ export function HelpBot() {
     setInput("");
     setLoading(true);
     try {
-      const clienteContext = cliente
-        ? `Razón social: ${cliente.razon_social} · RFC: ${cliente.rfc}${cliente.regimen_fiscal ? ` · Régimen: ${cliente.regimen_fiscal}` : ""}`
-        : null;
-      const res = await send({ data: { threadId: activeId, messages: next, clienteContext } });
+      const res = await send({
+        data: { threadId: activeId, messages: next, modo, clienteId: cliente?.id ?? null },
+      });
       if (res.error) {
         toast.error(res.error);
         setMessages(messages);
       } else {
+        if (res.modo && res.modo !== modo) setModo(res.modo as ContiModo);
         setMessages([...next, { role: "assistant", content: res.content }]);
         if (res.threadId && res.threadId !== activeId) setActiveId(res.threadId);
         refreshThreads();
       }
+
     } catch (e: any) {
       toast.error(e?.message ?? "Error al consultar el bot");
       setMessages(messages);
@@ -318,10 +382,10 @@ export function HelpBot() {
                   <Sparkles className="h-3 w-3 text-primary shrink-0" />
                 </div>
                 <div className="text-[11px] text-muted-foreground truncate">
-                  {activeId
-                    ? threads.find((t) => t.id === activeId)?.title ?? "Conversación"
-                    : "Nueva conversación · 24/7"}
+                  {etiquetaModo(modo, expedienteNombre)}
+                  {activeId ? ` · ${threads.find((t) => t.id === activeId)?.title ?? "Conversación"}` : ""}
                 </div>
+
               </div>
               <button
                 onClick={handleNew}
@@ -341,7 +405,40 @@ export function HelpBot() {
               </button>
             </div>
 
-            {/* Mensajes */}
+            {/* Selector de modo — el modo nunca se adivina, lo elige la persona */}
+            <div className="px-2.5 py-2 border-b border-border bg-card/40">
+              <div className="grid grid-cols-3 gap-1.5">
+                {(["guia", "consulta", "expediente"] as ContiModo[]).map((m) => {
+                  const Icon = MODO_ICONO[m];
+                  const activo = m === modo;
+                  const bloqueado = MODO_INFO[m].requiereExpediente && !cliente;
+                  return (
+                    <button
+                      key={m}
+                      onClick={() => !bloqueado && setModo(m)}
+                      disabled={bloqueado}
+                      title={
+                        bloqueado
+                          ? "Selecciona un expediente activo en la barra superior para usar este modo."
+                          : MODO_INFO[m].descripcion
+                      }
+                      className={`flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] font-medium border transition ${
+                        activo
+                          ? "border-primary/50 bg-primary/15 text-foreground"
+                          : "border-border/60 bg-card/60 text-muted-foreground hover:text-foreground hover:border-primary/30"
+                      } ${bloqueado ? "opacity-40 cursor-not-allowed" : ""}`}
+                    >
+                      <Icon className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{MODO_CORTO[m]}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1.5 leading-snug">
+                {MODO_INFO[modo].descripcion}
+              </p>
+            </div>
+
             <div className="flex-1 overflow-y-auto p-3 space-y-3">
               {loadingThread ? (
                 <div className="flex items-center justify-center py-12 text-muted-foreground text-xs gap-2">
@@ -358,11 +455,41 @@ export function HelpBot() {
                       }`}
                     >
                       {m.role === "assistant" ? (
-                        <RichMarkdown compact>{m.content}</RichMarkdown>
+                        <>
+                          <RichMarkdown compact>{m.content}</RichMarkdown>
+                          {i > 0 && (
+                            <div className="mt-2 pt-1.5 border-t border-border/50 flex items-center gap-2 text-[10px] text-muted-foreground">
+                              {feedbackDado[i] ? (
+                                <span>Gracias por tu valoración.</span>
+                              ) : (
+                                <>
+                                  <span>¿Te sirvió?</span>
+                                  <button
+                                    onClick={() => handleFeedback(i, true, m.content)}
+                                    className="hover:text-emerald-500 transition"
+                                    aria-label="Respuesta útil"
+                                    title="Sí, me sirvió"
+                                  >
+                                    <ThumbsUp className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleFeedback(i, false, m.content)}
+                                    className="hover:text-destructive transition"
+                                    aria-label="Respuesta no útil"
+                                    title="No, revísenla"
+                                  >
+                                    <ThumbsDown className="h-3.5 w-3.5" />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </>
                       ) : (
                         <div className="whitespace-pre-wrap leading-relaxed">{m.content}</div>
                       )}
                     </div>
+
                   </div>
                 ))
               )}

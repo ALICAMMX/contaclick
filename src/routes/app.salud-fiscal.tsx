@@ -121,7 +121,14 @@ function SaludFiscalPage() {
             <section className="space-y-3">
               <h2 className="text-sm uppercase tracking-wide text-muted-foreground">Alertas inteligentes</h2>
               <div className="space-y-2">
-                {data.alertas.length === 0 && <div className="text-xs text-muted-foreground italic">Sin alertas — buen estado.</div>}
+                {data.alertas.length === 0 && (
+                  <div className="text-xs text-muted-foreground italic">
+                    {data.cobertura.suficiente
+                      ? "No se detectaron alertas con la información evaluada."
+                      : "No evaluable: no hay información suficiente cargada para emitir alertas."}
+                  </div>
+                )}
+
                 {data.alertas.map((a, i) => <AlertaItem key={i} a={a} />)}
               </div>
             </section>
@@ -146,8 +153,13 @@ function SaludFiscalPage() {
                 </div>
               ))}
               {data.hallazgos.length === 0 && aiHallazgos.length === 0 && (
-                <div className="text-sm text-muted-foreground italic">Sin hallazgos relevantes.</div>
+                <div className="text-sm text-muted-foreground italic">
+                  {data.cobertura.suficiente
+                    ? "No se detectaron hallazgos con la información evaluada."
+                    : "No evaluable: falta información del expediente para buscar hallazgos."}
+                </div>
               )}
+
             </div>
           </section>
 

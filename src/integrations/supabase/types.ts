@@ -1189,6 +1189,93 @@ export type Database = {
           },
         ]
       }
+      conti_feedback: {
+        Row: {
+          comentario: string | null
+          created_at: string
+          id: string
+          modo: string
+          motivo: string | null
+          respuesta: string | null
+          thread_id: string | null
+          user_id: string
+          util: boolean
+        }
+        Insert: {
+          comentario?: string | null
+          created_at?: string
+          id?: string
+          modo: string
+          motivo?: string | null
+          respuesta?: string | null
+          thread_id?: string | null
+          user_id: string
+          util: boolean
+        }
+        Update: {
+          comentario?: string | null
+          created_at?: string
+          id?: string
+          modo?: string
+          motivo?: string | null
+          respuesta?: string | null
+          thread_id?: string | null
+          user_id?: string
+          util?: boolean
+        }
+        Relationships: []
+      }
+      conti_telemetria: {
+        Row: {
+          con_expediente: boolean
+          created_at: string
+          derivo_calculo: boolean
+          despacho_id: string | null
+          evidencia: string
+          id: string
+          latencia_ms: number | null
+          modelo: string | null
+          modo: string
+          saneada: boolean
+          thread_id: string | null
+          tokens_in: number
+          tokens_out: number
+          user_id: string
+        }
+        Insert: {
+          con_expediente?: boolean
+          created_at?: string
+          derivo_calculo?: boolean
+          despacho_id?: string | null
+          evidencia: string
+          id?: string
+          latencia_ms?: number | null
+          modelo?: string | null
+          modo: string
+          saneada?: boolean
+          thread_id?: string | null
+          tokens_in?: number
+          tokens_out?: number
+          user_id: string
+        }
+        Update: {
+          con_expediente?: boolean
+          created_at?: string
+          derivo_calculo?: boolean
+          despacho_id?: string | null
+          evidencia?: string
+          id?: string
+          latencia_ms?: number | null
+          modelo?: string | null
+          modo?: string
+          saneada?: boolean
+          thread_id?: string | null
+          tokens_in?: number
+          tokens_out?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       cuentas_bancarias: {
         Row: {
           alias: string | null
