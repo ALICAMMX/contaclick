@@ -1,21 +1,38 @@
 import { Sparkles, Bell } from "lucide-react";
 import { ReactNode } from "react";
+import { MADUREZ_LABEL, type Madurez } from "@/lib/capabilities/registry";
 
+/**
+ * Encabezado estándar de módulo.
+ * El estado de madurez decide la insignia y los controles: una herramienta
+ * operativa nunca muestra "Avísame cuando esté listo", y una que no existe
+ * nunca muestra controles operativos.
+ */
 export function ModuleScaffold({
   title,
   subtitle,
   icon,
-  badge = "Vista previa · Próximamente funcional",
+  estado = "proximamente",
+  badge,
   children,
   actions,
 }: {
   title: string;
   subtitle?: string;
   icon?: ReactNode;
+  estado?: Madurez;
   badge?: string | null;
   children: ReactNode;
   actions?: ReactNode;
 }) {
+  const proxima = estado === "proximamente";
+  const etiqueta = badge ?? (estado === "operativa" ? null : MADUREZ_LABEL[estado]);
+  const tono =
+    estado === "beta" ? "border-primary/40 bg-primary/10 text-primary"
+      : estado === "demostracion" ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-200"
+        : estado === "proximamente" ? "border-border bg-muted text-muted-foreground"
+          : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 sm:flex sm:flex-wrap sm:justify-between">
@@ -28,19 +45,21 @@ export function ModuleScaffold({
           <div className="min-w-0">
             <h1 className="serif text-3xl text-foreground truncate">{title}</h1>
             {subtitle && <p className="text-sm text-muted-foreground mt-1 max-w-2xl">{subtitle}</p>}
-            {badge && (
-              <div className="mt-3 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider px-2 py-1 rounded-full glass-gold text-[oklch(0.85_0.12_85)]">
-                <Sparkles className="h-3 w-3" /> {badge}
+            {etiqueta && (
+              <div className={`mt-3 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider px-2 py-1 rounded-full border ${tono}`}>
+                <Sparkles className="h-3 w-3" /> {etiqueta}
               </div>
             )}
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {actions}
-          {badge && (
-            <button className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-border/60 bg-card/60 hover:bg-card text-xs text-muted-foreground hover:text-foreground transition-colors">
-              <Bell className="h-3.5 w-3.5" /> Avísame cuando esté listo
-            </button>
+          {/* Los controles operativos y el "avísame" nunca coexisten. */}
+          {proxima ? (
+            <span className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-border/60 bg-card/60 text-xs text-muted-foreground">
+              <Bell className="h-3.5 w-3.5" /> Sin implementación todavía
+            </span>
+          ) : (
+            actions
           )}
         </div>
       </div>
@@ -48,6 +67,7 @@ export function ModuleScaffold({
     </div>
   );
 }
+
 
 export function DemoCard({ title, children, className = "" }: { title?: string; children: ReactNode; className?: string }) {
   return (
