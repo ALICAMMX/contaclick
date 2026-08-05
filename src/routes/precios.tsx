@@ -1,18 +1,32 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { CheckCircle2, Sparkles, ArrowRight, Zap, Building2, Rocket, Users } from "lucide-react";
+import { CheckCircle2, Sparkles, ArrowRight, Zap, Building2, Rocket, Users, Crown } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { PWAInstallLink } from "@/components/PWAInstall";
+import {
+  PLANS,
+  PLANES_ORDEN,
+  PROGRAMA_FUNDADOR,
+  ahorroAnualCents,
+  equivalenteMensualCents,
+  precioFundadorAnualCents,
+  programaFundadorVigente,
+  mxnDesdeCents,
+  type PlanId,
+} from "@/lib/payments/plans";
+import { CAPABILITIES } from "@/lib/capabilities/registry";
 
 export const Route = createFileRoute("/precios")({
   head: () => ({
     meta: [
       { title: "Precios y planes — ContaClick IA" },
-      { name: "description", content: "Planes mensuales y anuales para despachos contables en México. Prueba gratis 14 días, sin tarjeta. Desde $499 MXN al mes." },
-      { property: "og:title", content: "Precios ContaClick IA — Planes para despachos contables" },
-      { property: "og:description", content: "Elige el plan ideal para tu despacho. Prueba 14 días gratis." },
+      { name: "description", content: "Todas las herramientas incluidas en todos los planes. Elige según los RFC que administras: 5, 25, 100 o a medida. Desde $499 MXN al mes." },
+      { property: "og:title", content: "Precios ContaClick IA — Elige por RFC, no por herramientas" },
+      { property: "og:description", content: "Mismas herramientas en todos los planes. Prueba 14 días gratis, sin tarjeta." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: PreciosPage,
@@ -20,103 +34,45 @@ export const Route = createFileRoute("/precios")({
 
 type Billing = "mensual" | "anual";
 
-const plans = [
-  {
-    id: "starter",
-    name: "Starter",
-    icon: Rocket,
-    tagline: "Para contadores independientes que están empezando",
-    mensual: 499,
-    anual: 4990, // 2 meses gratis
-    rfc: "Hasta 5 RFC activos",
-    ia: { solicitudes: "200 / mes", tokens: "1M tokens" },
-    sat: "200 descargas SAT / mes · sincronización semanal",
-    storage: "5 GB de almacenamiento",
-    highlight: false,
-    features: [
-      "Analizador CFDI (XML, ZIP y carpetas)",
-      "Validador RFC y constancias CSF",
-      "Calculadora fiscal (ISR, IVA, RESICO)",
-      "Asistente IA contable básico",
-      "Alertas SAT esenciales",
-      "Soporte por email",
-    ],
-  },
-  {
-    id: "pro",
-    name: "Profesional",
-    icon: Sparkles,
-    tagline: "Para despachos en crecimiento que necesitan automatización completa",
-    mensual: 1290,
-    anual: 12900,
-    rfc: "Hasta 25 RFC activos",
-    ia: { solicitudes: "1,500 / mes", tokens: "5M tokens" },
-    sat: "1,000 descargas SAT / mes · sincronización diaria",
-    storage: "25 GB de almacenamiento",
-    highlight: true,
-    features: [
-      "Todo lo de Starter, más:",
-      "Conciliador Bancario IA",
-      "Auditor Fiscal IA con semáforo por cliente",
-      "Reportería inteligente (PDF / Excel)",
-      "Tesorería: CXC, CXP y proyección de flujo",
-      "Gestor de Trámites con Kanban",
-      "Importación masiva desde Excel / Sheets",
-      "Hasta 3 usuarios del equipo",
-      "Soporte prioritario",
-    ],
-  },
-  {
-    id: "despacho",
-    name: "Despacho",
-    icon: Building2,
-    tagline: "Solución completa para despachos consolidados",
-    mensual: 2490,
-    anual: 24900,
-    rfc: "Hasta 100 RFC activos",
-    ia: { solicitudes: "5,000 / mes", tokens: "20M tokens" },
-    sat: "4,000 descargas SAT / mes · sincronización diaria",
-    storage: "100 GB de almacenamiento",
-    highlight: false,
-    features: [
-      "Todo lo de Profesional, más:",
-      "Agentes IA especializados (Auditor, CFDI, Cierre, Conciliación)",
-      "Defensa fiscal: deducibilidad, nómina oculta, precios de importación",
-      "Módulo legal: redactor, lagunas y marketplace",
-      "Expedientes digitales y correspondencia",
-      "Hasta 10 usuarios con roles (Owner, Admin, Member, Viewer)",
-      "Dashboard ejecutivo del despacho",
-      "Onboarding 1:1 y soporte por WhatsApp",
-    ],
-  },
-  {
-    id: "enterprise",
-    name: "Enterprise",
-    icon: Users,
-    tagline: "Para firmas multi-oficina y corporativos",
-    mensual: null,
-    anual: null,
-    rfc: "RFC ilimitados",
-    ia: { solicitudes: "Personalizado", tokens: "Personalizado" },
-    sat: "Descargas SAT ilimitadas · sincronización diaria",
-    storage: "Almacenamiento personalizado",
-    highlight: false,
-    features: [
-      "Todo lo de Despacho, más:",
-      "Usuarios ilimitados y SSO",
-      "Importación masiva de cartera desde Excel/CSV",
-      "Validador de Deducibilidad IA y Detector de Nómina Oculta",
-      "Modelo de IA dedicado y SLA",
-      "Manager de cuenta dedicado",
-      "Capacitación online (y on-site si se requiere)",
-    ],
-  },
+const ICONOS: Record<PlanId, typeof Rocket> = {
+  starter: Rocket,
+  pro: Sparkles,
+  despacho: Building2,
+  enterprise: Users,
+};
+
+const TAGLINES: Record<PlanId, string> = {
+  starter: "Contadores independientes con cartera pequeña",
+  pro: "Despachos en crecimiento",
+  despacho: "Despachos consolidados",
+  enterprise: "Firmas multi-oficina y corporativos",
+};
+
+const DESTACADO: PlanId = "pro";
+
+// Las herramientas se derivan del registro central de capacidades:
+// no existe una lista de features paralela en esta página.
+const MODULOS: { clave: string; titulo: string }[] = [
+  { clave: "contable", titulo: "Contable y fiscal" },
+  { clave: "agentes", titulo: "Agentes IA" },
+  { clave: "administrativo", titulo: "Administrativo y RH" },
+  { clave: "legal", titulo: "Inteligencia legal" },
 ];
 
-const mxn = (n: number) => `$${n.toLocaleString("es-MX")}`;
+const ETIQUETA_MADUREZ: Record<string, string> = {
+  operativa_limitada: "alcance limitado",
+  beta: "beta",
+  demostracion: "demostración",
+  proximamente: "en desarrollo",
+};
 
 function PreciosPage() {
-  const [billing, setBilling] = useState<Billing>("mensual");
+  const [billing, setBilling] = useState<Billing>("anual");
+  const fundadorVigente = programaFundadorVigente();
+
+  const herramientas = CAPABILITIES.filter(
+    (c) => c.visibleEnMenu && c.madurez !== "obsoleta" && c.permiso !== "super_admin",
+  );
 
   return (
     <div className="min-h-screen">
@@ -130,13 +86,13 @@ function PreciosPage() {
             <Zap className="h-3.5 w-3.5 text-primary" /> Prueba gratis 14 días · sin tarjeta de crédito
           </span>
           <h1 className="mt-6 text-4xl md:text-6xl font-semibold tracking-tight">
-            Precios pensados para <span className="gradient-text">despachos mexicanos</span>
+            Todas las herramientas están <span className="gradient-text">incluidas en todos los planes</span>
           </h1>
           <p className="mt-5 text-lg text-muted-foreground max-w-2xl mx-auto">
-            Empieza gratis con todas las herramientas. Al terminar tu prueba, elige el plan que mejor se ajuste al tamaño de tu despacho.
+            Elige según la cantidad de RFC que administras. Ningún módulo, agente ni reporte se
+            desbloquea pagando más: lo que cambia es la capacidad contratada.
           </p>
 
-          {/* Billing toggle */}
           <div className="mt-10 inline-flex items-center gap-1 rounded-full glass p-1 border border-border/60">
             <button
               onClick={() => setBilling("mensual")}
@@ -154,49 +110,77 @@ function PreciosPage() {
               </span>
             </button>
           </div>
+          <p className="mt-4 text-xs text-muted-foreground">
+            Precios en MXN, <b>más IVA (16%)</b>. El IVA se muestra desglosado al contratar.
+          </p>
         </div>
       </section>
 
-      {/* Plans */}
+      {/* Planes */}
       <section className="py-16">
         <div className="mx-auto max-w-7xl px-6 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {plans.map((p) => {
-            const Icon = p.icon;
-            const price = billing === "mensual" ? p.mensual : p.anual;
-            const monthlyEq = p.anual ? Math.round(p.anual / 12) : null;
+          {PLANES_ORDEN.map((id) => {
+            const p = PLANS[id];
+            const Icon = ICONOS[id];
+            const highlight = id === DESTACADO;
+            const cents = billing === "mensual" ? p.mensualCents : p.anualCents;
+            const monthlyEq = p.anualCents ? equivalenteMensualCents(p.anualCents) : null;
+            const fundador = precioFundadorAnualCents(p);
+            const ahorro = ahorroAnualCents(p);
+            const capacidad = p.capacidadOperativa;
+            const ilim = (n: number) => (n < 0 ? "Personalizado" : n.toLocaleString("es-MX"));
+
             return (
               <div
-                key={p.id}
+                key={id}
                 className={`relative rounded-2xl border p-6 flex flex-col ${
-                  p.highlight
+                  highlight
                     ? "border-primary/60 bg-gradient-to-b from-primary/10 to-transparent"
                     : "border-border/60 glass"
                 }`}
-                style={p.highlight ? { boxShadow: "var(--shadow-elevated)" } : undefined}
+                style={highlight ? { boxShadow: "var(--shadow-elevated)" } : undefined}
               >
-                {p.highlight && (
+                {highlight && (
                   <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-medium bg-primary text-primary-foreground">
-                    Más popular
+                    Más elegido
                   </span>
                 )}
                 <div className="flex items-center gap-2 text-primary">
                   <Icon className="h-5 w-5" />
                   <h3 className="text-lg font-semibold text-foreground">{p.name}</h3>
                 </div>
-                <p className="mt-2 text-sm text-muted-foreground min-h-[40px]">{p.tagline}</p>
+                <p className="mt-2 text-sm text-muted-foreground min-h-[40px]">{TAGLINES[id]}</p>
+
+                <div className="mt-4 rounded-xl border border-border/60 bg-background/40 px-4 py-3 text-center">
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">RFC activos incluidos</div>
+                  <div className="text-2xl font-semibold">
+                    {p.maxRfcs < 0 ? "A medida" : `Hasta ${p.maxRfcs}`}
+                  </div>
+                </div>
 
                 <div className="mt-5">
-                  {price === null ? (
+                  {cents === null ? (
                     <div className="text-3xl font-semibold">A medida</div>
                   ) : (
                     <>
                       <div className="flex items-baseline gap-1">
-                        <span className="text-4xl font-semibold tracking-tight">{mxn(price)}</span>
-                        <span className="text-sm text-muted-foreground">MXN / {billing === "mensual" ? "mes" : "año"}</span>
+                        <span className="text-4xl font-semibold tracking-tight">{mxnDesdeCents(cents)}</span>
+                        <span className="text-sm text-muted-foreground">MXN / {billing === "mensual" ? "mes" : "año"} + IVA</span>
                       </div>
                       {billing === "anual" && monthlyEq && (
                         <div className="text-xs text-muted-foreground mt-1">
-                          Equivale a {mxn(monthlyEq)} / mes
+                          Equivale a {mxnDesdeCents(monthlyEq)} / mes · ahorras {ahorro ? mxnDesdeCents(ahorro) : "—"} al año
+                        </div>
+                      )}
+                      {billing === "anual" && fundadorVigente && fundador && (
+                        <div className="mt-3 rounded-lg border border-gold/40 bg-amber-500/10 px-3 py-2 text-left">
+                          <div className="flex items-center gap-1.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+                            <Crown className="h-3.5 w-3.5" /> Precio fundador (-{PROGRAMA_FUNDADOR.descuentoPct}%)
+                          </div>
+                          <div className="text-lg font-semibold">{mxnDesdeCents(fundador)} <span className="text-xs font-normal text-muted-foreground">/ año + IVA</span></div>
+                          <div className="text-[11px] text-muted-foreground">
+                            ≈ {mxnDesdeCents(equivalenteMensualCents(fundador))} / mes · sujeto a registro en el programa
+                          </div>
                         </div>
                       )}
                     </>
@@ -204,77 +188,189 @@ function PreciosPage() {
                 </div>
 
                 <div className="mt-5 space-y-1.5 text-xs text-muted-foreground border-y border-border/50 py-4">
-                  <div><b className="text-foreground">{p.rfc}</b></div>
-                  <div>IA: <b className="text-foreground">{p.ia.solicitudes}</b> · {p.ia.tokens}</div>
-                  <div>{p.sat}</div>
-                  <div>{p.storage}</div>
+                  <div className="font-medium text-foreground">Capacidad operativa incluida</div>
+                  <div>IA: {ilim(capacidad.ia_msgs)} solicitudes / mes</div>
+                  <div>SAT: {ilim(capacidad.sat_solicitudes_mes)} descargas / mes · sincronización {capacidad.sat_frecuencia_max}</div>
+                  <div>Almacenamiento: {capacidad.almacenamiento_gb < 0 ? "Personalizado" : `${capacidad.almacenamiento_gb} GB`}</div>
+                  <div>Usuarios del equipo: {ilim(capacidad.max_miembros)}</div>
                 </div>
 
                 <ul className="mt-5 space-y-2.5 text-sm flex-1">
-                  {p.features.map((f) => (
-                    <li key={f} className="flex gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-success flex-none mt-0.5" />
-                      <span>{f}</span>
-                    </li>
-                  ))}
+                  <li className="flex gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-success flex-none mt-0.5" />
+                    <span><b>Las {herramientas.length} herramientas</b> del catálogo, sin excepción</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-success flex-none mt-0.5" />
+                    <span>Agentes IA, conciliación, reportería y defensa SAT</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-success flex-none mt-0.5" />
+                    <span>Al llegar al tope de RFC conservas todos tus expedientes; sólo se pausa el alta de uno nuevo</span>
+                  </li>
                 </ul>
 
                 <div className="mt-6 space-y-2">
-                  {p.id === "enterprise" ? (
+                  {id === "enterprise" ? (
                     <Button asChild variant="glass" className="w-full">
                       <Link to="/contacto">Hablar con ventas</Link>
                     </Button>
                   ) : (
-                    <>
-                      <Button asChild variant={p.highlight ? "hero" : "glass"} className="w-full">
-                        <Link
-                          to="/auth"
-                          search={{ next: `/app/checkout?plan=${p.id}&cycle=${billing}` }}
-                        >
-                          Contratar {p.name}
-                        </Link>
-                      </Button>
-                      <Button asChild variant="ghost" size="sm" className="w-full text-xs">
-                        <Link to="/auth">o prueba 14 días gratis</Link>
-                      </Button>
-                    </>
+                    <Button asChild variant={highlight ? "hero" : "glass"} className="w-full">
+                      <Link to="/auth" search={{ next: `/app/checkout?plan=${id}&cycle=${billing}` }}>
+                        Contratar {p.name}
+                      </Link>
+                    </Button>
                   )}
                 </div>
               </div>
             );
           })}
         </div>
-
-        <p className="mt-8 text-center text-xs text-muted-foreground max-w-2xl mx-auto px-6">
-          Precios en pesos mexicanos. IVA no incluido. Los límites de IA aplican al primero que se alcance (solicitudes o tokens).
-          Puedes cambiar o cancelar tu plan en cualquier momento.
-        </p>
       </section>
 
-      {/* Comparativa rápida */}
-      <section className="py-16 border-t border-border/50">
+      {/* Comparativa por capacidad */}
+      <section className="py-12 border-t border-border/50">
         <div className="mx-auto max-w-5xl px-6">
-          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-center">
-            Todo lo que incluye <span className="gradient-text">ContaClick IA</span>
+          <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-center">
+            La única diferencia entre planes
           </h2>
-          <div className="mt-10 grid md:grid-cols-3 gap-6 text-sm">
-            {[
-              { t: "Contable", items: ["Analizador CFDI", "Conciliador bancario IA", "Auditor fiscal IA", "Reportería inteligente", "Calculadora ISR/IVA/RESICO"] },
-              { t: "Administrativo", items: ["Tesorería con flujo de caja", "Gestor de trámites Kanban", "Expedientes y correspondencia", "Nómina y activos", "Importación Excel / Sheets"] },
-              { t: "Legal y Defensa", items: ["Redactor de documentos", "Análisis de lagunas", "Defensa: deducibilidad y nómina oculta", "Marketplace legal", "Agentes IA especializados"] },
-            ].map((g) => (
-              <div key={g.t} className="rounded-xl border border-border/60 glass p-5">
-                <h3 className="font-semibold mb-3">{g.t}</h3>
-                <ul className="space-y-2 text-muted-foreground">
-                  {g.items.map((i) => (
-                    <li key={i} className="flex gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-success flex-none mt-0.5" />
-                      <span>{i}</span>
-                    </li>
+          <p className="mt-3 text-center text-sm text-muted-foreground">
+            Mismas herramientas. Distinta capacidad contratada.
+          </p>
+          <div className="mt-8 overflow-x-auto rounded-2xl border border-border/60">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
+                <tr>
+                  <th className="text-left px-4 py-3">Concepto</th>
+                  {PLANES_ORDEN.map((id) => (
+                    <th key={id} className="text-left px-4 py-3">{PLANS[id].name}</th>
                   ))}
-                </ul>
-              </div>
-            ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                <tr>
+                  <td className="px-4 py-3 font-medium">RFC activos</td>
+                  {PLANES_ORDEN.map((id) => (
+                    <td key={id} className="px-4 py-3">{PLANS[id].maxRfcs < 0 ? "Personalizado" : PLANS[id].maxRfcs}</td>
+                  ))}
+                </tr>
+                <tr>
+                  <td className="px-4 py-3 font-medium">Herramientas incluidas</td>
+                  {PLANES_ORDEN.map((id) => (
+                    <td key={id} className="px-4 py-3">Todas ({herramientas.length})</td>
+                  ))}
+                </tr>
+                <tr>
+                  <td className="px-4 py-3 font-medium">Precio mensual</td>
+                  {PLANES_ORDEN.map((id) => (
+                    <td key={id} className="px-4 py-3">
+                      {PLANS[id].mensualCents === null ? "A medida" : `${mxnDesdeCents(PLANS[id].mensualCents!)} + IVA`}
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  <td className="px-4 py-3 font-medium">Precio anual</td>
+                  {PLANES_ORDEN.map((id) => (
+                    <td key={id} className="px-4 py-3">
+                      {PLANS[id].anualCents === null ? "A medida" : `${mxnDesdeCents(PLANS[id].anualCents!)} + IVA`}
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  <td className="px-4 py-3 font-medium">Precio fundador anual (-{PROGRAMA_FUNDADOR.descuentoPct}%)</td>
+                  {PLANES_ORDEN.map((id) => {
+                    const f = precioFundadorAnualCents(PLANS[id]);
+                    return (
+                      <td key={id} className="px-4 py-3">
+                        {f === null ? "A cotizar" : `${mxnDesdeCents(f)} + IVA`}
+                      </td>
+                    );
+                  })}
+                </tr>
+                <tr>
+                  <td className="px-4 py-3 font-medium">Equivalente mensual (anual)</td>
+                  {PLANES_ORDEN.map((id) => {
+                    const a = PLANS[id].anualCents;
+                    return (
+                      <td key={id} className="px-4 py-3">
+                        {a === null ? "—" : `${mxnDesdeCents(equivalenteMensualCents(a))} / mes`}
+                      </td>
+                    );
+                  })}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      {/* Programa fundador */}
+      {fundadorVigente && (
+        <section className="py-12 border-t border-border/50">
+          <div className="mx-auto max-w-4xl px-6 rounded-2xl border border-amber-500/40 bg-amber-500/5 p-6">
+            <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
+              <Crown className="h-5 w-5" />
+              <h2 className="text-xl font-semibold">Programa Fundador</h2>
+            </div>
+            <p className="mt-3 text-sm text-muted-foreground">{PROGRAMA_FUNDADOR.condiciones}</p>
+            <ul className="mt-4 grid sm:grid-cols-3 gap-3 text-sm">
+              {(["starter", "pro", "despacho"] as PlanId[]).map((id) => {
+                const f = precioFundadorAnualCents(PLANS[id])!;
+                return (
+                  <li key={id} className="rounded-xl border border-border/60 bg-background/50 p-4">
+                    <div className="text-xs text-muted-foreground">{PLANS[id].name} fundador</div>
+                    <div className="text-lg font-semibold">{mxnDesdeCents(f)} <span className="text-xs font-normal text-muted-foreground">/ año + IVA</span></div>
+                    <div className="text-[11px] text-muted-foreground">
+                      lista {mxnDesdeCents(PLANS[id].anualCents!)} · ahorro {mxnDesdeCents(PLANS[id].anualCents! - f)}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="mt-4 text-xs text-muted-foreground">
+              Vigencia de alta: {PROGRAMA_FUNDADOR.vigenciaDesde} al {PROGRAMA_FUNDADOR.vigenciaHasta}.
+              El beneficio no es vitalicio: cubre las anualidades registradas en tu cuenta.
+            </p>
+          </div>
+        </section>
+      )}
+
+      {/* Catálogo completo incluido */}
+      <section className="py-16 border-t border-border/50">
+        <div className="mx-auto max-w-6xl px-6">
+          <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-center">
+            Lo que incluyen todos los planes
+          </h2>
+          <p className="mt-3 text-center text-sm text-muted-foreground max-w-2xl mx-auto">
+            El estado de cada herramienta es el mismo para cualquier plan. Señalamos con honestidad
+            lo que está en beta, con alcance limitado o en desarrollo.
+          </p>
+          <div className="mt-10 grid md:grid-cols-2 gap-6">
+            {MODULOS.map((m) => {
+              const items = herramientas.filter((h) => h.modulo === m.clave);
+              if (!items.length) return null;
+              return (
+                <div key={m.clave} className="rounded-2xl border border-border/60 glass p-5">
+                  <h3 className="font-medium">{m.titulo} <span className="text-xs text-muted-foreground">({items.length})</span></h3>
+                  <ul className="mt-3 space-y-2 text-sm">
+                    {items.map((h) => (
+                      <li key={h.id} className="flex gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-success flex-none mt-0.5" />
+                        <span>
+                          {h.nombre}
+                          {ETIQUETA_MADUREZ[h.madurez] && (
+                            <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full border border-border text-muted-foreground">
+                              {ETIQUETA_MADUREZ[h.madurez]}
+                            </span>
+                          )}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -285,11 +381,12 @@ function PreciosPage() {
           <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-center">Preguntas frecuentes</h2>
           <div className="mt-10 space-y-4">
             {[
-              { q: "¿Cómo funciona la prueba de 14 días?", a: "Crea tu cuenta y obtén acceso completo al plan Profesional durante 14 días, sin tarjeta de crédito. Al terminar puedes elegir el plan que mejor se ajuste o continuar en modo limitado." },
-              { q: "¿Puedo cambiar de plan después?", a: "Sí, puedes subir o bajar de plan en cualquier momento desde Configuración. El cobro se ajusta de forma prorrateada." },
-              { q: "¿Qué pasa si supero el límite de IA?", a: "Te avisamos cuando llegues al 80%. Puedes comprar paquetes adicionales o subir de plan sin perder tu información." },
-              { q: "¿Mis datos están seguros?", a: "Sí. Hospedamos en infraestructura cifrada, con respaldos diarios y aislamiento por despacho. Cumplimos con la LFPDPPP." },
-              { q: "¿Aceptan factura?", a: "Por supuesto. Emitimos CFDI 4.0 a la razón social que indiques al momento del pago." },
+              { q: "¿Hay herramientas exclusivas de algún plan?", a: "No. Todos los planes incluyen exactamente el mismo catálogo de herramientas, agentes y reportes. Lo único que cambia es cuántos RFC activos puedes administrar y la capacidad operativa proporcional (IA, descargas SAT y almacenamiento), que cubre costo variable real." },
+              { q: "¿Qué pasa si llego al límite de RFC?", a: "Conservas acceso completo a todos tus expedientes existentes. Sólo se bloquea dar de alta uno adicional, y verás tu uso actual, el límite y las opciones para ampliarlo. Nunca borramos ni desactivamos expedientes automáticamente." },
+              { q: "¿Cómo funciona la prueba de 14 días?", a: "Crea tu cuenta y obtén acceso completo con capacidad equivalente al plan Profesional durante 14 días, sin tarjeta de crédito." },
+              { q: "¿Los precios llevan IVA?", a: "Los precios publicados son en MXN sin IVA. Al contratar se desglosa el IVA del 16% y puedes solicitar CFDI 4.0." },
+              { q: "¿Quién puede acceder al precio fundador?", a: "Las cuentas registradas en el Programa Fundador por el equipo de ContaClick, contratando anualidad dentro de la vigencia del programa. El descuento se valida en el servidor: no puede activarse desde la URL ni el navegador." },
+              { q: "¿Mis datos están seguros?", a: "Sí. Infraestructura cifrada, respaldos diarios y aislamiento por despacho. Cumplimos con la LFPDPPP." },
             ].map((f) => (
               <details key={f.q} className="group rounded-xl border border-border/60 glass p-5">
                 <summary className="cursor-pointer font-medium flex items-center justify-between">
