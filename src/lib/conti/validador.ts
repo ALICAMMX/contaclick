@@ -187,24 +187,79 @@ export function validarRespuestaConti(
     });
   }
 
-  // 3. Rutas internas que no existen en el registro de capacidades.
+  // 3. Fundamento RESICO: el art. 113-F no regula la resta mensual.
+  {
+    const re = new RegExp(RESICO_113F_MENSUAL.source, RESICO_113F_MENSUAL.flags);
+    let tocado = false;
+    content = content.replace(re, (m) => {
+      if (/anual/i.test(m)) return m; // la determinación anual sí es 113-F
+      tocado = true;
+      return RESICO_113F_CORRECTO;
+    });
+    if (tocado)
+      violaciones.push({
+        regla: "resico_113f_mensual",
+        detalle: "Se atribuyó al art. 113-F la mecánica mensual; corresponde al 113-E con la retención del 113-J.",
+        accion: "sustituido",
+      });
+  }
+
+  // 4. EFOS: nunca se promete cobertura total.
+  if (new RegExp(EFOS_GARANTIA.source, EFOS_GARANTIA.flags).test(content)) {
+    content = content.replace(new RegExp(EFOS_GARANTIA.source, EFOS_GARANTIA.flags), EFOS_ALCANCE);
+    violaciones.push({
+      regla: "efos_alcance",
+      detalle: "El validador 69-B tiene alcance limitado; no puede garantizar que ningún proveedor esté listado.",
+      accion: "sustituido",
+    });
+  }
+
+  // 5. Navegación: sólo rutas registradas, con capabilityId y nombre registrado.
   const RUTA_MD = /\[([^\]]+)\]\((\/app\/[^)\s]*)\)/g;
   const inexistentes = new Set<string>();
+  const navegacion: Navegacion[] = [];
   content = content.replace(RUTA_MD, (_m, texto: string, ruta: string) => {
     const limpia = ruta.replace(/[).,]+$/, "");
-    if (getCapabilityByRoute(limpia)) return `[${texto}](${limpia})`;
-    inexistentes.add(limpia);
-    return texto;
+    const nav = navegacionPara(limpia);
+    if (!nav) {
+      inexistentes.add(limpia);
+      return texto;
+    }
+    if (!navegacion.some((n) => n.capabilityId === nav.capabilityId)) navegacion.push(nav);
+    // El texto del enlace se fuerza al nombre registrado: nada de nombres inventados.
+    return `[${nav.nombre}](${nav.ruta})`;
   });
   if (inexistentes.size > 0) {
     violaciones.push({
       regla: "ruta_inexistente",
-      detalle: `Rutas no registradas retiradas: ${[...inexistentes].join(", ")}.`,
+      detalle: `Rutas sin capabilityId retiradas: ${[...inexistentes].join(", ")}.`,
       accion: "eliminado",
     });
   }
 
-  // 4. Cifras publicadas sin ejecución de motor.
+  // 6. Nombres de módulos, pestañas, opciones o botones no registrados.
+  {
+    const noRegistrados = new Set<string>();
+    for (const m of content.matchAll(new RegExp(NOMBRE_UI.source, NOMBRE_UI.flags))) {
+      const nombre = (m[2] ?? "").trim().replace(/\s+/g, " ");
+      if (!nombre) continue;
+      if (VOCABULARIO.has(nombre.toLowerCase())) continue;
+      noRegistrados.add(m[0]!);
+    }
+    if (noRegistrados.size > 0) {
+      for (const frase of noRegistrados) {
+        const escapada = frase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        content = content.replace(new RegExp(`[^.\\n]*${escapada}[^.\\n]*\\.?`, "g"), "");
+      }
+      violaciones.push({
+        regla: "nombre_ui_inexistente",
+        detalle: `Nombres de interfaz no registrados retirados: ${[...noRegistrados].join(" | ")}.`,
+        accion: "eliminado",
+      });
+    }
+  }
+
+  // 7. Cifras publicadas sin ejecución de motor.
   if (opts.motoresEjecutados.length === 0 && CIFRA_CALCULADA.test(content)) {
     content = content.replace(
       new RegExp(CIFRA_CALCULADA.source, CIFRA_CALCULADA.flags),
@@ -222,8 +277,9 @@ export function validarRespuestaConti(
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
-  return { content, violaciones, requiereRegeneracion };
+  return { content, violaciones, requiereRegeneracion, navegacion };
 }
+
 
 export const REGLA_GROUNDING = `GROUNDING DE CAPACIDADES (obligatorio en modo Guía):
 - Cada afirmación operativa debe apoyarse en un campo del registro: nombre de la capacidad, ruta, estado de madurez, prerrequisito registrado o limitación registrada. Si no puedes vincularla a esos campos, no la escribas.
