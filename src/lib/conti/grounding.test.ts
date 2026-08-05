@@ -156,7 +156,7 @@ describe("Salud Fiscal con cobertura cero", () => {
     ["cfdi", "CFDI del periodo", "/app/sat-sync", "Descargar o cargar CFDI"],
     ["bancos", "Estados de cuenta conciliados", "/app/conciliacion", "Conciliar banco"],
     ["laboral", "CFDI de nómina o expediente laboral", "/app/admin/nomina", "Auditar nómina"],
-    ["documental", "Revisión documental del expediente", "/app/expedientes", "Completar expediente"],
+    ["documental", "Revisión documental del expediente", "/app/clientes", "Completar expediente"],
   ].map(([key, que, ruta, cta]) => ({
     key: key as string,
     label: key as string,
