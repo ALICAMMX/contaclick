@@ -175,7 +175,14 @@ function SaludFiscalPage() {
                   } catch (e) { toast.error(e instanceof Error ? e.message : "Error"); }
                 }} />
               ))}
-              {data.recomendaciones.length === 0 && <div className="text-sm text-muted-foreground italic">No hay acciones pendientes.</div>}
+              {data.recomendaciones.length === 0 && (
+                <div className="text-sm text-muted-foreground italic">
+                  {data.cobertura.suficiente
+                    ? "No hay acciones pendientes."
+                    : "Falta información para evaluar el expediente. Carga los datos listados en “Información faltante” para obtener cobertura."}
+                </div>
+              )}
+
             </div>
           </section>
         </>

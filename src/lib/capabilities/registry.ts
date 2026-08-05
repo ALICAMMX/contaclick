@@ -51,6 +51,13 @@ export type Capability = {
   ultimaValidacion: string; // ISO date
   responsable: string;
   descripcion: string;
+  /**
+   * Criterios registrados y verificables para declarar terminado este paso.
+   * Vacío/ausente = ContaClick NO tiene criterio automático: está prohibido
+   * que la IA invente uno (umbrales, "sin alertas rojas", estados, etc.).
+   */
+  criteriosTerminacion?: string[];
+
 };
 
 const HOY = "2026-08-05";

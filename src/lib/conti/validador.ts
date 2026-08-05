@@ -6,9 +6,12 @@
 // afirmaciones fiscales prohibidas. Lo que no pasa, no se publica.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { getCapabilityByRoute } from "@/lib/capabilities/registry";
+import { CAPABILITIES } from "@/lib/capabilities/registry";
+import { HELP_REGISTRY } from "@/lib/help/registry";
+import { navegacionPara, EFOS_ALCANCE, type Navegacion } from "./guia";
 import { filtraExpediente, type ExpedienteContexto } from "./contexto";
 import type { ContiModo } from "./modos";
+
 
 export type Violacion = {
   regla: string;
@@ -98,12 +101,55 @@ const REGLAS_SIN_EXPEDIENTE: ReglaTexto[] = [
 const CIFRA_CALCULADA =
   /\b(ISR\s+causado|ISR\s+a\s+cargo|pago\s+mensual|retenci[oó]n|IVA\s+a\s+cargo|IVA\s+a\s+favor|impuesto\s+a\s+pagar)\b\s*[:=]\s*\$?\s?[\d,]+(?:\.\d{2})?/gi;
 
+/** Atribución incorrecta del art. 113-F a la mecánica MENSUAL de RESICO. */
+const RESICO_113F_MENSUAL =
+  /[^.\n]*113-?\s?F[^.\n]*(?:pago\s+mensual|mensualmente|mensual)[^.\n]*(?:rest(?:a|ando|ar)|disminuy|menos\s+las\s+retenciones|se\s+determina)[^.\n]*\.?/gi;
+const RESICO_113F_CORRECTO =
+  "El pago mensual se determina conforme al art. 113-E de la LISR sobre los ingresos efectivamente cobrados, considerando la retención del 1.25% del art. 113-J; el art. 113-F corresponde a la determinación anual, en la que se disminuyen los pagos mensuales y las retenciones.";
+
+/** Promesas de cobertura total del validador 69-B. */
+const EFOS_GARANTIA =
+  /[^.\n]*(?:ning[uú]n\s+proveedor[^.\n]*(?:lista[s]?\s+negra|69-?B)|asegur[a-z]*[^.\n]*(?:lista[s]?\s+negra|69-?B)|garantiz[a-z]*[^.\n]*69-?B)[^.\n]*\.?/gi;
+
+/** Vocabulario de UI realmente registrado (nombres, módulos, botones, guías). */
+function vocabularioRegistrado(): Set<string> {
+  const v = new Set<string>();
+  const add = (s: string | undefined | null) => {
+    const t = (s ?? "").trim().toLowerCase();
+    if (t.length > 1) v.add(t);
+  };
+  for (const c of CAPABILITIES) {
+    add(c.nombre);
+    add(c.modulo);
+    add(c.grupo);
+    add(c.grupo.replace(/^\d+\s*·\s*/, ""));
+  }
+  for (const h of Object.values(HELP_REGISTRY)) {
+    add(h.title);
+    for (const p of h.tutorial) {
+      add(p.titulo);
+      for (const q of `${p.detalle} ${p.tip ?? ""}`.matchAll(/['"“”']([^'"“”'\n]{2,60})['"“”']/g)) add(q[1]);
+    }
+    for (const r of h.resultados) add(r.campo);
+  }
+  return v;
+}
+
+const VOCABULARIO = vocabularioRegistrado();
+
+/** Nombres de módulo/pestaña/opción/botón citados en la respuesta. */
+const NOMBRE_UI =
+  /\b(m[oó]dulo|pesta[ñn]a|opci[oó]n|bot[oó]n)\s+(?:llamad[oa]\s+)?["“'«]?([A-ZÁÉÍÓÚÑ][^"”'»\n.;:]{1,60}?)["”'»]?(?=[\s.,;:)\n]|$)/g;
+
 export type ResultadoValidacion = {
   content: string;
   violaciones: Violacion[];
   /** true cuando la respuesta filtró contexto de otro modo y debe regenerarse. */
   requiereRegeneracion: boolean;
+  /** Navegación publicada, siempre respaldada por el registro. */
+  navegacion: Navegacion[];
 };
+
 
 export function validarRespuestaConti(
   bruto: string,
@@ -141,24 +187,79 @@ export function validarRespuestaConti(
     });
   }
 
-  // 3. Rutas internas que no existen en el registro de capacidades.
+  // 3. Fundamento RESICO: el art. 113-F no regula la resta mensual.
+  {
+    const re = new RegExp(RESICO_113F_MENSUAL.source, RESICO_113F_MENSUAL.flags);
+    let tocado = false;
+    content = content.replace(re, (m) => {
+      if (/anual/i.test(m)) return m; // la determinación anual sí es 113-F
+      tocado = true;
+      return RESICO_113F_CORRECTO;
+    });
+    if (tocado)
+      violaciones.push({
+        regla: "resico_113f_mensual",
+        detalle: "Se atribuyó al art. 113-F la mecánica mensual; corresponde al 113-E con la retención del 113-J.",
+        accion: "sustituido",
+      });
+  }
+
+  // 4. EFOS: nunca se promete cobertura total.
+  if (new RegExp(EFOS_GARANTIA.source, EFOS_GARANTIA.flags).test(content)) {
+    content = content.replace(new RegExp(EFOS_GARANTIA.source, EFOS_GARANTIA.flags), EFOS_ALCANCE);
+    violaciones.push({
+      regla: "efos_alcance",
+      detalle: "El validador 69-B tiene alcance limitado; no puede garantizar que ningún proveedor esté listado.",
+      accion: "sustituido",
+    });
+  }
+
+  // 5. Navegación: sólo rutas registradas, con capabilityId y nombre registrado.
   const RUTA_MD = /\[([^\]]+)\]\((\/app\/[^)\s]*)\)/g;
   const inexistentes = new Set<string>();
+  const navegacion: Navegacion[] = [];
   content = content.replace(RUTA_MD, (_m, texto: string, ruta: string) => {
     const limpia = ruta.replace(/[).,]+$/, "");
-    if (getCapabilityByRoute(limpia)) return `[${texto}](${limpia})`;
-    inexistentes.add(limpia);
-    return texto;
+    const nav = navegacionPara(limpia);
+    if (!nav) {
+      inexistentes.add(limpia);
+      return texto;
+    }
+    if (!navegacion.some((n) => n.capabilityId === nav.capabilityId)) navegacion.push(nav);
+    // El texto del enlace se fuerza al nombre registrado: nada de nombres inventados.
+    return `[${nav.nombre}](${nav.ruta})`;
   });
   if (inexistentes.size > 0) {
     violaciones.push({
       regla: "ruta_inexistente",
-      detalle: `Rutas no registradas retiradas: ${[...inexistentes].join(", ")}.`,
+      detalle: `Rutas sin capabilityId retiradas: ${[...inexistentes].join(", ")}.`,
       accion: "eliminado",
     });
   }
 
-  // 4. Cifras publicadas sin ejecución de motor.
+  // 6. Nombres de módulos, pestañas, opciones o botones no registrados.
+  {
+    const noRegistrados = new Set<string>();
+    for (const m of content.matchAll(new RegExp(NOMBRE_UI.source, NOMBRE_UI.flags))) {
+      const nombre = (m[2] ?? "").trim().replace(/\s+/g, " ");
+      if (!nombre) continue;
+      if (VOCABULARIO.has(nombre.toLowerCase())) continue;
+      noRegistrados.add(m[0]!);
+    }
+    if (noRegistrados.size > 0) {
+      for (const frase of noRegistrados) {
+        const escapada = frase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        content = content.replace(new RegExp(`[^.\\n]*${escapada}[^.\\n]*\\.?`, "g"), "");
+      }
+      violaciones.push({
+        regla: "nombre_ui_inexistente",
+        detalle: `Nombres de interfaz no registrados retirados: ${[...noRegistrados].join(" | ")}.`,
+        accion: "eliminado",
+      });
+    }
+  }
+
+  // 7. Cifras publicadas sin ejecución de motor.
   if (opts.motoresEjecutados.length === 0 && CIFRA_CALCULADA.test(content)) {
     content = content.replace(
       new RegExp(CIFRA_CALCULADA.source, CIFRA_CALCULADA.flags),
@@ -176,12 +277,16 @@ export function validarRespuestaConti(
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
-  return { content, violaciones, requiereRegeneracion };
+  return { content, violaciones, requiereRegeneracion, navegacion };
 }
+
 
 export const REGLA_GROUNDING = `GROUNDING DE CAPACIDADES (obligatorio en modo Guía):
 - Cada afirmación operativa debe apoyarse en un campo del registro: nombre de la capacidad, ruta, estado de madurez, prerrequisito registrado o limitación registrada. Si no puedes vincularla a esos campos, no la escribas.
 - Está PROHIBIDO inventar: umbrales de score, metas de conciliación, porcentajes de avance, "cero incidencias" como criterio de cierre, nombres de estados, documentos generados, conexiones externas o funciones de envío que el registro no declare.
 - No existe criterio oficial "Salud Fiscal mayor a 80" ni equivalente. No lo uses como señal de terminación.
 - El cierre se declara terminado únicamente por los pasos registrados de cada herramienta, no por una métrica inventada.
-- No menciones nombres internos, tokens ni configuración.`;
+- No menciones nombres internos, tokens ni configuración.
+- Sólo puedes nombrar módulos, pestañas, opciones y botones que aparezcan literalmente en el registro de capacidades o en las guías operativas. No existen el módulo "Impuestos" ni la opción "Pagos Provisionales / Definitivos".
+- Toda recomendación de navegación debe apuntar a una capacidad registrada, con su nombre y ruta exactos. Si no la encuentras en el registro, no la sugieras.`;
+
