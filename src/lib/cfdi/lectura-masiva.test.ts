@@ -216,7 +216,7 @@ describe("límites de seguridad al leer ZIP", () => {
     const payload = "A".repeat(400_000);
     zip.file("bomba.xml", payload, { compression: "DEFLATE", compressionOptions: { level: 9 } });
     const buf = await zip.generateAsync({ type: "uint8array" });
-    const file = { size: buf.length, arrayBuffer: async () => buf.buffer };
+    const file = { size: buf.length, arrayBuffer: async () => buf.buffer as ArrayBuffer };
     const res = await procesarZipSeguro(file);
     expect(res.ok).toBe(true);
     if (res.ok) {
@@ -231,7 +231,7 @@ describe("límites de seguridad al leer ZIP", () => {
     zip.file("comprobante.xml", xml);
     zip.file("leeme.txt", "hola");
     const buf = await zip.generateAsync({ type: "uint8array" });
-    const file = { size: buf.length, arrayBuffer: async () => buf.buffer };
+    const file = { size: buf.length, arrayBuffer: async () => buf.buffer as ArrayBuffer };
     const res = await procesarZipSeguro(file);
     expect(res.ok).toBe(true);
     if (res.ok) {
