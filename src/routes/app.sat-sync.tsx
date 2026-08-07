@@ -309,26 +309,39 @@ function EstadoServicio({ q }: { q: any }) {
     >
       <div className="flex items-center gap-2 font-medium text-foreground">
         <Wallet className="h-3.5 w-3.5" />
-        Costo estimado de esta corrida: {e.previstas} solicitud(es) SAT
+        Esta corrida enviará {e.previstas} solicitud(es) al SAT
         <span className="text-muted-foreground font-normal">
           · {e.rango.desde} → {e.rango.hasta}
         </span>
       </div>
       <div className="text-muted-foreground">
+        Proveedor: {e.proveedor_nombre} · {e.etiqueta_costo}
+      </div>
+      <div className="text-muted-foreground">
         Cuota del plan: {e.cuota.usado}
         {e.cuota.ilimitado ? " (ilimitada)" : ` de ${e.cuota.limite} · quedan ${e.cuota.restante}`}
-        {e.es_sandbox && " · expediente de demostración (no consume saldo real)"}
+        {e.es_sandbox && " · expediente de demostración (no se contacta al SAT)"}
       </div>
+      {e.corrida_activa && (
+        <div className="flex items-center gap-2 text-warning">
+          <Hourglass className="h-3.5 w-3.5" />
+          Corrida en proceso desde {fmtRel(e.corrida_activa.iniciado_at)} ·{" "}
+          {ESTADO_LABEL[e.corrida_activa.estado]?.texto ?? e.corrida_activa.estado}
+        </div>
+      )}
       {e.servicio && (
         <div className="text-muted-foreground">
-          Servicio PAC (visible sólo para administración): {e.servicio.disponible} disponibles ·{" "}
+          Saldo del proveedor (visible sólo para administración): {e.servicio.disponible} disponibles ·{" "}
           {e.servicio.reservado} reservadas · nivel {e.servicio.nivel}
         </div>
       )}
       {!ok && (
         <div className="flex items-start gap-2 text-destructive pt-1">
           <Ban className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-          <span>{e.motivo}</span>
+          <span>
+            {e.motivo}
+            {e.accion ? <span className="block text-foreground/80 mt-0.5">Qué hacer: {e.accion}</span> : null}
+          </span>
         </div>
       )}
     </div>
@@ -342,6 +355,7 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
   const fnRun = useServerFn(runSyncNow);
   const fnPause = useServerFn(setSyncActivo);
   const fnRuns = useServerFn(listSyncRuns);
+  const fnCosechar = useServerFn(cosecharAhora);
 
   const fnEstado = useServerFn(estadoServicioSat);
   const cfgQ = useQuery({ queryKey: ["sat-sync", "cfg", clienteId], enabled: !!clienteId, queryFn: () => fnGet({ data: { cliente_id: clienteId } }) });
@@ -362,12 +376,26 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
   const cfg = cfgQ.data;
   const [form, setForm] = useState<any>(null);
   const f = form ?? cfg ?? {
-    emitidos: true, recibidos: true, nomina: true, pagos: true, retenciones: false,
+    emitidos: true, recibidos: true, clasificar_nomina: true, clasificar_pagos: true,
     frecuencia: "diaria", periodo: "mes_actual", fecha_desde: null, fecha_hasta: null, activo: true,
   };
 
   const save = useMutation({
-    mutationFn: () => fnUp({ data: { cliente_id: clienteId, ...f } }),
+    mutationFn: () =>
+      fnUp({
+        data: {
+          cliente_id: clienteId,
+          emitidos: !!f.emitidos,
+          recibidos: !!f.recibidos,
+          clasificar_nomina: f.clasificar_nomina ?? true,
+          clasificar_pagos: f.clasificar_pagos ?? true,
+          frecuencia: f.frecuencia,
+          periodo: f.periodo,
+          fecha_desde: f.fecha_desde ?? null,
+          fecha_hasta: f.fecha_hasta ?? null,
+          activo: f.activo ?? true,
+        },
+      }),
     onSuccess: () => { toast.success("Configuración guardada"); qc.invalidateQueries({ queryKey: ["sat-sync"] }); setForm(null); },
     onError: (e: any) => toast.error(e?.message ?? "No se pudo guardar"),
   });
@@ -381,6 +409,18 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
     },
     onSettled: () => { qc.invalidateQueries({ queryKey: ["sat-sync", "estado", clienteId] }); },
     onError: (e: any) => toast.error(e?.message ?? "Error"),
+  });
+
+  const consultar = useMutation({
+    mutationFn: () => fnCosechar({ data: { cliente_id: clienteId } }),
+    onSuccess: (r: any) =>
+      toast.success(
+        r.revisadas === 0
+          ? "No hay corridas en proceso."
+          : `Consultadas ${r.revisadas} corrida(s) · ${r.nuevos} CFDI nuevos · ${r.terminadas} terminada(s).`,
+      ),
+    onError: (e: any) => toast.error(e?.message ?? "No se pudo consultar el avance"),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["sat-sync"] }),
   });
 
   const togglePause = useMutation({
@@ -414,6 +454,16 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
                 : <RefreshCw className="h-4 w-4 mr-2" />}
               Sincronizar ahora
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => consultar.mutate()}
+              disabled={consultar.isPending}
+              title="Pregunta al SAT si ya liberó los paquetes de las corridas en proceso"
+            >
+              {consultar.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Hourglass className="h-4 w-4 mr-2" />}
+              Consultar avance
+            </Button>
             <Button size="sm" variant="outline" onClick={() => togglePause.mutate()} disabled={togglePause.isPending || !cfg}>
               {f.activo ? <Pause className="h-4 w-4 mr-2" /> : <Play className="h-4 w-4 mr-2" />}
               {f.activo ? "Pausar" : "Reanudar"}
@@ -428,15 +478,35 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
         <div className="flex items-center gap-2 text-sm font-medium"><SettingsIcon className="h-4 w-4" /> Configuración de descarga</div>
 
         <div>
-          <div className="text-xs text-muted-foreground mb-2">¿Qué descargar?</div>
+          <div className="text-xs text-muted-foreground mb-2">
+            ¿Qué solicitar al SAT? Cada dirección es una solicitud independiente.
+          </div>
           <div className="flex flex-wrap gap-2">
-            {[["emitidos", "Emitidos"], ["recibidos", "Recibidos"], ["nomina", "Nómina"], ["pagos", "Pagos"], ["retenciones", "Retenciones"]].map(([k, l]) => (
+            {[["emitidos", "Emitidos"], ["recibidos", "Recibidos"]].map(([k, l]) => (
               <label key={k} className={`flex items-center gap-2 px-3 py-1.5 rounded-md border text-sm cursor-pointer ${f[k] ? "bg-primary/10 border-primary text-primary" : "border-border"}`}>
                 <input type="checkbox" className="hidden" checked={!!f[k]} onChange={(e) => set(k, e.target.checked)} />
                 {l}
               </label>
             ))}
           </div>
+        </div>
+
+        <div>
+          <div className="text-xs text-muted-foreground mb-2">
+            Clasificación posterior a la descarga (no genera solicitudes adicionales)
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {[["clasificar_nomina", "Identificar nómina"], ["clasificar_pagos", "Identificar complementos de pago"]].map(([k, l]) => (
+              <label key={k} className={`flex items-center gap-2 px-3 py-1.5 rounded-md border text-sm cursor-pointer ${f[k] ? "bg-primary/10 border-primary text-primary" : "border-border"}`}>
+                <input type="checkbox" className="hidden" checked={!!f[k]} onChange={(e) => set(k, e.target.checked)} />
+                {l}
+              </label>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Retenciones e información de pagos (CFDI de retenciones) usan otro servicio del SAT:
+            pendiente de implementación.
+          </p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-4">
