@@ -7,9 +7,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import {
   RefreshCw, ShieldCheck, AlertTriangle, FileStack, Clock, PlugZap, Loader2,
-  Pause, Play, Settings as SettingsIcon, ArrowLeft, Ban, Wallet,
+  Pause, Play, Settings as SettingsIcon, ArrowLeft, Ban, Wallet, Hourglass,
 } from "lucide-react";
-import { dashboardSatSync, runSyncNow, listSyncRuns, listSyncEventos, setSyncActivo, getSatSyncConfig, upsertSatSyncConfig, estadoServicioSat } from "@/lib/sat/sat-sync.functions";
+import { dashboardSatSync, runSyncNow, listSyncRuns, listSyncEventos, setSyncActivo, getSatSyncConfig, upsertSatSyncConfig, estadoServicioSat, cosecharAhora } from "@/lib/sat/sat-sync.functions";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -25,6 +25,25 @@ function fmtRel(s?: string | null) {
   if (h < 1) return `hace ${Math.floor(diff / 60000)} min`;
   if (h < 24) return `hace ${h} h`;
   return `hace ${Math.floor(h / 24)} d`;
+}
+
+/** Etiquetas de la máquina de estados de una corrida. */
+const ESTADO_LABEL: Record<string, { texto: string; cls: string }> = {
+  preparando: { texto: "Preparando", cls: "bg-muted text-muted-foreground" },
+  solicitando: { texto: "Solicitando al SAT", cls: "bg-warning/15 text-warning" },
+  esperando_sat: { texto: "Esperando al SAT", cls: "bg-warning/15 text-warning" },
+  descargando: { texto: "Descargando paquetes", cls: "bg-warning/15 text-warning" },
+  ingiriendo: { texto: "Procesando XML", cls: "bg-warning/15 text-warning" },
+  recalculando: { texto: "Recalculando módulos", cls: "bg-warning/15 text-warning" },
+  completada: { texto: "Completada", cls: "bg-success/15 text-success" },
+  parcial: { texto: "Cobertura parcial", cls: "bg-warning/15 text-warning" },
+  error: { texto: "Error", cls: "bg-destructive/15 text-destructive" },
+  vencida: { texto: "Vencida en el SAT", cls: "bg-destructive/15 text-destructive" },
+};
+
+function EstadoBadge({ estado }: { estado?: string | null }) {
+  const e = ESTADO_LABEL[estado ?? ""] ?? { texto: estado ?? "—", cls: "bg-muted text-muted-foreground" };
+  return <span className={`text-xs px-2 py-0.5 rounded-full ${e.cls}`}>{e.texto}</span>;
 }
 
 function SatSyncPage() {
@@ -58,8 +77,10 @@ function SatSyncPage() {
         </div>
         <h1 className="serif text-3xl text-foreground">Descarga Masiva SAT</h1>
         <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-          Motor de actualización fiscal. Descarga CFDI emitidos, recibidos, nómina, pagos y retenciones de forma
-          automática, detecta novedades y ejecuta los módulos en cascada.
+          Descarga los CFDI <strong>emitidos</strong> y <strong>recibidos</strong> del expediente directamente
+          del servicio oficial del SAT firmando con su e.firma. La nómina y los complementos de pago se
+          identifican al clasificar los comprobantes descargados, no son descargas independientes.
+          El SAT responde de forma asíncrona: la corrida continúa aunque cierres esta pantalla.
         </p>
       </div>
 
@@ -127,7 +148,7 @@ function DashboardTab({ d, loading }: { d: any; loading: boolean }) {
         <Kpi icon={FileStack} label="Corridas hoy" value={d.hoy} />
         <Kpi icon={ShieldCheck} label="CFDI nuevos hoy" value={d.nuevos} tone="ok" />
         <Kpi icon={AlertTriangle} label="Errores (7d)" value={d.errores} tone={d.errores > 0 ? "danger" : undefined} />
-        <Kpi icon={RefreshCw} label="Pendientes de sincronizar" value={d.pendientes} tone={d.pendientes > 0 ? "warn" : undefined} />
+        <Kpi icon={RefreshCw} label="Corridas en proceso" value={d.pendientes} hint="El SAT responde de forma asíncrona" tone={d.pendientes > 0 ? "warn" : undefined} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -139,11 +160,9 @@ function DashboardTab({ d, loading }: { d: any; loading: boolean }) {
               <li key={r.id} className="flex items-center justify-between border-b border-border/40 pb-1.5">
                 <div>
                   <div className="font-medium">{r.clientes?.rfc ?? r.cliente_id.slice(0, 8)}</div>
-                  <div className="text-xs text-muted-foreground">{fmtFecha(r.iniciado_at)} · {r.descargados} XML</div>
+                  <div className="text-xs text-muted-foreground">{fmtFecha(r.iniciado_at)} · {r.nuevos ?? 0} nuevos</div>
                 </div>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${r.estatus === "exitoso" ? "bg-success/15 text-success" : r.estatus === "error" ? "bg-destructive/15 text-destructive" : "bg-warning/15 text-warning"}`}>
-                  {r.estatus}
-                </span>
+                <EstadoBadge estado={r.estado ?? r.estatus} />
               </li>
             ))}
           </ul>
@@ -225,9 +244,7 @@ function ActividadTab({ clienteId }: { clienteId: string }) {
               <td className="p-3 text-right">{Array.isArray(r.errores) ? r.errores.length : 0}</td>
               <td className="p-3 text-xs">{r.duracion_ms != null ? `${r.duracion_ms} ms` : "—"}</td>
               <td className="p-3">
-                <span className={`text-xs px-2 py-0.5 rounded-full ${r.estatus === "exitoso" ? "bg-success/15 text-success" : r.estatus === "error" ? "bg-destructive/15 text-destructive" : "bg-warning/15 text-warning"}`}>
-                  {r.estatus}
-                </span>
+                <EstadoBadge estado={r.estado ?? r.estatus} />
               </td>
             </tr>
           ))}
@@ -357,7 +374,11 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
 
   const runNow = useMutation({
     mutationFn: () => fnRun({ data: { cliente_id: clienteId, origen: "expediente", cascade: true } }),
-    onSuccess: (r) => { toast.success(`Sincronización ${r.estatus}: ${r.descargados} XML, ${r.nuevos} nuevos`); qc.invalidateQueries({ queryKey: ["sat-sync"] }); },
+    onSuccess: (r) => {
+      if (r.duplicada) toast.info(r.mensaje);
+      else toast.success(r.mensaje);
+      qc.invalidateQueries({ queryKey: ["sat-sync"] });
+    },
     onSettled: () => { qc.invalidateQueries({ queryKey: ["sat-sync", "estado", clienteId] }); },
     onError: (e: any) => toast.error(e?.message ?? "Error"),
   });
@@ -462,9 +483,12 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
               <li key={r.id} className="py-2 flex items-center justify-between gap-3">
                 <div>
                   <div>{fmtFecha(r.iniciado_at)} · <span className="text-xs text-muted-foreground">{r.origen}</span></div>
-                  <div className="text-xs text-muted-foreground">{r.desde} → {r.hasta} · {r.descargados} XML / {r.nuevos} nuevos</div>
+                  <div className="text-xs text-muted-foreground">
+                    {r.desde} → {r.hasta} · {r.nuevos ?? 0} nuevos · {r.duplicados ?? 0} duplicados · {r.rechazados ?? 0} rechazados
+                  </div>
+                  {r.advertencia && <div className="text-xs text-warning mt-0.5">{r.advertencia}</div>}
                 </div>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${r.estatus === "exitoso" ? "bg-success/15 text-success" : r.estatus === "error" ? "bg-destructive/15 text-destructive" : "bg-warning/15 text-warning"}`}>{r.estatus}</span>
+                <EstadoBadge estado={r.estado ?? r.estatus} />
               </li>
             ))}
           </ul>
