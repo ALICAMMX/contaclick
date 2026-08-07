@@ -700,7 +700,7 @@ export const cosecharAhora = createServerFn({ method: "POST" })
     let nuevos = 0;
     let terminadas = 0;
     for (const run of runs) {
-      const sols = (((run as any).solicitudes ?? []) as SolicitudRegistro[]) ?? [];
+      const sols = ((run as any).solicitudes ?? []) as SolicitudRegistro[];
       if (!sols.length) continue;
       const r = await cosecharCorrida({
         supabase,
