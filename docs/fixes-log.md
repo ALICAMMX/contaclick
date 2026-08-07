@@ -710,3 +710,18 @@ síncronas cuando el SAT responde de forma diferida.
 
 **Reversión.** Volver a un PAC: registrar el proveedor en `providers/contrato.ts`
 y cambiar `proveedor` en `sat_sync_config`; no se requieren cambios de esquema.
+
+## Lector Masivo de XML — impuestos, clasificación y ZIP seguro
+
+- Nuevo módulo puro `src/lib/cfdi/lectura-masiva.ts` (20 pruebas): desglose real
+  de IVA/IEPS/otros trasladados y retenciones (ISR, IVA, otros) a nivel
+  comprobante y concepto; clasificación por perspectiva del RFC activo
+  (ingreso, gasto, notas de crédito, nómina, pago, otro) para que E/N/P dejen de
+  sumarse como ingreso o gasto; totales netos.
+- El estado nunca se infiere del XML: se muestra "No verificado ante SAT" salvo
+  evidencia oficial.
+- Carga de ZIP con límites de seguridad (200 MB por ZIP, 20 000 entradas, 1 GB
+  descomprimido, 5 MB por XML, ratio 200) y reporte de archivos ignorados.
+- `src/routes/app.tools.xml-bulk-reader.tsx` ya consume el módulo: KPIs netos,
+  columnas de impuestos y clasificación, filtro por clasificación y exportes
+  CSV/Excel con el desglose completo.
