@@ -3352,6 +3352,9 @@ export type Database = {
       sat_credenciales: {
         Row: {
           cliente_id: string
+          consentimiento_at: string | null
+          consentimiento_user_id: string | null
+          consentimiento_version: string | null
           created_at: string
           despacho_id: string
           efirma_cer: string | null
@@ -3366,9 +3369,14 @@ export type Database = {
           pac_token: string | null
           proveedor: string
           updated_at: string
+          vault_key_id: string | null
+          vault_version: number
         }
         Insert: {
           cliente_id: string
+          consentimiento_at?: string | null
+          consentimiento_user_id?: string | null
+          consentimiento_version?: string | null
           created_at?: string
           despacho_id: string
           efirma_cer?: string | null
@@ -3383,9 +3391,14 @@ export type Database = {
           pac_token?: string | null
           proveedor?: string
           updated_at?: string
+          vault_key_id?: string | null
+          vault_version?: number
         }
         Update: {
           cliente_id?: string
+          consentimiento_at?: string | null
+          consentimiento_user_id?: string | null
+          consentimiento_version?: string | null
           created_at?: string
           despacho_id?: string
           efirma_cer?: string | null
@@ -3400,6 +3413,8 @@ export type Database = {
           pac_token?: string | null
           proveedor?: string
           updated_at?: string
+          vault_key_id?: string | null
+          vault_version?: number
         }
         Relationships: []
       }
@@ -3507,6 +3522,8 @@ export type Database = {
       sat_sync_config: {
         Row: {
           activo: boolean
+          clasificar_nomina: boolean
+          clasificar_pagos: boolean
           cliente_id: string
           created_at: string
           despacho_id: string
@@ -3517,6 +3534,7 @@ export type Database = {
           nomina: boolean
           pagos: boolean
           periodo: string
+          proveedor: string
           proxima_corrida_at: string | null
           recibidos: boolean
           retenciones: boolean
@@ -3525,6 +3543,8 @@ export type Database = {
         }
         Insert: {
           activo?: boolean
+          clasificar_nomina?: boolean
+          clasificar_pagos?: boolean
           cliente_id: string
           created_at?: string
           despacho_id: string
@@ -3535,6 +3555,7 @@ export type Database = {
           nomina?: boolean
           pagos?: boolean
           periodo?: string
+          proveedor?: string
           proxima_corrida_at?: string | null
           recibidos?: boolean
           retenciones?: boolean
@@ -3543,6 +3564,8 @@ export type Database = {
         }
         Update: {
           activo?: boolean
+          clasificar_nomina?: boolean
+          clasificar_pagos?: boolean
           cliente_id?: string
           created_at?: string
           despacho_id?: string
@@ -3553,6 +3576,7 @@ export type Database = {
           nomina?: boolean
           pagos?: boolean
           periodo?: string
+          proveedor?: string
           proxima_corrida_at?: string | null
           recibidos?: boolean
           retenciones?: boolean
@@ -3642,8 +3666,10 @@ export type Database = {
       }
       sat_sync_runs: {
         Row: {
+          advertencia: string | null
           cancelados: number
           cliente_id: string
+          cobertura: string
           descargados: number
           desde: string | null
           despacho_id: string
@@ -3651,21 +3677,28 @@ export type Database = {
           duplicados: number
           duracion_ms: number | null
           errores: Json
+          estado: string
           estatus: string
           finalizado_at: string | null
           hasta: string | null
           id: string
+          idempotency_key: string | null
           iniciado_at: string
           nuevos: number
           origen: string
+          paquetes_procesados: number
           proveedor: string
+          rechazados: number
           solicitudes: Json
           tipo: string
           triggered_by: string | null
+          ultima_consulta_at: string | null
         }
         Insert: {
+          advertencia?: string | null
           cancelados?: number
           cliente_id: string
+          cobertura?: string
           descargados?: number
           desde?: string | null
           despacho_id: string
@@ -3673,21 +3706,28 @@ export type Database = {
           duplicados?: number
           duracion_ms?: number | null
           errores?: Json
+          estado?: string
           estatus?: string
           finalizado_at?: string | null
           hasta?: string | null
           id?: string
+          idempotency_key?: string | null
           iniciado_at?: string
           nuevos?: number
           origen?: string
+          paquetes_procesados?: number
           proveedor?: string
+          rechazados?: number
           solicitudes?: Json
           tipo?: string
           triggered_by?: string | null
+          ultima_consulta_at?: string | null
         }
         Update: {
+          advertencia?: string | null
           cancelados?: number
           cliente_id?: string
+          cobertura?: string
           descargados?: number
           desde?: string | null
           despacho_id?: string
@@ -3695,17 +3735,22 @@ export type Database = {
           duplicados?: number
           duracion_ms?: number | null
           errores?: Json
+          estado?: string
           estatus?: string
           finalizado_at?: string | null
           hasta?: string | null
           id?: string
+          idempotency_key?: string | null
           iniciado_at?: string
           nuevos?: number
           origen?: string
+          paquetes_procesados?: number
           proveedor?: string
+          rechazados?: number
           solicitudes?: Json
           tipo?: string
           triggered_by?: string | null
+          ultima_consulta_at?: string | null
         }
         Relationships: [
           {
