@@ -682,3 +682,46 @@ Implementado en `src/lib/conti/contexto.ts`: `construirPayloadConti` decide qué
 - **EFOS**: alcance registrado obligatorio; se sustituyen promesas de "ningún proveedor en listas negras".
 - **Salud Fiscal**: la ruta faltante documental apuntaba a `/app/expedientes` (no registrada) → `/app/clientes`; la UI ya no dice "No hay acciones pendientes" sin cobertura.
 - 352 pruebas en verde, 16 nuevas en `src/lib/conti/grounding.test.ts`. No se tocó aislamiento de modos, router ni cableado de motores.
+
+## Descarga Masiva SAT — migración a SAT directo con e.firma
+
+**Problema.** El módulo prometía descargas de "nómina, pagos y retenciones" como
+si fueran servicios independientes, dependía de un PAC de pago, mezclaba la
+cuota del plan con el saldo del proveedor y presentaba las corridas como
+síncronas cuando el SAT responde de forma diferida.
+
+**Corrección.**
+- Proveedor principal `sat_directo` (e.firma del contribuyente, costo $0 por
+  solicitud). Arquitectura de proveedores en `src/lib/sat/providers/contrato.ts`
+  lista para reconectar un PAC sin tocar la UI.
+- Máquina de estados explícita (`preparando → solicitando → esperando_sat →
+  descargando → ingiriendo → recalculando → completada/parcial/error/vencida`)
+  con idempotencia por corrida y por solicitud.
+- Bóveda de e.firma v2 (AES-256-GCM con AAD ligada al expediente y rotación de
+  llave). La carga exige consentimiento explícito registrado
+  (`consentimiento_at/user_id/version`).
+- Cuota del plan y saldo del proveedor quedaron separados; sandbox no toca
+  saldo real.
+- UI: sólo se solicitan **emitidos** y **recibidos**; nómina y complementos de
+  pago son clasificación posterior. Retenciones se marca como pendiente. Se
+  agregó "Consultar avance" y la causa/acción cuando la corrida está bloqueada.
+- Se retiró `sincronizarCfdis` (ruta PAC legada); la pantalla del expediente
+  ahora dirige a Descarga Masiva SAT.
+
+**Reversión.** Volver a un PAC: registrar el proveedor en `providers/contrato.ts`
+y cambiar `proveedor` en `sat_sync_config`; no se requieren cambios de esquema.
+
+## Lector Masivo de XML — impuestos, clasificación y ZIP seguro
+
+- Nuevo módulo puro `src/lib/cfdi/lectura-masiva.ts` (20 pruebas): desglose real
+  de IVA/IEPS/otros trasladados y retenciones (ISR, IVA, otros) a nivel
+  comprobante y concepto; clasificación por perspectiva del RFC activo
+  (ingreso, gasto, notas de crédito, nómina, pago, otro) para que E/N/P dejen de
+  sumarse como ingreso o gasto; totales netos.
+- El estado nunca se infiere del XML: se muestra "No verificado ante SAT" salvo
+  evidencia oficial.
+- Carga de ZIP con límites de seguridad (200 MB por ZIP, 20 000 entradas, 1 GB
+  descomprimido, 5 MB por XML, ratio 200) y reporte de archivos ignorados.
+- `src/routes/app.tools.xml-bulk-reader.tsx` ya consume el módulo: KPIs netos,
+  columnas de impuestos y clasificación, filtro por clasificación y exportes
+  CSV/Excel con el desglose completo.

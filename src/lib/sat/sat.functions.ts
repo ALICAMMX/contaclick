@@ -8,7 +8,16 @@ const ConnectSchema = z.object({
   cer_b64: z.string().min(10),
   key_b64: z.string().min(10),
   password: z.string().min(1),
+  consentimiento: z.literal(true, {
+    errorMap: () => ({
+      message:
+        "Debes confirmar que cuentas con autorización del contribuyente para resguardar y usar su e.firma.",
+    }),
+  }),
 });
+
+/** Versión del texto de consentimiento aceptado al cargar la e.firma. */
+const CONSENTIMIENTO_VERSION = "efirma-2026-01";
 
 // RFC: 3-4 letras (incluye Ñ y &) + 6 dígitos (fecha) + 3 alfanuméricos (homoclave).
 // Sin \b: en el DER el RFC puede estar rodeado de bytes alfanuméricos (longitudes ASN.1).
@@ -59,10 +68,25 @@ export const getSatStatus = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { data: row } = await context.supabase
       .from("sat_credenciales")
-      .select("proveedor, estatus, last_sync_at, last_error, updated_at")
+      .select(
+        "proveedor, estatus, last_sync_at, last_error, updated_at, efirma_rfc, efirma_vence_at, consentimiento_at, consentimiento_version, vault_version",
+      )
       .eq("cliente_id", data.cliente_id)
       .maybeSingle();
-    return row ?? { proveedor: "sw_sapien", estatus: "sin_conectar", last_sync_at: null, last_error: null, updated_at: null };
+    return (
+      row ?? {
+        proveedor: "sat_directo",
+        estatus: "sin_conectar",
+        last_sync_at: null,
+        last_error: null,
+        updated_at: null,
+        efirma_rfc: null,
+        efirma_vence_at: null,
+        consentimiento_at: null,
+        consentimiento_version: null,
+        vault_version: null,
+      }
+    );
   });
 
 export const conectarSat = createServerFn({ method: "POST" })
@@ -121,7 +145,11 @@ export const conectarSat = createServerFn({ method: "POST" })
       throw new Error(e?.message ?? "No se pudo validar la e.firma con el SAT");
     }
 
-    const { cifrar } = await import("@/lib/sat/efirma-vault.server");
+    const { cifrar, aadExpediente, VAULT_VERSION } = await import(
+      "@/lib/sat/efirma-vault.server"
+    );
+    const aadFor = (campo: string) =>
+      aadExpediente({ despachoId: cli.despacho_id, clienteId: cli.id, rfc: rfcCliente, campo });
     const { error: upErr } = await supabase.from("sat_credenciales").upsert(
       {
         cliente_id: cli.id,
@@ -129,10 +157,15 @@ export const conectarSat = createServerFn({ method: "POST" })
         proveedor: "sat_directo",
         pac_token: null,
         efirma_cer: data.cer_b64,
-        efirma_key_enc: await cifrar(data.key_b64),
-        efirma_pass_enc: await cifrar(data.password),
+        efirma_key_enc: await cifrar(data.key_b64, aadFor("key")),
+        efirma_pass_enc: await cifrar(data.password, aadFor("pass")),
         efirma_rfc: rfcCliente,
         efirma_vence_at: vence,
+        vault_version: VAULT_VERSION,
+        vault_key_id: process.env["SAT_EFIRMA_KEY_ID"] || "k1",
+        consentimiento_at: new Date().toISOString(),
+        consentimiento_user_id: userId,
+        consentimiento_version: CONSENTIMIENTO_VERSION,
         estatus: "activo",
         last_error: null,
         last_sync_at: new Date().toISOString(),
@@ -156,9 +189,9 @@ export const conectarSat = createServerFn({ method: "POST" })
         despacho_id: cli.despacho_id,
         emitidos: true,
         recibidos: true,
-        nomina: true,
-        pagos: true,
-        retenciones: false,
+        clasificar_nomina: true,
+        clasificar_pagos: true,
+        proveedor: "sat_directo",
         frecuencia: "diaria",
         periodo: "mes_actual",
         activo: true,
@@ -178,7 +211,12 @@ export const conectarSat = createServerFn({ method: "POST" })
       accion: "sat.conectar",
       entidad: "cliente",
       entidad_id: cli.id,
-      payload: { proveedor: "sat_directo", rfc: cli.rfc, auto_sync: true },
+      payload: {
+        proveedor: "sat_directo",
+        rfc: cli.rfc,
+        auto_sync: true,
+        consentimiento_version: CONSENTIMIENTO_VERSION,
+      },
     });
 
     return { ok: true, simulated: false, auto_sync_activado: true };
@@ -197,103 +235,5 @@ export const desconectarSat = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-const SyncSchema = z.object({
-  cliente_id: z.string().uuid(),
-  desde: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  hasta: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  tipo: z.enum(["emitidos", "recibidos", "ambos"]).default("ambos"),
-});
-
-export const sincronizarCfdis = createServerFn({ method: "POST" })
-  .middleware([attachSupabaseAuth, requireSupabaseAuth])
-  .inputValidator((d: unknown) => SyncSchema.parse(d))
-  .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
-
-    const { data: cred } = await supabase
-      .from("sat_credenciales")
-      .select("pac_token, estatus, despacho_id")
-      .eq("cliente_id", data.cliente_id)
-      .maybeSingle();
-    if (!cred || cred.estatus !== "activo" || !cred.pac_token) {
-      throw new Error("Este expediente no está conectado al SAT");
-    }
-
-    const { data: cli } = await supabase
-      .from("clientes")
-      .select("id, despacho_id, rfc")
-      .eq("id", data.cliente_id)
-      .maybeSingle();
-    if (!cli || !cli.despacho_id) throw new Error("Expediente no encontrado");
-
-    const hasPacConfig = Boolean(process.env.SW_SAPIEN_API_TOKEN || process.env.SW_USER);
-    const isMock = cred.pac_token.startsWith("mock_") || !hasPacConfig;
-    let descargados = 0;
-    let ya_existian = 0;
-    const errores: string[] = [];
-    let detalle = "";
-
-    if (isMock) {
-      // Modo demo: simulamos respuesta del PAC. Los CFDI reales del expediente
-      // ya pueden cargarse vía el seed demo o la subida manual de XML.
-      descargados = Math.floor(Math.random() * 4) + 2;
-      ya_existian = Math.floor(Math.random() * 3);
-      detalle = "Sincronización en modo demo (PAC no configurado).";
-    } else {
-      try {
-        // SW Sapien: solicitud de descarga masiva
-        // Ver https://developers.sw.com.mx/  →  /cfdi/descargamasiva
-        const SW_BASE = (process.env.SW_SAPIEN_API_URL || "https://services.sw.com.mx/").replace(/\/$/, "");
-        const res = await fetch(`${SW_BASE}/cfdi/descargamasiva/solicitud`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${cred.pac_token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            rfc: cli.rfc,
-            fechaInicio: data.desde,
-            fechaFin: data.hasta,
-            tipoSolicitud: data.tipo === "ambos" ? "CFDI" : data.tipo,
-          }),
-        });
-        if (!res.ok) {
-          const txt = await res.text();
-          throw new Error(`PAC ${res.status}: ${txt.slice(0, 200)}`);
-        }
-        const j = (await res.json()) as { data?: { idSolicitud?: string } };
-        detalle = `Solicitud enviada al SAT (id ${j.data?.idSolicitud ?? "?"}). Los XMLs se ingestarán en la siguiente verificación.`;
-        // Nota: el flujo SAT es asíncrono (solicitud → verificación → descarga),
-        // un cron posterior hará el polling. Aquí solo registramos la solicitud.
-      } catch (e: any) {
-        errores.push(String(e?.message ?? e));
-      }
-    }
-
-    await supabase
-      .from("sat_credenciales")
-      .update({
-        last_sync_at: new Date().toISOString(),
-        last_error: errores.length ? errores.join("; ").slice(0, 500) : null,
-        estatus: errores.length ? "error" : "activo",
-      })
-      .eq("cliente_id", data.cliente_id);
-
-    await supabase.from("audit_logs").insert({
-      user_id: userId,
-      despacho_id: cli.despacho_id,
-      accion: "sat.sincronizar",
-      entidad: "cliente",
-      entidad_id: cli.id,
-      payload: { desde: data.desde, hasta: data.hasta, descargados, ya_existian, errores, simulated: isMock },
-    });
-
-    return {
-      ok: errores.length === 0,
-      simulated: isMock,
-      descargados,
-      ya_existian,
-      errores,
-      detalle,
-    };
-  });
+// El flujo de descarga masiva vive en `sat-sync.functions.ts` (proveedor SAT directo).
+// La ruta antigua vía PAC (`sincronizarCfdis`) fue retirada.
