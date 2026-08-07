@@ -1,146 +1,224 @@
 /**
- * Orquestador de la Descarga Masiva SAT sin PAC.
+ * Orquestador de la Descarga Masiva SAT con e.firma (proveedor `sat_directo`).
  *
- * Cada corrida:
- *  - Paso A (solicitar): autentica con la e.firma y manda 1-2 solicitudes (emitidos / recibidos).
- *  - Paso B (cosechar):  verifica solicitudes pendientes y, cuando el SAT las termina,
- *                        descarga los ZIP y los ingesta como CFDI del expediente.
+ * El SAT es ASÍNCRONO y esta implementación lo respeta:
+ *   Paso A (solicitar): autentica con la e.firma y envía 1..N solicitudes.
+ *   Paso B (cosechar):  verifica, descarga los paquetes liberados e ingesta
+ *                       los XML. Se repite hasta que TODAS las solicitudes
+ *                       terminan; sólo entonces la corrida queda `completada`.
  *
- * Costo: $0 por solicitud. El SAT limita a ~2 solicitudes activas por RFC.
+ * Idempotencia: los paquetes ya procesados nunca se vuelven a ingerir y los
+ * contadores se acumulan, así que reintentar una cosecha no duplica nada.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import JSZip from "jszip";
-import { descifrar } from "./efirma-vault.server";
+import { aadExpediente, descifrar } from "./efirma-vault.server";
 import {
   abrirEFirma,
   satAutenticar,
   satSolicitar,
   satVerificar,
   satDescargarPaquete,
-  type TipoDescarga,
 } from "./providers/sat-directo.server";
 import { ingestOneInternal } from "@/lib/cfdi/cfdi.functions";
+import type { DireccionDescarga } from "./providers/contrato";
+import {
+  MAX_INTENTOS_SOLICITUD,
+  acumularSolicitud,
+  estadoDesdeSat,
+  estatusLegado,
+  nuevaSolicitud,
+  resolverEstadoCorrida,
+  semanticaCodigo,
+  siguienteIntento,
+  type ResumenCorrida,
+  type SolicitudRegistro,
+} from "./maquina-estados";
 
-export type SolicitudPendiente = {
-  id_solicitud: string;
-  tipo: TipoDescarga;
-  desde: string;
-  hasta: string;
-  estado: "pendiente" | "listo" | "error" | "vacio";
-  mensaje?: string;
-  paquetes_procesados?: string[];
-};
+/** Máximo de XML que se ingieren por paquete en una sola pasada. */
+const MAX_XML_POR_PAQUETE = 5000;
 
-async function credencialesDe(supabase: SupabaseClient, clienteId: string) {
+export type ContextoEFirma = Awaited<ReturnType<typeof abrirEFirma>>;
+
+async function credencialesDe(
+  supabase: SupabaseClient,
+  clienteId: string,
+): Promise<ContextoEFirma> {
   const { data } = await supabase
     .from("sat_credenciales")
-    .select("efirma_cer, efirma_key_enc, efirma_pass_enc, estatus, proveedor")
+    .select("despacho_id, efirma_cer, efirma_key_enc, efirma_pass_enc, estatus, rfc")
     .eq("cliente_id", clienteId)
     .maybeSingle();
   if (!data || data.estatus !== "activo" || !data.efirma_cer || !data.efirma_key_enc) {
     throw new Error(
-      "Este expediente no tiene la e.firma cargada. Súbela en Descarga SAT para activar la descarga gratuita.",
+      "Este expediente no tiene una e.firma activa. Cárgala en Descarga SAT para poder solicitar comprobantes.",
     );
   }
+  const aadKey = aadExpediente({
+    despachoId: (data as any).despacho_id ?? null,
+    clienteId,
+    rfc: (data as any).rfc ?? null,
+    campo: "key",
+  });
+  const aadPass = aadExpediente({
+    despachoId: (data as any).despacho_id ?? null,
+    clienteId,
+    rfc: (data as any).rfc ?? null,
+    campo: "pass",
+  });
   return abrirEFirma({
     cer_b64: data.efirma_cer as string,
-    key_b64: await descifrar(data.efirma_key_enc as string),
-    password: await descifrar(data.efirma_pass_enc as string),
+    key_b64: await descifrar(data.efirma_key_enc as string, aadKey),
+    password: await descifrar(data.efirma_pass_enc as string, aadPass),
   });
 }
 
-/** Paso A: envía las solicitudes de descarga al SAT. */
+// ---------------------------------------------------------------------
+// Paso A — Solicitar
+// ---------------------------------------------------------------------
+
 export async function solicitarDescargas(args: {
   supabase: SupabaseClient;
   clienteId: string;
   rfc: string;
   desde: string;
   hasta: string;
-  emitidos: boolean;
-  recibidos: boolean;
-}): Promise<{ solicitudes: SolicitudPendiente[]; errores: string[] }> {
+  direcciones: DireccionDescarga[];
+}): Promise<{ solicitudes: SolicitudRegistro[]; errores: string[] }> {
   const creds = await credencialesDe(args.supabase, args.clienteId);
   const token = await satAutenticar(creds);
 
-  const tipos: TipoDescarga[] = [];
-  if (args.emitidos) tipos.push("emitidos");
-  if (args.recibidos) tipos.push("recibidos");
-  if (tipos.length === 0) tipos.push("recibidos");
-
-  const solicitudes: SolicitudPendiente[] = [];
+  const solicitudes: SolicitudRegistro[] = [];
   const errores: string[] = [];
-  for (const tipo of tipos) {
+
+  for (const direccion of args.direcciones) {
     try {
       const r = await satSolicitar(creds, token, {
         rfc: args.rfc.toUpperCase(),
         desde: args.desde,
         hasta: args.hasta,
-        tipo,
+        tipo: direccion,
+        tipoSolicitud: "CFDI",
       });
-      solicitudes.push({
-        id_solicitud: r.idSolicitud,
-        tipo,
-        desde: args.desde,
-        hasta: args.hasta,
-        estado: "pendiente",
-        mensaje: r.mensaje,
-      });
+      const sem = semanticaCodigo(r.codigo);
+      solicitudes.push(
+        nuevaSolicitud({
+          direccion,
+          desde: args.desde,
+          hasta: args.hasta,
+          id_solicitud: r.idSolicitud,
+          codigo: r.codigo,
+          mensaje: sem.mensaje || r.mensaje,
+          estado: sem.vencida ? "vencida" : "pendiente",
+        }),
+      );
     } catch (e: any) {
-      errores.push(`[${tipo}] ${String(e?.message ?? e).slice(0, 250)}`);
+      const mensaje = String(e?.message ?? e).slice(0, 250);
+      errores.push(`[${direccion}] ${mensaje}`);
+      solicitudes.push(
+        nuevaSolicitud({
+          direccion,
+          desde: args.desde,
+          hasta: args.hasta,
+          id_solicitud: "",
+          estado: "error",
+          mensaje,
+          error: mensaje,
+        }),
+      );
     }
   }
   return { solicitudes, errores };
 }
 
+// ---------------------------------------------------------------------
+// Paso B — Cosechar
+// ---------------------------------------------------------------------
+
 /**
- * Paso B: verifica una solicitud y, si el SAT ya la terminó, baja los paquetes
- * e ingesta los CFDI. Devuelve el estado actualizado.
+ * Verifica una solicitud y, si el SAT ya liberó paquetes, los descarga e
+ * ingesta. Devuelve la solicitud ACUMULADA (nunca pierde el avance previo).
  */
 export async function cosecharSolicitud(args: {
   supabase: SupabaseClient;
   despachoId: string;
   clienteId: string;
-  solicitud: SolicitudPendiente;
-}): Promise<{ solicitud: SolicitudPendiente; nuevos: number; duplicados: number }> {
+  solicitud: SolicitudRegistro;
+  creds?: ContextoEFirma;
+  token?: string;
+}): Promise<SolicitudRegistro> {
   const { supabase, solicitud } = args;
-  let nuevos = 0;
-  let duplicados = 0;
+  const ahora = new Date().toISOString();
 
-  const creds = await credencialesDe(supabase, args.clienteId);
-  const token = await satAutenticar(creds);
+  if (!solicitud.id_solicitud) {
+    return { ...solicitud, estado: "error", ultima_consulta_at: ahora };
+  }
+
+  const creds = args.creds ?? (await credencialesDe(supabase, args.clienteId));
+  const token = args.token ?? (await satAutenticar(creds));
   const v = await satVerificar(creds, token, solicitud.id_solicitud);
+  const estado = estadoDesdeSat(v.estado, v.codigo, v.numeroCfdis);
+  const sem = semanticaCodigo(v.codigo);
 
-  // 1 aceptada · 2 en proceso · 3 terminada · 4 error · 5 rechazada · 6 vencida
-  if (v.estado === 1 || v.estado === 2) {
-    return { solicitud: { ...solicitud, estado: "pendiente", mensaje: v.mensaje }, nuevos, duplicados };
-  }
-  if (v.estado >= 4) {
+  if (estado === "pendiente") {
+    const intentos = (solicitud.intentos ?? 0) + 1;
+    const agotado = intentos >= MAX_INTENTOS_SOLICITUD;
     return {
-      solicitud: {
-        ...solicitud,
-        estado: "error",
-        mensaje: `${v.codigo} ${v.mensaje}`.trim() || "El SAT rechazó la solicitud",
-      },
-      nuevos,
-      duplicados,
-    };
-  }
-  if (v.numeroCfdis === 0 || v.paquetes.length === 0) {
-    return {
-      solicitud: { ...solicitud, estado: "vacio", mensaje: "Sin CFDI en el periodo" },
-      nuevos,
-      duplicados,
+      ...solicitud,
+      estado: agotado ? "error" : "pendiente",
+      intentos,
+      siguiente_intento_at: agotado ? null : siguienteIntento(intentos),
+      ultima_consulta_at: ahora,
+      codigo: v.codigo || solicitud.codigo,
+      mensaje: agotado
+        ? "El SAT no liberó los paquetes dentro del plazo de reintentos. Vuelve a solicitar el periodo."
+        : sem.mensaje || v.mensaje || "El SAT sigue procesando la solicitud.",
+      error: agotado ? "Plazo de espera agotado" : null,
     };
   }
 
-  const procesados = new Set(solicitud.paquetes_procesados ?? []);
+  if (estado === "error" || estado === "vencida") {
+    return {
+      ...solicitud,
+      estado,
+      ultima_consulta_at: ahora,
+      codigo: v.codigo || solicitud.codigo,
+      mensaje: sem.mensaje || v.mensaje || "El SAT no entregó esta solicitud.",
+      error: `${v.codigo} ${v.mensaje}`.trim() || "Solicitud no entregada por el SAT",
+    };
+  }
+
+  if (estado === "vacio") {
+    return {
+      ...solicitud,
+      estado: "vacio",
+      ultima_consulta_at: ahora,
+      codigo: v.codigo || solicitud.codigo,
+      mensaje: "El SAT no reportó comprobantes en el periodo solicitado.",
+      error: null,
+    };
+  }
+
+  // estado === "listo": descargar los paquetes que falten.
+  let acumulada: SolicitudRegistro = {
+    ...solicitud,
+    paquetes_encontrados: Array.from(
+      new Set([...(solicitud.paquetes_encontrados ?? []), ...v.paquetes]),
+    ),
+  };
+  const procesados = new Set(acumulada.paquetes_procesados ?? []);
+
   for (const idPaquete of v.paquetes) {
     if (procesados.has(idPaquete)) continue;
     const zipB64 = await satDescargarPaquete(creds, token, idPaquete);
     const zip = await JSZip.loadAsync(zipB64, { base64: true });
-    const entries = Object.values(zip.files).filter(
-      (f) => !f.dir && /\.xml$/i.test(f.name),
-    );
+    const entries = Object.values(zip.files)
+      .filter((f) => !f.dir && /\.xml$/i.test(f.name))
+      .slice(0, MAX_XML_POR_PAQUETE);
+
+    let nuevos = 0;
+    let duplicados = 0;
+    let rechazados = 0;
     for (const entry of entries) {
       try {
         const xml = await entry.async("string");
@@ -154,78 +232,178 @@ export async function cosecharSolicitud(args: {
         if (r.duplicado) duplicados++;
         else nuevos++;
       } catch {
-        // XML inválido dentro del paquete: se omite sin romper la corrida
+        // XML ilegible o rechazado por el validador: se cuenta, no se descarta en silencio.
+        rechazados++;
       }
     }
+    acumulada = acumularSolicitud(acumulada, {
+      paquetes_procesados: [idPaquete],
+      xml_encontrados: entries.length,
+      xml_nuevos: nuevos,
+      duplicados,
+      rechazados,
+    });
     procesados.add(idPaquete);
   }
 
   return {
-    solicitud: {
-      ...solicitud,
-      estado: "listo",
-      mensaje: `${v.numeroCfdis} CFDI entregados por el SAT`,
-      paquetes_procesados: Array.from(procesados),
-    },
-    nuevos,
-    duplicados,
+    ...acumulada,
+    estado: "listo",
+    ultima_consulta_at: ahora,
+    codigo: v.codigo || acumulada.codigo,
+    mensaje: `El SAT entregó ${v.numeroCfdis} comprobantes en ${v.paquetes.length} paquete(s).`,
+    error: null,
   };
 }
 
-/** Cosecha todas las corridas con solicitudes pendientes (usado por el cron). */
+/** Cosecha todas las solicitudes de una corrida y devuelve el resumen. */
+export async function cosecharCorrida(args: {
+  supabase: SupabaseClient;
+  despachoId: string;
+  clienteId: string;
+  solicitudes: SolicitudRegistro[];
+}): Promise<{ solicitudes: SolicitudRegistro[]; resumen: ResumenCorrida }> {
+  const pendientes = args.solicitudes.filter((s) => s.estado === "pendiente");
+  if (pendientes.length === 0) {
+    return { solicitudes: args.solicitudes, resumen: resolverEstadoCorrida(args.solicitudes) };
+  }
+
+  let creds: ContextoEFirma | undefined;
+  let token: string | undefined;
+  try {
+    creds = await credencialesDe(args.supabase, args.clienteId);
+    token = await satAutenticar(creds);
+  } catch (e: any) {
+    const mensaje = String(e?.message ?? e).slice(0, 250);
+    const sols = args.solicitudes.map((s) =>
+      s.estado === "pendiente"
+        ? { ...s, intentos: (s.intentos ?? 0) + 1, mensaje, error: mensaje }
+        : s,
+    );
+    return { solicitudes: sols, resumen: resolverEstadoCorrida(sols) };
+  }
+
+  const salida: SolicitudRegistro[] = [];
+  for (const s of args.solicitudes) {
+    if (s.estado !== "pendiente") {
+      salida.push(s);
+      continue;
+    }
+    if (s.siguiente_intento_at && new Date(s.siguiente_intento_at).getTime() > Date.now()) {
+      salida.push(s);
+      continue;
+    }
+    try {
+      salida.push(
+        await cosecharSolicitud({
+          supabase: args.supabase,
+          despachoId: args.despachoId,
+          clienteId: args.clienteId,
+          solicitud: s,
+          creds,
+          token,
+        }),
+      );
+    } catch (e: any) {
+      const mensaje = String(e?.message ?? e).slice(0, 250);
+      const intentos = (s.intentos ?? 0) + 1;
+      salida.push({
+        ...s,
+        intentos,
+        siguiente_intento_at: siguienteIntento(intentos),
+        mensaje,
+        error: mensaje,
+        estado: intentos >= MAX_INTENTOS_SOLICITUD ? "error" : "pendiente",
+      });
+    }
+  }
+  return { solicitudes: salida, resumen: resolverEstadoCorrida(salida) };
+}
+
+/** Persiste el avance de una corrida y devuelve el resumen aplicado. */
+export async function guardarAvanceCorrida(
+  supabase: SupabaseClient,
+  runId: string,
+  solicitudes: SolicitudRegistro[],
+  resumen: ResumenCorrida,
+) {
+  const terminal = ["completada", "parcial", "error", "vencida"].includes(resumen.estado);
+  await supabase
+    .from("sat_sync_runs")
+    .update({
+      solicitudes: solicitudes as any,
+      estado: resumen.estado,
+      estatus: estatusLegado(resumen.estado),
+      cobertura: resumen.cobertura,
+      advertencia: resumen.advertencia,
+      descargados: resumen.xml_encontrados,
+      nuevos: resumen.xml_nuevos,
+      duplicados: resumen.duplicados,
+      rechazados: resumen.rechazados,
+      paquetes_procesados: resumen.paquetes_procesados,
+      ultima_consulta_at: new Date().toISOString(),
+      finalizado_at: terminal ? new Date().toISOString() : null,
+      detalle: resumen.advertencia
+        ? resumen.advertencia
+        : terminal
+          ? `Nuevos: ${resumen.xml_nuevos} · duplicados: ${resumen.duplicados} · rechazados: ${resumen.rechazados}`
+          : "El SAT sigue procesando la solicitud. La descarga continúa en segundo plano.",
+    })
+    .eq("id", runId);
+  return terminal;
+}
+
+/**
+ * Cosecha las corridas activas (cron). No ejecuta la cascada de recálculos:
+ * registra un evento `recalculo_pendiente` que la sesión autenticada consume.
+ */
 export async function cosecharPendientes(
   supabase: SupabaseClient,
   limite = 20,
-): Promise<{ revisadas: number; nuevos: number }> {
+): Promise<{ revisadas: number; nuevos: number; completadas: number }> {
   const { data: runs } = await supabase
     .from("sat_sync_runs")
-    .select("id, despacho_id, cliente_id, solicitudes, estatus")
+    .select("id, despacho_id, cliente_id, solicitudes, estado")
     .eq("proveedor", "sat_directo")
-    .eq("estatus", "en_curso")
+    .in("estado", ["esperando_sat", "descargando", "ingiriendo", "solicitando"])
     .order("iniciado_at", { ascending: true })
     .limit(limite);
 
   let revisadas = 0;
-  let nuevosTotal = 0;
+  let nuevos = 0;
+  let completadas = 0;
 
   for (const run of runs ?? []) {
-    const sols = (run.solicitudes ?? []) as SolicitudPendiente[];
+    const sols = ((run as any).solicitudes ?? []) as SolicitudRegistro[];
     if (!sols.length) continue;
-    const actualizadas: SolicitudPendiente[] = [];
-    let nuevos = 0;
-    for (const s of sols) {
-      if (s.estado !== "pendiente") {
-        actualizadas.push(s);
-        continue;
-      }
-      try {
-        const r = await cosecharSolicitud({
-          supabase,
-          despachoId: run.despacho_id as string,
-          clienteId: run.cliente_id as string,
-          solicitud: s,
+    revisadas++;
+    const { solicitudes, resumen } = await cosecharCorrida({
+      supabase,
+      despachoId: (run as any).despacho_id as string,
+      clienteId: (run as any).cliente_id as string,
+      solicitudes: sols,
+    });
+    nuevos += resumen.xml_nuevos;
+    const terminal = await guardarAvanceCorrida(
+      supabase,
+      (run as any).id as string,
+      solicitudes,
+      resumen,
+    );
+    if (terminal) {
+      completadas++;
+      if (resumen.xml_nuevos > 0) {
+        await supabase.from("sat_sync_eventos").insert({
+          despacho_id: (run as any).despacho_id,
+          cliente_id: (run as any).cliente_id,
+          run_id: (run as any).id,
+          tipo: "recalculo_pendiente",
+          mensaje:
+            "Descarga SAT completada. Los módulos se recalcularán al abrir el expediente.",
         });
-        actualizadas.push(r.solicitud);
-        nuevos += r.nuevos;
-      } catch (e: any) {
-        actualizadas.push({ ...s, mensaje: String(e?.message ?? e).slice(0, 250) });
       }
     }
-    revisadas++;
-    nuevosTotal += nuevos;
-
-    const sigueEsperando = actualizadas.some((s) => s.estado === "pendiente");
-    await supabase
-      .from("sat_sync_runs")
-      .update({
-        solicitudes: actualizadas,
-        estatus: sigueEsperando ? "en_curso" : "exitoso",
-        nuevos: (run as any).nuevos ? (run as any).nuevos + nuevos : nuevos,
-        descargados: nuevos,
-        finalizado_at: sigueEsperando ? null : new Date().toISOString(),
-      })
-      .eq("id", run.id);
   }
 
-  return { revisadas, nuevos: nuevosTotal };
+  return { revisadas, nuevos, completadas };
 }
