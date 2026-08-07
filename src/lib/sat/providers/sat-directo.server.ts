@@ -168,22 +168,69 @@ function signedInfo(digest: string, uri: string, enveloped: boolean) {
   );
 }
 
-async function soap(url: string, action: string, body: string, token?: string) {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "text/xml;charset=UTF-8",
-      SOAPAction: action,
-      ...(token ? { Authorization: `WRAP access_token="${token}"` } : {}),
-    },
-    body,
-  });
-  const text = await res.text();
-  if (!res.ok) {
-    const fault = /<(?:s:)?(?:faultstring|Text)[^>]*>([^<]*)</i.exec(text)?.[1];
-    throw new Error(`SAT ${res.status}: ${(fault ?? text).slice(0, 300)}`);
+/** Tiempo máximo por llamada al SAT (el servicio suele responder < 30 s). */
+export const SAT_TIMEOUT_MS = 45_000;
+
+export class SatHttpError extends Error {
+  status: number;
+  reintentable: boolean;
+  constructor(status: number, mensaje: string, reintentable: boolean) {
+    super(mensaje);
+    this.status = status;
+    this.reintentable = reintentable;
   }
-  return text;
+}
+
+const dormir = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Llamada SOAP con timeout y reintentos acotados.
+ * `reintentos` debe ser 0 en operaciones NO idempotentes (SolicitaDescarga):
+ * reintentarlas crearía solicitudes duplicadas en el SAT.
+ */
+async function soap(
+  url: string,
+  action: string,
+  body: string,
+  token?: string,
+  reintentos = 0,
+) {
+  let ultimo: unknown;
+  for (let intento = 0; intento <= reintentos; intento++) {
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/xml;charset=UTF-8",
+          SOAPAction: action,
+          ...(token ? { Authorization: `WRAP access_token="${token}"` } : {}),
+        },
+        body,
+        signal: AbortSignal.timeout(SAT_TIMEOUT_MS),
+      });
+      const text = await res.text();
+      if (!res.ok) {
+        const fault = /<(?:s:)?(?:faultstring|Text)[^>]*>([^<]*)</i.exec(text)?.[1];
+        throw new SatHttpError(
+          res.status,
+          `SAT ${res.status}: ${(fault ?? text).slice(0, 300)}`,
+          res.status >= 500 || res.status === 429,
+        );
+      }
+      return text;
+    } catch (e) {
+      ultimo = e;
+      const reintentable =
+        e instanceof SatHttpError
+          ? e.reintentable
+          : // Timeout o falla de red: sí se puede reintentar.
+            true;
+      if (!reintentable || intento === reintentos) break;
+      await dormir(Math.min(8000, 1000 * 2 ** intento));
+    }
+  }
+  if (ultimo instanceof Error) throw ultimo;
+  throw new Error("El servicio del SAT no respondió.");
 }
 
 /** Paso 1 — Autenticación. Devuelve el token WRAP (vigente ~5 minutos). */
