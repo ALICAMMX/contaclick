@@ -272,6 +272,8 @@ export async function satAutenticar(c: Credenciales): Promise<string> {
     SAT_ENDPOINTS.autentica,
     "http://DescargaMasivaTerceros.gob.mx/IAutenticacion/Autentica",
     envelope,
+    undefined,
+    2,
   );
   const token = /<AutenticaResult>([^<]+)<\/AutenticaResult>/.exec(xml)?.[1];
   if (!token) throw new Error("El SAT no devolvió token de autenticación");
@@ -354,6 +356,7 @@ export async function satVerificar(c: Credenciales, token: string, idSolicitud: 
     "http://DescargaMasivaTerceros.sat.gob.mx/IVerificaSolicitudDescargaService/VerificaSolicitudDescarga",
     envelope,
     token,
+    2,
   );
   const estado = Number(/EstadoSolicitud="([^"]*)"/.exec(xml)?.[1] ?? "0");
   const paquetes = Array.from(xml.matchAll(/<IdsPaquetes>([^<]+)<\/IdsPaquetes>/g)).map(
@@ -395,6 +398,7 @@ export async function satDescargarPaquete(
     "http://DescargaMasivaTerceros.sat.gob.mx/IDescargaMasivaTercerosService/Descargar",
     envelope,
     token,
+    2,
   );
   const paquete = /<Paquete>([\s\S]*?)<\/Paquete>/.exec(xml)?.[1]?.trim();
   if (!paquete) {
