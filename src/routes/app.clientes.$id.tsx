@@ -9,7 +9,7 @@ import { ConfigExpediente } from "./app.sat-sync";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { getCliente, listTerceros } from "@/lib/clientes.functions";
-import { getSatStatus, conectarSat, desconectarSat, sincronizarCfdis } from "@/lib/sat/sat.functions";
+import { getSatStatus, conectarSat, desconectarSat } from "@/lib/sat/sat.functions";
 import { getClienteHistorial } from "@/lib/clientes/historial.functions";
 import { listCuentas, createCuenta, deleteCuenta, BANCOS } from "@/lib/cuentas/cuentas.functions";
 import { Banknote, Plus, Trash2 } from "lucide-react";
@@ -50,12 +50,13 @@ function ClienteDetailPage() {
   const [cer, setCer] = useState<File | null>(null);
   const [key, setKey] = useState<File | null>(null);
   const [pwd, setPwd] = useState("");
+  const [consent, setConsent] = useState(false);
 
   const conectarMut = useMutation({
     mutationFn: async () => {
       if (!cer || !key || !pwd) throw new Error("Sube .cer, .key e ingresa la contraseña");
       const [cer_b64, key_b64] = await Promise.all([fileToB64(cer), fileToB64(key)]);
-      return conectar({ data: { cliente_id: id, cer_b64, key_b64, password: pwd } });
+      return conectar({ data: { cliente_id: id, cer_b64, key_b64, password: pwd , consentimiento: true } });
     },
     onSuccess: (r) => {
       toast.success(
@@ -76,29 +77,6 @@ function ClienteDetailPage() {
       toast.success("Conexión SAT eliminada");
       qc.invalidateQueries({ queryKey: ["sat", id] });
     },
-  });
-
-  // Rango por defecto: últimos 30 días
-  const today = new Date();
-  const defHasta = today.toISOString().slice(0, 10);
-  const defDesde = new Date(today.getTime() - 30 * 86400_000).toISOString().slice(0, 10);
-  const [desde, setDesde] = useState(defDesde);
-  const [hasta, setHasta] = useState(defHasta);
-  const [tipo, setTipo] = useState<"emitidos" | "recibidos" | "ambos">("ambos");
-  const sincronizar = useServerFn(sincronizarCfdis);
-  const [lastResult, setLastResult] = useState<null | {
-    simulated: boolean; descargados: number; ya_existian: number; errores: string[]; detalle: string; ok: boolean;
-  }>(null);
-
-  const sincronizarMut = useMutation({
-    mutationFn: () => sincronizar({ data: { cliente_id: id, desde, hasta, tipo } }),
-    onSuccess: (r) => {
-      setLastResult(r);
-      if (r.ok) toast.success(r.simulated ? "Sincronización demo completada" : "Solicitud enviada al SAT");
-      else toast.error("La sincronización terminó con errores");
-      qc.invalidateQueries({ queryKey: ["sat", id] });
-    },
-    onError: (e: Error) => toast.error(e.message),
   });
 
   const status = sat.data?.estatus ?? "sin_conectar";
@@ -132,8 +110,9 @@ function ClienteDetailPage() {
           <div>
             <h2 className="text-lg font-semibold">Conexión SAT</h2>
             <p className="text-sm text-muted-foreground mt-1 max-w-xl">
-              Sube la e.firma (FIEL) del contribuyente para que el sistema pueda descargar sus CFDI desde el SAT
-              de forma automática a través del PAC.
+              Sube la e.firma (FIEL) del contribuyente para descargar sus CFDI directamente del servicio
+              oficial del SAT. La llave y su contraseña se guardan cifradas y ligadas a este expediente;
+              no se comparten con terceros ni con ningún PAC.
             </p>
           </div>
           <div className={`flex items-center gap-2 text-sm font-medium ${statusTone}`}>
@@ -154,67 +133,29 @@ function ClienteDetailPage() {
 
         {status === "activo" ? (
           <div className="space-y-4">
-            <div className="rounded-lg border border-border/60 bg-background/40 p-4 space-y-3">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div>
-                  <h3 className="text-sm font-semibold">Descargar CFDI desde el SAT</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Selecciona el periodo y tipo. La solicitud se envía al PAC.
-                  </p>
+            <div className="rounded-lg border border-border/60 bg-background/40 p-4 space-y-2">
+              <h3 className="text-sm font-semibold">e.firma activa</h3>
+              <div className="text-xs text-muted-foreground">
+                RFC del certificado: <span className="font-mono">{sat.data?.efirma_rfc ?? "—"}</span>
+                {sat.data?.efirma_vence_at
+                  ? ` · vigente hasta ${new Date(sat.data.efirma_vence_at).toLocaleDateString("es-MX")}`
+                  : ""}
+              </div>
+              {sat.data?.consentimiento_at && (
+                <div className="text-xs text-muted-foreground">
+                  Autorización registrada el{" "}
+                  {new Date(sat.data.consentimiento_at).toLocaleString("es-MX")} (versión{" "}
+                  {sat.data.consentimiento_version ?? "—"}).
                 </div>
-                <Button onClick={() => sincronizarMut.mutate()} disabled={sincronizarMut.isPending} variant="hero">
-                  <RefreshCw className={`h-4 w-4 ${sincronizarMut.isPending ? "animate-spin" : ""}`} />
-                  {sincronizarMut.isPending ? "Sincronizando..." : "Sincronizar ahora"}
+              )}
+              <p className="text-xs text-muted-foreground">
+                Las descargas se programan y ejecutan desde Descarga Masiva SAT.
+              </p>
+              <Link to="/app/sat-sync" className="inline-block">
+                <Button variant="hero" size="sm">
+                  <RefreshCw className="h-4 w-4" /> Ir a Descarga Masiva SAT
                 </Button>
-              </div>
-              <div className="grid sm:grid-cols-3 gap-3">
-                <label className="block">
-                  <span className="text-xs text-muted-foreground mb-1 block">Desde</span>
-                  <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} max={hasta}
-                    className="h-10 px-3 rounded-lg bg-input/50 border border-border text-sm w-full focus:outline-none focus:ring-1 focus:ring-ring" />
-                </label>
-                <label className="block">
-                  <span className="text-xs text-muted-foreground mb-1 block">Hasta</span>
-                  <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} min={desde} max={defHasta}
-                    className="h-10 px-3 rounded-lg bg-input/50 border border-border text-sm w-full focus:outline-none focus:ring-1 focus:ring-ring" />
-                </label>
-                <label className="block">
-                  <span className="text-xs text-muted-foreground mb-1 block">Tipo</span>
-                  <select value={tipo} onChange={(e) => setTipo(e.target.value as any)}
-                    className="h-10 px-3 rounded-lg bg-input/50 border border-border text-sm w-full focus:outline-none focus:ring-1 focus:ring-ring">
-                    <option value="ambos">Emitidos y recibidos</option>
-                    <option value="emitidos">Solo emitidos</option>
-                    <option value="recibidos">Solo recibidos</option>
-                  </select>
-                </label>
-              </div>
-
-              {sincronizarMut.isPending && (
-                <div className="text-xs text-muted-foreground flex items-center gap-2">
-                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                  Enviando solicitud al PAC y procesando respuesta…
-                </div>
-              )}
-
-              {lastResult && !sincronizarMut.isPending && (
-                <div className={`rounded-md p-3 text-sm border ${lastResult.ok ? "border-success/30 bg-success/5" : "border-destructive/30 bg-destructive/5"}`}>
-                  <div className="flex items-center gap-2 font-medium">
-                    {lastResult.ok ? <CheckCircle2 className="h-4 w-4 text-success" /> : <ShieldAlert className="h-4 w-4 text-destructive" />}
-                    {lastResult.simulated ? "Sincronización demo" : "Resultado de la sincronización"}
-                  </div>
-                  <div className="grid grid-cols-3 gap-3 mt-2 text-xs">
-                    <Stat label="Descargados" value={lastResult.descargados} />
-                    <Stat label="Ya existían" value={lastResult.ya_existian} />
-                    <Stat label="Errores" value={lastResult.errores.length} tone={lastResult.errores.length ? "destructive" : "default"} />
-                  </div>
-                  {lastResult.detalle && (
-                    <p className="text-xs text-muted-foreground mt-2">{lastResult.detalle}</p>
-                  )}
-                  {lastResult.errores.map((e, i) => (
-                    <p key={i} className="text-xs text-destructive mt-1">• {e}</p>
-                  ))}
-                </div>
-              )}
+              </Link>
             </div>
 
             <div className="flex items-center gap-2">
@@ -244,12 +185,25 @@ function ClienteDetailPage() {
                 autoComplete="off"
               />
             </label>
+            <label className="sm:col-span-2 flex items-start gap-2 text-xs text-muted-foreground cursor-pointer">
+              <input
+                type="checkbox"
+                checked={consent}
+                onChange={(e) => setConsent(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                Declaro que cuento con autorización expresa del contribuyente para resguardar su e.firma
+                y usarla exclusivamente para consultar y descargar sus CFDI ante el SAT. La llave privada
+                y su contraseña se almacenan cifradas y ligadas a este expediente.
+              </span>
+            </label>
             <div className="sm:col-span-2 flex items-center justify-between gap-3 flex-wrap">
               <p className="text-xs text-muted-foreground max-w-md">
-                Los archivos se envían cifrados al PAC y <strong>no se almacenan</strong> en nuestros servidores. Solo
-                guardamos el token devuelto para autorizar descargas futuras.
+                Puedes revocar el resguardo en cualquier momento con <strong>Desconectar</strong>: la e.firma
+                se elimina de la bóveda.
               </p>
-              <Button type="submit" variant="hero" disabled={conectarMut.isPending}>
+              <Button type="submit" variant="hero" disabled={conectarMut.isPending || !consent}>
                 <Upload className="h-4 w-4" />
                 {conectarMut.isPending ? "Conectando..." : "Conectar SAT"}
               </Button>
