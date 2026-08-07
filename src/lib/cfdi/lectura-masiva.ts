@@ -411,11 +411,11 @@ export async function procesarZipSeguro(file: { size: number; arrayBuffer: () =>
   }
 
   const entries: EntradaZip[] = [];
-  const entryByName = new Map<string, ReturnType<JSZip["file"]>>();
+  const entryByName = new Map<string, JSZip.JSZipObject>();
   zip.forEach((path, entry) => {
     const sizes = tamanosEntradaJsZip(entry);
     entries.push({ name: path, dir: entry.dir, ...sizes });
-    entryByName.set(path, entry as unknown as ReturnType<JSZip["file"]>);
+    entryByName.set(path, entry);
   });
 
   const limites = validarLimitesZip(entries);
@@ -423,7 +423,7 @@ export async function procesarZipSeguro(file: { size: number; arrayBuffer: () =>
 
   const archivos = limites.entradasValidas.map((name) => {
     const entry = entryByName.get(name)!;
-    return { name: name.split("/").pop() || name, getText: () => entry!.async("string") };
+    return { name: name.split("/").pop() || name, getText: () => entry.async("string") };
   });
 
   return { ok: true, archivos, ignorados: limites.ignorados };

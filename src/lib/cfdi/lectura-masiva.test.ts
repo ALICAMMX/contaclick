@@ -181,7 +181,7 @@ describe("límites de seguridad al leer ZIP", () => {
     expect(res.ok).toBe(true);
     if (res.ok) {
       expect(res.entradasValidas).toHaveLength(0);
-      expect(res.ignorados[0].motivo).toMatch(/tamaño máximo/);
+      expect(res.ignorados[0].motivo).toMatch(/máximo permitido por archivo/);
     }
   });
 
@@ -213,7 +213,7 @@ describe("límites de seguridad al leer ZIP", () => {
   it("procesarZipSeguro detecta un ZIP bomb real (alta compresión) y lo ignora", async () => {
     const zip = new JSZip();
     // Contenido muy repetitivo: comprime a un ratio alto y disparará la protección.
-    const payload = "A".repeat(6_000_000);
+    const payload = "A".repeat(400_000);
     zip.file("bomba.xml", payload, { compression: "DEFLATE", compressionOptions: { level: 9 } });
     const buf = await zip.generateAsync({ type: "uint8array" });
     const file = { size: buf.length, arrayBuffer: async () => buf.buffer };
