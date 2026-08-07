@@ -3,6 +3,8 @@
 // descuenta dos veces (todo pasa por una llave de idempotencia).
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { contarSolicitudes } from "@/lib/sat/consumo";
+import { direccionesDe } from "@/lib/sat/providers/contrato";
 import {
   assertCuota,
   assertFrecuencia,
@@ -17,36 +19,24 @@ export type { FrecuenciaSat };
 export interface ConfigDescarga {
   emitidos: boolean;
   recibidos: boolean;
-  nomina: boolean;
-  pagos: boolean;
-  retenciones: boolean;
+  nomina?: boolean;
+  pagos?: boolean;
+  retenciones?: boolean;
   fecha_desde?: string | null;
   fecha_hasta?: string | null;
 }
 
-/** Solicitudes que enviará una corrida: tipos activos × meses en el rango. */
+/**
+ * @deprecated Usa `contarSolicitudes` de `@/lib/sat/consumo`.
+ * Nómina, pagos y retenciones NO son solicitudes SAT independientes:
+ * son clasificaciones que se aplican DESPUÉS de descargar los CFDI.
+ */
 export function contarSolicitudesPrevistas(cfg: ConfigDescarga): number {
-  const tipos =
-    (cfg.emitidos ? 1 : 0) +
-    (cfg.recibidos ? 1 : 0) +
-    (cfg.nomina ? 1 : 0) +
-    (cfg.pagos ? 1 : 0) +
-    (cfg.retenciones ? 1 : 0);
-  if (tipos === 0) return 0;
-  let meses = 1;
-  if (cfg.fecha_desde && cfg.fecha_hasta) {
-    const d1 = new Date(cfg.fecha_desde);
-    const d2 = new Date(cfg.fecha_hasta);
-    if (!isNaN(d1.getTime()) && !isNaN(d2.getTime()) && d2 >= d1) {
-      meses = Math.max(
-        1,
-        (d2.getUTCFullYear() - d1.getUTCFullYear()) * 12 +
-          (d2.getUTCMonth() - d1.getUTCMonth()) +
-          1,
-      );
-    }
-  }
-  return tipos * meses;
+  return contarSolicitudes({
+    direcciones: direccionesDe(cfg),
+    desde: cfg.fecha_desde ?? null,
+    hasta: cfg.fecha_hasta ?? null,
+  });
 }
 
 export class SaldoPacInsuficienteError extends Error {
@@ -234,6 +224,8 @@ export async function assertSatRunPermitido(opts: {
   previstas: number;
   runId?: string | null;
   esMock?: boolean;
+  /** Sólo los proveedores con saldo contratado (PAC) reservan saldo. */
+  usaSaldoProveedor?: boolean;
 }): Promise<{ ent: Entitlements; reservaKey: string | null }> {
   const ent = await getEntitlements(opts.supabase, opts.despachoId);
   assertFrecuencia(ent, opts.frecuencia);
@@ -241,8 +233,10 @@ export async function assertSatRunPermitido(opts: {
 
   await assertCuota(opts.supabase, ent, "sat_solicitudes", opts.previstas);
 
-  // Las corridas demo/sandbox no tocan el saldo real del proveedor.
-  if (opts.esMock || ent.es_sandbox) return { ent, reservaKey: null };
+  // Demo/sandbox y proveedores sin saldo contratado (SAT directo) no reservan.
+  if (opts.esMock || ent.es_sandbox || opts.usaSaldoProveedor === false) {
+    return { ent, reservaKey: null };
+  }
 
   const key = claveReserva(opts.runId ?? crypto.randomUUID());
   await reservarSaldoPac(opts.supabase, {
@@ -264,7 +258,11 @@ export async function registrarConsumoSat(opts: {
   runId?: string | null;
 }) {
   if (opts.solicitudes > 0 && !opts.esMock) {
-    const { costo_unitario_centavos } = await leerSaldoPac(opts.supabase);
+    // Sin reserva de proveedor (SAT directo) el costo monetario es cero:
+    // la corrida sí consume CUOTA del plan, pero no saldo contratado.
+    const costo_unitario_centavos = opts.reservaKey
+      ? (await leerSaldoPac(opts.supabase)).costo_unitario_centavos
+      : 0;
     await opts.supabase.rpc("incrementar_uso_sat", {
       _despacho: opts.despachoId,
       _periodo: periodoActual(),
