@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { FileStack, Upload, Download, FileSpreadsheet, AlertTriangle, CheckCircle2, Search, Save, Loader2 } from "lucide-react";
-import JSZip from "jszip";
 import * as XLSX from "xlsx";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
@@ -10,6 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ToolShell } from "@/components/ToolShell";
 import { parseCfdi } from "@/lib/tools/cfdi-parser";
+import {
+  construirFila,
+  calcularTotales,
+  procesarZipSeguro,
+  type FilaLecturaMasiva,
+  type ArchivoIgnorado,
+  type DireccionCfdi,
+} from "@/lib/cfdi/lectura-masiva";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { uploadCfdiBatch, getExistingCfdiKeys } from "@/lib/cfdi/cfdi.functions";
 import { safeFilename, triggerFileDownload } from "@/lib/download";
@@ -18,54 +25,19 @@ export const Route = createFileRoute("/app/tools/xml-bulk-reader")({
   component: BulkReader,
 });
 
-type Row = {
-  archivo: string;
-  xml?: string;
-  uuid?: string;
-  fecha?: string;
-  rfcEmisor?: string;
-  nombreEmisor?: string;
-  rfcReceptor?: string;
-  nombreReceptor?: string;
-  tipo?: string;
-  metodoPago?: string;
-  formaPago?: string;
-  usoCfdi?: string;
-  moneda?: string;
-  subtotal?: number;
-  total?: number;
-  iva?: number;
-  estado: "vigente" | "cancelado" | "desconocido";
-  warnings: string[];
-};
+type Row = FilaLecturaMasiva & { xml: string };
 
 const TIPO_LABEL: Record<string, string> = { I: "Ingreso", E: "Egreso", T: "Traslado", N: "Nómina", P: "Pago" };
 
-function rowFromXml(filename: string, xml: string): Row {
-  const p = parseCfdi(xml);
-  // Heurística: si el XML contiene un atributo Estatus="0" o "Cancelado" lo marcamos
-  const cancelado = /Estatus\s*=\s*"(0|Cancelado|cancelado)"/.test(xml) || /\bCancelado\b/i.test(xml.slice(0, 1000));
-  return {
-    archivo: filename,
-    xml,
-    uuid: p.uuid,
-    fecha: p.fecha,
-    rfcEmisor: p.emisor.rfc,
-    nombreEmisor: p.emisor.nombre,
-    rfcReceptor: p.receptor.rfc,
-    nombreReceptor: p.receptor.nombre,
-    tipo: p.tipoComprobante,
-    metodoPago: p.metodoPago,
-    formaPago: p.formaPago,
-    usoCfdi: p.receptor.usoCFDI,
-    moneda: p.moneda,
-    subtotal: p.subTotal,
-    total: p.total,
-    iva: p.impuestos.totalTrasladados,
-    estado: cancelado ? "cancelado" : p.uuid ? "vigente" : "desconocido",
-    warnings: p.warnings,
-  };
-}
+const DIRECCION_LABEL: Record<DireccionCfdi, string> = {
+  ingreso: "Ingreso",
+  gasto: "Gasto",
+  nota_credito_ingreso: "Nota de crédito (sobre ingresos)",
+  nota_credito_gasto: "Nota de crédito (sobre gastos)",
+  nomina: "Nómina",
+  pago: "Complemento de pago",
+  otro: "Otro / ajeno al RFC activo",
+};
 
 import { classifyXmls, reportTotalRejections, type RejectReport } from "@/lib/cfdi/dedup-xml";
 import { RejectModal } from "@/components/RejectModal";
@@ -81,6 +53,7 @@ function BulkReader() {
   const [estadoFiltro, setEstadoFiltro] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [report, setReport] = useState<RejectReport | null>(null);
+  const [ignorados, setIgnorados] = useState<ArchivoIgnorado[]>([]);
   const { cliente } = useActiveCliente();
   const uploadBatch = useServerFn(uploadCfdiBatch);
   const fetchKeys = useServerFn(getExistingCfdiKeys);
@@ -155,22 +128,24 @@ function BulkReader() {
     const localHashes = new Set<string>();
 
     const xmlFiles: { name: string; getText: () => Promise<string> }[] = [];
+    const ignoradosLote: ArchivoIgnorado[] = [];
     for (const f of Array.from(files)) {
       if (/\.zip$/i.test(f.name)) {
-        try {
-          const zip = await JSZip.loadAsync(f);
-          zip.forEach((path, entry) => {
-            if (!entry.dir && /\.xml$/i.test(path)) {
-              xmlFiles.push({ name: path.split("/").pop() || path, getText: () => entry.async("string") });
-            }
-          });
-        } catch {
-          /* ignore bad zip */
+        const res = await procesarZipSeguro(f);
+        if (!res.ok) {
+          ignoradosLote.push({ archivo: f.name, motivo: res.error });
+          toast.error(`${f.name}: ${res.error}`);
+          continue;
         }
+        xmlFiles.push(...res.archivos);
+        ignoradosLote.push(...res.ignorados);
       } else if (/\.xml$/i.test(f.name)) {
         xmlFiles.push({ name: f.name, getText: () => f.text() });
+      } else {
+        ignoradosLote.push({ archivo: f.name, motivo: "No es un XML ni un ZIP." });
       }
     }
+    setIgnorados(ignoradosLote);
 
     setProgress({ done: 0, total: xmlFiles.length });
     // Cargar textos primero para mostrar progreso (lectura), luego clasificar
@@ -193,7 +168,15 @@ function BulkReader() {
       seenUuids: new Set(rows.map((r) => (r.uuid ?? "").toUpperCase()).filter(Boolean)),
     });
 
-    const next: Row[] = accepted.map((a) => rowFromXml(a.filename, a.xml));
+    const next: Row[] = accepted.map((a) => ({
+      ...construirFila({
+        filename: a.filename,
+        xml: a.xml,
+        parsed: parseCfdi(a.xml),
+        rfcActivo,
+      }),
+      xml: a.xml,
+    }));
     setRows((prev) => [...prev, ...next]);
     setBusy(false);
     setProgress(null);
@@ -212,7 +195,7 @@ function BulkReader() {
     const q = filter.trim().toLowerCase();
     return rows.filter((r) => {
       if (tipoFiltro && r.tipo !== tipoFiltro) return false;
-      if (estadoFiltro && r.estado !== estadoFiltro) return false;
+      if (estadoFiltro && r.direccion !== estadoFiltro) return false;
       if (!q) return true;
       return [r.uuid, r.rfcEmisor, r.rfcReceptor, r.nombreEmisor, r.nombreReceptor, r.archivo]
         .filter(Boolean)
@@ -220,17 +203,7 @@ function BulkReader() {
     });
   }, [rows, filter, tipoFiltro, estadoFiltro]);
 
-  const totals = useMemo(() => {
-    const t = { count: filtered.length, ingresos: 0, egresos: 0, iva: 0, cancelados: 0, conWarnings: 0 };
-    for (const r of filtered) {
-      if (r.tipo === "I") t.ingresos += r.total ?? 0;
-      if (r.tipo === "E") t.egresos += r.total ?? 0;
-      t.iva += r.iva ?? 0;
-      if (r.estado === "cancelado") t.cancelados++;
-      if (r.warnings.length) t.conWarnings++;
-    }
-    return t;
-  }, [filtered]);
+  const totals = useMemo(() => calcularTotales(filtered), [filtered]);
 
   const exportRows = () =>
     filtered.map((r) => ({
@@ -238,6 +211,7 @@ function BulkReader() {
       UUID: r.uuid ?? "",
       Fecha: r.fecha?.slice(0, 10) ?? "",
       Tipo: r.tipo ? `${r.tipo} - ${TIPO_LABEL[r.tipo] ?? ""}`.trim() : "",
+      Clasificación: DIRECCION_LABEL[r.direccion],
       "RFC Emisor": r.rfcEmisor ?? "",
       "Nombre Emisor": r.nombreEmisor ?? "",
       "RFC Receptor": r.rfcReceptor ?? "",
@@ -247,9 +221,14 @@ function BulkReader() {
       "Uso CFDI": r.usoCfdi ?? "",
       Moneda: r.moneda ?? "",
       Subtotal: r.subtotal ?? "",
-      IVA: r.iva ?? "",
+      "IVA trasladado": r.impuestos.comprobante.iva,
+      IEPS: r.impuestos.comprobante.ieps,
+      "Otros trasladados": r.impuestos.comprobante.otrosTrasladados,
+      "ISR retenido": r.impuestos.comprobante.isrRetenido,
+      "IVA retenido": r.impuestos.comprobante.ivaRetenido,
+      "Otras retenciones": r.impuestos.comprobante.otrosRetenidos,
       Total: r.total ?? "",
-      Estado: r.estado,
+      "Estado ante el SAT": r.estado,
       Observaciones: r.warnings.join(" | "),
     }));
 
@@ -277,7 +256,7 @@ function BulkReader() {
   return (
     <ToolShell helpSlug="xml-bulk-reader"
       title="Lector masivo de XML"
-      description="Sube un ZIP del SAT o varios XML. Obtén una tabla completa con todos los datos clave: emisor, receptor, total, método de pago y estado."
+      description="Sube un ZIP del SAT o varios XML. Obtén el desglose de impuestos y la clasificación de cada comprobante según el RFC activo. La lectura es local: el estatus ante el SAT no se verifica aquí."
       icon={<FileStack className="h-5 w-5 text-primary-foreground" />}
     >
       {cliente ? (
@@ -324,17 +303,52 @@ function BulkReader() {
       {rows.length > 0 && (
         <div className="space-y-4">
           {/* KPIs */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <Kpi label="Comprobantes" value={totals.count.toLocaleString("es-MX")} />
-            <Kpi label="Ingresos" value={`$${totals.ingresos.toLocaleString("es-MX", { maximumFractionDigits: 0 })}`} />
-            <Kpi label="Egresos" value={`$${totals.egresos.toLocaleString("es-MX", { maximumFractionDigits: 0 })}`} />
-            <Kpi label="IVA trasladado" value={`$${totals.iva.toLocaleString("es-MX", { maximumFractionDigits: 0 })}`} />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Kpi label="Comprobantes" value={totals.cantidad.toLocaleString("es-MX")} />
             <Kpi
-              label="Cancelados / con avisos"
-              value={`${totals.cancelados} / ${totals.conWarnings}`}
-              tone={totals.cancelados + totals.conWarnings > 0 ? "warn" : "ok"}
+              label="Ingresos netos"
+              value={money(totals.ingresosNetos)}
+              hint={`Ingresos ${money(totals.ingresos)} − notas de crédito ${money(totals.notasCreditoIngreso)}`}
+            />
+            <Kpi
+              label="Gastos netos"
+              value={money(totals.gastosNetos)}
+              hint={`Gastos ${money(totals.gastos)} − notas de crédito ${money(totals.notasCreditoGasto)}`}
+            />
+            <Kpi
+              label="Nómina / pagos"
+              value={`${money(totals.nominaTotal)} · ${money(totals.pagosTotal)}`}
+              hint="No suman a ingresos ni a gastos"
+            />
+            <Kpi label="IVA trasladado" value={money(totals.impuestos.iva)} />
+            <Kpi label="IEPS trasladado" value={money(totals.impuestos.ieps)} />
+            <Kpi
+              label="Retenciones"
+              value={`ISR ${money(totals.impuestos.isrRetenido)} · IVA ${money(totals.impuestos.ivaRetenido)}`}
+            />
+            <Kpi
+              label="Con avisos de lectura"
+              value={String(totals.conAvisos)}
+              tone={totals.conAvisos > 0 ? "warn" : "ok"}
+              hint="El estado ante el SAT no se verifica en esta herramienta"
             />
           </div>
+
+          {ignorados.length > 0 && (
+            <div className="rounded-lg border border-warning/40 bg-warning/5 p-3 text-xs space-y-1">
+              <div className="font-medium text-warning flex items-center gap-2">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                {ignorados.length} archivo(s) no se pudieron leer
+              </div>
+              <ul className="list-disc pl-5 text-muted-foreground max-h-40 overflow-auto">
+                {ignorados.map((i, k) => (
+                  <li key={k}>
+                    <span className="font-mono">{i.archivo}</span>: {i.motivo}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Filtros + acciones */}
           <div className="flex flex-wrap items-center gap-2">
@@ -364,10 +378,10 @@ function BulkReader() {
               onChange={(e) => setEstadoFiltro(e.target.value)}
               className="h-9 rounded-md border border-input bg-background px-2 text-sm"
             >
-              <option value="">Todos los estados</option>
-              <option value="vigente">Vigente</option>
-              <option value="cancelado">Cancelado</option>
-              <option value="desconocido">Desconocido</option>
+              <option value="">Todas las clasificaciones</option>
+              {Object.entries(DIRECCION_LABEL).map(([k, l]) => (
+                <option key={k} value={k}>{l}</option>
+              ))}
             </select>
             <Button variant="ghost" size="sm" onClick={() => setRows([])}>
               Limpiar
@@ -392,12 +406,14 @@ function BulkReader() {
                   <Th>UUID</Th>
                   <Th>Fecha</Th>
                   <Th>Tipo</Th>
+                  <Th>Clasificación</Th>
                   <Th>Emisor</Th>
                   <Th>Receptor</Th>
                   <Th>M. pago</Th>
                   <Th>F. pago</Th>
                   <Th align="right">Subtotal</Th>
-                  <Th align="right">IVA</Th>
+                  <Th align="right">IVA tras.</Th>
+                  <Th align="right">Retenciones</Th>
                   <Th align="right">Total</Th>
                   <Th>Estado</Th>
                 </tr>
@@ -410,6 +426,7 @@ function BulkReader() {
                     </Td>
                     <Td missing={!r.fecha}>{r.fecha?.slice(0, 10) ?? "—"}</Td>
                     <Td missing={!r.tipo}>{r.tipo ? `${r.tipo} · ${TIPO_LABEL[r.tipo] ?? ""}` : "—"}</Td>
+                    <Td>{DIRECCION_LABEL[r.direccion]}</Td>
                     <Td missing={!r.rfcEmisor}>
                       <div className="font-mono">{r.rfcEmisor ?? "FALTA"}</div>
                       <div className="text-muted-foreground truncate max-w-[180px]">{r.nombreEmisor}</div>
@@ -424,7 +441,14 @@ function BulkReader() {
                       {fmt(r.subtotal)}
                     </Td>
                     <Td align="right" mono>
-                      {fmt(r.iva)}
+                      {fmt(r.impuestos.comprobante.iva)}
+                    </Td>
+                    <Td align="right" mono>
+                      {fmt(
+                        r.impuestos.comprobante.isrRetenido +
+                          r.impuestos.comprobante.ivaRetenido +
+                          r.impuestos.comprobante.otrosRetenidos,
+                      )}
                     </Td>
                     <Td align="right" mono bold missing={r.total == null}>
                       {fmt(r.total)}
@@ -480,39 +504,41 @@ function Td({
   return <td className={cls}>{children}</td>;
 }
 
-function Kpi({ label, value, tone }: { label: string; value: string; tone?: "warn" | "ok" }) {
+function money(n: number) {
+  return `$${n.toLocaleString("es-MX", { maximumFractionDigits: 0 })}`;
+}
+
+function Kpi({ label, value, tone, hint }: { label: string; value: string; tone?: "warn" | "ok"; hint?: string }) {
   const ring = tone === "warn" ? "border-warning/40 bg-warning/5" : "border-border/60 bg-card/50";
   return (
     <div className={`rounded-xl border ${ring} p-3`}>
       <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className="text-lg font-semibold tabular-nums mt-0.5">{value}</div>
+      {hint && <div className="text-[11px] text-muted-foreground mt-0.5">{hint}</div>}
     </div>
   );
 }
 
 function EstadoBadge({ estado, warnings }: { estado: Row["estado"]; warnings: number }) {
-  if (estado === "cancelado")
+  if (estado === "Cancelado")
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-destructive/10 text-destructive text-[11px] font-medium">
         <AlertTriangle className="h-3 w-3" /> Cancelado
       </span>
     );
-  if (estado === "vigente" && warnings === 0)
+  if (estado === "Vigente")
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/10 text-success text-[11px] font-medium">
         <CheckCircle2 className="h-3 w-3" /> Vigente
       </span>
     );
-  if (estado === "vigente")
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-warning/10 text-warning text-[11px] font-medium">
-        <AlertTriangle className="h-3 w-3" /> {warnings} aviso{warnings !== 1 ? "s" : ""}
-      </span>
-    );
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[11px] font-medium">
-      Desconocido
+    <span
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[11px] font-medium"
+      title="Esta herramienta lee el XML; no consulta el servicio de estatus del SAT."
+    >
+      No verificado ante SAT
+      {warnings > 0 ? ` · ${warnings} aviso${warnings !== 1 ? "s" : ""}` : ""}
     </span>
   );
 }
-
