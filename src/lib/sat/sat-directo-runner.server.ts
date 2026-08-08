@@ -159,7 +159,13 @@ export async function cosecharSolicitud(args: {
   creds?: ContextoEFirma;
   token?: string;
 }): Promise<SolicitudRegistro> {
-  const creds = args.creds ?? (await credencialesDe(args.supabase, args.clienteId));
+  const creds =
+    args.creds ??
+    (await credencialesDe(args.supabase, args.clienteId, {
+      despachoId: args.despachoId,
+      rfcExpediente: args.rfc ?? null,
+    }));
+
   const token = args.token ?? (await satAutenticar(creds));
   return cosecharSolicitudCiclo({
     cliente: clienteSat(creds, token, args.rfc ?? ""),
