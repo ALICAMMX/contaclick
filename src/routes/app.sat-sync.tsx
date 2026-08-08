@@ -9,7 +9,7 @@ import {
   RefreshCw, ShieldCheck, AlertTriangle, FileStack, Clock, PlugZap, Loader2,
   Pause, Play, Settings as SettingsIcon, ArrowLeft, Ban, Wallet, Hourglass,
 } from "lucide-react";
-import { dashboardSatSync, runSyncNow, listSyncRuns, listSyncEventos, setSyncActivo, getSatSyncConfig, upsertSatSyncConfig, estadoServicioSat, cosecharAhora, reintentarCorrida } from "@/lib/sat/sat-sync.functions";
+import { dashboardSatSync, runSyncNow, listSyncRuns, listSyncEventos, setSyncActivo, getSatSyncConfig, upsertSatSyncConfig, estadoServicioSat, cosecharAhora, reintentarCorrida, cerrarCorridaSat } from "@/lib/sat/sat-sync.functions";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -293,7 +293,7 @@ function ConfigTab() {
   return <ConfigExpediente clienteId={cliente.id} rfc={cliente.rfc} />;
 }
 
-function EstadoServicio({ q }: { q: any }) {
+function EstadoServicio({ q, onCerrar, cerrando }: { q: any; onCerrar?: (runId: string) => void; cerrando?: boolean }) {
   if (q.isLoading) {
     return (
       <div className="mt-4 rounded-lg border border-border bg-muted/20 p-3 animate-pulse space-y-2">
@@ -327,12 +327,28 @@ function EstadoServicio({ q }: { q: any }) {
         {e.es_sandbox && " · expediente de demostración (no se contacta al SAT)"}
       </div>
       {e.corrida_activa && (
-        <div className="flex items-center gap-2 text-warning">
-          <Hourglass className="h-3.5 w-3.5" />
-          Corrida en proceso desde {fmtRel(e.corrida_activa.iniciado_at)} ·{" "}
-          {ESTADO_LABEL[e.corrida_activa.estado]?.texto ?? e.corrida_activa.estado}
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-warning">
+            <Hourglass className="h-3.5 w-3.5" />
+            Corrida en proceso desde {fmtRel(e.corrida_activa.iniciado_at)} ·{" "}
+            {ESTADO_LABEL[e.corrida_activa.estado]?.texto ?? e.corrida_activa.estado}
+            {!e.corrida_activa.con_folio_sat && " · sin folio del SAT"}
+          </div>
+          <div className="text-muted-foreground">{e.corrida_activa.motivo_cierre}</div>
+          {e.corrida_activa.puede_cerrarse && onCerrar && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs"
+              disabled={cerrando}
+              onClick={() => onCerrar(e.corrida_activa!.id)}
+            >
+              {cerrando ? "Cerrando…" : "Cerrar corrida atorada"}
+            </Button>
+          )}
         </div>
       )}
+
       {e.servicio && (
         <div className="text-muted-foreground">
           Saldo del proveedor (visible sólo para administración): {e.servicio.disponible} disponibles ·{" "}
@@ -422,7 +438,12 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
 
   const runNow = useMutation({
     mutationFn: () => fnRun({ data: { cliente_id: clienteId, origen: "expediente", cascade: true } }),
-    onSuccess: (r) => {
+    onSuccess: (r: any) => {
+      // El servidor ya no lanza excepciones genéricas: devuelve el motivo real.
+      if (r?.ok === false) {
+        toast.error(r.error.mensaje, { description: r.error.accion });
+        return;
+      }
       if (r.duplicada) toast.info(r.mensaje);
       else toast.success(r.mensaje);
       qc.invalidateQueries({ queryKey: ["sat-sync"] });
@@ -441,6 +462,18 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
     onError: (e: any) => toast.error(e?.message ?? "No se pudo reintentar la corrida"),
     onSettled: () => qc.invalidateQueries({ queryKey: ["sat-sync"] }),
   });
+
+  const fnCerrar = useServerFn(cerrarCorridaSat);
+  const cerrar = useMutation({
+    mutationFn: (runId: string) => fnCerrar({ data: { cliente_id: clienteId, run_id: runId } }),
+    onSuccess: (r: any) => (r.ok ? toast.success(r.mensaje) : toast.warning(r.mensaje)),
+    onError: (e: any) => toast.error(e?.message ?? "No se pudo cerrar la corrida"),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["sat-sync"] });
+      qc.invalidateQueries({ queryKey: ["sat-sync", "estado", clienteId] });
+    },
+  });
+
 
   const consultar = useMutation({
     mutationFn: () => fnCosechar({ data: { cliente_id: clienteId } }),
@@ -502,7 +535,7 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
           </div>
         </div>
 
-        <EstadoServicio q={estadoQ} />
+        <EstadoServicio q={estadoQ} onCerrar={(id) => cerrar.mutate(id)} cerrando={cerrar.isPending} />
       </div>
 
       <div className="rounded-xl border border-border bg-card p-4 space-y-4">

@@ -56,6 +56,15 @@ export const Route = createFileRoute("/api/public/hooks/sat-sync")({
           "@/lib/sat/sat-directo-runner.server"
         );
 
+        // ---- 0. Saneamiento: cerrar corridas que nunca llegaron al SAT ----
+        let saneo = { revisadas: 0, cerradas: 0, reencauzadas: 0 };
+        try {
+          const { sanearCorridasAtoradas } = await import("@/lib/sat/saneamiento.server");
+          saneo = await sanearCorridasAtoradas(supabase, 50);
+        } catch (e) {
+          console.error("[cron sat] saneamiento:", (e as Error)?.message);
+        }
+
         // ---- 1. Cosecha de las corridas vivas -------------------------
         let cosecha = { revisadas: 0, nuevos: 0, completadas: 0 };
         try {
@@ -63,6 +72,7 @@ export const Route = createFileRoute("/api/public/hooks/sat-sync")({
         } catch (e) {
           console.error("[cron sat] cosecha:", (e as Error)?.message);
         }
+
 
         // ---- 2. Nuevas corridas programadas ---------------------------
         const ahora = new Date().toISOString();

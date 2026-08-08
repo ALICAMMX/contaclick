@@ -37,6 +37,13 @@ import {
 } from "@/lib/sat/providers/contrato";
 import { contarSolicitudes, rangoValido } from "@/lib/sat/consumo";
 import { llaveCorrida } from "@/lib/sat/idempotencia";
+import type { CredencialEFirma } from "@/lib/sat/credencial.server";
+import {
+  MINUTOS_ATORADA,
+  puedeCerrarseManualmente,
+  tieneFolioSat,
+} from "@/lib/sat/saneamiento";
+
 import {
   ESTADOS_ACTIVOS,
   estatusLegado,
@@ -238,8 +245,19 @@ export type EstadoServicioSat = {
   cuota: { usado: number; limite: number; ilimitado: boolean; restante: number | null };
   es_sandbox: boolean;
   credencial_activa: boolean;
+  /** Diagnóstico único de la e.firma, compartido con la tarjeta de conexión. */
+  credencial: CredencialEFirma;
   efirma_vence_at: string | null;
-  corrida_activa: { id: string; estado: EstadoCorrida; iniciado_at: string } | null;
+  corrida_activa: {
+    id: string;
+    estado: EstadoCorrida;
+    iniciado_at: string;
+    /** ¿El SAT llegó a devolver folio para esta corrida? */
+    con_folio_sat: boolean;
+    puede_cerrarse: boolean;
+    motivo_cierre: string;
+  } | null;
+
   /** Sólo para super-admin: estado interno del proveedor con saldo. */
   servicio?: { disponible: number; reservado: number; umbral_critico: number; nivel: string };
 };
@@ -249,24 +267,30 @@ async function calcularEstado(
   supabase: any,
   userId: string,
   scope: { cliente_id: string; despacho_id: string },
+  opts: { verificarDescifrado?: boolean } = {},
 ): Promise<EstadoServicioSat> {
   const ent = await getEntitlements(supabase, scope.despacho_id);
 
-  const [{ data: cfg }, { data: cred }, { data: sa }] = await Promise.all([
+  const { resolverCredencialEFirma } = await import("@/lib/sat/credencial.server");
+
+  const [{ data: cfg }, { data: cli }, { data: sa }] = await Promise.all([
     supabase
       .from("sat_sync_config")
       .select("proveedor, emitidos, recibidos, periodo, fecha_desde, fecha_hasta")
       .eq("cliente_id", scope.cliente_id)
       .eq("despacho_id", scope.despacho_id)
       .maybeSingle(),
-    supabase
-      .from("sat_credenciales")
-      .select("estatus, efirma_vence_at, efirma_cer, efirma_key_enc")
-      .eq("cliente_id", scope.cliente_id)
-      .eq("despacho_id", scope.despacho_id)
-      .maybeSingle(),
+    supabase.from("clientes").select("rfc").eq("id", scope.cliente_id).maybeSingle(),
     supabase.from("user_roles").select("user_id").eq("user_id", userId).eq("role", "super_admin").limit(1),
   ]);
+
+  // FUENTE ÚNICA: la interfaz y el runner resuelven la e.firma con esta función.
+  const credencial = await resolverCredencialEFirma(supabase, {
+    clienteId: scope.cliente_id,
+    despachoId: scope.despacho_id,
+    rfcExpediente: (cli as any)?.rfc ?? null,
+    verificarDescifrado: opts.verificarDescifrado ?? false,
+  });
 
   const c = (cfg ?? {
     proveedor: "sat_directo",
@@ -288,15 +312,12 @@ async function calcularEstado(
   const ilimitado = limite < 0;
   const restante = ilimitado ? null : Math.max(0, limite - usado);
 
-  const credencialActiva =
-    (cred as any)?.estatus === "activo" &&
-    !!(cred as any)?.efirma_cer &&
-    !!(cred as any)?.efirma_key_enc;
-  const efirmaVenceAt = ((cred as any)?.efirma_vence_at ?? null) as string | null;
+  const credencialActiva = credencial.utilizable;
+  const efirmaVenceAt = credencial.vence_at;
 
   const { data: activa } = await supabase
     .from("sat_sync_runs")
-    .select("id, estado, iniciado_at, desde, hasta")
+    .select("id, estado, iniciado_at, desde, hasta, solicitudes")
     .eq("cliente_id", scope.cliente_id)
     .eq("despacho_id", scope.despacho_id)
     .in("estado", ESTADOS_ACTIVOS)
@@ -305,6 +326,15 @@ async function calcularEstado(
     .maybeSingle();
   const mismaVentana =
     !!activa && (activa as any).desde === rango.desde && (activa as any).hasta === rango.hasta;
+
+  const cierre = activa
+    ? puedeCerrarseManualmente({
+        id: (activa as any).id,
+        estado: (activa as any).estado,
+        iniciado_at: (activa as any).iniciado_at,
+        solicitudes: (activa as any).solicitudes ?? [],
+      })
+    : null;
 
   const base = {
     proveedor,
@@ -316,15 +346,20 @@ async function calcularEstado(
     cuota: { usado, limite, ilimitado, restante },
     es_sandbox: ent.es_sandbox,
     credencial_activa: credencialActiva,
+    credencial,
     efirma_vence_at: efirmaVenceAt,
     corrida_activa: activa
       ? {
           id: (activa as any).id as string,
           estado: (activa as any).estado as EstadoCorrida,
           iniciado_at: (activa as any).iniciado_at as string,
+          con_folio_sat: tieneFolioSat(((activa as any).solicitudes ?? []) as SolicitudRegistro[]),
+          puede_cerrarse: !!cierre?.permitido,
+          motivo_cierre: cierre?.motivo ?? "",
         }
       : null,
   };
+
 
   const entrada = {
     proveedor,
@@ -341,7 +376,22 @@ async function calcularEstado(
     esSandbox: ent.es_sandbox,
   };
 
-  const previo = decidirEstadoSat(entrada);
+  // El motivo mostrado distingue "nunca conectada" de "conectada pero no usable".
+  const conMotivo = (dec: ReturnType<typeof decidirEstadoSat>) =>
+    dec.causa === "sin_credencial" && credencial.existe
+      ? {
+          ...dec,
+          motivo: credencial.mensaje,
+          accion:
+            credencial.accion === "renovar"
+              ? "Renueva la e.firma ante el SAT y reemplázala en el expediente."
+              : credencial.accion === "soporte"
+                ? "Es una configuración del servidor: contacta a soporte de ContaClick."
+                : "Reemplaza la e.firma del expediente con el .cer, el .key y su contraseña.",
+        }
+      : dec;
+
+  const previo = conMotivo(decidirEstadoSat(entrada));
   if (!previo.puede_ejecutar || ent.es_sandbox || !meta.consumeSaldoProveedor) {
     return { ...base, ...previo };
   }
@@ -357,8 +407,9 @@ async function calcularEstado(
     servicio: esSuperAdmin
       ? { disponible: pac.disponible, reservado: pac.reservado, umbral_critico: pac.umbral_critico, nivel }
       : undefined,
-    ...decidirEstadoSat({ ...entrada, nivelServicio: nivel }),
+    ...conMotivo(decidirEstadoSat({ ...entrada, nivelServicio: nivel })),
   };
+
 }
 
 /**
@@ -381,10 +432,28 @@ const RunSchema = z.object({
   cascade: z.boolean().default(true),
 });
 
+/** Error operativo controlado: se devuelve al cliente, NUNCA se lanza. */
+export type FalloSatSync = {
+  ok: false;
+  error: {
+    etapa: "preflight" | "cuota" | "solicitud" | "cosecha";
+    codigo: string;
+    mensaje: string;
+    accion: string;
+    corrida_creada: boolean;
+    solicitud_enviada: boolean;
+    run_id: string | null;
+  };
+};
+
+function fallo(e: FalloSatSync["error"]): FalloSatSync {
+  return { ok: false, error: e };
+}
+
 export const runSyncNow = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) => RunSchema.parse(d))
-  .handler(async ({ data, context }) => {
+  .handler(async ({ data, context }): Promise<any> => {
     const { supabase, userId } = context;
     const inicio = Date.now();
 
@@ -394,16 +463,34 @@ export const runSyncNow = createServerFn({ method: "POST" })
       .select("id, rfc, razon_social, despacho_id")
       .eq("id", scope.cliente_id)
       .maybeSingle();
-    if (!cli?.despacho_id || !cli.rfc) throw new Error("Expediente no encontrado o sin RFC.");
-
-    // 1) Candado único. Si no se puede ejecutar NO se crea corrida ni se consume nada.
-    const estado = await calcularEstado(supabase, userId, scope);
-    if (!estado.puede_ejecutar) {
-      throw new Error(
-        [estado.motivo, estado.accion].filter(Boolean).join(" ") ||
-          "La descarga SAT no está disponible en este momento.",
-      );
+    if (!cli?.despacho_id || !cli.rfc) {
+      return fallo({
+        etapa: "preflight",
+        codigo: "expediente_incompleto",
+        mensaje: "El expediente no existe o no tiene RFC capturado.",
+        accion: "Captura el RFC del expediente antes de descargar comprobantes.",
+        corrida_creada: false,
+        solicitud_enviada: false,
+        run_id: null,
+      });
     }
+
+    // 1) PREFLIGHT COMPLETO. Incluye verificar que la e.firma se puede DESCIFRAR
+    //    con su AAD y su versión de llave: si aquí falla, no se crea corrida,
+    //    no se consume cuota, no queda candado y no se contacta al SAT.
+    const estado = await calcularEstado(supabase, userId, scope, { verificarDescifrado: true });
+    if (!estado.puede_ejecutar) {
+      return fallo({
+        etapa: "preflight",
+        codigo: estado.causa === "sin_credencial" ? estado.credencial.motivo : estado.causa,
+        mensaje: estado.motivo ?? "La descarga SAT no está disponible en este momento.",
+        accion: estado.accion ?? "Revisa la configuración del expediente.",
+        corrida_creada: false,
+        solicitud_enviada: false,
+        run_id: null,
+      });
+    }
+
 
     const { data: cfg } = await supabase
       .from("sat_sync_config")
@@ -498,57 +585,103 @@ export const runSyncNow = createServerFn({ method: "POST" })
           detalle: mensaje,
         })
         .eq("id", runId);
-      throw new Error(mensaje);
+      return fallo({
+        etapa: "cuota",
+        codigo: "cuota_o_saldo",
+        mensaje,
+        accion: "Revisa el límite de solicitudes de tu plan o espera al siguiente periodo.",
+        corrida_creada: true,
+        solicitud_enviada: false,
+        run_id: runId,
+      });
+
     }
 
     const errores: { fase: string; mensaje: string }[] = [];
     let solicitudes: SolicitudRegistro[] = [];
     let resumen = resolverEstadoCorrida([]);
 
-    if (estado.es_sandbox) {
-      // Cuenta demo: NO se contacta al SAT y se etiqueta con claridad.
-      const { simularCorridaDemo } = await import("@/lib/sat/demo-sat.server");
-      const sim = await simularCorridaDemo({
-        supabase,
-        despachoId: cli.despacho_id,
-        clienteId: cli.id,
-        runId,
-        direcciones,
-        desde,
-        hasta,
-      });
-      solicitudes = sim.solicitudes;
-      resumen = sim.resumen;
-    } else {
-      const { solicitarDescargas, cosecharCorrida } = await import(
-        "@/lib/sat/sat-directo-runner.server"
-      );
-      const envio = await solicitarDescargas({
-        supabase,
-        clienteId: cli.id,
-        rfc: cli.rfc,
-        desde,
-        hasta,
-        direcciones,
-      });
-      for (const m of envio.errores) errores.push({ fase: "solicitud", mensaje: m });
-      solicitudes = envio.solicitudes;
+    try {
+      if (estado.es_sandbox) {
+        // Cuenta demo: NO se contacta al SAT y se etiqueta con claridad.
+        const { simularCorridaDemo } = await import("@/lib/sat/demo-sat.server");
+        const sim = await simularCorridaDemo({
+          supabase,
+          despachoId: cli.despacho_id,
+          clienteId: cli.id,
+          runId,
+          direcciones,
+          desde,
+          hasta,
+        });
+        solicitudes = sim.solicitudes;
+        resumen = sim.resumen;
+      } else {
+        const { solicitarDescargas, cosecharCorrida } = await import(
+          "@/lib/sat/sat-directo-runner.server"
+        );
+        const envio = await solicitarDescargas({
+          supabase,
+          clienteId: cli.id,
+          despachoId: cli.despacho_id,
+          rfc: cli.rfc,
+          desde,
+          hasta,
+          direcciones,
+        });
+        for (const m of envio.errores) errores.push({ fase: "solicitud", mensaje: m });
+        solicitudes = envio.solicitudes;
 
-      // Persistir antes de cosechar: si algo falla, la corrida no se pierde.
+        // Persistir antes de cosechar: si algo falla, la corrida no se pierde.
+        await supabase
+          .from("sat_sync_runs")
+          .update({ solicitudes: solicitudes as any, estado: "esperando_sat" })
+          .eq("id", runId);
+
+        const cosecha = await cosecharCorrida({
+          supabase,
+          despachoId: cli.despacho_id,
+          clienteId: cli.id,
+          rfc: cli.rfc,
+          solicitudes,
+        });
+        solicitudes = cosecha.solicitudes;
+        resumen = cosecha.resumen;
+      }
+    } catch (e: any) {
+      // NINGUNA excepción puede dejar la corrida viva: se cierra aquí mismo,
+      // se libera el candado y se devuelve la reserva no consumida.
+      const mensaje = String(e?.message ?? e).slice(0, 300);
+      const conFolio = tieneFolioSat(solicitudes);
       await supabase
         .from("sat_sync_runs")
-        .update({ solicitudes: solicitudes as any, estado: "esperando_sat" })
+        .update({
+          estado: "error",
+          estatus: "error",
+          cobertura: "nula",
+          solicitudes: solicitudes as any,
+          finalizado_at: new Date().toISOString(),
+          duracion_ms: Date.now() - inicio,
+          errores: [...errores, { fase: "solicitud", mensaje }] as any,
+          detalle: mensaje,
+        })
         .eq("id", runId);
-
-      const cosecha = await cosecharCorrida({
-        supabase,
-        despachoId: cli.despacho_id,
-        clienteId: cli.id,
-        solicitudes,
+      if (reservaKey && !conFolio) {
+        await devolverReservaPac(supabase, reservaKey, "Corrida abortada antes de enviar al SAT");
+      }
+      return fallo({
+        etapa: "solicitud",
+        codigo: "fallo_solicitud",
+        mensaje,
+        accion: conFolio
+          ? "El SAT ya recibió la solicitud. Usa Reintentar para consultar el avance."
+          : "No se envió nada al SAT ni se consumió cuota. Corrige el problema y vuelve a intentar.",
+        corrida_creada: true,
+        solicitud_enviada: conFolio,
+        run_id: runId,
       });
-      solicitudes = cosecha.solicitudes;
-      resumen = cosecha.resumen;
     }
+
 
     const { guardarAvanceCorrida } = await import("@/lib/sat/sat-directo-runner.server");
     const terminal = await guardarAvanceCorrida(supabase, runId, solicitudes, resumen);
@@ -727,7 +860,61 @@ export const cosecharAhora = createServerFn({ method: "POST" })
  * rechazado se informa como irrecuperable, para que el usuario genere una
  * corrida nueva en vez de esperar en falso.
  */
+/**
+ * Salida segura para una corrida atorada.
+ *
+ * No reenvía nada al SAT ni borra evidencia: sólo cierra la corrida cuando es
+ * seguro (sin folio SAT, o con folio pero abandonada más de 24 h), liberando
+ * el candado para poder configurar una corrida nueva.
+ */
+export const cerrarCorridaSat = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ cliente_id: z.string().uuid(), run_id: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const scope = await assertClienteScope(supabase as any, userId, data.cliente_id);
+
+    const { data: run } = await supabase
+      .from("sat_sync_runs")
+      .select("id, estado, iniciado_at, solicitudes, errores")
+      .eq("id", data.run_id)
+      .eq("cliente_id", scope.cliente_id)
+      .eq("despacho_id", scope.despacho_id)
+      .maybeSingle();
+    if (!run) throw new Error("No se encontró la corrida en este expediente.");
+
+    const veredicto = puedeCerrarseManualmente(run as any);
+    if (!veredicto.permitido) return { ok: false, mensaje: veredicto.motivo };
+
+    const { cerrarCorridaConError, diagnostico } = await import("@/lib/sat/saneamiento.server");
+    await cerrarCorridaConError(
+      supabase,
+      data.run_id,
+      diagnostico({
+        codigo: "cerrada_por_usuario",
+        etapa: String((run as any).estado),
+        folioSat: tieneFolioSat(((run as any).solicitudes ?? []) as SolicitudRegistro[]),
+        mensaje: veredicto.motivo,
+        accion: "Configura una corrida nueva cuando la e.firma esté conectada y vigente.",
+      }),
+    );
+
+    await supabase.from("audit_logs").insert({
+      user_id: userId,
+      despacho_id: scope.despacho_id,
+      accion: "sat_sync.cerrar_corrida",
+      entidad: "sat_sync_run",
+      entidad_id: data.run_id,
+      payload: { motivo: veredicto.motivo, minutos_limite: MINUTOS_ATORADA },
+    });
+
+    return { ok: true, mensaje: "Corrida cerrada. Ya puedes iniciar una sincronización nueva." };
+  });
+
 export const reintentarCorrida = createServerFn({ method: "POST" })
+
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) =>
     z.object({ cliente_id: z.string().uuid(), run_id: z.string().uuid() }).parse(d),
