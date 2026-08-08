@@ -272,10 +272,8 @@ export function construirSolicitudDescarga(entrada: EntradaSolicitud): Solicitud
 
   return {
     operacion,
-    accionSoap: `${NS_DESCARGA_MASIVA}/ISolicitaDescargaService/${operacion}`.replace(
-      "http://DescargaMasivaTerceros.sat.gob.mx/",
-      "http://DescargaMasivaTerceros.sat.gob.mx/",
-    ),
+    accionSoap: `${NS_DESCARGA_MASIVA}/ISolicitaDescargaService/${operacion}`,
+
     atributos,
     canonical,
     plantillaEnvelope,
