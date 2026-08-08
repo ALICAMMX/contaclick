@@ -24,11 +24,13 @@ import {
 } from "./linaje";
 import {
   complementosDe,
-  estadoDeEvento,
   etiquetaTipoComprobante,
   evaluarProcesamiento,
   resumirPaquetes,
+  ESTADO_MODULO_LABEL,
+  type EventoModulo,
 } from "./procesamiento";
+
 
 import { decidirEstadoSat, nivelPac, type CausaSat } from "@/lib/sat/estado-servicio";
 import { computeSaludFiscal } from "@/lib/salud/salud.functions";
@@ -366,32 +368,24 @@ export const detalleCorrida = createServerFn({ method: "GET" })
     }));
 
     const evs = eventos ?? [];
-    const recalculos = evs
-      .map((e: any) => {
-        const estado = estadoDeEvento(String(e.tipo));
-        if (!estado) return null;
-        const modulo = (e.payload?.modulo as string) ?? "desconocido";
-        return {
-          modulo,
-          etiqueta: MODULO_LABEL[modulo] ?? "Módulo",
-          estado,
-          ok: estado === "ejecutado",
-          pendiente: estado === "pendiente",
-          omitido: estado === "omitido",
-          mensaje: e.mensaje as string | null,
-          at: e.created_at as string,
-        };
-      })
-      .filter(Boolean) as Array<{
-      modulo: string;
-      etiqueta: string;
-      estado: "ejecutado" | "omitido" | "fallido" | "pendiente";
-      ok: boolean;
-      pendiente: boolean;
-      omitido: boolean;
-      mensaje: string | null;
-      at: string;
-    }>;
+
+    // FUENTE ÚNICA del procesamiento posterior: la bitácora por módulo.
+    const { leerEventosProcesamiento } = await import("./procesamiento.server");
+    const eventosModulo = await leerEventosProcesamiento(supabase, data.run_id);
+
+    const recalculos = eventosModulo.map((e) => ({
+      modulo: e.module_id,
+      etiqueta: MODULO_LABEL[e.module_id] ?? e.module_id,
+      estado: e.estado,
+      estado_label: ESTADO_MODULO_LABEL[e.estado] ?? e.estado,
+      ok: e.estado === "completado",
+      pendiente: e.estado === "iniciado",
+      omitido: e.estado === "omitido",
+      motivo: e.motivo ?? null,
+      resultado: (e.resultado as Record<string, string | number | boolean | null>) ?? null,
+      iniciado_at: e.iniciado_at ?? null,
+      finalizado_at: e.finalizado_at ?? null,
+    }));
 
     // Fuente ÚNICA de paquetes: solicitudes + linaje persistido en los XML.
     const paquetesResumen = resumirPaquetes({
@@ -402,11 +396,12 @@ export const detalleCorrida = createServerFn({ method: "GET" })
 
     const nuevos = Number((run as any).nuevos ?? 0);
     const procesamiento = evaluarProcesamiento({
-      estado: String((run as any).estado ?? ""),
       cobertura: (run as any).cobertura as string | null,
       nuevos,
-      recalculos: recalculos.map((r) => ({ modulo: r.modulo, estado: r.estado })),
+      eventos: eventosModulo,
     });
+
+
 
     return {
       run: {
@@ -474,76 +469,58 @@ export const completarProcesamiento = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: run } = await supabase
       .from("sat_sync_runs")
-      .select("id, cliente_id, despacho_id, estado, cobertura, nuevos, duplicados, rechazados")
+      .select(
+        "id, cliente_id, despacho_id, estado, cobertura, nuevos, duplicados, rechazados, finalizado_at",
+      )
       .eq("id", data.run_id)
       .maybeSingle();
     if (!run) throw new Error("La corrida no existe o no pertenece a este expediente.");
     const scope = await assertClienteScope(supabase as any, userId, (run as any).cliente_id);
 
-    const { data: evs } = await supabase
-      .from("sat_sync_eventos")
-      .select("tipo, payload")
-      .eq("run_id", data.run_id)
-      .eq("cliente_id", scope.cliente_id)
-      .limit(500);
-
-    const previos = (evs ?? [])
-      .map((e: any) => ({
-        modulo: (e.payload?.modulo as string) ?? "desconocido",
-        estado: estadoDeEvento(String(e.tipo)),
-      }))
-      .filter((e) => !!e.estado) as Array<{ modulo: string; estado: any }>;
-
-    const antes = evaluarProcesamiento({
-      estado: String((run as any).estado ?? ""),
-      cobertura: (run as any).cobertura as string | null,
-      nuevos: Number((run as any).nuevos ?? 0),
-      recalculos: previos,
-    });
-
-    // Idempotencia: si no hace falta, no se ejecuta nada ni se registra ruido.
-    if (!antes.requerido || antes.completo) {
-      return {
-        ok: true,
-        ejecutado: false,
-        mensaje: antes.requerido
-          ? "El procesamiento posterior ya estaba completo: no se ejecutó nada."
-          : "Esta corrida no incorporó comprobantes nuevos: no hay procesamiento que completar.",
-        antes,
-        despues: antes,
-      };
-    }
-
-    const resultados = await ejecutarCascada(scope.cliente_id, {
+    const { ejecutarProcesamientoPosterior } = await import("./procesamiento.server");
+    const { antes, despues, resultados } = await ejecutarProcesamientoPosterior({
       supabase,
-      despachoId: scope.despacho_id,
       runId: (run as any).id as string,
-      soloModulos: antes.faltantes,
-    });
-
-    const despues = evaluarProcesamiento({
-      estado: String((run as any).estado ?? ""),
-      cobertura: (run as any).cobertura as string | null,
+      clienteId: scope.cliente_id,
+      despachoId: scope.despacho_id,
       nuevos: Number((run as any).nuevos ?? 0),
-      recalculos: [
-        ...previos,
-        ...resultados.map((r) => ({ modulo: r.modulo, estado: r.ok ? "ejecutado" : "fallido" })),
-      ] as any,
+      cobertura: (run as any).cobertura as string | null,
     });
 
-    const estadoFinal = despues.hubo_fallos ? "parcial" : "completada";
-    await supabase
-      .from("sat_sync_runs")
-      .update({
-        estado: estadoFinal,
-        estatus: estatusLegado(estadoFinal as any),
-        cobertura: despues.cobertura_honesta ?? undefined,
-        finalizado_at: (run as any).finalizado_at ?? new Date().toISOString(),
-        detalle: `Nuevos: ${Number((run as any).nuevos ?? 0)} · duplicados: ${Number(
-          (run as any).duplicados ?? 0,
-        )} · rechazados: ${Number((run as any).rechazados ?? 0)} · procesamiento posterior completado.`,
-      })
-      .eq("id", (run as any).id);
+    const ejecutado = resultados.some((r) => r.estado !== "omitido_por_idempotencia");
+
+    // El estado de la corrida se deriva de la bitácora releída, nunca del
+    // resultado en memoria. `finalizado_at` sólo se fija cuando el
+    // procesamiento quedó terminal.
+    // La columna `estado` sólo admite los valores del ciclo de la corrida: un
+    // procesamiento pendiente se guarda como `recalculando` y la lectura
+    // honesta la aporta `evaluarProcesamiento`. La cobertura sólo admite
+    // total/parcial/nula, así que nunca se escribe un texto libre.
+    const ESTADO_DB: Record<string, string> = {
+      completada: "completada",
+      parcial: "parcial",
+      error: "error",
+      recalculando: "recalculando",
+      procesamiento_pendiente: "recalculando",
+    };
+    const estadoDb = despues.estado_honesto ? ESTADO_DB[despues.estado_honesto] : null;
+    const patch: Record<string, unknown> = {
+      detalle: `Nuevos: ${Number((run as any).nuevos ?? 0)} · duplicados: ${Number(
+        (run as any).duplicados ?? 0,
+      )} · rechazados: ${Number((run as any).rechazados ?? 0)} · ${despues.mensaje}`,
+    };
+    if (estadoDb) {
+      patch['estado'] = estadoDb;
+      patch['estatus'] = estatusLegado(estadoDb as any);
+    }
+    if (despues.terminal && despues.cobertura_honesta &&
+        ["total", "parcial", "nula"].includes(despues.cobertura_honesta)) {
+      patch['cobertura'] = despues.cobertura_honesta;
+    }
+    if (despues.terminal) {
+      patch['finalizado_at'] = (run as any).finalizado_at ?? new Date().toISOString();
+    }
+    await supabase.from("sat_sync_runs").update(patch as any).eq("id", (run as any).id);
 
     await supabase.from("audit_logs").insert({
       user_id: userId,
@@ -553,21 +530,30 @@ export const completarProcesamiento = createServerFn({ method: "POST" })
       entidad_id: (run as any).id,
       payload: {
         antes: { estado: (run as any).estado, faltantes: antes.faltantes },
-        despues: { estado: estadoFinal, faltantes: despues.faltantes },
-        modulos: resultados.map((r) => ({ modulo: r.modulo, ok: r.ok })),
+        despues: { estado: despues.estado_honesto, faltantes: despues.faltantes },
+        modulos: resultados.map((r) => ({ modulo: r.module_id, estado: r.estado })),
         sin_contacto_sat: true,
+        sin_descarga: true,
         sin_consumo_cuota: true,
+        sin_consumo_pac: true,
       },
     });
 
     return {
-      ok: true,
-      ejecutado: true,
-      mensaje: despues.hubo_fallos
-        ? "Procesamiento completado con fallos: la corrida queda como parcial."
-        : "Procesamiento posterior completado.",
+      ok: despues.completo || !despues.requerido,
+      ejecutado,
+      mensaje: !ejecutado
+        ? despues.completo
+          ? "El procesamiento posterior ya estaba completo: no se ejecutó nada."
+          : "Otro procesamiento ya está en curso para esta corrida."
+        : despues.mensaje,
       antes,
       despues,
+      modulos: resultados.map((r) => ({
+        modulo: r.module_id,
+        estado: r.estado,
+        motivo: r.motivo ?? null,
+      })),
     };
   });
 
@@ -1163,6 +1149,26 @@ async function ejecutarCascada(
     soloModulos?: string[];
   },
 ) {
+  // Con corrida: se usa el ejecutor con bitácora por módulo (fuente única).
+  if (ctx?.supabase && ctx.runId) {
+    const { ejecutarProcesamientoPosterior } = await import("./procesamiento.server");
+    const { resultados } = await ejecutarProcesamientoPosterior({
+      supabase: ctx.supabase,
+      runId: ctx.runId,
+      clienteId,
+      despachoId: (ctx.despachoId ?? null) as string,
+      nuevos: 1,
+      soloModulos: ctx.soloModulos,
+    });
+    return resultados.map((r) => ({
+      modulo: r.module_id,
+      ok: r.estado === "completado" || r.estado === "omitido",
+      mensaje: r.motivo ?? undefined,
+      ms: 0,
+    }));
+  }
+
+  // Sin corrida (recálculo suelto): se ejecuta sin bitácora de corrida.
   const resultados: Array<{ modulo: string; ok: boolean; mensaje?: string; ms: number }> = [];
   const filtro = ctx?.soloModulos;
   const safe = async (fn: () => Promise<any>, modulo: string) => {
@@ -1181,28 +1187,9 @@ async function ejecutarCascada(
   await safe(() => computeRiesgoSAT({ data: { cliente_id: clienteId } }), "riesgo_sat");
   await safe(() => runExpressAudit({ data: { cliente_id: clienteId } }), "auditor_cfdi");
   await safe(() => scanClienteEfos({ data: { cliente_id: clienteId } }), "efos");
-
-
-  if (ctx?.supabase && ctx.runId) {
-    try {
-      await ctx.supabase.from("sat_sync_eventos").insert(
-        resultados.map((r) => ({
-          despacho_id: ctx.despachoId ?? null,
-          cliente_id: clienteId,
-          run_id: ctx.runId,
-          tipo: r.ok ? "recalculo_ok" : "recalculo_fallido",
-          mensaje: r.ok
-            ? `${MODULO_LABEL[r.modulo] ?? r.modulo} recalculado tras la descarga.`
-            : `${MODULO_LABEL[r.modulo] ?? r.modulo} no pudo recalcularse: ${r.mensaje}`,
-          payload: { modulo: r.modulo, ok: r.ok, duracion_ms: r.ms },
-        })),
-      );
-    } catch (e: any) {
-      console.warn("[sat-sync cascada] no se pudieron registrar los eventos:", e?.message ?? e);
-    }
-  }
   return resultados;
 }
+
 
 /** Ejecuta los recálculos y cierra la corrida que quedó en `recalculando`. */
 async function recalcularYCerrar(args: {

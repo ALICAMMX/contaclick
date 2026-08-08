@@ -943,3 +943,37 @@ un XML nuevo con "Sin recálculos registrados: esta corrida no trajo comprobante
 - Nueva acción `completarProcesamiento` (idempotente, sin SAT, sin cuota, sin PAC).
 - `CorridaDetalle.tsx`: mensajes provenientes del servidor + botón de recuperación.
 - 28 regresiones nuevas en `src/lib/sat/procesamiento.test.ts`.
+
+## 2026-08-09 · "Completar procesamiento posterior" reportaba éxito sin evidencia
+
+**Síntoma real.** La acción devolvía "procesamiento posterior completado", actualizaba
+`detalle`/`finalizado_at` y dejaba la corrida en *Procesamiento pendiente*, sin ningún
+evento por módulo y con el botón todavía disponible.
+
+**Causa raíz (dos fallos encadenados).**
+1. Los eventos se escribían en `sat_sync_eventos`, cuyo `CHECK` sólo admite
+   `nuevo | cancelado | sustituido | duplicado | sospechoso | error`: todo
+   `recalculo_ok` era rechazado. El `insert` estaba dentro de un `try/catch`
+   que sólo hacía `console.warn`, así que el fallo era invisible.
+2. El cierre escribía `cobertura = 'pendiente de procesamiento'` y estados
+   inexistentes, valores que las restricciones de `sat_sync_runs` rechazan
+   (`cobertura ∈ total|parcial|nula`, `estado ∈ …|recalculando|completada|…`).
+
+**Corrección.**
+- Bitácora dedicada `sat_procesamiento_eventos` (uno por módulo y corrida) con
+  ciclo `iniciado → completado|omitido|fallido`, `idempotency_key` única,
+  `resultado`, `motivo` y marcas de tiempo.
+- `src/lib/sat/procesamiento.server.ts`: ejecutor único. Abre el evento antes
+  de correr el módulo (el choque de llave única es el candado contra doble
+  clic), y si la evidencia no puede persistirse revierte el intento y **falla**
+  en vez de declarar éxito. El estado final siempre se relee de la base.
+- `evaluarProcesamiento` deriva estado, cobertura, mensaje y **etiqueta del
+  botón** ("Completar procesamiento posterior" / "Reanudar procesamiento") sólo
+  de esos eventos. Una omisión sin motivo no cuenta como evidencia.
+- `finalizado_at` sólo se fija cuando el procesamiento es terminal; los estados
+  se traducen a valores válidos de la columna antes de escribir.
+- UI: tabla Módulo | Estado | Inicio | Fin | Resultado en el detalle.
+- Corrida real `c80cbaa3…`: se corrigió el texto engañoso y quedó marcada como
+  pendiente de procesamiento. No se ejecutaron módulos, no se contactó al SAT,
+  no se usó la e.firma y no se consumió cuota ni PAC.
+- 39 regresiones en `src/lib/sat/procesamiento.test.ts` (483 en total, verde).

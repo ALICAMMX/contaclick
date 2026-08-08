@@ -231,35 +231,55 @@ export function CorridaDetalleDialog({
 
             <Bloque titulo="Procesamiento posterior">
               <p className="text-xs text-muted-foreground mb-2">{d.procesamiento.mensaje}</p>
-              {d.recalculos.length > 0 && (
-                <ul className="text-xs space-y-1">
-                  {d.recalculos.map((r, i) => (
-                    <li key={i} className="flex justify-between gap-3">
-                      <span>{r.etiqueta}</span>
-                      <span
-                        className={
-                          r.estado === "ejecutado"
-                            ? "text-success"
-                            : r.estado === "fallido"
-                              ? "text-destructive"
-                              : "text-warning"
-                        }
-                      >
-                        {r.estado === "ejecutado"
-                          ? "Recalculado"
-                          : r.estado === "omitido"
-                            ? `Omitido${r.mensaje ? `: ${r.mensaje}` : ""}`
-                            : r.estado === "fallido"
-                              ? "Falló"
-                              : "Pendiente"}{" "}
-                        · {fecha(r.at)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+              {d.recalculos.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead className="text-muted-foreground">
+                      <tr className="text-left">
+                        <th className="py-1 pr-2 font-medium">Módulo</th>
+                        <th className="py-1 pr-2 font-medium">Estado</th>
+                        <th className="py-1 pr-2 font-medium">Inicio</th>
+                        <th className="py-1 pr-2 font-medium">Fin</th>
+                        <th className="py-1 font-medium">Resultado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {d.recalculos.map((r, i) => (
+                        <tr key={i} className="border-t border-border/60 align-top">
+                          <td className="py-1 pr-2">{r.etiqueta}</td>
+                          <td
+                            className={`py-1 pr-2 ${
+                              r.estado === "completado"
+                                ? "text-success"
+                                : r.estado === "fallido"
+                                  ? "text-destructive"
+                                  : "text-warning"
+                            }`}
+                          >
+                            {r.estado_label}
+                          </td>
+                          <td className="py-1 pr-2">{fecha(r.iniciado_at)}</td>
+                          <td className="py-1 pr-2">{fecha(r.finalizado_at)}</td>
+                          <td className="py-1">
+                            {r.motivo ??
+                              (r.resultado
+                                ? Object.entries(r.resultado)
+                                    .map(([k, v]) => `${k}: ${v ?? "—"}`)
+                                    .join(" · ")
+                                : "—")}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Todavía no hay ningún evento de procesamiento registrado para esta corrida.
+                </p>
               )}
 
-              {d.procesamiento.puede_recuperar && (
+              {d.procesamiento.accion_label && (
                 <div className="mt-3 space-y-2">
                   <p className="text-xs text-muted-foreground">
                     Esta acción no contacta al SAT, no vuelve a descargar, no consume cuota ni
@@ -272,11 +292,12 @@ export function CorridaDetalleDialog({
                     data-testid="completar-procesamiento"
                   >
                     {enviando && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                    Completar procesamiento posterior
+                    {d.procesamiento.accion_label}
                   </Button>
                 </div>
               )}
             </Bloque>
+
 
             {!d.reintentable && d.motivo_sin_reintento && (
               <p className="text-xs text-muted-foreground">{d.motivo_sin_reintento}</p>

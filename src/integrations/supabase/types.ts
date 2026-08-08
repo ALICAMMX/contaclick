@@ -3598,6 +3598,82 @@ export type Database = {
         }
         Relationships: []
       }
+      sat_procesamiento_eventos: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          derivados: Json
+          despacho_id: string
+          estado: string
+          finalizado_at: string | null
+          id: string
+          idempotency_key: string
+          iniciado_at: string
+          module_id: string
+          motivo: string | null
+          resultado: Json
+          run_id: string
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          derivados?: Json
+          despacho_id: string
+          estado: string
+          finalizado_at?: string | null
+          id?: string
+          idempotency_key: string
+          iniciado_at?: string
+          module_id: string
+          motivo?: string | null
+          resultado?: Json
+          run_id: string
+          updated_at?: string
+          version?: string
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          derivados?: Json
+          despacho_id?: string
+          estado?: string
+          finalizado_at?: string | null
+          id?: string
+          idempotency_key?: string
+          iniciado_at?: string
+          module_id?: string
+          motivo?: string | null
+          resultado?: Json
+          run_id?: string
+          updated_at?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sat_procesamiento_eventos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sat_procesamiento_eventos_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sat_procesamiento_eventos_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "sat_sync_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sat_sync_config: {
         Row: {
           activo: boolean
