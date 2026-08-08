@@ -79,6 +79,9 @@ function clienteSat(creds: ContextoEFirma, token: string, rfc: string): ClienteC
         hasta,
         tipo: direccion,
         tipoSolicitud: "CFDI",
+        // Explícito y seguro: el XML de comprobantes cancelados no puede
+        // solicitarse como receptor y no se pide por omisión en ningún caso.
+        estado: "Vigente",
       });
       return { idSolicitud: r.idSolicitud, codigo: r.codigo, mensaje: r.mensaje };
     },

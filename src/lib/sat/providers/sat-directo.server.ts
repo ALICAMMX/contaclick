@@ -13,6 +13,12 @@
  */
 import forge from "node-forge";
 import { abrirLlaveSat } from "../efirma-key.server";
+import {
+  construirSolicitudDescarga,
+  type EstadoComprobante,
+  type TipoDescargaSat,
+} from "../solicitud-xml";
+
 
 const NS_DES = "http://DescargaMasivaTerceros.sat.gob.mx";
 const NS_DSIG = "http://www.w3.org/2000/09/xmldsig#";
@@ -271,6 +277,22 @@ export async function satAutenticar(c: Credenciales): Promise<string> {
 
 export type TipoDescarga = "emitidos" | "recibidos";
 
+/**
+ * Error terminal de construcción/datos devuelto por el SAT (familia 3xx).
+ * Nunca debe reintentarse el MISMO request.
+ */
+export class SatRechazoTerminalError extends Error {
+  readonly codigo: string;
+  readonly detalle: string;
+  readonly terminal = true as const;
+  constructor(codigo: string, mensaje: string, detalle = "") {
+    super(`SAT ${codigo}: ${mensaje}${detalle ? ` — ${detalle}` : ""}`);
+    this.name = "SatRechazoTerminalError";
+    this.codigo = codigo;
+    this.detalle = detalle;
+  }
+}
+
 /** Paso 2 — Solicitud de descarga. Devuelve el IdSolicitud. */
 export async function satSolicitar(
   c: Credenciales,
@@ -280,24 +302,24 @@ export async function satSolicitar(
     desde: string; // YYYY-MM-DD
     hasta: string;
     tipo: TipoDescarga;
-    tipoSolicitud?: "CFDI" | "Metadata";
+    tipoSolicitud?: TipoDescargaSat;
+    estado?: EstadoComprobante | null;
   },
 ) {
-  const op = args.tipo === "emitidos" ? "SolicitaDescargaEmitidos" : "SolicitaDescargaRecibidos";
-  const rfcAttr = args.tipo === "emitidos" ? "RfcEmisor" : "RfcReceptor";
-  const fi = `${args.desde}T00:00:00`;
-  const ff = `${args.hasta}T23:59:59`;
-  const tipoSol = args.tipoSolicitud ?? "CFDI";
+  // 1) Construcción + validación local. Si algo no cumple el contrato oficial
+  //    se aborta AQUÍ: no se firma nada y no se contacta al SAT.
+  const solicitud = construirSolicitudDescarga({
+    direccion: args.tipo,
+    tipo: args.tipoSolicitud ?? "CFDI",
+    estado: args.estado ?? undefined,
+    rfc: args.rfc,
+    rfcSolicitante: c.rfc,
+    desde: args.desde,
+    hasta: args.hasta,
+  });
 
-  // Atributos en orden alfabético (requisito de la canonicalización)
-  const attrs =
-    `FechaFinal="${ff}" FechaInicial="${fi}" ` +
-    `${rfcAttr}="${args.rfc}" RfcSolicitante="${c.rfc}" TipoSolicitud="${tipoSol}"`;
-
-  // Con exc-c14n sólo se conserva el namespace visiblemente usado. Incluir
-  // xmlns:xd aquí alteraba el digest que WCF recalcula después de retirar la firma.
-  const canonical = `<des:solicitud xmlns:des="${NS_DES}" ${attrs}></des:solicitud>`;
-  const si = signedInfo(sha1B64(canonical), "");
+  // 2) Sellado: sólo después de superar la validación estructural y semántica.
+  const si = signedInfo(sha1B64(solicitud.canonical), "");
   const signature =
     `<Signature xmlns="${NS_DSIG}">` +
     si.replace(` xmlns="${NS_DSIG}"`, "") +
@@ -305,24 +327,24 @@ export async function satSolicitar(
     keyInfo(c) +
     `</Signature>`;
 
-  const envelope =
-    `<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" xmlns:des="${NS_DES}" xmlns:xd="${NS_DSIG}">` +
-    `<s:Header/><s:Body><des:${op}>` +
-    `<des:solicitud ${attrs}>${signature}</des:solicitud>` +
-    `</des:${op}></s:Body></s:Envelope>`;
-
   const xml = await soap(
     SAT_ENDPOINTS.solicita,
-    `http://DescargaMasivaTerceros.sat.gob.mx/ISolicitaDescargaService/${op}`,
-    envelope,
+    solicitud.accionSoap,
+    solicitud.plantillaEnvelope(signature),
     token,
   );
   const codigo = /CodEstatus="([^"]*)"/.exec(xml)?.[1] ?? "";
   const mensaje = /Mensaje="([^"]*)"/.exec(xml)?.[1] ?? "";
   const idSolicitud = /IdSolicitud="([^"]*)"/.exec(xml)?.[1] ?? "";
-  if (!idSolicitud) throw new Error(`SAT rechazó la solicitud: ${codigo} ${mensaje}`.trim());
-  return { idSolicitud, codigo, mensaje };
+  if (!idSolicitud) {
+    if (/^3\d\d$/.test(codigo)) {
+      throw new SatRechazoTerminalError(codigo, mensaje, solicitud.saneado);
+    }
+    throw new Error(`SAT rechazó la solicitud: ${codigo} ${mensaje}`.trim());
+  }
+  return { idSolicitud, codigo, mensaje, saneado: solicitud.saneado };
 }
+
 
 /** Paso 3 — Verificación del estado de la solicitud. */
 export async function satVerificar(c: Credenciales, token: string, idSolicitud: string) {

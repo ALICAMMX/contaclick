@@ -69,6 +69,24 @@ export async function solicitarCiclo(
     try {
       const r = await cliente.solicitar({ direccion, desde: args.desde, hasta: args.hasta });
       const sem = semanticaCodigo(r.codigo);
+      if (sem.terminal) {
+        // Rechazo terminal de construcción/datos: ni folio ni reintento.
+        const mensaje = `${r.codigo} · ${sem.mensaje}`;
+        errores.push(`[${direccion}] ${mensaje}`);
+        solicitudes.push(
+          nuevaSolicitud({
+            direccion,
+            desde: args.desde,
+            hasta: args.hasta,
+            id_solicitud: "",
+            codigo: r.codigo,
+            estado: "error",
+            mensaje: sem.mensaje,
+            error: `${r.codigo} · ${r.mensaje || sem.mensaje}`,
+          }),
+        );
+        continue;
+      }
       solicitudes.push(
         nuevaSolicitud({
           direccion,
@@ -81,6 +99,9 @@ export async function solicitarCiclo(
         }),
       );
     } catch (e: any) {
+      // Errores terminales (rechazo 3xx del SAT o solicitud inválida detectada
+      // localmente) llevan código propio y jamás se reintentan.
+      const codigo = String(e?.codigo ?? "");
       const mensaje = String(e?.message ?? e).slice(0, 250);
       errores.push(`[${direccion}] ${mensaje}`);
       solicitudes.push(
@@ -89,8 +110,9 @@ export async function solicitarCiclo(
           desde: args.desde,
           hasta: args.hasta,
           id_solicitud: "",
+          codigo,
           estado: "error",
-          mensaje,
+          mensaje: codigo ? semanticaCodigo(codigo).mensaje : mensaje,
           error: mensaje,
         }),
       );

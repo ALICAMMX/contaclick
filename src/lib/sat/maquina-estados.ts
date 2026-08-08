@@ -105,9 +105,21 @@ export type SemanticaCodigo = {
   duplicada: boolean;
   /** La solicitud caducó y hay que volver a crearla. */
   vencida: boolean;
+  /**
+   * Error terminal de construcción o de datos (familia 3xx). No es una caída
+   * del SAT: el request debe corregirse y crearse una corrida nueva.
+   */
+  terminal?: boolean;
 };
 
 export const CODIGOS_SAT: Record<string, SemanticaCodigo> = {
+  // --- Familia 3xx: rechazo terminal de construcción/datos ---
+  "300": { mensaje: "Usuario no válido para el servicio de descarga masiva.", reintentable: false, duplicada: false, vencida: false, terminal: true },
+  "301": { mensaje: "XML mal formado: los criterios enviados no son válidos. Corrige la configuración y crea una corrida nueva.", reintentable: false, duplicada: false, vencida: false, terminal: true },
+  "302": { mensaje: "Sello de la solicitud mal formado.", reintentable: false, duplicada: false, vencida: false, terminal: true },
+  "303": { mensaje: "El RFC solicitante no coincide con el certificado de la e.firma.", reintentable: false, duplicada: false, vencida: false, terminal: true },
+  "304": { mensaje: "Certificado revocado o caduco.", reintentable: false, duplicada: false, vencida: false, terminal: true },
+  "305": { mensaje: "Certificado inválido para el servicio de descarga masiva.", reintentable: false, duplicada: false, vencida: false, terminal: true },
   "5000": { mensaje: "Solicitud recibida con éxito.", reintentable: false, duplicada: false, vencida: false },
   "5001": { mensaje: "Tercero no autorizado por el contribuyente.", reintentable: false, duplicada: false, vencida: false },
   "5002": { mensaje: "Se agotaron las solicitudes de por vida para este periodo.", reintentable: false, duplicada: false, vencida: false },
