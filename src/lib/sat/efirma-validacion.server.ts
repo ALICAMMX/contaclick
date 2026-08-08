@@ -6,6 +6,7 @@
  * mensajes de error no exponen trazas ni detalle criptográfico interno.
  */
 import forge from "node-forge";
+import { abrirLlaveSat } from "./efirma-key.server";
 
 export type ResultadoValidacion = {
   rfc: string;
@@ -106,44 +107,28 @@ export function validarEFirma(args: {
     );
   }
 
-  // 4) Llave privada legible con la contraseña
-  let privateKey: forge.pki.rsa.PrivateKey | null = null;
-  let keyDer: string;
+  // 4) Llave privada legible con la contraseña. Las e.firmas históricas del
+  // SAT usan más de una variante de PKCS#8/PBES, por eso el lector es común.
+  let keyBytes: Buffer;
   try {
-    keyDer = forge.util.decode64(limpiar(args.key_b64));
+    keyBytes = Buffer.from(limpiar(args.key_b64), "base64");
   } catch {
     throw new EFirmaInvalida(
       "key_invalido",
       "No se pudo leer la llave privada (.key). Verifica que sea el archivo correcto de la e.firma.",
     );
   }
-  try {
-    privateKey = forge.pki.decryptRsaPrivateKey(
-      forge.pki.encryptedPrivateKeyToPem(
-        forge.pki.encryptedPrivateKeyFromPem(
-          `-----BEGIN ENCRYPTED PRIVATE KEY-----\n${forge.util
-            .encode64(keyDer)
-            .replace(/(.{64})/g, "$1\n")}\n-----END ENCRYPTED PRIVATE KEY-----`,
-        ),
-      ),
-      args.password,
-    ) as forge.pki.rsa.PrivateKey | null;
-  } catch {
-    privateKey = null;
+  if (keyBytes.length === 0 || keyBytes[0] !== 0x30) {
+    throw new EFirmaInvalida(
+      "key_invalido",
+      "El archivo .key no tiene un formato de llave privada SAT válido. Vuelve a descargar el archivo original.",
+    );
   }
-  if (!privateKey) {
-    try {
-      const epki = forge.asn1.fromDer(forge.util.createBuffer(keyDer));
-      const info = forge.pki.decryptPrivateKeyInfo(epki, args.password);
-      if (info) privateKey = forge.pki.privateKeyFromAsn1(info) as forge.pki.rsa.PrivateKey;
-    } catch {
-      privateKey = null;
-    }
-  }
+  const privateKey = abrirLlaveSat(args.key_b64, args.password);
   if (!privateKey) {
     throw new EFirmaInvalida(
       "password_incorrecta",
-      "No se pudo abrir la llave privada. Revisa la contraseña de la e.firma y que el archivo .key sea el que corresponde a ese certificado.",
+      "No se pudo descifrar la llave privada. Verifica la contraseña respetando mayúsculas, minúsculas y caracteres especiales. Si persiste, confirma que seleccionaste el .key de esta misma e.firma.",
     );
   }
 

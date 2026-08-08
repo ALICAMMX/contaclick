@@ -12,6 +12,7 @@
  *   4. Descargar            -> ZIP en base64 con los XML
  */
 import forge from "node-forge";
+import { abrirLlaveSat } from "../efirma-key.server";
 
 const NS_DES = "http://DescargaMasivaTerceros.sat.gob.mx";
 const NS_DSIG = "http://www.w3.org/2000/09/xmldsig#";
@@ -63,32 +64,7 @@ export function abrirEFirma(ef: EFirma): Credenciales {
     forge.asn1.fromDer(forge.util.createBuffer(certDer)),
   );
 
-  const keyDer = forge.util.decode64(clean(ef.key_b64));
-  let privateKey: forge.pki.rsa.PrivateKey | null = null;
-  try {
-    privateKey = forge.pki.decryptRsaPrivateKey(
-      forge.pki.encryptedPrivateKeyToPem(
-        forge.pki.encryptedPrivateKeyFromPem(
-          `-----BEGIN ENCRYPTED PRIVATE KEY-----\n${forge.util
-            .encode64(keyDer)
-            .replace(/(.{64})/g, "$1\n")}\n-----END ENCRYPTED PRIVATE KEY-----`,
-        ),
-      ),
-      ef.password,
-    ) as forge.pki.rsa.PrivateKey | null;
-  } catch {
-    privateKey = null;
-  }
-  if (!privateKey) {
-    // Segundo intento: PKCS#8 cifrado leído directo desde ASN.1 DER.
-    try {
-      const epki = forge.asn1.fromDer(forge.util.createBuffer(keyDer));
-      const info = forge.pki.decryptPrivateKeyInfo(epki, ef.password);
-      if (info) privateKey = forge.pki.privateKeyFromAsn1(info) as forge.pki.rsa.PrivateKey;
-    } catch {
-      privateKey = null;
-    }
-  }
+  const privateKey = abrirLlaveSat(ef.key_b64, ef.password);
   if (!privateKey) {
     throw new Error(
       "No se pudo abrir la llave privada (.key). Verifica la contraseña de la e.firma y que el archivo sea el correcto.",

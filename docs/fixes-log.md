@@ -1,3 +1,8 @@
+## 2026-08-08 — e.firma válida rechazada como contraseña incorrecta
+- **Síntoma:** al conectar una e.firma, ciertas llaves `.key` legítimas del SAT eran rechazadas con “No se pudo abrir la llave privada”, aun usando la contraseña correcta.
+- **Causa:** el lector dependía de una conversión PEM incorrecta y del soporte parcial de `node-forge` para las distintas variantes históricas de PKCS#8/PBES emitidas por el SAT.
+- **Corrección:** lector centralizado con `node:crypto`/OpenSSL para PKCS#8 DER cifrado, respaldo compatible con forge y soporte de contraseñas con caracteres no ASCII. El mismo lector se usa al conectar y al ejecutar descargas; se conserva la validación criptográfica `.cer` ↔ `.key`, RFC y vigencia.
+
 
 ## 2026-06-27 — Botón "Nuevo expediente" requería doble click
 - Síntoma: en `/app/clientes` el primer click sobre "Nuevo expediente" no abría el formulario; sólo el segundo respondía. Regresión visible en el alta del primer cliente.

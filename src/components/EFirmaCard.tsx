@@ -239,6 +239,8 @@ function EFirmaDialog({
               autoComplete="off"
               autoCapitalize="off"
               spellCheck={false}
+              maxLength={256}
+              required
               data-lpignore="true"
               className="h-10 px-3 rounded-lg bg-input/50 border border-border text-sm w-full focus:outline-none focus:ring-1 focus:ring-ring"
             />
