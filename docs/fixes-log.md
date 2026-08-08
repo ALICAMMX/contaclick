@@ -725,3 +725,29 @@ y cambiar `proveedor` en `sat_sync_config`; no se requieren cambios de esquema.
 - `src/routes/app.tools.xml-bulk-reader.tsx` ya consume el módulo: KPIs netos,
   columnas de impuestos y clasificación, filtro por clasificación y exportes
   CSV/Excel con el desglose completo.
+
+## Descarga Masiva SAT — cierre del ciclo asíncrono verificable
+
+- **Ciclo asíncrono extraído a módulo puro** `src/lib/sat/ciclo-asincrono.ts`:
+  solicitar → verificar → descargar → ingerir, sin base de datos y sin red.
+  El orquestador de producción (`sat-directo-runner.server.ts`) ya no duplica
+  esa lógica: le inyecta el cliente SAT real, el abridor de ZIP y el ingestor
+  de CFDI. Las pruebas cubren exactamente el código que corre en producción.
+- **Proveedor sintético** `src/lib/sat/providers/simulado.ts`: reproduce el
+  comportamiento real del SAT (la solicitud NO está lista de inmediato, los
+  paquetes se liberan tras N verificaciones, y una solicitud puede terminar
+  vacía, con error o vencida). No es seleccionable por ningún usuario ni
+  aparece en el registro de proveedores.
+- **Prueba de ciclo completo** `src/lib/sat/ciclo-asincrono.test.ts` (9 casos):
+  una solicitud aceptada no se da por descargada; el ciclo completo llega a
+  `completada` con cobertura total; volver a cosechar no vuelve a descargar
+  paquetes ni duplica XML; cobertura parcial cuando una dirección falla;
+  periodo sin comprobantes = completada con cero (no error); solicitud vencida;
+  duplicados entre paquetes; XML ilegible contabilizado como rechazado;
+  agotamiento de reintentos.
+- **No hay regresión de estado**: `guardarAvanceCorrida` sólo escribe sobre
+  corridas activas, así una corrida terminal nunca se reabre ni se reescribe.
+- **Candado entre trabajadores**: el cron reclama cada corrida antes de
+  cosecharla (ventana de 3 minutos), evitando que dos ejecuciones simultáneas
+  descarguen e ingieran el mismo paquete.
+- Suite completa: 385 pruebas en verde.
