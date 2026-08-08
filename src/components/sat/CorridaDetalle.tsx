@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { periodoEfectivo, notaCriterio, ETIQUETA_ZONA_SAT } from "@/lib/sat/periodo";
 import {
   detalleCorrida,
   completarProcesamiento,
