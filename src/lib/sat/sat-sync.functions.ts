@@ -432,10 +432,28 @@ const RunSchema = z.object({
   cascade: z.boolean().default(true),
 });
 
+/** Error operativo controlado: se devuelve al cliente, NUNCA se lanza. */
+export type FalloSatSync = {
+  ok: false;
+  error: {
+    etapa: "preflight" | "cuota" | "solicitud" | "cosecha";
+    codigo: string;
+    mensaje: string;
+    accion: string;
+    corrida_creada: boolean;
+    solicitud_enviada: boolean;
+    run_id: string | null;
+  };
+};
+
+function fallo(e: FalloSatSync["error"]): FalloSatSync {
+  return { ok: false, error: e };
+}
+
 export const runSyncNow = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) => RunSchema.parse(d))
-  .handler(async ({ data, context }) => {
+  .handler(async ({ data, context }): Promise<any> => {
     const { supabase, userId } = context;
     const inicio = Date.now();
 
@@ -445,16 +463,34 @@ export const runSyncNow = createServerFn({ method: "POST" })
       .select("id, rfc, razon_social, despacho_id")
       .eq("id", scope.cliente_id)
       .maybeSingle();
-    if (!cli?.despacho_id || !cli.rfc) throw new Error("Expediente no encontrado o sin RFC.");
-
-    // 1) Candado único. Si no se puede ejecutar NO se crea corrida ni se consume nada.
-    const estado = await calcularEstado(supabase, userId, scope);
-    if (!estado.puede_ejecutar) {
-      throw new Error(
-        [estado.motivo, estado.accion].filter(Boolean).join(" ") ||
-          "La descarga SAT no está disponible en este momento.",
-      );
+    if (!cli?.despacho_id || !cli.rfc) {
+      return fallo({
+        etapa: "preflight",
+        codigo: "expediente_incompleto",
+        mensaje: "El expediente no existe o no tiene RFC capturado.",
+        accion: "Captura el RFC del expediente antes de descargar comprobantes.",
+        corrida_creada: false,
+        solicitud_enviada: false,
+        run_id: null,
+      });
     }
+
+    // 1) PREFLIGHT COMPLETO. Incluye verificar que la e.firma se puede DESCIFRAR
+    //    con su AAD y su versión de llave: si aquí falla, no se crea corrida,
+    //    no se consume cuota, no queda candado y no se contacta al SAT.
+    const estado = await calcularEstado(supabase, userId, scope, { verificarDescifrado: true });
+    if (!estado.puede_ejecutar) {
+      return fallo({
+        etapa: "preflight",
+        codigo: estado.causa === "sin_credencial" ? estado.credencial.motivo : estado.causa,
+        mensaje: estado.motivo ?? "La descarga SAT no está disponible en este momento.",
+        accion: estado.accion ?? "Revisa la configuración del expediente.",
+        corrida_creada: false,
+        solicitud_enviada: false,
+        run_id: null,
+      });
+    }
+
 
     const { data: cfg } = await supabase
       .from("sat_sync_config")
