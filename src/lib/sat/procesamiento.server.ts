@@ -163,6 +163,8 @@ export async function ejecutarProcesamientoPosterior(args: {
   despachoId: string;
   nuevos: number;
   cobertura?: string | null;
+  /** Inicio de la corrida: acota qué escrituras son atribuibles a ella. */
+  runInicioAt?: string | null;
   /** Restringe la ejecución a estos módulos (por omisión: los faltantes). */
   soloModulos?: string[];
 }) {
