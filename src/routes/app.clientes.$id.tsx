@@ -9,82 +9,26 @@ import { ConfigExpediente } from "./app.sat-sync";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { getCliente, listTerceros } from "@/lib/clientes.functions";
-import { getSatStatus, conectarSat, desconectarSat } from "@/lib/sat/sat.functions";
 import { getClienteHistorial } from "@/lib/clientes/historial.functions";
 import { listCuentas, createCuenta, deleteCuenta, BANCOS } from "@/lib/cuentas/cuentas.functions";
 import { Banknote, Plus, Trash2 } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { PortalConfigSection } from "@/components/PortalConfigSection";
+import { EFirmaCard } from "@/components/EFirmaCard";
 
 
 export const Route = createFileRoute("/app/clientes/$id")({
   component: ClienteDetailPage,
 });
 
-function fileToB64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => {
-      const s = String(r.result ?? "");
-      const i = s.indexOf(",");
-      resolve(i >= 0 ? s.slice(i + 1) : s);
-    };
-    r.onerror = () => reject(r.error);
-    r.readAsDataURL(file);
-  });
-}
-
 function ClienteDetailPage() {
   const { id } = useParams({ from: "/app/clientes/$id" });
   const fetchCli = useServerFn(getCliente);
-  const fetchStatus = useServerFn(getSatStatus);
-  const conectar = useServerFn(conectarSat);
-  const desconectar = useServerFn(desconectarSat);
-  const qc = useQueryClient();
 
   const cli = useQuery({ queryKey: ["cliente", id], queryFn: () => fetchCli({ data: { id } }) });
-  const sat = useQuery({ queryKey: ["sat", id], queryFn: () => fetchStatus({ data: { cliente_id: id } }) });
   const fetchHist = useServerFn(getClienteHistorial);
   const hist = useQuery({ queryKey: ["cli-hist", id], queryFn: () => fetchHist({ data: { cliente_id: id } }) });
 
-  const [cer, setCer] = useState<File | null>(null);
-  const [key, setKey] = useState<File | null>(null);
-  const [pwd, setPwd] = useState("");
-  const [consent, setConsent] = useState(false);
-
-  const conectarMut = useMutation({
-    mutationFn: async () => {
-      if (!cer || !key || !pwd) throw new Error("Sube .cer, .key e ingresa la contraseña");
-      const [cer_b64, key_b64] = await Promise.all([fileToB64(cer), fileToB64(key)]);
-      return conectar({ data: { cliente_id: id, cer_b64, key_b64, password: pwd , consentimiento: true } });
-    },
-    onSuccess: (r) => {
-      toast.success(
-        r.simulated
-          ? "Conectado en modo demo. Descarga automática activada (diaria)."
-          : "Conectado al SAT vía PAC. Descarga automática activada (diaria).",
-      );
-      setCer(null); setKey(null); setPwd("");
-      qc.invalidateQueries({ queryKey: ["sat", id] });
-      qc.invalidateQueries({ queryKey: ["sat-sync"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const desconectarMut = useMutation({
-    mutationFn: () => desconectar({ data: { cliente_id: id } }),
-    onSuccess: () => {
-      toast.success("Conexión SAT eliminada");
-      qc.invalidateQueries({ queryKey: ["sat", id] });
-    },
-  });
-
-  const status = sat.data?.estatus ?? "sin_conectar";
-  const StatusIcon = status === "activo" ? ShieldCheck : status === "error" ? ShieldAlert : ShieldOff;
-  const statusTone =
-    status === "activo" ? "text-success" : status === "error" ? "text-destructive" : "text-muted-foreground";
-  const statusLabel =
-    status === "activo" ? "Conectado" : status === "error" ? "Error de conexión" : "Sin conectar";
 
   return (
     <div className="space-y-6">
