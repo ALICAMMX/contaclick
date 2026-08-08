@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { ShieldCheck, ShieldAlert, ShieldOff, Upload, Unlink, KeyRound, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getSatStatus, conectarSat, desconectarSat } from "@/lib/sat/sat.functions";
+import { errorVisibleCredencial } from "@/lib/sat/linaje";
+
 
 const MAX_CER = 20 * 1024; // los .cer del SAT pesan ~1-2 KB
 const MAX_KEY = 50 * 1024; // los .key del SAT pesan ~1-2 KB
@@ -75,8 +77,11 @@ export function EFirmaCard({
         </div>
       </div>
 
-      {sat.data?.last_error && (
-        <div className="text-xs text-destructive bg-destructive/10 rounded-md p-2">{sat.data.last_error}</div>
+      {/* Sólo los problemas del CERTIFICADO se muestran aquí. El rechazo de una
+          corrida (301, error de paquete, etc.) pertenece a SAT Sync y no debe
+          hacer creer que la e.firma dejó de servir. */}
+      {errorVisibleCredencial(sat.data?.last_error) && (
+        <div className="text-xs text-destructive bg-destructive/10 rounded-md p-2">{sat.data!.last_error}</div>
       )}
 
       {activo ? (

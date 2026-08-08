@@ -138,13 +138,24 @@ async function ingestOne(supabase: SupabaseClient, userId: string, clienteId: st
   return ingestOneInternal(supabase, despachoId, clienteId, filename, xml);
 }
 
+/** Linaje operativo del documento: de dónde vino y con qué evidencia. */
+export type LinajeIngesta = {
+  origen: string;
+  proveedor?: string | null;
+  run_id?: string | null;
+  solicitud_id?: string | null;
+  paquete_id?: string | null;
+};
+
 export async function ingestOneInternal(
   supabase: SupabaseClient,
   despachoId: string,
   clienteId: string,
   filename: string,
   xml: string,
-): Promise<{ id: string; uuid: string | null; duplicado: boolean }> {
+  linaje?: LinajeIngesta,
+): Promise<{ id: string; uuid: string | null; duplicado: boolean; hash: string }> {
+
   const parsed = parseCfdi(xml);
   if (!parsed.uuid) throw new Error("CFDI sin UUID (no timbrado).");
   if (!parsed.emisor.rfc || !parsed.receptor.rfc) throw new Error("CFDI sin RFC emisor o receptor.");
@@ -159,7 +170,7 @@ export async function ingestOneInternal(
     .or(`uuid.eq.${parsed.uuid},archivo_hash.eq.${hash}`)
     .limit(1)
     .maybeSingle();
-  if (dup?.id) return { id: dup.id as string, uuid: parsed.uuid, duplicado: true };
+  if (dup?.id) return { id: dup.id as string, uuid: parsed.uuid, duplicado: true, hash };
 
   // RFC al que se vincula = el del cliente activo si coincide; si no, usa el emisor
   const { data: cli } = await supabase.from("clientes").select("rfc").eq("id", clienteId).maybeSingle();
@@ -204,7 +215,15 @@ export async function ingestOneInternal(
       estatus_sat: "desconocido",
       archivo_path: filename,
       archivo_hash: hash,
+      // Linaje operativo: permite seguir el documento hasta la corrida SAT.
+      origen: linaje?.origen ?? "carga_manual",
+      proveedor: linaje?.proveedor ?? null,
+      sat_run_id: linaje?.run_id ?? null,
+      sat_solicitud_id: linaje?.solicitud_id ?? null,
+      sat_paquete_id: linaje?.paquete_id ?? null,
+      validacion: "aceptado",
     })
+
     .select("id")
     .single();
   if (error || !ins) throw new Error(`Error al guardar CFDI: ${error?.message}`);
@@ -294,7 +313,7 @@ export async function ingestOneInternal(
     console.warn("[workflow trigger xml_uploaded] error:", (e as any)?.message);
   }
 
-  return { id: ins.id as string, uuid: parsed.uuid, duplicado: false };
+  return { id: ins.id as string, uuid: parsed.uuid, duplicado: false, hash };
 }
 
 

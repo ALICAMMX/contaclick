@@ -21,6 +21,7 @@ import {
   satDescargarPaquete,
 } from "./providers/sat-directo.server";
 import { ingestOneInternal } from "@/lib/cfdi/cfdi.functions";
+import { requiereRecalculo } from "./linaje";
 import type { DireccionDescarga } from "./providers/contrato";
 import {
   MAX_XML_POR_PAQUETE,
@@ -108,14 +109,69 @@ const abrirPaqueteZip: AbrirPaquete = async (zipB64) => {
   return out;
 };
 
+/**
+ * Ingesta con LINAJE: cada XML deja constancia de la corrida, la solicitud y
+ * el paquete de los que provino, y registra un evento por documento —también
+ * los duplicados y los rechazados, que no crean un segundo comprobante pero sí
+ * deben poder verse en el detalle de la corrida.
+ */
 function ingestorDe(
   supabase: SupabaseClient,
   despachoId: string,
   clienteId: string,
+  runId?: string | null,
 ): Ingestar {
-  return async ({ nombre, xml }) => {
-    const r = await ingestOneInternal(supabase, despachoId, clienteId, nombre, xml);
-    return { duplicado: !!r.duplicado };
+  return async ({ nombre, xml }, ctx) => {
+    const linaje = {
+      origen: "sat_descarga_masiva",
+      proveedor: "sat_directo",
+      run_id: runId ?? null,
+      solicitud_id: ctx?.idSolicitud ?? null,
+      paquete_id: ctx?.idPaquete ?? null,
+    };
+    const evento = async (tipo: string, payload: Record<string, unknown>, uuid?: string | null, monto?: number | null, mensaje?: string) => {
+      if (!runId) return;
+      try {
+        await supabase.from("sat_sync_eventos").insert({
+          despacho_id: despachoId,
+          cliente_id: clienteId,
+          run_id: runId,
+          tipo,
+          uuid_cfdi: uuid ?? null,
+          monto: monto ?? null,
+          mensaje: mensaje ?? null,
+          payload: { ...payload, ...linaje, archivo: nombre },
+        });
+      } catch (e: any) {
+        console.warn("[sat-sync linaje] no se pudo registrar el evento:", e?.message ?? e);
+      }
+    };
+
+    try {
+      const r = await ingestOneInternal(supabase, despachoId, clienteId, nombre, xml, linaje);
+      if (r.duplicado) {
+        await evento(
+          "duplicado",
+          { cfdi_id: r.id, hash: r.hash, validacion: "duplicado" },
+          r.uuid,
+          null,
+          "El comprobante ya existía en el expediente; no se creó un segundo documento.",
+        );
+      } else {
+        await evento(
+          "nuevo",
+          { cfdi_id: r.id, hash: r.hash, validacion: "aceptado" },
+          r.uuid,
+          null,
+          "Comprobante incorporado al expediente desde la Descarga Masiva SAT.",
+        );
+      }
+      return { duplicado: !!r.duplicado };
+    } catch (e: any) {
+      const mensaje = String(e?.message ?? e).slice(0, 250);
+      await evento("rechazado", { validacion: "rechazado", motivo: mensaje }, null, null, mensaje);
+      throw e;
+    }
   };
 }
 
@@ -158,6 +214,7 @@ export async function cosecharSolicitud(args: {
   despachoId: string;
   clienteId: string;
   rfc?: string;
+  runId?: string | null;
   solicitud: SolicitudRegistro;
   creds?: ContextoEFirma;
   token?: string;
@@ -174,7 +231,7 @@ export async function cosecharSolicitud(args: {
     cliente: clienteSat(creds, token, args.rfc ?? ""),
     solicitud: args.solicitud,
     abrirPaquete: abrirPaqueteZip,
-    ingestar: ingestorDe(args.supabase, args.despachoId, args.clienteId),
+    ingestar: ingestorDe(args.supabase, args.despachoId, args.clienteId, args.runId ?? null),
     maxXmlPorPaquete: MAX_XML_POR_PAQUETE,
   });
 }
@@ -185,6 +242,7 @@ export async function cosecharCorrida(args: {
   despachoId: string;
   clienteId: string;
   rfc?: string;
+  runId?: string | null;
   solicitudes: SolicitudRegistro[];
 }): Promise<{ solicitudes: SolicitudRegistro[]; resumen: ResumenCorrida }> {
   const pendientes = args.solicitudes.filter((s) => s.estado === "pendiente");
@@ -216,7 +274,7 @@ export async function cosecharCorrida(args: {
     cliente: clienteSat(creds, token, args.rfc ?? ""),
     solicitudes: args.solicitudes,
     abrirPaquete: abrirPaqueteZip,
-    ingestar: ingestorDe(args.supabase, args.despachoId, args.clienteId),
+    ingestar: ingestorDe(args.supabase, args.despachoId, args.clienteId, args.runId ?? null),
     maxXmlPorPaquete: MAX_XML_POR_PAQUETE,
   });
 }
@@ -226,6 +284,10 @@ export async function cosecharCorrida(args: {
  *
  * La escritura está acotada a corridas ACTIVAS: una corrida ya terminal nunca
  * retrocede de estado ni se reescribe si otro proceso la cerró antes.
+ *
+ * REGLA DE TRAZABILIDAD: una corrida que trajo comprobantes nuevos NO puede
+ * cerrarse como `completada` sin pasar por `recalculando`. Se mantiene en ese
+ * estado hasta que exista evidencia real de los recálculos.
  */
 export async function guardarAvanceCorrida(
   supabase: SupabaseClient,
@@ -234,12 +296,18 @@ export async function guardarAvanceCorrida(
   resumen: ResumenCorrida,
 ) {
   const terminal = ESTADOS_TERMINALES.includes(resumen.estado);
+  const pendienteRecalculo = requiereRecalculo({
+    estado: resumen.estado,
+    xml_nuevos: resumen.xml_nuevos,
+  });
+  const estadoDestino = pendienteRecalculo ? "recalculando" : resumen.estado;
+  const cerrar = terminal && !pendienteRecalculo;
   await supabase
     .from("sat_sync_runs")
     .update({
       solicitudes: solicitudes as any,
-      estado: resumen.estado,
-      estatus: estatusLegado(resumen.estado),
+      estado: estadoDestino,
+      estatus: estatusLegado(estadoDestino as any),
       cobertura: resumen.cobertura,
       advertencia: resumen.advertencia,
       descargados: resumen.xml_encontrados,
@@ -248,17 +316,43 @@ export async function guardarAvanceCorrida(
       rechazados: resumen.rechazados,
       paquetes_procesados: resumen.paquetes_procesados,
       ultima_consulta_at: new Date().toISOString(),
-      finalizado_at: terminal ? new Date().toISOString() : null,
+      finalizado_at: cerrar ? new Date().toISOString() : null,
       detalle: resumen.advertencia
         ? resumen.advertencia
-        : terminal
-          ? `Nuevos: ${resumen.xml_nuevos} · duplicados: ${resumen.duplicados} · rechazados: ${resumen.rechazados}`
-          : "El SAT sigue procesando la solicitud. La descarga continúa en segundo plano.",
+        : pendienteRecalculo
+          ? "Descarga terminada. Recalculando los módulos del expediente."
+          : terminal
+            ? `Nuevos: ${resumen.xml_nuevos} · duplicados: ${resumen.duplicados} · rechazados: ${resumen.rechazados}`
+            : "El SAT sigue procesando la solicitud. La descarga continúa en segundo plano.",
     })
     .eq("id", runId)
     .in("estado", ESTADOS_ACTIVOS);
   return terminal;
 }
+
+/**
+ * Cierra una corrida que estaba en `recalculando` una vez que los módulos
+ * dejaron evidencia. Nunca cierra una corrida sin recálculos registrados.
+ */
+export async function cerrarTrasRecalculo(
+  supabase: SupabaseClient,
+  runId: string,
+  resumen: { xml_nuevos: number; duplicados: number; rechazados: number },
+) {
+  const { data } = await supabase
+    .from("sat_sync_runs")
+    .update({
+      estado: "completada",
+      estatus: estatusLegado("completada"),
+      finalizado_at: new Date().toISOString(),
+      detalle: `Nuevos: ${resumen.xml_nuevos} · duplicados: ${resumen.duplicados} · rechazados: ${resumen.rechazados}`,
+    })
+    .eq("id", runId)
+    .eq("estado", "recalculando")
+    .select("id");
+  return !!data?.length;
+}
+
 
 /** Ventana de exclusión entre trabajadores que cosechan la misma corrida. */
 const LOCK_COSECHA_MS = 3 * 60_000;
@@ -310,6 +404,7 @@ export async function cosecharPendientes(
       supabase,
       despachoId: (run as any).despacho_id as string,
       clienteId: (run as any).cliente_id as string,
+      runId: (run as any).id as string,
       solicitudes: sols,
     });
     nuevos += resumen.xml_nuevos;

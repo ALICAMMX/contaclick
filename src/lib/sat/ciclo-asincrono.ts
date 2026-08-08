@@ -52,7 +52,12 @@ export interface ClienteCiclo {
 
 export type ArchivoPaquete = { nombre: string; xml: string };
 export type AbrirPaquete = (zipB64: string) => Promise<ArchivoPaquete[]>;
-export type Ingestar = (archivo: ArchivoPaquete) => Promise<{ duplicado: boolean }>;
+/** Contexto de linaje: de qué solicitud y paquete proviene el archivo. */
+export type ContextoIngesta = { idSolicitud: string; idPaquete: string };
+export type Ingestar = (
+  archivo: ArchivoPaquete,
+  ctx: ContextoIngesta,
+) => Promise<{ duplicado: boolean }>;
 
 // ---------------------------------------------------------------------
 // Paso A — Solicitar
@@ -204,7 +209,10 @@ export async function cosecharSolicitudCiclo(args: {
     let rechazados = 0;
     for (const archivo of archivos) {
       try {
-        const r = await args.ingestar(archivo);
+        const r = await args.ingestar(archivo, {
+          idSolicitud: solicitud.id_solicitud,
+          idPaquete,
+        });
         if (r.duplicado) duplicados++;
         else nuevos++;
       } catch {
