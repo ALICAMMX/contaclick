@@ -103,98 +103,173 @@ export function etiquetaTipoComprobante(tipo?: string | null): string {
 
 // ---------------------------------------------------------------------
 // Procesamiento posterior (recálculos obligatorios)
+//
+// FUENTE ÚNICA: el estado, la cobertura, el texto de resultado, la tabla de
+// módulos y el botón se derivan EXCLUSIVAMENTE de los eventos persistidos por
+// módulo (tabla `sat_procesamiento_eventos`). Ningún texto puede declarar
+// "completado" sin que exista un evento terminal por cada módulo obligatorio.
 // ---------------------------------------------------------------------
 
-export type EventoRecalculo = {
-  modulo: string;
-  estado: "ejecutado" | "omitido" | "fallido" | "pendiente";
-  mensaje?: string | null;
-  at?: string | null;
+export const VERSION_PROCESAMIENTO = "v1";
+
+export type EstadoModulo = "iniciado" | "completado" | "omitido" | "fallido";
+
+export type EventoModulo = {
+  module_id: string;
+  estado: EstadoModulo;
+  iniciado_at?: string | null;
+  finalizado_at?: string | null;
+  /** Motivo de omisión o de error. Una omisión sin motivo NO es evidencia. */
+  motivo?: string | null;
+  resultado?: unknown;
+  version?: string | null;
 };
+
+/** Llave que impide ejecutar dos veces el mismo módulo de la misma corrida. */
+export function llaveModulo(runId: string, moduleId: string, version = VERSION_PROCESAMIENTO) {
+  return `proc:${runId}:${moduleId}:${version}`;
+}
+
+/** Un evento sólo cuenta como evidencia terminal si está cerrado y justificado. */
+export function esEvidenciaTerminal(e: EventoModulo): boolean {
+  if (e.estado === "completado" || e.estado === "fallido") return true;
+  if (e.estado === "omitido") return !!String(e.motivo ?? "").trim();
+  return false;
+}
 
 export type EstadoProcesamiento = {
   /** La corrida trajo comprobantes nuevos: el procesamiento es obligatorio. */
   requerido: boolean;
-  /** Módulos obligatorios sin evidencia registrada. */
+  /** Módulos obligatorios sin evidencia terminal registrada. */
   faltantes: string[];
+  /** Módulos con un intento abierto (estado `iniciado`). */
+  en_curso: string[];
+  /** Módulos terminados con fallo (reintentables). */
+  fallidos: string[];
   completo: boolean;
   hubo_fallos: boolean;
   /** Estado que puede declararse honestamente para la corrida. */
-  estado_honesto: "completada" | "parcial" | "procesamiento_pendiente" | "error" | null;
+  estado_honesto: "completada" | "parcial" | "procesamiento_pendiente" | "recalculando" | "error" | null;
   cobertura_honesta: string | null;
-  /** Puede ofrecerse "Completar procesamiento posterior". */
+  /** ¿La corrida puede cerrarse (fin definitivo)? */
+  terminal: boolean;
+  /** Puede ofrecerse la acción de recuperación. */
   puede_recuperar: boolean;
+  /** Nombre exacto que debe llevar el botón (null = no debe mostrarse). */
+  accion_label: string | null;
   mensaje: string;
 };
 
-/** Traduce el `tipo` guardado en sat_sync_eventos al estado del módulo. */
-export function estadoDeEvento(tipo: string): EventoRecalculo["estado"] | null {
-  if (tipo === "recalculo_ok" || tipo === "recalculo_aplicado") return "ejecutado";
-  if (tipo === "recalculo_omitido") return "omitido";
-  if (tipo === "recalculo_fallido") return "fallido";
-  if (tipo === "recalculo_pendiente") return "pendiente";
-  return null;
-}
-
 export function evaluarProcesamiento(args: {
-  estado: string;
   cobertura?: string | null;
   nuevos: number;
-  recalculos: EventoRecalculo[];
+  eventos: EventoModulo[];
   /** Hay otro procesamiento corriendo ahora mismo. */
   ocupado?: boolean;
 }): EstadoProcesamiento {
   const nuevos = Number(args.nuevos ?? 0);
   const requerido = nuevos > 0;
-  const registrados = new Map<string, EventoRecalculo["estado"]>();
-  for (const r of args.recalculos ?? []) {
-    if (r.estado === "pendiente") continue;
-    registrados.set(r.modulo, r.estado);
+  const eventos = (args.eventos ?? []).filter((e) => MODULOS_RECALCULO.includes(e.module_id as any));
+
+  const terminales = new Map<string, EventoModulo>();
+  const abiertos = new Set<string>();
+  for (const e of eventos) {
+    if (esEvidenciaTerminal(e)) {
+      const previo = terminales.get(e.module_id);
+      // Un módulo completado no puede degradarse por un evento fallido viejo.
+      if (!previo || previo.estado === "fallido") terminales.set(e.module_id, e);
+    } else if (e.estado === "iniciado") {
+      abiertos.add(e.module_id);
+    }
   }
-  const faltantes = MODULOS_RECALCULO.filter((m) => !registrados.has(m));
-  const hubo_fallos = Array.from(registrados.values()).includes("fallido");
+
+  const faltantes = MODULOS_RECALCULO.filter((m) => !terminales.has(m));
+  const en_curso = MODULOS_RECALCULO.filter((m) => abiertos.has(m) && !terminales.has(m));
+  const fallidos = MODULOS_RECALCULO.filter((m) => terminales.get(m)?.estado === "fallido");
+  const hubo_fallos = fallidos.length > 0;
   const completo = requerido ? faltantes.length === 0 : true;
 
   if (!requerido) {
     return {
       requerido: false,
       faltantes: [],
+      en_curso: [],
+      fallidos: [],
       completo: true,
       hubo_fallos,
       estado_honesto: null,
       cobertura_honesta: args.cobertura ?? null,
+      terminal: true,
       puede_recuperar: false,
+      accion_label: null,
       mensaje:
         "Esta corrida no incorporó comprobantes nuevos, por lo que no hay procesamiento posterior que registrar.",
     };
   }
 
-  if (!completo) {
+  const etiquetas = (ms: string[]) => ms.map((m) => MODULO_LABEL[m] ?? m).join(", ");
+
+  if (en_curso.length) {
     return {
       requerido: true,
       faltantes: [...faltantes],
+      en_curso,
+      fallidos,
+      completo: false,
+      hubo_fallos,
+      estado_honesto: "recalculando",
+      cobertura_honesta: "pendiente de procesamiento",
+      terminal: false,
+      puede_recuperar: false,
+      accion_label: null,
+      mensaje: `Procesamiento en curso: ${etiquetas(en_curso)}.`,
+    };
+  }
+
+  if (!completo) {
+    const nuncaInicio = terminales.size === 0;
+    return {
+      requerido: true,
+      faltantes: [...faltantes],
+      en_curso: [],
+      fallidos,
       completo: false,
       hubo_fallos,
       estado_honesto: "procesamiento_pendiente",
       cobertura_honesta: "pendiente de procesamiento",
+      terminal: false,
       puede_recuperar: !args.ocupado,
-      mensaje: `Esta corrida incorporó ${nuevos} comprobante${nuevos === 1 ? "" : "s"} nuevo${nuevos === 1 ? "" : "s"}, pero faltan eventos de procesamiento posterior: ${faltantes
-        .map((m) => MODULO_LABEL[m] ?? m)
-        .join(", ")}.`,
+      accion_label: args.ocupado
+        ? null
+        : nuncaInicio
+          ? "Completar procesamiento posterior"
+          : "Reanudar procesamiento",
+      mensaje: `Esta corrida incorporó ${nuevos} comprobante${nuevos === 1 ? "" : "s"} nuevo${
+        nuevos === 1 ? "" : "s"
+      }, pero faltan eventos de procesamiento posterior: ${etiquetas(faltantes)}.`,
     };
   }
 
+  // Todos los módulos tienen evidencia terminal.
+  const todosFallidos = fallidos.length === MODULOS_RECALCULO.length;
+  const estado_honesto = todosFallidos ? "error" : hubo_fallos ? "parcial" : "completada";
   return {
     requerido: true,
     faltantes: [],
+    en_curso: [],
+    fallidos,
     completo: true,
     hubo_fallos,
-    estado_honesto: hubo_fallos ? "parcial" : "completada",
+    estado_honesto,
     cobertura_honesta: hubo_fallos ? "parcial" : (args.cobertura ?? null),
-    puede_recuperar: false,
-    mensaje: hubo_fallos
-      ? "El procesamiento posterior se ejecutó, pero al menos un módulo falló: la corrida queda parcial."
-      : "Procesamiento posterior completo: todos los módulos dejaron evidencia.",
+    terminal: true,
+    puede_recuperar: hubo_fallos && !args.ocupado,
+    accion_label: hubo_fallos && !args.ocupado ? "Reanudar procesamiento" : null,
+    mensaje: todosFallidos
+      ? `Ningún módulo pudo recalcularse: ${etiquetas(fallidos)}.`
+      : hubo_fallos
+        ? `El procesamiento posterior se ejecutó, pero falló: ${etiquetas(fallidos)}. La corrida queda parcial.`
+        : "Procesamiento posterior completo: todos los módulos dejaron evidencia.",
   };
 }
 
@@ -202,5 +277,14 @@ export const ESTADO_PROCESAMIENTO_LABEL: Record<string, string> = {
   completada: "Completada",
   parcial: "Parcial",
   procesamiento_pendiente: "Procesamiento pendiente",
+  recalculando: "Recalculando",
   error: "Error",
 };
+
+export const ESTADO_MODULO_LABEL: Record<EstadoModulo, string> = {
+  iniciado: "En curso",
+  completado: "Completado",
+  omitido: "Omitido",
+  fallido: "Falló",
+};
+
