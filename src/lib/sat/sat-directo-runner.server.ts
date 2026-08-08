@@ -12,7 +12,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import JSZip from "jszip";
-import { aadExpediente, descifrar } from "./efirma-vault.server";
+import { materialEFirma } from "./credencial.server";
 import {
   abrirEFirma,
   satAutenticar,
