@@ -9,7 +9,7 @@ import {
   RefreshCw, ShieldCheck, AlertTriangle, FileStack, Clock, PlugZap, Loader2,
   Pause, Play, Settings as SettingsIcon, ArrowLeft, Ban, Wallet, Hourglass,
 } from "lucide-react";
-import { dashboardSatSync, runSyncNow, listSyncRuns, listSyncEventos, setSyncActivo, getSatSyncConfig, upsertSatSyncConfig, estadoServicioSat, cosecharAhora, reintentarCorrida } from "@/lib/sat/sat-sync.functions";
+import { dashboardSatSync, runSyncNow, listSyncRuns, listSyncEventos, setSyncActivo, getSatSyncConfig, upsertSatSyncConfig, estadoServicioSat, cosecharAhora, reintentarCorrida, cerrarCorridaSat } from "@/lib/sat/sat-sync.functions";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
