@@ -217,14 +217,19 @@ export async function cosecharCorrida(args: {
   });
 }
 
-/** Persiste el avance de una corrida y devuelve el resumen aplicado. */
+/**
+ * Persiste el avance de una corrida y devuelve si quedó terminal.
+ *
+ * La escritura está acotada a corridas ACTIVAS: una corrida ya terminal nunca
+ * retrocede de estado ni se reescribe si otro proceso la cerró antes.
+ */
 export async function guardarAvanceCorrida(
   supabase: SupabaseClient,
   runId: string,
   solicitudes: SolicitudRegistro[],
   resumen: ResumenCorrida,
 ) {
-  const terminal = ["completada", "parcial", "error", "vencida"].includes(resumen.estado);
+  const terminal = ESTADOS_TERMINALES.includes(resumen.estado);
   await supabase
     .from("sat_sync_runs")
     .update({
@@ -246,8 +251,29 @@ export async function guardarAvanceCorrida(
           ? `Nuevos: ${resumen.xml_nuevos} · duplicados: ${resumen.duplicados} · rechazados: ${resumen.rechazados}`
           : "El SAT sigue procesando la solicitud. La descarga continúa en segundo plano.",
     })
-    .eq("id", runId);
+    .eq("id", runId)
+    .in("estado", ESTADOS_ACTIVOS);
   return terminal;
+}
+
+/** Ventana de exclusión entre trabajadores que cosechan la misma corrida. */
+const LOCK_COSECHA_MS = 3 * 60_000;
+
+/**
+ * Reclama una corrida para este trabajador. Devuelve `false` si otro proceso
+ * la consultó hace menos de LOCK_COSECHA_MS: así dos crones simultáneos no
+ * descargan ni ingieren el mismo paquete al mismo tiempo.
+ */
+async function reclamarCorrida(supabase: SupabaseClient, runId: string): Promise<boolean> {
+  const corte = new Date(Date.now() - LOCK_COSECHA_MS).toISOString();
+  const { data } = await supabase
+    .from("sat_sync_runs")
+    .update({ ultima_consulta_at: new Date().toISOString() })
+    .eq("id", runId)
+    .in("estado", ESTADOS_ACTIVOS)
+    .or(`ultima_consulta_at.is.null,ultima_consulta_at.lt.${corte}`)
+    .select("id");
+  return !!data?.length;
 }
 
 /**
