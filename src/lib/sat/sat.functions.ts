@@ -219,22 +219,25 @@ export const conectarSat = createServerFn({ method: "POST" })
         .eq("cliente_id", cli.id);
     }
 
-    // Audit log (best-effort)
+    // Bitácora (sin secretos): distingue alta de reemplazo.
     await supabase.from("audit_logs").insert({
       user_id: userId,
       despacho_id: cli.despacho_id,
-      accion: "sat.conectar",
+      accion: prev ? "sat.efirma.reemplazar" : "sat.efirma.conectar",
       entidad: "cliente",
       entidad_id: cli.id,
       payload: {
         proveedor: "sat_directo",
-        rfc: cli.rfc,
+        rfc: rfcCliente,
         auto_sync: true,
+        vence_at: vence,
+        estatus_previo: prev?.estatus ?? null,
+        vault_version: VAULT_VERSION,
         consentimiento_version: CONSENTIMIENTO_VERSION,
       },
     });
 
-    return { ok: true, simulated: false, auto_sync_activado: true };
+    return { ok: true, simulated: false, auto_sync_activado: true, vence_at: vence };
 
   });
 
@@ -242,12 +245,27 @@ export const desconectarSat = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ cliente_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
+    const { supabase, userId } = context;
+    const { assertClienteScope } = await import("@/lib/despacho/scope");
+    const scope = await assertClienteScope(supabase as any, userId, data.cliente_id);
+
+    const { error } = await supabase
       .from("sat_credenciales")
       .delete()
-      .eq("cliente_id", data.cliente_id);
+      .eq("cliente_id", scope.cliente_id);
     if (error) throw new Error(error.message);
+
+    await supabase.from("audit_logs").insert({
+      user_id: userId,
+      despacho_id: scope.despacho_id,
+      accion: "sat.efirma.eliminar",
+      entidad: "cliente",
+      entidad_id: scope.cliente_id,
+      payload: { proveedor: "sat_directo" },
+    });
+
     return { ok: true };
+
   });
 
 // El flujo de descarga masiva vive en `sat-sync.functions.ts` (proveedor SAT directo).
