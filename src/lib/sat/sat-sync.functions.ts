@@ -766,7 +766,9 @@ export const runSyncNow = createServerFn({ method: "POST" })
       .from("sat_credenciales")
       .update({
         last_sync_at: new Date().toISOString(),
-        last_error: errores.length ? errores.map((e) => e.mensaje).join("; ").slice(0, 500) : null,
+        // El error de una CORRIDA no es un error del certificado: la e.firma
+        // sigue conectada y su tarjeta no debe mostrar el rechazo del request.
+        last_error: null,
         estatus: "activo",
       })
       .eq("cliente_id", cli.id);
