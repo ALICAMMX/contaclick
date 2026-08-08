@@ -327,12 +327,28 @@ function EstadoServicio({ q, onCerrar, cerrando }: { q: any; onCerrar?: (runId: 
         {e.es_sandbox && " · expediente de demostración (no se contacta al SAT)"}
       </div>
       {e.corrida_activa && (
-        <div className="flex items-center gap-2 text-warning">
-          <Hourglass className="h-3.5 w-3.5" />
-          Corrida en proceso desde {fmtRel(e.corrida_activa.iniciado_at)} ·{" "}
-          {ESTADO_LABEL[e.corrida_activa.estado]?.texto ?? e.corrida_activa.estado}
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-warning">
+            <Hourglass className="h-3.5 w-3.5" />
+            Corrida en proceso desde {fmtRel(e.corrida_activa.iniciado_at)} ·{" "}
+            {ESTADO_LABEL[e.corrida_activa.estado]?.texto ?? e.corrida_activa.estado}
+            {!e.corrida_activa.con_folio_sat && " · sin folio del SAT"}
+          </div>
+          <div className="text-muted-foreground">{e.corrida_activa.motivo_cierre}</div>
+          {e.corrida_activa.puede_cerrarse && onCerrar && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs"
+              disabled={cerrando}
+              onClick={() => onCerrar(e.corrida_activa!.id)}
+            >
+              {cerrando ? "Cerrando…" : "Cerrar corrida atorada"}
+            </Button>
+          )}
         </div>
       )}
+
       {e.servicio && (
         <div className="text-muted-foreground">
           Saldo del proveedor (visible sólo para administración): {e.servicio.disponible} disponibles ·{" "}
