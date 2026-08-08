@@ -295,6 +295,8 @@ export async function cosecharPendientes(
   for (const run of runs ?? []) {
     const sols = ((run as any).solicitudes ?? []) as SolicitudRegistro[];
     if (!sols.length) continue;
+    // Otro trabajador ya está cosechando esta corrida: no se duplica el trabajo.
+    if (!(await reclamarCorrida(supabase, (run as any).id as string))) continue;
     revisadas++;
     const { solicitudes, resumen } = await cosecharCorrida({
       supabase,
