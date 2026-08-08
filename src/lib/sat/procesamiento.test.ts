@@ -322,10 +322,11 @@ describe("Detalle · interfaz honesta", () => {
     expect(ui).toContain('data-testid="completar-procesamiento"');
   });
 
-  it("mantiene la acción bloqueada hasta validar el despliegue", () => {
-    expect(ui).toContain("disabled");
-    expect(ui).toContain("permanece bloqueada");
+  it("habilita la acción salvo mientras hay un envío en curso", () => {
+    expect(ui).toContain("disabled={enviando}");
+    expect(ui).toContain("recibo verificable");
   });
+
 
   it("no muestra éxito cuando el contrato responde ok=false", () => {
     expect(ui).toContain("if (!r.ok) throw new Error");
