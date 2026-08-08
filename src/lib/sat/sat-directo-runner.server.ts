@@ -23,6 +23,15 @@ import {
 import { ingestOneInternal } from "@/lib/cfdi/cfdi.functions";
 import type { DireccionDescarga } from "./providers/contrato";
 import {
+  MAX_XML_POR_PAQUETE,
+  cosecharCiclo,
+  cosecharSolicitudCiclo,
+  solicitarCiclo,
+  type AbrirPaquete,
+  type ClienteCiclo,
+  type Ingestar,
+} from "./ciclo-asincrono";
+import {
   MAX_INTENTOS_SOLICITUD,
   acumularSolicitud,
   estadoDesdeSat,
