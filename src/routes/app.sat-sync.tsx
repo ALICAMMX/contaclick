@@ -345,9 +345,25 @@ function EstadoServicio({ q }: { q: any }) {
           <span>
             {e.motivo}
             {e.accion ? <span className="block text-foreground/80 mt-0.5">Qué hacer: {e.accion}</span> : null}
+            {/^.*e\.?firma/i.test(String(e.motivo ?? "")) && (
+              <Button
+                type="button"
+                variant="hero"
+                size="sm"
+                className="mt-2"
+                onClick={() =>
+                  document
+                    .getElementById("conexion-efirma")
+                    ?.scrollIntoView({ behavior: "smooth", block: "center" })
+                }
+              >
+                Conectar e.firma ahora
+              </Button>
+            )}
           </span>
         </div>
       )}
+
     </div>
   );
 }
