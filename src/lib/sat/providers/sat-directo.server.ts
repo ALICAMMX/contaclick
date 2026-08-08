@@ -13,6 +13,12 @@
  */
 import forge from "node-forge";
 import { abrirLlaveSat } from "../efirma-key.server";
+import {
+  construirSolicitudDescarga,
+  type EstadoComprobante,
+  type TipoDescargaSat,
+} from "../solicitud-xml";
+
 
 const NS_DES = "http://DescargaMasivaTerceros.sat.gob.mx";
 const NS_DSIG = "http://www.w3.org/2000/09/xmldsig#";
