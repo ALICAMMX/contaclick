@@ -860,7 +860,61 @@ export const cosecharAhora = createServerFn({ method: "POST" })
  * rechazado se informa como irrecuperable, para que el usuario genere una
  * corrida nueva en vez de esperar en falso.
  */
+/**
+ * Salida segura para una corrida atorada.
+ *
+ * No reenvía nada al SAT ni borra evidencia: sólo cierra la corrida cuando es
+ * seguro (sin folio SAT, o con folio pero abandonada más de 24 h), liberando
+ * el candado para poder configurar una corrida nueva.
+ */
+export const cerrarCorridaSat = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ cliente_id: z.string().uuid(), run_id: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const scope = await assertClienteScope(supabase as any, userId, data.cliente_id);
+
+    const { data: run } = await supabase
+      .from("sat_sync_runs")
+      .select("id, estado, iniciado_at, solicitudes, errores")
+      .eq("id", data.run_id)
+      .eq("cliente_id", scope.cliente_id)
+      .eq("despacho_id", scope.despacho_id)
+      .maybeSingle();
+    if (!run) throw new Error("No se encontró la corrida en este expediente.");
+
+    const veredicto = puedeCerrarseManualmente(run as any);
+    if (!veredicto.permitido) return { ok: false, mensaje: veredicto.motivo };
+
+    const { cerrarCorridaConError, diagnostico } = await import("@/lib/sat/saneamiento.server");
+    await cerrarCorridaConError(
+      supabase,
+      data.run_id,
+      diagnostico({
+        codigo: "cerrada_por_usuario",
+        etapa: String((run as any).estado),
+        folioSat: tieneFolioSat(((run as any).solicitudes ?? []) as SolicitudRegistro[]),
+        mensaje: veredicto.motivo,
+        accion: "Configura una corrida nueva cuando la e.firma esté conectada y vigente.",
+      }),
+    );
+
+    await supabase.from("audit_logs").insert({
+      user_id: userId,
+      despacho_id: scope.despacho_id,
+      accion: "sat_sync.cerrar_corrida",
+      entidad: "sat_sync_run",
+      entidad_id: data.run_id,
+      payload: { motivo: veredicto.motivo, minutos_limite: MINUTOS_ATORADA },
+    });
+
+    return { ok: true, mensaje: "Corrida cerrada. Ya puedes iniciar una sincronización nueva." };
+  });
+
 export const reintentarCorrida = createServerFn({ method: "POST" })
+
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) =>
     z.object({ cliente_id: z.string().uuid(), run_id: z.string().uuid() }).parse(d),
