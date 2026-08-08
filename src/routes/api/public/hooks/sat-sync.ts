@@ -163,7 +163,8 @@ export const Route = createFileRoute("/api/public/hooks/sat-sync")({
             hasta,
           });
 
-          const inicio = Date.now();
+          const inicioRun = Date.now();
+
           const { data: runIns, error: runErr } = await supabase
             .from("sat_sync_runs")
             .insert({
