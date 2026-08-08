@@ -14,6 +14,8 @@
 // Por eso el estado es OBLIGATORIO y explícito en toda solicitud XML.
 // =====================================================================
 
+import { validarContraEsquema } from "./contrato-wsdl";
+
 export type DireccionSolicitud = "emitidos" | "recibidos";
 export type TipoDescargaSat = "CFDI" | "Metadata";
 export type EstadoComprobante = "Vigente" | "Cancelado" | "Todos";
@@ -264,11 +266,24 @@ export function construirSolicitudDescarga(entrada: EntradaSolicitud): Solicitud
 
   const canonical = `<des:solicitud xmlns:des="${NS_DESCARGA_MASIVA}" ${atributos}></des:solicitud>`;
 
+  // Validación contra el esquema oficial (WSDL/XSD) ANTES de sellar.
+  // Si algo no cumple, no se firma nada y no se contacta al SAT.
+  const violaciones = validarContraEsquema(canonical, operacion);
+  if (violaciones.length > 0) {
+    const v = violaciones[0]!;
+    throw new SolicitudInvalidaError({
+      campo: v.atributo,
+      valor: v.valor,
+      motivo: `${v.motivo} (validación WSDL/XSD local, ${violaciones.length} incidencia(s))`,
+    });
+  }
+
   const plantillaEnvelope = (signature: string) =>
     `<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" xmlns:des="${NS_DESCARGA_MASIVA}" xmlns:xd="http://www.w3.org/2000/09/xmldsig#">` +
     `<s:Header/><s:Body><des:${operacion}>` +
     `<des:solicitud ${atributos}>${signature}</des:solicitud>` +
     `</des:${operacion}></s:Body></s:Envelope>`;
+
 
   return {
     operacion,

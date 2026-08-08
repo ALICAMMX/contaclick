@@ -850,3 +850,37 @@ y sin contacto con el SAT. Datos anonimizados.
   cero movimientos en el libro PAC durante la ventana de prueba.
 - **Limpieza:** el expediente y las dos corridas sintéticas se eliminaron al validar
   ambas transiciones; ningún dato real fue tocado.
+
+## 2026-08-08 — Causa funcional del rechazo SAT 301 (Descarga Masiva)
+
+**Corrida rechazada (anonimizada):** dirección `recibidos`, `TipoSolicitud="CFDI"`,
+rango 2026-08-01..2026-08-03, sin folio SAT. Respuesta: `301 XML Mal Formado:
+La solicitud de descarga no es válida. No se permite la descarga de xml que se
+encuentren cancelados.`
+
+**Causa:** el constructor anterior no emitía el atributo `EstadoComprobante`.
+Al omitirse, el servicio asume `Todos` (incluye cancelados) y, para
+`TipoSolicitud=CFDI` recibidos, lo rechaza de forma terminal.
+
+Request saneado ANTERIOR (sin sello/certificado/token):
+`<des:solicitud xmlns:des="http://DescargaMasivaTerceros.sat.gob.mx"
+FechaFinal="2026-08-03T23:59:59" FechaInicial="2026-08-01T00:00:00"
+RfcReceptor="XXX010101XXX" RfcSolicitante="XXX010101XXX" TipoSolicitud="CFDI"/>`
+
+Request saneado POSTERIOR:
+`<des:solicitud xmlns:des="http://DescargaMasivaTerceros.sat.gob.mx"
+EstadoComprobante="Vigente" FechaFinal="2026-08-03T23:59:59"
+FechaInicial="2026-08-01T00:00:00" RfcReceptor="XXX010101XXX"
+RfcSolicitante="XXX010101XXX" TipoSolicitud="CFDI">
+<Signature>[OMITIDA]</Signature></des:solicitud>`
+
+**Correcciones:** `src/lib/sat/solicitud-xml.ts` (constructor tipado) más
+`src/lib/sat/contrato-wsdl.ts` (validación WSDL/XSD local previa al sellado:
+atributos declarados, enumerados, patrones RFC/fecha, orden alfabético y
+combinaciones prohibidas CFDI+Cancelado/Todos).
+
+**Pruebas:** `solicitud-xml.test.ts` (falla con el payload anterior) y
+`solicitud-transporte.test.ts` (transporte simulado: 5000+folio → pendiente /
+esperando_sat; recibidos cancelados → rechazo local sin firma ni red; 301 →
+error terminal sin reintento). Total: 423 pruebas en verde.
+Sin e.firma real y sin contacto con el SAT.
