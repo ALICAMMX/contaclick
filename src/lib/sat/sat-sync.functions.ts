@@ -469,76 +469,43 @@ export const completarProcesamiento = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: run } = await supabase
       .from("sat_sync_runs")
-      .select("id, cliente_id, despacho_id, estado, cobertura, nuevos, duplicados, rechazados")
+      .select(
+        "id, cliente_id, despacho_id, estado, cobertura, nuevos, duplicados, rechazados, finalizado_at",
+      )
       .eq("id", data.run_id)
       .maybeSingle();
     if (!run) throw new Error("La corrida no existe o no pertenece a este expediente.");
     const scope = await assertClienteScope(supabase as any, userId, (run as any).cliente_id);
 
-    const { data: evs } = await supabase
-      .from("sat_sync_eventos")
-      .select("tipo, payload")
-      .eq("run_id", data.run_id)
-      .eq("cliente_id", scope.cliente_id)
-      .limit(500);
-
-    const previos = (evs ?? [])
-      .map((e: any) => ({
-        modulo: (e.payload?.modulo as string) ?? "desconocido",
-        estado: estadoDeEvento(String(e.tipo)),
-      }))
-      .filter((e) => !!e.estado) as Array<{ modulo: string; estado: any }>;
-
-    const antes = evaluarProcesamiento({
-      estado: String((run as any).estado ?? ""),
-      cobertura: (run as any).cobertura as string | null,
-      nuevos: Number((run as any).nuevos ?? 0),
-      recalculos: previos,
-    });
-
-    // Idempotencia: si no hace falta, no se ejecuta nada ni se registra ruido.
-    if (!antes.requerido || antes.completo) {
-      return {
-        ok: true,
-        ejecutado: false,
-        mensaje: antes.requerido
-          ? "El procesamiento posterior ya estaba completo: no se ejecutó nada."
-          : "Esta corrida no incorporó comprobantes nuevos: no hay procesamiento que completar.",
-        antes,
-        despues: antes,
-      };
-    }
-
-    const resultados = await ejecutarCascada(scope.cliente_id, {
+    const { ejecutarProcesamientoPosterior } = await import("./procesamiento.server");
+    const { antes, despues, resultados } = await ejecutarProcesamientoPosterior({
       supabase,
-      despachoId: scope.despacho_id,
       runId: (run as any).id as string,
-      soloModulos: antes.faltantes,
-    });
-
-    const despues = evaluarProcesamiento({
-      estado: String((run as any).estado ?? ""),
-      cobertura: (run as any).cobertura as string | null,
+      clienteId: scope.cliente_id,
+      despachoId: scope.despacho_id,
       nuevos: Number((run as any).nuevos ?? 0),
-      recalculos: [
-        ...previos,
-        ...resultados.map((r) => ({ modulo: r.modulo, estado: r.ok ? "ejecutado" : "fallido" })),
-      ] as any,
+      cobertura: (run as any).cobertura as string | null,
     });
 
-    const estadoFinal = despues.hubo_fallos ? "parcial" : "completada";
-    await supabase
-      .from("sat_sync_runs")
-      .update({
-        estado: estadoFinal,
-        estatus: estatusLegado(estadoFinal as any),
-        cobertura: despues.cobertura_honesta ?? undefined,
-        finalizado_at: (run as any).finalizado_at ?? new Date().toISOString(),
-        detalle: `Nuevos: ${Number((run as any).nuevos ?? 0)} · duplicados: ${Number(
-          (run as any).duplicados ?? 0,
-        )} · rechazados: ${Number((run as any).rechazados ?? 0)} · procesamiento posterior completado.`,
-      })
-      .eq("id", (run as any).id);
+    const ejecutado = resultados.some((r) => r.estado !== "omitido_por_idempotencia");
+
+    // El estado de la corrida se deriva de la bitácora releída, nunca del
+    // resultado en memoria. `finalizado_at` sólo se fija cuando el
+    // procesamiento quedó terminal.
+    const patch: Record<string, unknown> = {
+      estado: despues.estado_honesto ?? (run as any).estado,
+      cobertura: despues.cobertura_honesta ?? undefined,
+      detalle: `Nuevos: ${Number((run as any).nuevos ?? 0)} · duplicados: ${Number(
+        (run as any).duplicados ?? 0,
+      )} · rechazados: ${Number((run as any).rechazados ?? 0)} · ${despues.mensaje}`,
+    };
+    if (despues.estado_honesto && ESTATUS_MAPEABLE.has(despues.estado_honesto)) {
+      patch['estatus'] = estatusLegado(despues.estado_honesto as any);
+    }
+    if (despues.terminal) {
+      patch['finalizado_at'] = (run as any).finalizado_at ?? new Date().toISOString();
+    }
+    await supabase.from("sat_sync_runs").update(patch).eq("id", (run as any).id);
 
     await supabase.from("audit_logs").insert({
       user_id: userId,
@@ -548,21 +515,30 @@ export const completarProcesamiento = createServerFn({ method: "POST" })
       entidad_id: (run as any).id,
       payload: {
         antes: { estado: (run as any).estado, faltantes: antes.faltantes },
-        despues: { estado: estadoFinal, faltantes: despues.faltantes },
-        modulos: resultados.map((r) => ({ modulo: r.modulo, ok: r.ok })),
+        despues: { estado: despues.estado_honesto, faltantes: despues.faltantes },
+        modulos: resultados.map((r) => ({ modulo: r.module_id, estado: r.estado })),
         sin_contacto_sat: true,
+        sin_descarga: true,
         sin_consumo_cuota: true,
+        sin_consumo_pac: true,
       },
     });
 
     return {
-      ok: true,
-      ejecutado: true,
-      mensaje: despues.hubo_fallos
-        ? "Procesamiento completado con fallos: la corrida queda como parcial."
-        : "Procesamiento posterior completado.",
+      ok: despues.completo || !despues.requerido,
+      ejecutado,
+      mensaje: !ejecutado
+        ? despues.completo
+          ? "El procesamiento posterior ya estaba completo: no se ejecutó nada."
+          : "Otro procesamiento ya está en curso para esta corrida."
+        : despues.mensaje,
       antes,
       despues,
+      modulos: resultados.map((r) => ({
+        modulo: r.module_id,
+        estado: r.estado,
+        motivo: r.motivo ?? null,
+      })),
     };
   });
 
