@@ -920,3 +920,26 @@ la UI leía `last_error` de la credencial sin distinguir su origen.
 1 comprobante `BCDD4B19…4703`. Se reconstruyó su linaje (proveedor
 `sat_directo`, paquete `58F4A014…_01`) y se registró el evento correspondiente.
 No se contactó al SAT ni se usó la e.firma real.
+
+## 2026-08-08 · Contradicciones en el detalle de la corrida SAT (c80cbaa3)
+
+**Síntomas:** el detalle mostraba "1 paquete" y a la vez "Sin paquetes entregados";
+un XML nuevo con "Sin recálculos registrados: esta corrida no trajo comprobantes nuevos".
+
+**Causas reales**
+1. `detalleCorrida` leía `solicitud.paquetes`, pero el ciclo guarda
+   `paquetes_encontrados` / `paquetes_procesados`. Lista vacía frente a un contador > 0.
+2. El texto de recálculos era fijo en la UI y no dependía de `nuevos`.
+   La corrida se cosechó antes del despliegue de linaje, así que no tiene eventos.
+3. El comprobante real es tipo **I** recibido → Gasto (clasificación correcta).
+   Total $0.00 es real: SubTotal 0.01 con Descuento 0.01, UsoCFDI S01.
+
+**Correcciones**
+- Nuevo módulo puro `src/lib/sat/procesamiento.ts`: fuente única de paquetes,
+  complementos, evaluación de procesamiento posterior y estado/cobertura honestos.
+- `detalleCorrida`: paquetes desde solicitudes + linaje de los XML; documentos con
+  tipo, complementos, moneda, RFC enmascarados y enlace al comprobante;
+  `estado_honesto` y cobertura derivados de la evidencia.
+- Nueva acción `completarProcesamiento` (idempotente, sin SAT, sin cuota, sin PAC).
+- `CorridaDetalle.tsx`: mensajes provenientes del servidor + botón de recuperación.
+- 28 regresiones nuevas en `src/lib/sat/procesamiento.test.ts`.
