@@ -746,7 +746,7 @@ export const reintentarCorrida = createServerFn({ method: "POST" })
 
     if (!run) throw new Error("No se encontró la corrida en este expediente.");
 
-    const sols = (((run as any).solicitudes ?? []) as SolicitudRegistro[]) ?? [];
+    const sols = ((run as any).solicitudes ?? []) as SolicitudRegistro[];
     if (!sols.length) {
       throw new Error(
         "Esta corrida no registró solicitudes en el SAT. Ejecuta una sincronización nueva.",
