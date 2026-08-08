@@ -1019,3 +1019,23 @@ lo tanto no se declaró resuelto ni se autorizó al usuario a pulsar.
 - **Causa raíz**: la cosecha manual llamaba `cosecharCorrida` sin `runId`; los 8 XML se guardaron en el expediente con `sat_run_id` nulo, así que el detalle decía "0 de 8" y "no incorporó comprobantes" con estado completada y cobertura total.
 - **Correcciones**: `runId` obligatorio en toda ruta de cosecha; métricas reconstruidas desde evidencia (`src/lib/sat/metricas.ts`) con contadores inequívocos (entregados/nuevos/duplicados/rechazados/vinculados/visibles); acción explícita "Reconciliar linaje" (idempotente, sin contactar al SAT ni modificar XML); UUID canónico en mayúsculas al ingerir + índice único insensible a mayúsculas para que un periodo solapado cuente duplicado y no cree fila nueva; Salud Fiscal y Auditor ya no imprimen `[object Object]` y el Auditor declara su alcance; confirmación previa al envío con direcciones, periodo y días inclusivos.
 - **Pruebas**: 15 nuevas en `src/lib/sat/metricas.test.ts` (161 en verde).
+
+## Auditoría de fechas reales — solicitudes de recibidos (sin contactar al SAT)
+
+**Evidencia revisada (sólo lectura):**
+- Corrida `4f8c05ce…`: `FechaInicial=2026-07-29T00:00:00`, `FechaFinal=2026-08-01T23:59:59` (recibidos, CFDI, Vigente).
+- Corrida `c80cbaa3…`: `FechaInicial=2026-08-01T00:00:00`, `FechaFinal=2026-08-03T23:59:59`.
+- CFDI `BCDD4B19…`: emisión `2026-08-01 23:26:04` y certificación (timbrado) `2026-08-02 03:15:29`, hora del centro.
+
+**Conclusión:** el límite superior sí fue inclusivo (23:59:59); no hubo truncamiento ni pérdida.
+El comprobante no llegó en la primera solicitud porque en **recibidos** el SAT filtra por
+**fecha de certificación**, no por fecha de emisión: su timbrado cayó el 2 de agosto.
+
+**Correcciones aplicadas:**
+- `src/lib/sat/periodo.ts` (nuevo): fuente única del periodo efectivo (`FechaInicial`/`FechaFinal`,
+  días inclusivos, zona horaria del centro), criterio temporal por dirección y `explicarInclusion`.
+- `src/routes/app.sat-sync.tsx`: el rango por defecto se calcula en hora del centro
+  (antes `toISOString()` adelantaba el día después de las 18:00 y se pedía un periodo distinto al mostrado);
+  la vista previa y la confirmación muestran el periodo efectivo con horas y el criterio del SAT.
+- `src/components/sat/CorridaDetalle.tsx`: el detalle muestra el mismo periodo efectivo que se envió.
+- `src/lib/sat/periodo.test.ts`: 11 pruebas (extremos inclusivos, cambio de mes/año, zona horaria y el caso real `BCDD4B19`).
