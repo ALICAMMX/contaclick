@@ -3605,6 +3605,7 @@ export type Database = {
           derivados: Json
           despacho_id: string
           estado: string
+          execution_id: string | null
           finalizado_at: string | null
           id: string
           idempotency_key: string
@@ -3622,6 +3623,7 @@ export type Database = {
           derivados?: Json
           despacho_id: string
           estado: string
+          execution_id?: string | null
           finalizado_at?: string | null
           id?: string
           idempotency_key: string
@@ -3639,6 +3641,7 @@ export type Database = {
           derivados?: Json
           despacho_id?: string
           estado?: string
+          execution_id?: string | null
           finalizado_at?: string | null
           id?: string
           idempotency_key?: string
