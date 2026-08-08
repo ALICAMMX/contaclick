@@ -127,10 +127,12 @@ function keyInfo(c: Credenciales) {
   );
 }
 
-function signedInfo(digest: string, uri: string, enveloped: boolean) {
-  const transforms = enveloped
-    ? `<Transforms><Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"></Transform></Transforms>`
-    : `<Transforms><Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"></Transform></Transforms>`;
+function signedInfo(digest: string, uri: string) {
+  // El SAT aplica canonicalización exclusiva en las cuatro operaciones.
+  // No usar enveloped-signature: sus plantillas oficiales firman el nodo
+  // limpio y declaran únicamente exc-c14n como transformación.
+  const transforms =
+    `<Transforms><Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"></Transform></Transforms>`;
   return (
     `<SignedInfo xmlns="${NS_DSIG}">` +
     `<CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"></CanonicalizationMethod>` +
@@ -222,7 +224,7 @@ export async function satAutenticar(c: Credenciales): Promise<string> {
     `<u:Expires>${iso(expires)}</u:Expires>` +
     `</u:Timestamp>`;
 
-  const si = signedInfo(sha1B64(timestamp), "#_0", false);
+  const si = signedInfo(sha1B64(timestamp), "#_0");
   // El servicio de Autenticación exige KeyInfo con SecurityTokenReference
   // apuntando al BinarySecurityToken (no X509Data).
   const keyInfoStr =
@@ -292,8 +294,10 @@ export async function satSolicitar(
     `FechaFinal="${ff}" FechaInicial="${fi}" ` +
     `${rfcAttr}="${args.rfc}" RfcSolicitante="${c.rfc}" TipoSolicitud="${tipoSol}"`;
 
-  const canonical = `<des:solicitud xmlns:des="${NS_DES}" xmlns:xd="${NS_DSIG}" ${attrs}></des:solicitud>`;
-  const si = signedInfo(sha1B64(canonical), "", true);
+  // Con exc-c14n sólo se conserva el namespace visiblemente usado. Incluir
+  // xmlns:xd aquí alteraba el digest que WCF recalcula después de retirar la firma.
+  const canonical = `<des:solicitud xmlns:des="${NS_DES}" ${attrs}></des:solicitud>`;
+  const si = signedInfo(sha1B64(canonical), "");
   const signature =
     `<Signature xmlns="${NS_DSIG}">` +
     si.replace(` xmlns="${NS_DSIG}"`, "") +
@@ -323,8 +327,8 @@ export async function satSolicitar(
 /** Paso 3 — Verificación del estado de la solicitud. */
 export async function satVerificar(c: Credenciales, token: string, idSolicitud: string) {
   const attrs = `IdSolicitud="${idSolicitud}" RfcSolicitante="${c.rfc}"`;
-  const canonical = `<des:solicitud xmlns:des="${NS_DES}" xmlns:xd="${NS_DSIG}" ${attrs}></des:solicitud>`;
-  const si = signedInfo(sha1B64(canonical), "", true);
+  const canonical = `<des:solicitud xmlns:des="${NS_DES}" ${attrs}></des:solicitud>`;
+  const si = signedInfo(sha1B64(canonical), "");
   const signature =
     `<Signature xmlns="${NS_DSIG}">` +
     si.replace(` xmlns="${NS_DSIG}"`, "") +
@@ -365,8 +369,8 @@ export async function satDescargarPaquete(
   idPaquete: string,
 ): Promise<string> {
   const attrs = `IdPaquete="${idPaquete}" RfcSolicitante="${c.rfc}"`;
-  const canonical = `<des:peticionDescarga xmlns:des="${NS_DES}" xmlns:xd="${NS_DSIG}" ${attrs}></des:peticionDescarga>`;
-  const si = signedInfo(sha1B64(canonical), "", true);
+  const canonical = `<des:peticionDescarga xmlns:des="${NS_DES}" ${attrs}></des:peticionDescarga>`;
+  const si = signedInfo(sha1B64(canonical), "");
   const signature =
     `<Signature xmlns="${NS_DSIG}">` +
     si.replace(` xmlns="${NS_DSIG}"`, "") +

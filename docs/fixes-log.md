@@ -1,3 +1,8 @@
+## 2026-08-08 — SAT rechazaba la firma XML con error de seguridad 500
+- **Síntoma:** después de validar correctamente `.cer`, `.key`, contraseña, RFC y vigencia, el SAT respondía `An error occurred when verifying security for the message`.
+- **Causa:** las solicitudes firmadas declaraban la transformación `enveloped-signature`, distinta a la `exc-c14n` exigida por las plantillas oficiales, y el digest manual incluía un namespace `xd` no visible que el canonicalizador del SAT elimina.
+- **Corrección:** las cuatro operaciones usan canonicalización exclusiva; los digests de solicitud, verificación y descarga contienen únicamente el namespace `des` realmente utilizado. El sobre de autenticación conserva `SecurityTokenReference` al certificado embebido.
+
 ## 2026-08-08 — e.firma válida rechazada como contraseña incorrecta
 - **Síntoma:** al conectar una e.firma, ciertas llaves `.key` legítimas del SAT eran rechazadas con “No se pudo abrir la llave privada”, aun usando la contraseña correcta.
 - **Causa:** el lector dependía de una conversión PEM incorrecta y del soporte parcial de `node-forge` para las distintas variantes históricas de PKCS#8/PBES emitidas por el SAT.
