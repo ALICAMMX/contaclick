@@ -13,6 +13,8 @@ import {
 import {
   getSatPacSaldo, recargarSatPac, ajustarSatPacConfig,
 } from "@/lib/admin-panel/sat-pac.functions";
+import { getSatCronSalud } from "@/lib/sat/cron-salud.functions";
+
 
 export const Route = createFileRoute("/app/admin-sat-saldo")({
   component: SatSaldoPage,
