@@ -368,32 +368,24 @@ export const detalleCorrida = createServerFn({ method: "GET" })
     }));
 
     const evs = eventos ?? [];
-    const recalculos = evs
-      .map((e: any) => {
-        const estado = estadoDeEvento(String(e.tipo));
-        if (!estado) return null;
-        const modulo = (e.payload?.modulo as string) ?? "desconocido";
-        return {
-          modulo,
-          etiqueta: MODULO_LABEL[modulo] ?? "Módulo",
-          estado,
-          ok: estado === "ejecutado",
-          pendiente: estado === "pendiente",
-          omitido: estado === "omitido",
-          mensaje: e.mensaje as string | null,
-          at: e.created_at as string,
-        };
-      })
-      .filter(Boolean) as Array<{
-      modulo: string;
-      etiqueta: string;
-      estado: "ejecutado" | "omitido" | "fallido" | "pendiente";
-      ok: boolean;
-      pendiente: boolean;
-      omitido: boolean;
-      mensaje: string | null;
-      at: string;
-    }>;
+
+    // FUENTE ÚNICA del procesamiento posterior: la bitácora por módulo.
+    const { leerEventosProcesamiento } = await import("./procesamiento.server");
+    const eventosModulo = await leerEventosProcesamiento(supabase, data.run_id);
+
+    const recalculos = eventosModulo.map((e) => ({
+      modulo: e.module_id,
+      etiqueta: MODULO_LABEL[e.module_id] ?? e.module_id,
+      estado: e.estado,
+      estado_label: ESTADO_MODULO_LABEL[e.estado] ?? e.estado,
+      ok: e.estado === "completado",
+      pendiente: e.estado === "iniciado",
+      omitido: e.estado === "omitido",
+      motivo: e.motivo ?? null,
+      resultado: (e.resultado as Record<string, unknown>) ?? null,
+      iniciado_at: e.iniciado_at ?? null,
+      finalizado_at: e.finalizado_at ?? null,
+    }));
 
     // Fuente ÚNICA de paquetes: solicitudes + linaje persistido en los XML.
     const paquetesResumen = resumirPaquetes({
@@ -404,11 +396,12 @@ export const detalleCorrida = createServerFn({ method: "GET" })
 
     const nuevos = Number((run as any).nuevos ?? 0);
     const procesamiento = evaluarProcesamiento({
-      estado: String((run as any).estado ?? ""),
       cobertura: (run as any).cobertura as string | null,
       nuevos,
-      recalculos: recalculos.map((r) => ({ modulo: r.modulo, estado: r.estado })),
+      eventos: eventosModulo,
     });
+
+
 
     return {
       run: {
