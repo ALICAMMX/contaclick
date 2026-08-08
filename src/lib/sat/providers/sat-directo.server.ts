@@ -214,6 +214,7 @@ export async function satAutenticar(c: Credenciales): Promise<string> {
   const created = new Date();
   const expires = new Date(created.getTime() + 5 * 60_000);
   const iso = (d: Date) => d.toISOString().replace(/\.\d{3}Z$/, ".000Z");
+  const bstId = `uuid-${crypto.randomUUID()}-1`;
 
   const timestamp =
     `<u:Timestamp xmlns:u="${NS_WSU}" u:Id="_0">` +
@@ -222,11 +223,19 @@ export async function satAutenticar(c: Credenciales): Promise<string> {
     `</u:Timestamp>`;
 
   const si = signedInfo(sha1B64(timestamp), "#_0", false);
+  // El servicio de Autenticación exige KeyInfo con SecurityTokenReference
+  // apuntando al BinarySecurityToken (no X509Data).
+  const keyInfoStr =
+    `<KeyInfo>` +
+    `<o:SecurityTokenReference xmlns:o="${NS_WSSE}">` +
+    `<o:Reference ValueType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509v3" URI="#${bstId}"></o:Reference>` +
+    `</o:SecurityTokenReference>` +
+    `</KeyInfo>`;
   const signature =
     `<Signature xmlns="${NS_DSIG}">` +
     si.replace(` xmlns="${NS_DSIG}"`, "") +
     `<SignatureValue>${signB64(c.privateKey, si)}</SignatureValue>` +
-    keyInfo(c) +
+    keyInfoStr +
     `</Signature>`;
 
   const envelope =
@@ -234,14 +243,15 @@ export async function satAutenticar(c: Credenciales): Promise<string> {
     `<s:Header>` +
     `<o:Security xmlns:o="${NS_WSSE}" s:mustUnderstand="1">` +
     timestamp +
-    `<o:BinarySecurityToken u:Id="uuid-${crypto.randomUUID()}-1" ` +
+    `<o:BinarySecurityToken u:Id="${bstId}" ` +
     `ValueType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509v3" ` +
     `EncodingType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary">` +
     `${c.certB64}</o:BinarySecurityToken>` +
     signature +
     `</o:Security>` +
     `</s:Header>` +
-    `<s:Body><Autentica xmlns="${NS_DES}"></Autentica></s:Body>` +
+    // Ojo: el cuerpo de Autentica usa el namespace "gob.mx" (sin "sat").
+    `<s:Body><Autentica xmlns="http://DescargaMasivaTerceros.gob.mx"></Autentica></s:Body>` +
     `</s:Envelope>`;
 
   const xml = await soap(
@@ -253,8 +263,9 @@ export async function satAutenticar(c: Credenciales): Promise<string> {
   );
   const token = /<AutenticaResult>([^<]+)<\/AutenticaResult>/.exec(xml)?.[1];
   if (!token) throw new Error("El SAT no devolvió token de autenticación");
-  return token;
+  return token.trim();
 }
+
 
 export type TipoDescarga = "emitidos" | "recibidos";
 
