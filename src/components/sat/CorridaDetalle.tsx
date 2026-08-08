@@ -142,7 +142,23 @@ export function CorridaDetalleDialog({
                 {d.run.razon_social ?? "—"} · {d.run.rfc ?? "—"}
               </Fila>
               <Fila label="Periodo solicitado">
-                {d.run.periodo.desde} → {d.run.periodo.hasta}
+                {(() => {
+                  const p = periodoEfectivo(d.run.periodo.desde, d.run.periodo.hasta);
+                  return p.valido ? (
+                    <span>
+                      <span className="font-mono">{p.fechaInicial}</span> →{" "}
+                      <span className="font-mono">{p.fechaFinal}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {ETIQUETA_ZONA_SAT} · {p.dias} día(s), ambos extremos incluidos
+                      </span>
+                      <span className="block text-xs text-muted-foreground">
+                        {notaCriterio("recibidos")}
+                      </span>
+                    </span>
+                  ) : (
+                    <>{d.run.periodo.desde} → {d.run.periodo.hasta}</>
+                  );
+                })()}
               </Fila>
               <Fila label="Proveedor">{d.run.proveedor ?? "—"}</Fila>
               <Fila label="Inicio">{fecha(d.run.iniciado_at)}</Fila>
