@@ -274,9 +274,10 @@ function ActividadTab({ clienteId }: { clienteId: string }) {
   const fn = useServerFn(listSyncRuns);
   const q = useQuery({ queryKey: ["sat-sync", "runs", clienteId], enabled: !!clienteId, queryFn: () => fn({ data: { cliente_id: clienteId, limit: 100 } }) });
   const rows = q.data ?? [];
+  const [detalleId, setDetalleId] = useState<string | null>(null);
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
-      <table className="w-full text-sm">
+    <div className="rounded-xl border border-border bg-card overflow-x-auto">
+      <table className="w-full text-sm min-w-[52rem]">
         <thead className="bg-muted/30 text-xs uppercase tracking-wider text-muted-foreground">
           <tr>
             <th className="text-left p-3">Fecha</th><th className="text-left p-3">RFC</th>
@@ -284,11 +285,25 @@ function ActividadTab({ clienteId }: { clienteId: string }) {
             <th className="text-right p-3">XML</th><th className="text-right p-3">Nuevos</th>
             <th className="text-right p-3">Errores</th><th className="text-left p-3">Duración</th>
             <th className="text-left p-3">Estatus</th>
+            <th className="text-right p-3">Acciones</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r: any) => (
-            <tr key={r.id} className="border-t border-border/40">
+            <tr
+              key={r.id}
+              className="border-t border-border/40 cursor-pointer hover:bg-muted/20 focus-visible:bg-muted/30 outline-none"
+              tabIndex={0}
+              role="button"
+              aria-label={`Ver detalle de la corrida del ${fmtFecha(r.iniciado_at)}`}
+              onClick={() => setDetalleId(r.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setDetalleId(r.id);
+                }
+              }}
+            >
               <td className="p-3">{fmtFecha(r.iniciado_at)}</td>
               <td className="p-3 font-mono text-xs">{r.clientes?.rfc ?? "—"}</td>
               <td className="p-3 text-xs">{r.origen}</td>
@@ -303,14 +318,30 @@ function ActividadTab({ clienteId }: { clienteId: string }) {
                   <div className="text-xs text-destructive mt-1 max-w-[22rem]">{motivoCorridaUi(r)}</div>
                 )}
               </td>
+              <td className="p-3 text-right">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  data-testid="ver-detalle"
+                  data-run-id={r.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDetalleId(r.id);
+                  }}
+                >
+                  Ver detalle
+                </Button>
+              </td>
             </tr>
           ))}
-          {rows.length === 0 && <tr><td colSpan={9} className="p-6 text-center text-muted-foreground text-sm">Sin actividad registrada.</td></tr>}
+          {rows.length === 0 && <tr><td colSpan={10} className="p-6 text-center text-muted-foreground text-sm">Sin actividad registrada.</td></tr>}
         </tbody>
       </table>
+      <CorridaDetalleDialog runId={detalleId} onClose={() => setDetalleId(null)} />
     </div>
   );
 }
+
 
 function NovedadesTab({ clienteId }: { clienteId: string }) {
   const fn = useServerFn(listSyncEventos);
