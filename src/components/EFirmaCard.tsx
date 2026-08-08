@@ -181,17 +181,20 @@ function EFirmaDialog({
           data: { cliente_id: clienteId, cer_b64, key_b64, password: pwd, consentimiento: true },
         });
       } finally {
+        // Sólo la contraseña se descarta siempre; los archivos se conservan
+        // para que un reintento no obligue a volver a seleccionarlos.
         if (pwdRef.current) pwdRef.current.value = "";
-        setCer(null);
-        setKey(null);
       }
     },
     onSuccess: () => {
+      setCer(null);
+      setKey(null);
       toast.success("e.firma validada y conectada. La descarga automática quedó activa.");
       onDone();
     },
     onError: (e: Error) => setError(e.message),
   });
+
 
   function elegir(tipo: "cer" | "key", f: File | null) {
     setError(null);
