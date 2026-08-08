@@ -28,6 +28,7 @@ import {
   evaluarProcesamiento,
   resumirPaquetes,
   ESTADO_MODULO_LABEL,
+  VERSION_PROCESAMIENTO,
   VERSION_SOPORTE_SAT,
   type EventoModulo,
 } from "./procesamiento";
@@ -239,9 +240,16 @@ export const dashboardSatSync = createServerFn({ method: "GET" })
         new Date(r.iniciado_at).getTime() >= Date.now() - 7 * 86400000,
     );
 
+    const { evaluarCorridasConEventos } = await import("./procesamiento.server");
+    const actividadHonesta = await evaluarCorridasConEventos(supabase, actividad ?? []);
+    const ultimaHonesta = actividadHonesta.find((r: any) =>
+      (r.estado_honesto === "completada" || r.estado_honesto === "parcial") &&
+      !!r.finalizado_at_honesto,
+    );
+
     return {
       conectados: conectados ?? 0,
-      ultima: (ultima as any)?.finalizado_at ?? (ultima as any)?.iniciado_at ?? null,
+      ultima: ultimaHonesta?.finalizado_at_honesto ?? null,
       incidenciasCorridas: runsConError.map((r: any) => ({
         id: r.id,
         iniciado_at: r.iniciado_at,
@@ -254,10 +262,7 @@ export const dashboardSatSync = createServerFn({ method: "GET" })
       errores: errores ?? 0,
       /** Corridas vivas: el SAT sigue procesándolas. */
       pendientes: enProceso ?? 0,
-      actividad: await (async () => {
-        const { evaluarCorridasConEventos } = await import("./procesamiento.server");
-        return evaluarCorridasConEventos(supabase, actividad ?? []);
-      })(),
+      actividad: actividadHonesta,
       desconectados: desconectados ?? [],
       conErrores: conErrores ?? [],
       novedades: novedades ?? [],
@@ -414,12 +419,12 @@ export const detalleCorrida = createServerFn({ method: "GET" })
         estado: (run as any).estado as string,
         estado_honesto: procesamiento.estado_honesto ?? ((run as any).estado as string),
         cobertura: procesamiento.cobertura_honesta ?? ((run as any).cobertura as string | null),
-        detalle: (run as any).detalle as string | null,
+        detalle: procesamiento.mensaje,
         advertencia: (run as any).advertencia as string | null,
         periodo: { desde: (run as any).desde as string, hasta: (run as any).hasta as string },
         proveedor: (run as any).proveedor as string | null,
         iniciado_at: (run as any).iniciado_at as string,
-        finalizado_at: (run as any).finalizado_at as string | null,
+        finalizado_at: procesamiento.terminal ? ((run as any).finalizado_at as string | null) : null,
         duracion_ms: (run as any).duracion_ms as number | null,
         rfc: rfcExpediente,
         razon_social: ((run as any).clientes?.razon_social as string) ?? null,
@@ -1193,12 +1198,14 @@ async function ejecutarCascada(
   // Con corrida: se usa el ejecutor con bitácora por módulo (fuente única).
   if (ctx?.supabase && ctx.runId) {
     const { ejecutarProcesamientoPosterior } = await import("./procesamiento.server");
+    const executionId = crypto.randomUUID();
     const { resultados } = await ejecutarProcesamientoPosterior({
       supabase: ctx.supabase,
       runId: ctx.runId,
       clienteId,
       despachoId: (ctx.despachoId ?? null) as string,
       nuevos: 1,
+      executionId,
       soloModulos: ctx.soloModulos,
     });
     return resultados.map((r) => ({

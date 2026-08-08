@@ -291,7 +291,7 @@ export function CorridaDetalleDialog({
                   <Button
                     size="sm"
                     onClick={onCompletar}
-                    disabled={enviando}
+                    disabled
                     data-testid="completar-procesamiento"
                   >
                     {enviando && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
