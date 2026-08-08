@@ -977,3 +977,34 @@ evento por módulo y con el botón todavía disponible.
   pendiente de procesamiento. No se ejecutaron módulos, no se contactó al SAT,
   no se usó la e.firma y no se consumió cuota ni PAC.
 - 39 regresiones en `src/lib/sat/procesamiento.test.ts` (483 en total, verde).
+
+## 2026-08-08 · Segundo falso positivo de procesamiento SAT en producción
+
+**Síntoma real.** A las 15:07 (México) la acción volvió a mostrar éxito, actualizó
+`finalizado_at` y el texto legado, pero el detalle reabierto mostró cero recibos y
+cuatro módulos faltantes; Actividad seguía mostrando *Completada*.
+
+**Causa comprobada.** La petición fue atendida por el contrato legado desplegado:
+el registro de auditoría `2523` conserva la forma antigua (`ok` por módulo, sin
+`execution_id` ni versión) y `sat_procesamiento_eventos` quedó con cero filas. Ese
+contrato ejecutaba módulos en memoria, declaraba éxito sin una relectura de recibos
+y la UI mostraba `toast.success` para cualquier respuesta resuelta. Actividad y KPI
+consultaban directamente `sat_sync_runs.estado`, mientras el detalle ya calculaba
+`estado_honesto` desde recibos, creando dos fuentes de verdad.
+
+**Efecto comprobado.** Salud Fiscal sí reemplazó el snapshot del periodo a las
+21:07:43Z. No existe evidencia inequívoca de escritura para Riesgo, Auditor CFDI o
+EFOS, que son módulos de lectura. No se volvió a ejecutar la corrida para auditarla.
+
+**Endurecimiento.** Versión `sat-processing-2026.08.08.2` / protocolo `v2`:
+- correlación por `execution_id` e índice de soporte;
+- error obligatorio ante cero recibos después de ejecutar;
+- no se actualiza resumen/fin antes de verificar recibos terminales;
+- DTO estructurado con completados, omitidos, fallidos, pendientes, estado y cobertura;
+- UI rechaza `ok=false` y muestra una versión no sensible;
+- Actividad, detalle y última sincronización proyectan la misma evaluación honesta;
+- botón bloqueado hasta completar una prueba sintética desplegada con sesión autorizada.
+
+**Validación disponible.** 56 pruebas SAT y typecheck en verde. La prueba E2E
+autenticada quedó pendiente porque el entorno de verificación no tenía sesión; por
+lo tanto no se declaró resuelto ni se autorizó al usuario a pulsar.
