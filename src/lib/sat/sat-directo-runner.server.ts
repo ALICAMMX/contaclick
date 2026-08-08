@@ -44,8 +44,6 @@ import {
   type SolicitudRegistro,
 } from "./maquina-estados";
 
-/** Máximo de XML que se ingieren por paquete en una sola pasada. */
-const MAX_XML_POR_PAQUETE = 5000;
 
 export type ContextoEFirma = Awaited<ReturnType<typeof abrirEFirma>>;
 
