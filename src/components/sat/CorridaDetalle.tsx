@@ -2,19 +2,30 @@
 //
 // Responde en un solo lugar: qué se pidió, qué contestó el SAT, qué paquetes
 // llegaron, qué comprobantes entraron al expediente y qué se recalculó
-// después. No muestra material sensible: los UUID y las referencias de
-// paquete se presentan enmascarados.
+// después. No muestra material sensible: los UUID, los RFC y las referencias
+// de paquete se presentan enmascarados.
+//
+// Regla de honestidad: el resumen y el detalle usan la MISMA fuente. Nunca se
+// muestra "sin paquetes" cuando el SAT reportó paquetes, ni "no hubo nuevos"
+// cuando la corrida incorporó comprobantes.
 
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { Link } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { detalleCorrida } from "@/lib/sat/sat-sync.functions";
+import { Button } from "@/components/ui/button";
+import { detalleCorrida, completarProcesamiento } from "@/lib/sat/sat-sync.functions";
 import { CLASIFICACION_LABEL } from "@/lib/sat/linaje";
+import { ESTADO_PROCESAMIENTO_LABEL } from "@/lib/sat/procesamiento";
 
-const mxn = (n: number) =>
-  new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(Number(n || 0));
+const mxn = (n: number, moneda = "MXN") =>
+  new Intl.NumberFormat("es-MX", { style: "currency", currency: moneda || "MXN" }).format(
+    Number(n || 0),
+  );
 
 const fecha = (v?: string | null) =>
   v ? new Date(v).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" }) : "—";
@@ -45,6 +56,10 @@ export function CorridaDetalleDialog({
   onClose: () => void;
 }) {
   const fn = useServerFn(detalleCorrida);
+  const completar = useServerFn(completarProcesamiento);
+  const qc = useQueryClient();
+  const [enviando, setEnviando] = useState(false);
+
   const q = useQuery({
     queryKey: ["sat-corrida-detalle", runId],
     queryFn: () => fn({ data: { run_id: runId! } }),
@@ -52,6 +67,21 @@ export function CorridaDetalleDialog({
   });
 
   const d = q.data;
+
+  const onCompletar = async () => {
+    if (!runId) return;
+    setEnviando(true);
+    try {
+      const r = await completar({ data: { run_id: runId } });
+      toast.success(r.mensaje);
+      await qc.invalidateQueries({ queryKey: ["sat-corrida-detalle", runId] });
+      await qc.invalidateQueries({ queryKey: ["sat-sync"] });
+    } catch (e: any) {
+      toast.error(e?.message ?? "No se pudo completar el procesamiento posterior.");
+    } finally {
+      setEnviando(false);
+    }
+  };
 
   return (
     <Dialog open={!!runId} onOpenChange={(o) => !o && onClose()}>
@@ -85,7 +115,6 @@ export function CorridaDetalleDialog({
               )}
 
             <Bloque titulo="Identificación">
-
               <Fila label="Expediente">
                 {d.run.razon_social ?? "—"} · {d.run.rfc ?? "—"}
               </Fila>
@@ -96,7 +125,9 @@ export function CorridaDetalleDialog({
               <Fila label="Inicio">{fecha(d.run.iniciado_at)}</Fila>
               <Fila label="Fin">{fecha(d.run.finalizado_at)}</Fila>
               <Fila label="Estado">
-                <Badge variant="outline">{d.run.estado}</Badge>
+                <Badge variant="outline">
+                  {ESTADO_PROCESAMIENTO_LABEL[d.run.estado_honesto] ?? d.run.estado_honesto}
+                </Badge>
               </Fila>
               <Fila label="Cobertura">{d.run.cobertura ?? "—"}</Fila>
               {d.run.detalle && <Fila label="Resultado">{d.run.detalle}</Fila>}
@@ -128,14 +159,19 @@ export function CorridaDetalleDialog({
             </Bloque>
 
             <Bloque titulo={`Paquetes procesados (${d.run.totales.paquetes})`}>
-              {d.paquetes.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Sin paquetes entregados.</p>
-              ) : (
+              {d.paquetes.length > 0 ? (
                 <ul className="text-xs text-muted-foreground space-y-1">
-                  {d.paquetes.map((p, i) => (
+                  {d.paquetes.map((p: { referencia: string }, i: number) => (
                     <li key={i}>{p.referencia}</li>
                   ))}
                 </ul>
+              ) : (
+                <p
+                  className="text-xs text-muted-foreground"
+                  data-testid="paquetes-sin-referencia"
+                >
+                  {d.paquetes_mensaje ?? "El SAT no entregó paquetes en esta corrida."}
+                </p>
               )}
             </Bloque>
 
@@ -151,58 +187,94 @@ export function CorridaDetalleDialog({
                   Esta corrida no incorporó comprobantes nuevos al expediente.
                 </p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead className="text-muted-foreground">
-                      <tr className="text-left">
-                        <th className="py-1 pr-2">UUID</th>
-                        <th className="py-1 pr-2">Clasificación</th>
-                        <th className="py-1 pr-2">Fecha</th>
-                        <th className="py-1 pr-2">Contraparte</th>
-                        <th className="py-1 pr-2 text-right">Importe</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {d.documentos.map((doc) => (
-                        <tr key={doc.id} className="border-t border-border/40">
-                          <td className="py-1 pr-2 font-mono">{doc.uuid_visible}</td>
-                          <td className="py-1 pr-2">{CLASIFICACION_LABEL[doc.clasificacion]}</td>
-                          <td className="py-1 pr-2">
-                            {doc.fecha ? new Date(doc.fecha).toLocaleDateString("es-MX") : "—"}
-                          </td>
-                          <td className="py-1 pr-2">
-                            {doc.contraparte?.nombre ?? doc.contraparte?.rfc ?? "—"}
-                          </td>
-                          <td className="py-1 pr-2 text-right">{mxn(doc.total)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <ul className="space-y-2">
+                  {d.documentos.map((doc) => (
+                    <li
+                      key={doc.id}
+                      className="rounded-md border border-border/60 p-2 text-xs space-y-1"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-mono">{doc.uuid_visible}</span>
+                        <Badge variant="secondary">{CLASIFICACION_LABEL[doc.clasificacion]}</Badge>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 text-muted-foreground">
+                        <span>Tipo de comprobante: {doc.tipo_label}</span>
+                        <span>
+                          Complementos:{" "}
+                          {doc.complementos.length ? doc.complementos.join(", ") : "ninguno"}
+                        </span>
+                        <span>
+                          Total: {mxn(doc.total, doc.moneda)} {doc.moneda}
+                        </span>
+                        <span>
+                          Fecha: {doc.fecha ? new Date(doc.fecha).toLocaleDateString("es-MX") : "—"}
+                        </span>
+                        <span>RFC emisor: {doc.rfc_emisor}</span>
+                        <span>RFC receptor: {doc.rfc_receptor}</span>
+                        <span className="sm:col-span-2">
+                          Contraparte: {doc.contraparte?.nombre ?? doc.contraparte?.rfc ?? "—"}
+                        </span>
+                      </div>
+                      <Link
+                        to="/app/cfdi/$id"
+                        params={{ id: doc.id }}
+                        className="text-primary underline"
+                        data-testid="ver-comprobante"
+                      >
+                        Ver comprobante
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
               )}
             </Bloque>
 
-            <Bloque titulo="Recálculos posteriores">
-              {d.recalculos.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  Sin recálculos registrados: esta corrida no trajo comprobantes nuevos.
-                </p>
-              ) : (
+            <Bloque titulo="Procesamiento posterior">
+              <p className="text-xs text-muted-foreground mb-2">{d.procesamiento.mensaje}</p>
+              {d.recalculos.length > 0 && (
                 <ul className="text-xs space-y-1">
                   {d.recalculos.map((r, i) => (
                     <li key={i} className="flex justify-between gap-3">
                       <span>{r.etiqueta}</span>
                       <span
                         className={
-                          r.ok ? "text-success" : r.pendiente ? "text-warning" : "text-destructive"
+                          r.estado === "ejecutado"
+                            ? "text-success"
+                            : r.estado === "fallido"
+                              ? "text-destructive"
+                              : "text-warning"
                         }
                       >
-                        {r.ok ? "Recalculado" : r.pendiente ? "Pendiente" : "Falló"} ·{" "}
-                        {fecha(r.at)}
+                        {r.estado === "ejecutado"
+                          ? "Recalculado"
+                          : r.estado === "omitido"
+                            ? `Omitido${r.mensaje ? `: ${r.mensaje}` : ""}`
+                            : r.estado === "fallido"
+                              ? "Falló"
+                              : "Pendiente"}{" "}
+                        · {fecha(r.at)}
                       </span>
                     </li>
                   ))}
                 </ul>
+              )}
+
+              {d.procesamiento.puede_recuperar && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Esta acción no contacta al SAT, no vuelve a descargar, no consume cuota ni
+                    saldo PAC y no duplica comprobantes: sólo ejecuta los recálculos faltantes.
+                  </p>
+                  <Button
+                    size="sm"
+                    onClick={onCompletar}
+                    disabled={enviando}
+                    data-testid="completar-procesamiento"
+                  >
+                    {enviando && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                    Completar procesamiento posterior
+                  </Button>
+                </div>
               )}
             </Bloque>
 

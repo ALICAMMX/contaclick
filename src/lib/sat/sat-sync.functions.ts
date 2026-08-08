@@ -17,10 +17,19 @@ import {
   MODULO_LABEL,
   clasificarCfdi,
   corridaReintentable,
+  enmascararRfc,
   enmascararUuid,
   motivoSinReintento,
   paqueteSaneado,
 } from "./linaje";
+import {
+  complementosDe,
+  estadoDeEvento,
+  etiquetaTipoComprobante,
+  evaluarProcesamiento,
+  resumirPaquetes,
+} from "./procesamiento";
+
 import { decidirEstadoSat, nivelPac, type CausaSat } from "@/lib/sat/estado-servicio";
 import { computeSaludFiscal } from "@/lib/salud/salud.functions";
 import { computeRiesgoSAT } from "@/lib/riesgo/riesgo.functions";
@@ -314,7 +323,7 @@ export const detalleCorrida = createServerFn({ method: "GET" })
       supabase
         .from("cfdi_xml")
         .select(
-          "id, uuid, tipo_cfdi, fecha, total, rfc_emisor, rfc_receptor, nombre_emisor, nombre_receptor, estatus_sat, validacion, sat_solicitud_id, sat_paquete_id, fecha_carga",
+          "id, uuid, tipo_cfdi, fecha, total, moneda, rfc_emisor, rfc_receptor, nombre_emisor, nombre_receptor, estatus_sat, validacion, sat_solicitud_id, sat_paquete_id, fecha_carga",
         )
         .eq("sat_run_id", data.run_id)
         .eq("cliente_id", scope.cliente_id)
@@ -329,6 +338,8 @@ export const detalleCorrida = createServerFn({ method: "GET" })
       id: d.id as string,
       uuid: d.uuid as string,
       uuid_visible: enmascararUuid(d.uuid),
+      // La clasificación SIEMPRE se deriva del XML y del RFC del expediente:
+      // ningún botón de la interfaz puede alterar este hecho.
       clasificacion: clasificarCfdi({
         tipo_cfdi: d.tipo_cfdi,
         rfc_emisor: d.rfc_emisor,
@@ -336,6 +347,11 @@ export const detalleCorrida = createServerFn({ method: "GET" })
         rfc_expediente: rfcExpediente,
       }),
       tipo_cfdi: d.tipo_cfdi as string,
+      tipo_label: etiquetaTipoComprobante(d.tipo_cfdi),
+      complementos: complementosDe(d.tipo_cfdi),
+      moneda: (d.moneda as string) ?? "MXN",
+      rfc_emisor: enmascararRfc(d.rfc_emisor),
+      rfc_receptor: enmascararRfc(d.rfc_receptor),
       fecha: d.fecha as string,
       total: Number(d.total ?? 0),
       contraparte:
@@ -351,31 +367,53 @@ export const detalleCorrida = createServerFn({ method: "GET" })
 
     const evs = eventos ?? [];
     const recalculos = evs
-      .filter((e: any) => String(e.tipo).startsWith("recalculo"))
-      .map((e: any) => ({
-        modulo: (e.payload?.modulo as string) ?? "desconocido",
-        etiqueta: MODULO_LABEL[e.payload?.modulo as string] ?? "Módulo",
-        ok: e.tipo === "recalculo_ok",
-        pendiente: e.tipo === "recalculo_pendiente",
-        mensaje: e.mensaje as string | null,
-        at: e.created_at as string,
-      }));
+      .map((e: any) => {
+        const estado = estadoDeEvento(String(e.tipo));
+        if (!estado) return null;
+        const modulo = (e.payload?.modulo as string) ?? "desconocido";
+        return {
+          modulo,
+          etiqueta: MODULO_LABEL[modulo] ?? "Módulo",
+          estado,
+          ok: estado === "ejecutado",
+          pendiente: estado === "pendiente",
+          omitido: estado === "omitido",
+          mensaje: e.mensaje as string | null,
+          at: e.created_at as string,
+        };
+      })
+      .filter(Boolean) as Array<{
+      modulo: string;
+      etiqueta: string;
+      estado: "ejecutado" | "omitido" | "fallido" | "pendiente";
+      ok: boolean;
+      pendiente: boolean;
+      omitido: boolean;
+      mensaje: string | null;
+      at: string;
+    }>;
 
-    const paquetes = Array.from(
-      new Set(
-        solicitudes
-          .flatMap((s: any) => (Array.isArray(s?.paquetes) ? s.paquetes : []))
-          .map((x: any) => String(x?.id ?? x ?? "")),
-      ),
-    )
-      .filter(Boolean)
-      .map((id) => ({ referencia: paqueteSaneado(id) }));
+    // Fuente ÚNICA de paquetes: solicitudes + linaje persistido en los XML.
+    const paquetesResumen = resumirPaquetes({
+      solicitudes,
+      documentos: (docs ?? []) as any[],
+      paquetes_reportados: Number((run as any).paquetes_procesados ?? 0),
+    });
+
+    const nuevos = Number((run as any).nuevos ?? 0);
+    const procesamiento = evaluarProcesamiento({
+      estado: String((run as any).estado ?? ""),
+      cobertura: (run as any).cobertura as string | null,
+      nuevos,
+      recalculos: recalculos.map((r) => ({ modulo: r.modulo, estado: r.estado })),
+    });
 
     return {
       run: {
         id: (run as any).id as string,
         estado: (run as any).estado as string,
-        cobertura: (run as any).cobertura as string | null,
+        estado_honesto: procesamiento.estado_honesto ?? ((run as any).estado as string),
+        cobertura: procesamiento.cobertura_honesta ?? ((run as any).cobertura as string | null),
         detalle: (run as any).detalle as string | null,
         advertencia: (run as any).advertencia as string | null,
         periodo: { desde: (run as any).desde as string, hasta: (run as any).hasta as string },
@@ -387,10 +425,10 @@ export const detalleCorrida = createServerFn({ method: "GET" })
         razon_social: ((run as any).clientes?.razon_social as string) ?? null,
         totales: {
           encontrados: Number((run as any).descargados ?? 0),
-          nuevos: Number((run as any).nuevos ?? 0),
+          nuevos,
           duplicados: Number((run as any).duplicados ?? 0),
           rechazados: Number((run as any).rechazados ?? 0),
-          paquetes: Number((run as any).paquetes_procesados ?? 0),
+          paquetes: paquetesResumen.reportados,
         },
       },
       solicitudes: solicitudes.map((s: any) => ({
@@ -403,9 +441,12 @@ export const detalleCorrida = createServerFn({ method: "GET" })
         estado: s?.estado_solicitud ?? null,
         terminal: semanticaCodigo(String(s?.codigo ?? "")).terminal,
       })),
-      paquetes,
+      paquetes: paquetesResumen.lista,
+      paquetes_mensaje: paquetesResumen.mensaje,
+      paquetes_sin_referencia: paquetesResumen.sin_referencia,
       documentos,
       recalculos,
+      procesamiento,
       eventos: evs.map((e: any) => ({
         id: e.id as string,
         tipo: e.tipo as string,
@@ -417,6 +458,119 @@ export const detalleCorrida = createServerFn({ method: "GET" })
       motivo_sin_reintento: corridaReintentable(run as any) ? null : motivoSinReintento(run as any),
     };
   });
+
+/**
+ * RECUPERACIÓN EXPLÍCITA: completa el procesamiento posterior de una corrida
+ * que incorporó comprobantes nuevos pero no dejó evidencia de recálculos.
+ *
+ * Garantías: no contacta al SAT, no descarga nada, no consume cuota ni PAC,
+ * no vuelve a ingerir ningún XML y es idempotente (si ya está completo, no
+ * hace nada). Registra el estado antes y después en la bitácora.
+ */
+export const completarProcesamiento = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ run_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: run } = await supabase
+      .from("sat_sync_runs")
+      .select("id, cliente_id, despacho_id, estado, cobertura, nuevos, duplicados, rechazados")
+      .eq("id", data.run_id)
+      .maybeSingle();
+    if (!run) throw new Error("La corrida no existe o no pertenece a este expediente.");
+    const scope = await assertClienteScope(supabase as any, userId, (run as any).cliente_id);
+
+    const { data: evs } = await supabase
+      .from("sat_sync_eventos")
+      .select("tipo, payload")
+      .eq("run_id", data.run_id)
+      .eq("cliente_id", scope.cliente_id)
+      .limit(500);
+
+    const previos = (evs ?? [])
+      .map((e: any) => ({
+        modulo: (e.payload?.modulo as string) ?? "desconocido",
+        estado: estadoDeEvento(String(e.tipo)),
+      }))
+      .filter((e) => !!e.estado) as Array<{ modulo: string; estado: any }>;
+
+    const antes = evaluarProcesamiento({
+      estado: String((run as any).estado ?? ""),
+      cobertura: (run as any).cobertura as string | null,
+      nuevos: Number((run as any).nuevos ?? 0),
+      recalculos: previos,
+    });
+
+    // Idempotencia: si no hace falta, no se ejecuta nada ni se registra ruido.
+    if (!antes.requerido || antes.completo) {
+      return {
+        ok: true,
+        ejecutado: false,
+        mensaje: antes.requerido
+          ? "El procesamiento posterior ya estaba completo: no se ejecutó nada."
+          : "Esta corrida no incorporó comprobantes nuevos: no hay procesamiento que completar.",
+        antes,
+        despues: antes,
+      };
+    }
+
+    const resultados = await ejecutarCascada(scope.cliente_id, {
+      supabase,
+      despachoId: scope.despacho_id,
+      runId: (run as any).id as string,
+      soloModulos: antes.faltantes,
+    });
+
+    const despues = evaluarProcesamiento({
+      estado: String((run as any).estado ?? ""),
+      cobertura: (run as any).cobertura as string | null,
+      nuevos: Number((run as any).nuevos ?? 0),
+      recalculos: [
+        ...previos,
+        ...resultados.map((r) => ({ modulo: r.modulo, estado: r.ok ? "ejecutado" : "fallido" })),
+      ] as any,
+    });
+
+    const estadoFinal = despues.hubo_fallos ? "parcial" : "completada";
+    await supabase
+      .from("sat_sync_runs")
+      .update({
+        estado: estadoFinal,
+        estatus: estatusLegado(estadoFinal as any),
+        cobertura: despues.cobertura_honesta ?? undefined,
+        finalizado_at: (run as any).finalizado_at ?? new Date().toISOString(),
+        detalle: `Nuevos: ${Number((run as any).nuevos ?? 0)} · duplicados: ${Number(
+          (run as any).duplicados ?? 0,
+        )} · rechazados: ${Number((run as any).rechazados ?? 0)} · procesamiento posterior completado.`,
+      })
+      .eq("id", (run as any).id);
+
+    await supabase.from("audit_logs").insert({
+      user_id: userId,
+      despacho_id: scope.despacho_id,
+      accion: "sat_sync.completar_procesamiento",
+      entidad: "sat_sync_run",
+      entidad_id: (run as any).id,
+      payload: {
+        antes: { estado: (run as any).estado, faltantes: antes.faltantes },
+        despues: { estado: estadoFinal, faltantes: despues.faltantes },
+        modulos: resultados.map((r) => ({ modulo: r.modulo, ok: r.ok })),
+        sin_contacto_sat: true,
+        sin_consumo_cuota: true,
+      },
+    });
+
+    return {
+      ok: true,
+      ejecutado: true,
+      mensaje: despues.hubo_fallos
+        ? "Procesamiento completado con fallos: la corrida queda como parcial."
+        : "Procesamiento posterior completado.",
+      antes,
+      despues,
+    };
+  });
+
 
 // ============= ESTADO DEL SERVICIO (fuente única del candado) =============
 
@@ -1001,10 +1155,18 @@ export const runSyncNow = createServerFn({ method: "POST" })
  */
 async function ejecutarCascada(
   clienteId: string,
-  ctx?: { supabase: any; despachoId?: string | null; runId?: string | null },
+  ctx?: {
+    supabase: any;
+    despachoId?: string | null;
+    runId?: string | null;
+    /** Si se indica, sólo se ejecutan estos módulos (recuperación selectiva). */
+    soloModulos?: string[];
+  },
 ) {
   const resultados: Array<{ modulo: string; ok: boolean; mensaje?: string; ms: number }> = [];
+  const filtro = ctx?.soloModulos;
   const safe = async (fn: () => Promise<any>, modulo: string) => {
+    if (filtro && !filtro.includes(modulo)) return;
     const t0 = Date.now();
     try {
       await fn();
@@ -1019,6 +1181,7 @@ async function ejecutarCascada(
   await safe(() => computeRiesgoSAT({ data: { cliente_id: clienteId } }), "riesgo_sat");
   await safe(() => runExpressAudit({ data: { cliente_id: clienteId } }), "auditor_cfdi");
   await safe(() => scanClienteEfos({ data: { cliente_id: clienteId } }), "efos");
+
 
   if (ctx?.supabase && ctx.runId) {
     try {
