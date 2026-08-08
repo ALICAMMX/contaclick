@@ -238,8 +238,19 @@ export type EstadoServicioSat = {
   cuota: { usado: number; limite: number; ilimitado: boolean; restante: number | null };
   es_sandbox: boolean;
   credencial_activa: boolean;
+  /** Diagnóstico único de la e.firma, compartido con la tarjeta de conexión. */
+  credencial: CredencialEFirma;
   efirma_vence_at: string | null;
-  corrida_activa: { id: string; estado: EstadoCorrida; iniciado_at: string } | null;
+  corrida_activa: {
+    id: string;
+    estado: EstadoCorrida;
+    iniciado_at: string;
+    /** ¿El SAT llegó a devolver folio para esta corrida? */
+    con_folio_sat: boolean;
+    puede_cerrarse: boolean;
+    motivo_cierre: string;
+  } | null;
+
   /** Sólo para super-admin: estado interno del proveedor con saldo. */
   servicio?: { disponible: number; reservado: number; umbral_critico: number; nivel: string };
 };
