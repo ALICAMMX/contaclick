@@ -192,7 +192,11 @@ export async function cosecharCorrida(args: {
   let creds: ContextoEFirma;
   let token: string;
   try {
-    creds = await credencialesDe(args.supabase, args.clienteId);
+    creds = await credencialesDe(args.supabase, args.clienteId, {
+      despachoId: args.despachoId,
+      rfcExpediente: args.rfc ?? null,
+    });
+
     token = await satAutenticar(creds);
   } catch (e: any) {
     // Sin autenticación no se pierde el avance: se registra y se reintenta luego.
