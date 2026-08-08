@@ -94,11 +94,20 @@ const EJECUTORES: Record<
   salud_fiscal: async (clienteId) => {
     const r: any = await computeSaludFiscal({ data: { cliente_id: clienteId } });
     if (r?.notFound) return { resultado: {}, omitido: "El expediente no está disponible." };
+    // La cobertura llega como objeto: se aplana a texto legible para que la
+    // bitácora nunca muestre "[object Object]".
+    const c: any = r?.cobertura ?? null;
+    const cobertura =
+      c && typeof c === "object"
+        ? `${Math.round(Number(c.porcentaje ?? 0))}% (${Number(c.dimensionesEvaluadas ?? 0)} de ${Number(
+            c.dimensionesAplicables ?? 0,
+          )} dimensiones)${c.suficiente === false ? " · insuficiente" : ""}`
+        : (c ?? null);
     return {
       resultado: {
         score: r?.score ?? null,
         semaforo: r?.semaforo ?? null,
-        cobertura: r?.cobertura ?? null,
+        cobertura,
       },
     };
   },
@@ -114,10 +123,12 @@ const EJECUTORES: Record<
   },
   auditor_cfdi: async (clienteId) => {
     const r: any = await runExpressAudit({ data: { cliente_id: clienteId } });
+    // El alcance es el EXPEDIENTE COMPLETO, no sólo la corrida: se dice explícito.
     return {
       resultado: {
         hallazgos: Array.isArray(r?.findings) ? r.findings.length : 0,
         comprobantes: r?.stats?.total ?? 0,
+        alcance: "expediente completo",
       },
     };
   },

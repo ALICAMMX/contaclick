@@ -18,7 +18,12 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { detalleCorrida, completarProcesamiento } from "@/lib/sat/sat-sync.functions";
+import {
+  detalleCorrida,
+  completarProcesamiento,
+  reconciliarLinajeCorrida,
+} from "@/lib/sat/sat-sync.functions";
+import { formatearResultado } from "@/lib/sat/metricas";
 import { CLASIFICACION_LABEL } from "@/lib/sat/linaje";
 import { ESTADO_PROCESAMIENTO_LABEL } from "@/lib/sat/procesamiento";
 
@@ -57,6 +62,8 @@ export function CorridaDetalleDialog({
 }) {
   const fn = useServerFn(detalleCorrida);
   const completar = useServerFn(completarProcesamiento);
+  const reconciliar = useServerFn(reconciliarLinajeCorrida);
+  const [reconciliando, setReconciliando] = useState(false);
   const qc = useQueryClient();
   const [enviando, setEnviando] = useState(false);
 
@@ -81,6 +88,21 @@ export function CorridaDetalleDialog({
       toast.error(e?.message ?? "No se pudo completar el procesamiento posterior.");
     } finally {
       setEnviando(false);
+    }
+  };
+
+  const onReconciliar = async () => {
+    if (!runId) return;
+    setReconciliando(true);
+    try {
+      const r = await reconciliar({ data: { run_id: runId } });
+      toast.success(r.mensaje);
+      await qc.invalidateQueries({ queryKey: ["sat-corrida-detalle", runId] });
+      await qc.invalidateQueries({ queryKey: ["sat-sync"] });
+    } catch (e: any) {
+      toast.error(e?.message ?? "No se pudo reconciliar el linaje de esta corrida.");
+    } finally {
+      setReconciliando(false);
     }
   };
 
@@ -180,15 +202,45 @@ export function CorridaDetalleDialog({
             </Bloque>
 
             <Bloque
-              titulo={`Comprobantes incorporados (${d.documentos.length} de ${d.run.totales.encontrados} encontrados)`}
+              titulo={`Comprobantes incorporados (${d.run.totales.vinculados} de ${d.run.totales.encontrados} entregados por el SAT)`}
             >
-              <div className="text-xs text-muted-foreground mb-2">
-                {d.run.totales.nuevos} nuevos · {d.run.totales.duplicados} duplicados ·{" "}
-                {d.run.totales.rechazados} rechazados
+              <div className="text-xs text-muted-foreground mb-2 space-y-1">
+                <div>
+                  {d.run.totales.encontrados} entregados · {d.run.totales.nuevos} nuevos ·{" "}
+                  {d.run.totales.duplicados} duplicados · {d.run.totales.rechazados} rechazados ·{" "}
+                  {d.run.totales.vinculados} con linaje · {d.run.totales.mostrados} visibles aquí
+                </div>
+                <div data-testid="metricas-mensaje">{d.run.metricas_mensaje}</div>
+                {d.run.metricas_problemas?.length > 0 && (
+                  <ul className="list-disc pl-4 text-warning">
+                    {d.run.metricas_problemas.map((p: string, i: number) => (
+                      <li key={i}>{p}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
+
+              {d.reconciliacion?.posible && (
+                <div className="mb-3 rounded-md border border-warning/40 bg-warning/5 p-2 space-y-2">
+                  <p className="text-xs text-muted-foreground">{d.reconciliacion.mensaje}</p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={onReconciliar}
+                    disabled={reconciliando}
+                    data-testid="reconciliar-linaje"
+                  >
+                    {reconciliando && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                    Reconciliar linaje ({d.reconciliacion.candidatos})
+                  </Button>
+                </div>
+              )}
+
               {d.documentos.length === 0 ? (
                 <p className="text-xs text-muted-foreground">
-                  Esta corrida no incorporó comprobantes nuevos al expediente.
+                  {d.run.totales.nuevos > 0
+                    ? "Los comprobantes sí entraron al expediente, pero esta corrida no puede mostrarlos hasta reconciliar su linaje."
+                    : "Esta corrida no incorporó comprobantes nuevos al expediente."}
                 </p>
               ) : (
                 <ul className="space-y-2">
@@ -266,11 +318,10 @@ export function CorridaDetalleDialog({
                           <td className="py-1 pr-2">{fecha(r.finalizado_at)}</td>
                           <td className="py-1">
                             {r.motivo ??
-                              (r.resultado
-                                ? Object.entries(r.resultado)
-                                    .map(([k, v]) => `${k}: ${v ?? "—"}`)
-                                    .join(" · ")
-                                : "—")}
+                              (formatearResultado(r.resultado as any)
+                                .map((x) => `${x.campo}: ${x.valor}`)
+                                .join(" · ") ||
+                                "—")}
                           </td>
                         </tr>
                       ))}
