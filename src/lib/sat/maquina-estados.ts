@@ -277,3 +277,71 @@ export function siguienteIntento(intentos: number, ahora = Date.now()): string {
 }
 
 export const MAX_INTENTOS_SOLICITUD = 8;
+
+// ---------------------------------------------------------------------
+// Reintento manual de una corrida
+// ---------------------------------------------------------------------
+
+export type ReaperturaCorrida = {
+  solicitudes: SolicitudRegistro[];
+  /** Solicitudes que vuelven a la cola de cosecha. */
+  reabiertas: number;
+  /** Solicitudes que ya no pueden reintentarse: exigen una corrida nueva. */
+  irrecuperables: { direccion: DireccionDescarga; motivo: string }[];
+};
+
+/**
+ * Reabre las solicitudes de una corrida detenida para volver a cosecharlas.
+ *
+ * Sólo se reabre lo que el SAT todavía puede entregar: una solicitud con
+ * IdSolicitud vivo cuyo código sea reintentable (o sin código, p. ej. un
+ * corte de red). Lo ya resuelto (`listo`, `vacio`) NO se toca, y lo vencido
+ * o rechazado de origen se reporta como irrecuperable para que el usuario
+ * genere una corrida nueva en lugar de esperar en falso.
+ */
+export function reabrirSolicitudes(
+  solicitudes: SolicitudRegistro[],
+  ahora = Date.now(),
+): ReaperturaCorrida {
+  const irrecuperables: { direccion: DireccionDescarga; motivo: string }[] = [];
+  let reabiertas = 0;
+
+  const salida = solicitudes.map((s) => {
+    if (s.estado === "listo" || s.estado === "vacio") return s;
+
+    if (s.estado === "vencida") {
+      irrecuperables.push({
+        direccion: s.direccion,
+        motivo: "La solicitud expiró en el SAT. Genera una corrida nueva para este periodo.",
+      });
+      return s;
+    }
+
+    if (!s.id_solicitud) {
+      irrecuperables.push({
+        direccion: s.direccion,
+        motivo: "El SAT nunca devolvió un folio de solicitud. Genera una corrida nueva.",
+      });
+      return s;
+    }
+
+    const sem = semanticaCodigo(s.codigo);
+    if (s.codigo && !sem.reintentable && s.estado === "error") {
+      irrecuperables.push({ direccion: s.direccion, motivo: sem.mensaje });
+      return s;
+    }
+
+    reabiertas++;
+    return {
+      ...s,
+      estado: "pendiente" as EstadoSolicitud,
+      intentos: 0,
+      siguiente_intento_at: null,
+      error: null,
+      mensaje: "Reintento manual: se volverá a consultar el avance en el SAT.",
+      ultima_consulta_at: new Date(ahora).toISOString(),
+    };
+  });
+
+  return { solicitudes: salida, reabiertas, irrecuperables };
+}

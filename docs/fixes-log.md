@@ -751,3 +751,18 @@ y cambiar `proveedor` en `sat_sync_config`; no se requieren cambios de esquema.
   cosecharla (ventana de 3 minutos), evitando que dos ejecuciones simultáneas
   descarguen e ingieran el mismo paquete.
 - Suite completa: 385 pruebas en verde.
+
+## 2026-08-08 · Descarga SAT: cosecha observable y reintento manual
+
+- **Cron de cosecha corregido y acelerado.** La tarea programada `sat-sync-hourly`
+  apuntaba a `abogaclick.com.mx` (dominio equivocado) y enviaba la cabecera
+  `apikey` vacía, por lo que **nunca cosechó una sola corrida**: todo el avance
+  dependía del botón "Consultar avance". Se reemplazó por `sat-sync-10min`,
+  con la URL estable del proyecto, la llave correcta y frecuencia `*/10 * * * *`.
+- **Reintento manual de corridas detenidas.** Nuevo `reabrirSolicitudes()`
+  (módulo puro) + `reintentarCorrida()` (servidor) + botón "Reintentar" en la
+  lista de corridas de `/app/sat-sync` para estados `error`, `parcial` y `vencida`.
+  Reabre sólo lo que el SAT todavía puede entregar (folio vivo y código
+  reintentable), conserva intacto lo ya descargado y reporta como irrecuperable
+  lo vencido (5011) o rechazado de origen (5001/5002/5003), exigiendo corrida nueva.
+- Pruebas: `src/lib/sat/reintento.test.ts` (7 casos).

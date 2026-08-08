@@ -9,7 +9,7 @@ import {
   RefreshCw, ShieldCheck, AlertTriangle, FileStack, Clock, PlugZap, Loader2,
   Pause, Play, Settings as SettingsIcon, ArrowLeft, Ban, Wallet, Hourglass,
 } from "lucide-react";
-import { dashboardSatSync, runSyncNow, listSyncRuns, listSyncEventos, setSyncActivo, getSatSyncConfig, upsertSatSyncConfig, estadoServicioSat, cosecharAhora } from "@/lib/sat/sat-sync.functions";
+import { dashboardSatSync, runSyncNow, listSyncRuns, listSyncEventos, setSyncActivo, getSatSyncConfig, upsertSatSyncConfig, estadoServicioSat, cosecharAhora, reintentarCorrida } from "@/lib/sat/sat-sync.functions";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -411,6 +411,17 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
     onError: (e: any) => toast.error(e?.message ?? "Error"),
   });
 
+  const fnReintentar = useServerFn(reintentarCorrida);
+  const reintentar = useMutation({
+    mutationFn: (runId: string) => fnReintentar({ data: { cliente_id: clienteId, run_id: runId } }),
+    onSuccess: (r: any) => {
+      if (r.ok) toast.success(r.mensaje);
+      else toast.warning(r.mensaje);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "No se pudo reintentar la corrida"),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["sat-sync"] }),
+  });
+
   const consultar = useMutation({
     mutationFn: () => fnCosechar({ data: { cliente_id: clienteId } }),
     onSuccess: (r: any) =>
@@ -558,7 +569,23 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
                   </div>
                   {r.advertencia && <div className="text-xs text-warning mt-0.5">{r.advertencia}</div>}
                 </div>
-                <EstadoBadge estado={r.estado ?? r.estatus} />
+                <div className="flex items-center gap-2 shrink-0">
+                  {["error", "parcial", "vencida"].includes(String(r.estado ?? "")) && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => reintentar.mutate(r.id)}
+                      disabled={reintentar.isPending}
+                      title="Reabre las solicitudes que el SAT todavía puede entregar y vuelve a consultar el avance"
+                    >
+                      {reintentar.isPending && reintentar.variables === r.id
+                        ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        : <RefreshCw className="h-4 w-4 mr-2" />}
+                      Reintentar
+                    </Button>
+                  )}
+                  <EstadoBadge estado={r.estado ?? r.estatus} />
+                </div>
               </li>
             ))}
           </ul>
