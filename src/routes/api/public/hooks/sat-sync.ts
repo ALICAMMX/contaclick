@@ -204,7 +204,7 @@ export const Route = createFileRoute("/api/public/hooks/sat-sync")({
             await supabase
               .from("sat_sync_runs")
               .update({
-                duracion_ms: Date.now() - inicio,
+                duracion_ms: Date.now() - inicioRun,
                 errores: envio.errores.map((m) => ({ fase: "solicitud", mensaje: m })) as any,
               })
               .eq("id", runId);
@@ -228,7 +228,7 @@ export const Route = createFileRoute("/api/public/hooks/sat-sync")({
                 estatus: "error",
                 cobertura: "nula",
                 finalizado_at: new Date().toISOString(),
-                duracion_ms: Date.now() - inicio,
+                duracion_ms: Date.now() - inicioRun,
                 errores: [
                   { fase: "solicitud", mensaje: String((e as Error)?.message ?? e).slice(0, 300) },
                 ] as any,
