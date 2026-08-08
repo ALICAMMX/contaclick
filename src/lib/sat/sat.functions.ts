@@ -95,32 +95,46 @@ export const conectarSat = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    // Resolver despacho del cliente y validar membresía
+    // Alcance: el usuario debe tener acceso al expediente.
+    const { assertClienteScope } = await import("@/lib/despacho/scope");
+    const scope = await assertClienteScope(supabase as any, userId, data.cliente_id);
+
     const { data: cli, error: cliErr } = await supabase
       .from("clientes")
       .select("id, despacho_id, rfc")
-      .eq("id", data.cliente_id)
+      .eq("id", scope.cliente_id)
       .maybeSingle();
     if (cliErr || !cli) throw new Error("Expediente no encontrado");
     if (!cli.despacho_id) throw new Error("Expediente sin despacho asignado");
     if (!cli.rfc) throw new Error("El expediente no tiene RFC capturado");
 
-    // CANDADO: el .cer debe pertenecer al RFC del expediente activo.
-    const rfcsCer = extraerRfcsDeCer(data.cer_b64);
     const rfcCliente = cli.rfc.toUpperCase();
-    if (rfcsCer.length === 0) {
-      throw new Error(
-        "No se pudo leer el RFC del certificado (.cer). Verifica que estés subiendo el archivo correcto de la e.firma.",
-      );
-    }
-    if (!rfcsCer.includes(rfcCliente)) {
-      throw new Error(
-        `La e.firma NO corresponde a este expediente. El certificado pertenece a ${rfcsCer.join(", ")} pero el expediente activo es ${rfcCliente}. Para evitar firmar declaraciones con la e.firma equivocada, la carga fue rechazada.`,
-      );
-    }
-    // Validar la e.firma abriéndola localmente y autenticando contra el SAT.
-    // Si el SAT acepta el token, la credencial queda lista para descargas gratuitas.
+
+    // Estado previo: una credencial revocada no puede reactivarse sin reemplazo válido.
+    const { data: prev } = await supabase
+      .from("sat_credenciales")
+      .select("estatus")
+      .eq("cliente_id", cli.id)
+      .maybeSingle();
+
+    // 1) Validación local completa (no contacta al SAT): legibilidad, contraseña,
+    //    correspondencia llave↔certificado, RFC, vigencia y tipo de certificado.
+    const { validarEFirma, EFirmaInvalida } = await import("@/lib/sat/efirma-validacion.server");
     let vence: string | null = null;
+    try {
+      const v = validarEFirma({
+        cer_b64: data.cer_b64,
+        key_b64: data.key_b64,
+        password: data.password,
+        rfcExpediente: rfcCliente,
+      });
+      vence = v.vence_at;
+    } catch (e: any) {
+      if (e instanceof EFirmaInvalida) throw new Error(e.message);
+      throw new Error("No se pudo validar la e.firma. Revisa los archivos y la contraseña.");
+    }
+
+    // 2) Validación contra el SAT: si el servicio acepta el token, la credencial sirve.
     try {
       const { abrirEFirma, satAutenticar } = await import(
         "@/lib/sat/providers/sat-directo.server"
@@ -144,6 +158,7 @@ export const conectarSat = createServerFn({ method: "POST" })
       );
       throw new Error(e?.message ?? "No se pudo validar la e.firma con el SAT");
     }
+
 
     const { cifrar, aadExpediente, VAULT_VERSION } = await import(
       "@/lib/sat/efirma-vault.server"
@@ -204,22 +219,25 @@ export const conectarSat = createServerFn({ method: "POST" })
         .eq("cliente_id", cli.id);
     }
 
-    // Audit log (best-effort)
+    // Bitácora (sin secretos): distingue alta de reemplazo.
     await supabase.from("audit_logs").insert({
       user_id: userId,
       despacho_id: cli.despacho_id,
-      accion: "sat.conectar",
+      accion: prev ? "sat.efirma.reemplazar" : "sat.efirma.conectar",
       entidad: "cliente",
       entidad_id: cli.id,
       payload: {
         proveedor: "sat_directo",
-        rfc: cli.rfc,
+        rfc: rfcCliente,
         auto_sync: true,
+        vence_at: vence,
+        estatus_previo: prev?.estatus ?? null,
+        vault_version: VAULT_VERSION,
         consentimiento_version: CONSENTIMIENTO_VERSION,
       },
     });
 
-    return { ok: true, simulated: false, auto_sync_activado: true };
+    return { ok: true, simulated: false, auto_sync_activado: true, vence_at: vence };
 
   });
 
@@ -227,12 +245,27 @@ export const desconectarSat = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ cliente_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
+    const { supabase, userId } = context;
+    const { assertClienteScope } = await import("@/lib/despacho/scope");
+    const scope = await assertClienteScope(supabase as any, userId, data.cliente_id);
+
+    const { error } = await supabase
       .from("sat_credenciales")
       .delete()
-      .eq("cliente_id", data.cliente_id);
+      .eq("cliente_id", scope.cliente_id);
     if (error) throw new Error(error.message);
+
+    await supabase.from("audit_logs").insert({
+      user_id: userId,
+      despacho_id: scope.despacho_id,
+      accion: "sat.efirma.eliminar",
+      entidad: "cliente",
+      entidad_id: scope.cliente_id,
+      payload: { proveedor: "sat_directo" },
+    });
+
     return { ok: true };
+
   });
 
 // El flujo de descarga masiva vive en `sat-sync.functions.ts` (proveedor SAT directo).

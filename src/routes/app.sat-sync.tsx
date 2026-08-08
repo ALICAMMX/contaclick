@@ -14,6 +14,8 @@ import { useActiveCliente } from "@/lib/active-cliente";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { HerramientaHelp } from "@/components/HerramientaHelp";
+import { EFirmaCard } from "@/components/EFirmaCard";
+
 
 export const Route = createFileRoute("/app/sat-sync")({ component: SatSyncPage });
 
@@ -105,12 +107,14 @@ function SatSyncPage() {
         hydrating ? <div className="text-sm text-muted-foreground">Cargando expediente activo…</div> : <SinExpediente />
       ) : (
         <>
+          <EFirmaCard clienteId={cliente.id} rfc={cliente.rfc} />
           {tab === "dashboard" && <DashboardTab d={dash.data} loading={dash.isLoading} />}
           {tab === "actividad" && <ActividadTab clienteId={cliente.id} />}
           {tab === "novedades" && <NovedadesTab clienteId={cliente.id} />}
           {tab === "config" && <ConfigTab />}
         </>
       )}
+
     </div>
   );
 }
@@ -341,9 +345,25 @@ function EstadoServicio({ q }: { q: any }) {
           <span>
             {e.motivo}
             {e.accion ? <span className="block text-foreground/80 mt-0.5">Qué hacer: {e.accion}</span> : null}
+            {/^.*e\.?firma/i.test(String(e.motivo ?? "")) && (
+              <Button
+                type="button"
+                variant="hero"
+                size="sm"
+                className="mt-2"
+                onClick={() =>
+                  document
+                    .getElementById("conexion-efirma")
+                    ?.scrollIntoView({ behavior: "smooth", block: "center" })
+                }
+              >
+                Conectar e.firma ahora
+              </Button>
+            )}
           </span>
         </div>
       )}
+
     </div>
   );
 }

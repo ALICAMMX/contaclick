@@ -9,82 +9,26 @@ import { ConfigExpediente } from "./app.sat-sync";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { getCliente, listTerceros } from "@/lib/clientes.functions";
-import { getSatStatus, conectarSat, desconectarSat } from "@/lib/sat/sat.functions";
 import { getClienteHistorial } from "@/lib/clientes/historial.functions";
 import { listCuentas, createCuenta, deleteCuenta, BANCOS } from "@/lib/cuentas/cuentas.functions";
 import { Banknote, Plus, Trash2 } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { PortalConfigSection } from "@/components/PortalConfigSection";
+import { EFirmaCard } from "@/components/EFirmaCard";
 
 
 export const Route = createFileRoute("/app/clientes/$id")({
   component: ClienteDetailPage,
 });
 
-function fileToB64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => {
-      const s = String(r.result ?? "");
-      const i = s.indexOf(",");
-      resolve(i >= 0 ? s.slice(i + 1) : s);
-    };
-    r.onerror = () => reject(r.error);
-    r.readAsDataURL(file);
-  });
-}
-
 function ClienteDetailPage() {
   const { id } = useParams({ from: "/app/clientes/$id" });
   const fetchCli = useServerFn(getCliente);
-  const fetchStatus = useServerFn(getSatStatus);
-  const conectar = useServerFn(conectarSat);
-  const desconectar = useServerFn(desconectarSat);
-  const qc = useQueryClient();
 
   const cli = useQuery({ queryKey: ["cliente", id], queryFn: () => fetchCli({ data: { id } }) });
-  const sat = useQuery({ queryKey: ["sat", id], queryFn: () => fetchStatus({ data: { cliente_id: id } }) });
   const fetchHist = useServerFn(getClienteHistorial);
   const hist = useQuery({ queryKey: ["cli-hist", id], queryFn: () => fetchHist({ data: { cliente_id: id } }) });
 
-  const [cer, setCer] = useState<File | null>(null);
-  const [key, setKey] = useState<File | null>(null);
-  const [pwd, setPwd] = useState("");
-  const [consent, setConsent] = useState(false);
-
-  const conectarMut = useMutation({
-    mutationFn: async () => {
-      if (!cer || !key || !pwd) throw new Error("Sube .cer, .key e ingresa la contraseña");
-      const [cer_b64, key_b64] = await Promise.all([fileToB64(cer), fileToB64(key)]);
-      return conectar({ data: { cliente_id: id, cer_b64, key_b64, password: pwd , consentimiento: true } });
-    },
-    onSuccess: (r) => {
-      toast.success(
-        r.simulated
-          ? "Conectado en modo demo. Descarga automática activada (diaria)."
-          : "Conectado al SAT vía PAC. Descarga automática activada (diaria).",
-      );
-      setCer(null); setKey(null); setPwd("");
-      qc.invalidateQueries({ queryKey: ["sat", id] });
-      qc.invalidateQueries({ queryKey: ["sat-sync"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const desconectarMut = useMutation({
-    mutationFn: () => desconectar({ data: { cliente_id: id } }),
-    onSuccess: () => {
-      toast.success("Conexión SAT eliminada");
-      qc.invalidateQueries({ queryKey: ["sat", id] });
-    },
-  });
-
-  const status = sat.data?.estatus ?? "sin_conectar";
-  const StatusIcon = status === "activo" ? ShieldCheck : status === "error" ? ShieldAlert : ShieldOff;
-  const statusTone =
-    status === "activo" ? "text-success" : status === "error" ? "text-destructive" : "text-muted-foreground";
-  const statusLabel =
-    status === "activo" ? "Conectado" : status === "error" ? "Error de conexión" : "Sin conectar";
 
   return (
     <div className="space-y-6">
@@ -105,112 +49,8 @@ function ClienteDetailPage() {
 
 
 
-      <section className="rounded-xl border border-border/60 bg-card/50 p-6 space-y-5">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h2 className="text-lg font-semibold">Conexión SAT</h2>
-            <p className="text-sm text-muted-foreground mt-1 max-w-xl">
-              Sube la e.firma (FIEL) del contribuyente para descargar sus CFDI directamente del servicio
-              oficial del SAT. La llave y su contraseña se guardan cifradas y ligadas a este expediente;
-              no se comparten con terceros ni con ningún PAC.
-            </p>
-          </div>
-          <div className={`flex items-center gap-2 text-sm font-medium ${statusTone}`}>
-            <StatusIcon className="h-4 w-4" /> {statusLabel}
-          </div>
-        </div>
+      <EFirmaCard clienteId={id} rfc={cli.data?.rfc} titulo="Conexión con el SAT mediante e.firma" />
 
-        {sat.data?.last_sync_at && (
-          <div className="text-xs text-muted-foreground">
-            Última sincronización: {new Date(sat.data.last_sync_at).toLocaleString("es-MX")}
-          </div>
-        )}
-        {sat.data?.last_error && (
-          <div className="text-xs text-destructive bg-destructive/10 rounded-md p-2">
-            {sat.data.last_error}
-          </div>
-        )}
-
-        {status === "activo" ? (
-          <div className="space-y-4">
-            <div className="rounded-lg border border-border/60 bg-background/40 p-4 space-y-2">
-              <h3 className="text-sm font-semibold">e.firma activa</h3>
-              <div className="text-xs text-muted-foreground">
-                RFC del certificado: <span className="font-mono">{sat.data?.efirma_rfc ?? "—"}</span>
-                {sat.data?.efirma_vence_at
-                  ? ` · vigente hasta ${new Date(sat.data.efirma_vence_at).toLocaleDateString("es-MX")}`
-                  : ""}
-              </div>
-              {sat.data?.consentimiento_at && (
-                <div className="text-xs text-muted-foreground">
-                  Autorización registrada el{" "}
-                  {new Date(sat.data.consentimiento_at).toLocaleString("es-MX")} (versión{" "}
-                  {sat.data.consentimiento_version ?? "—"}).
-                </div>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Las descargas se programan y ejecutan desde Descarga Masiva SAT.
-              </p>
-              <Link to="/app/sat-sync" className="inline-block">
-                <Button variant="hero" size="sm">
-                  <RefreshCw className="h-4 w-4" /> Ir a Descarga Masiva SAT
-                </Button>
-              </Link>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => desconectarMut.mutate()} disabled={desconectarMut.isPending}>
-                <Unlink className="h-4 w-4" /> Desconectar
-              </Button>
-              <span className="text-xs text-muted-foreground">
-                Para reemplazar la e.firma, desconecta primero y vuelve a conectar.
-              </span>
-            </div>
-          </div>
-        ) : (
-          <form
-            onSubmit={(e) => { e.preventDefault(); conectarMut.mutate(); }}
-            className="grid sm:grid-cols-2 gap-3"
-          >
-            <FileField label="Certificado (.cer)" accept=".cer" file={cer} onFile={setCer} />
-            <FileField label="Llave privada (.key)" accept=".key" file={key} onFile={setKey} />
-            <label className="block sm:col-span-2">
-              <span className="text-xs text-muted-foreground mb-1 block">Contraseña de la llave privada</span>
-              <input
-                type="password"
-                value={pwd}
-                onChange={(e) => setPwd(e.target.value)}
-                placeholder="••••••••"
-                className="h-10 px-3 rounded-lg bg-input/50 border border-border text-sm w-full focus:outline-none focus:ring-1 focus:ring-ring"
-                autoComplete="off"
-              />
-            </label>
-            <label className="sm:col-span-2 flex items-start gap-2 text-xs text-muted-foreground cursor-pointer">
-              <input
-                type="checkbox"
-                checked={consent}
-                onChange={(e) => setConsent(e.target.checked)}
-                className="mt-0.5"
-              />
-              <span>
-                Declaro que cuento con autorización expresa del contribuyente para resguardar su e.firma
-                y usarla exclusivamente para consultar y descargar sus CFDI ante el SAT. La llave privada
-                y su contraseña se almacenan cifradas y ligadas a este expediente.
-              </span>
-            </label>
-            <div className="sm:col-span-2 flex items-center justify-between gap-3 flex-wrap">
-              <p className="text-xs text-muted-foreground max-w-md">
-                Puedes revocar el resguardo en cualquier momento con <strong>Desconectar</strong>: la e.firma
-                se elimina de la bóveda.
-              </p>
-              <Button type="submit" variant="hero" disabled={conectarMut.isPending || !consent}>
-                <Upload className="h-4 w-4" />
-                {conectarMut.isPending ? "Conectando..." : "Conectar SAT"}
-              </Button>
-            </div>
-          </form>
-        )}
-      </section>
 
       <CuentasBancariasSection clienteId={id} />
 
