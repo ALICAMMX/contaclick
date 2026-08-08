@@ -626,7 +626,8 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
                 const ok = window.confirm(
                   `Se enviarán ${envio.solicitudes} solicitud(es) al SAT.\n\n` +
                     `Dirección: ${envio.direcciones_label}\n` +
-                    `Periodo: ${rangoUI.desde} a ${rangoUI.hasta} (${envio.dias} día(s), ambos incluidos)\n\n` +
+                    `Periodo efectivo: ${periodo.valido ? periodo.etiqueta : `${rangoUI.desde} a ${rangoUI.hasta}`}\n\n` +
+                    (f.recibidos ? `${notaCriterio("recibidos")}\n\n` : "") +
                     `Los comprobantes que ya estén en el expediente se contarán como duplicados y no se guardarán dos veces.`,
                 );
                 if (ok) runNow.mutate();
