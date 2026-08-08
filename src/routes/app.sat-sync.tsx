@@ -20,6 +20,7 @@ import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { EFirmaCard } from "@/components/EFirmaCard";
 import { semanticaCodigo } from "@/lib/sat/maquina-estados";
 import { descripcionAlcance } from "@/lib/sat/solicitud-xml";
+import { fechaLocalSat, periodoEfectivo, notaCriterio, ETIQUETA_ZONA_SAT } from "@/lib/sat/periodo";
 
 
 export const Route = createFileRoute("/app/sat-sync")({ component: SatSyncPage });
