@@ -10,8 +10,8 @@
 // solicitud puede terminar vacía, con error o vencida.
 // =====================================================================
 
-import type { DireccionDescarga } from "./providers/contrato";
-import type { ClienteCiclo, RespuestaVerificacion } from "./ciclo-asincrono";
+import type { DireccionDescarga } from "./contrato";
+import type { ClienteCiclo, RespuestaVerificacion } from "../ciclo-asincrono";
 
 export type GuionDireccion = {
   /** Verificaciones que responden "en proceso" antes de liberar el resultado. */
