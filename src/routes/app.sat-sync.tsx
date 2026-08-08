@@ -585,14 +585,17 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
   // Resumen previo al envío: dice EXACTAMENTE qué se pedirá al SAT.
   const rangoUI = (() => {
     const hoy = new Date();
-    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    // Día local del centro de México: usar toISOString adelantaba el día
+    // después de las 18:00 y pedía al SAT un periodo distinto al mostrado.
+    const iso = (d: Date) => fechaLocalSat(d);
     if (f.periodo === "personalizado") return { desde: f.fecha_desde ?? "", hasta: f.fecha_hasta ?? "" };
     if (f.periodo === "30d") {
       const d = new Date(hoy); d.setDate(d.getDate() - 30);
       return { desde: iso(d), hasta: iso(hoy) };
     }
-    if (f.periodo === "ejercicio") return { desde: `${hoy.getFullYear()}-01-01`, hasta: iso(hoy) };
-    return { desde: iso(new Date(hoy.getFullYear(), hoy.getMonth(), 1)), hasta: iso(hoy) };
+    const hoyLocal = iso(hoy);
+    if (f.periodo === "ejercicio") return { desde: `${hoyLocal.slice(0, 4)}-01-01`, hasta: hoyLocal };
+    return { desde: `${hoyLocal.slice(0, 7)}-01`, hasta: hoyLocal };
   })();
   const envio = resumirEnvio({
     emitidos: !!f.emitidos,
@@ -600,6 +603,7 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
     desde: rangoUI.desde,
     hasta: rangoUI.hasta,
   });
+  const periodo = periodoEfectivo(rangoUI.desde, rangoUI.hasta);
 
   return (
     <div className="space-y-4">
