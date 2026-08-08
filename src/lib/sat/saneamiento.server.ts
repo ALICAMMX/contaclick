@@ -95,9 +95,9 @@ export async function sanearCorridasAtoradas(
   limite = 50,
   ahora = Date.now(),
 ): Promise<{ revisadas: number; cerradas: number; reencauzadas: number }> {
-  const columnas = "id, estado, estatus, iniciado_at, created_at, solicitudes, errores";
+  const columnas = "id, estado, estatus, iniciado_at, solicitudes, errores";
 
-  const { data: porEstado } = await supabase
+  const { data: porEstado, error: errEstado } = await supabase
     .from("sat_sync_runs")
     .select(columnas)
     .in("estado", ["preparando", "solicitando"])
@@ -105,7 +105,7 @@ export async function sanearCorridasAtoradas(
     .limit(limite);
 
   // Red de seguridad: corridas viejas marcadas sólo con el estatus heredado.
-  const { data: porEstatus } = await supabase
+  const { data: porEstatus, error: errEstatus } = await supabase
     .from("sat_sync_runs")
     .select(columnas)
     .is("estado", null)
@@ -113,13 +113,20 @@ export async function sanearCorridasAtoradas(
     .order("iniciado_at", { ascending: true })
     .limit(limite);
 
+  // Un error de consulta NO puede pasar inadvertido: era la causa del barrido mudo.
+  if (errEstado || errEstatus) {
+    throw new Error(
+      `saneamiento no pudo leer sat_sync_runs: ${errEstado?.message ?? errEstatus?.message}`,
+    );
+  }
+
   const mapa = new Map<string, CorridaParaSanear>();
   for (const r of [...(porEstado ?? []), ...(porEstatus ?? [])]) {
     const run = r as any;
     mapa.set(run.id, {
       ...run,
       estado: run.estado ?? "solicitando",
-      iniciado_at: run.iniciado_at ?? run.created_at,
+      iniciado_at: run.iniciado_at,
     } as CorridaParaSanear);
   }
 
