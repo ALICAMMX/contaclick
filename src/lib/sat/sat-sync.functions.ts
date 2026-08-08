@@ -58,6 +58,12 @@ import {
 } from "@/lib/sat/providers/contrato";
 import { contarSolicitudes, rangoValido } from "@/lib/sat/consumo";
 import { llaveCorrida } from "@/lib/sat/idempotencia";
+import {
+  candidatosReconciliacion,
+  evaluarCoherencia,
+  normalizarUuid,
+  reconstruirMetricas,
+} from "@/lib/sat/metricas";
 import type { CredencialEFirma } from "@/lib/sat/credencial.server";
 import {
   MINUTOS_ATORADA,
@@ -335,7 +341,7 @@ export const detalleCorrida = createServerFn({ method: "GET" })
       supabase
         .from("cfdi_xml")
         .select(
-          "id, uuid, tipo_cfdi, fecha, total, moneda, rfc_emisor, rfc_receptor, nombre_emisor, nombre_receptor, estatus_sat, validacion, sat_solicitud_id, sat_paquete_id, fecha_carga",
+          "id, uuid, tipo_cfdi, fecha, total, moneda, rfc_emisor, rfc_receptor, nombre_emisor, nombre_receptor, estatus_sat, validacion, sat_run_id, sat_solicitud_id, sat_paquete_id, archivo_hash, fecha_carga",
         )
         .eq("sat_run_id", data.run_id)
         .eq("cliente_id", scope.cliente_id)
@@ -345,6 +351,33 @@ export const detalleCorrida = createServerFn({ method: "GET" })
 
     const rfcExpediente = ((run as any).clientes?.rfc as string) ?? null;
     const solicitudes = (Array.isArray((run as any).solicitudes) ? (run as any).solicitudes : []) as any[];
+
+    // Referencias REALES de paquete (sin enmascarar) para buscar documentos
+    // que provienen de esta corrida pero perdieron el vínculo.
+    const paquetesCrudos = Array.from(
+      new Set(
+        solicitudes.flatMap((s: any) =>
+          [...(s?.paquetes_procesados ?? []), ...(s?.paquetes_encontrados ?? [])]
+            .map((x: any) => String(typeof x === "string" ? x : (x?.id ?? "")).trim())
+            .filter(Boolean),
+        ),
+      ),
+    );
+
+    let huerfanos: any[] = [];
+    if (paquetesCrudos.length) {
+      const { data: sinVinculo } = await supabase
+        .from("cfdi_xml")
+        .select("id, uuid, archivo_hash, sat_run_id, sat_paquete_id, fecha_carga")
+        .eq("cliente_id", scope.cliente_id)
+        .is("sat_run_id", null)
+        .in("sat_paquete_id", paquetesCrudos)
+        .limit(500);
+      huerfanos = candidatosReconciliacion({
+        paquetes: paquetesCrudos,
+        documentos: (sinVinculo ?? []) as any[],
+      });
+    }
 
     const documentos = (docs ?? []).map((d: any) => ({
       id: d.id as string,
@@ -404,9 +437,26 @@ export const detalleCorrida = createServerFn({ method: "GET" })
       paquetes_reportados: Number((run as any).paquetes_procesados ?? 0),
     });
 
-    const nuevos = Number((run as any).nuevos ?? 0);
+    // MÉTRICAS: derivadas SIEMPRE de evidencia persistida, nunca de intentos.
+    const metricas = reconstruirMetricas({
+      solicitudes,
+      documentos_vinculados: (docs ?? []).length,
+      documentos_huerfanos: huerfanos.length,
+      duplicados_persistidos: solicitudes.reduce(
+        (t: number, s: any) => t + (Number(s?.duplicados ?? 0) || 0),
+        0,
+      ),
+      rechazados_persistidos: solicitudes.reduce(
+        (t: number, s: any) => t + (Number(s?.rechazados ?? 0) || 0),
+        0,
+      ),
+      mostrados: documentos.length,
+    });
+    const coherencia = evaluarCoherencia(metricas);
+
+    const nuevos = metricas.nuevos;
     const procesamiento = evaluarProcesamiento({
-      cobertura: (run as any).cobertura as string | null,
+      cobertura: coherencia.cobertura_honesta,
       nuevos,
       eventos: eventosModulo,
     });
@@ -418,7 +468,9 @@ export const detalleCorrida = createServerFn({ method: "GET" })
         id: (run as any).id as string,
         estado: (run as any).estado as string,
         estado_honesto: procesamiento.estado_honesto ?? ((run as any).estado as string),
-        cobertura: procesamiento.cobertura_honesta ?? ((run as any).cobertura as string | null),
+        cobertura: coherencia.coherente
+          ? (procesamiento.cobertura_honesta ?? coherencia.cobertura_honesta)
+          : coherencia.cobertura_honesta,
         detalle: procesamiento.mensaje,
         advertencia: (run as any).advertencia as string | null,
         periodo: { desde: (run as any).desde as string, hasta: (run as any).hasta as string },
@@ -429,12 +481,19 @@ export const detalleCorrida = createServerFn({ method: "GET" })
         rfc: rfcExpediente,
         razon_social: ((run as any).clientes?.razon_social as string) ?? null,
         totales: {
-          encontrados: Number((run as any).descargados ?? 0),
-          nuevos,
-          duplicados: Number((run as any).duplicados ?? 0),
-          rechazados: Number((run as any).rechazados ?? 0),
+          ...metricas,
           paquetes: paquetesResumen.reportados,
         },
+        metricas_mensaje: coherencia.mensaje,
+        metricas_problemas: coherencia.problemas,
+        metricas_coherentes: coherencia.coherente,
+      },
+      reconciliacion: {
+        posible: huerfanos.length > 0,
+        candidatos: huerfanos.length,
+        mensaje: huerfanos.length
+          ? `${huerfanos.length} comprobante(s) de los paquetes de esta corrida están en el expediente sin vínculo. Puedes reconciliarlos por paquete, folio y huella, sin contactar al SAT.`
+          : null,
       },
       solicitudes: solicitudes.map((s: any) => ({
         direccion: s?.direccion ?? null,
@@ -1019,6 +1078,10 @@ export const runSyncNow = createServerFn({ method: "POST" })
           despachoId: cli.despacho_id,
           clienteId: cli.id,
           rfc: cli.rfc,
+          // CANDADO DE LINAJE: sin `runId` los comprobantes se guardan sin
+          // vínculo con la corrida y el detalle muestra "0 de N". Es
+          // obligatorio en TODAS las rutas de cosecha.
+          runId,
           solicitudes,
         });
         solicitudes = cosecha.solicitudes;
@@ -1539,3 +1602,111 @@ export const setSyncActivo = createServerFn({ method: "POST" })
   });
 
 export { estatusLegado };
+
+// ============= RECONCILIACIÓN EXPLÍCITA DE LINAJE =============
+//
+// Repara el vínculo entre una corrida y los comprobantes que SÍ se
+// incorporaron al expediente desde sus paquetes pero quedaron sin `sat_run_id`.
+//
+// Reglas de seguridad:
+//   - Nunca contacta al SAT ni vuelve a leer los XML.
+//   - Sólo toca filas sin vínculo cuyo paquete pertenece a esta corrida.
+//   - No borra, no reescribe importes ni folios: sólo agrega la relación.
+//   - Es idempotente: repetirla no cambia nada y devuelve 0 vinculados.
+//   - Es reversible: cada vínculo queda registrado en la bitácora.
+export const reconciliarLinajeCorrida = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ run_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: run } = await supabase
+      .from("sat_sync_runs")
+      .select("id, cliente_id, despacho_id, solicitudes")
+      .eq("id", data.run_id)
+      .maybeSingle();
+    if (!run) throw new Error("La corrida no existe o no pertenece a este expediente.");
+    const scope = await assertClienteScope(supabase as any, userId, (run as any).cliente_id);
+
+    const solicitudes = (Array.isArray((run as any).solicitudes) ? (run as any).solicitudes : []) as any[];
+    const paquetePorSolicitud = new Map<string, string>();
+    for (const s of solicitudes) {
+      for (const p of [...(s?.paquetes_procesados ?? []), ...(s?.paquetes_encontrados ?? [])]) {
+        const ref = String(typeof p === "string" ? p : (p?.id ?? "")).trim();
+        if (ref) paquetePorSolicitud.set(ref.toUpperCase(), String(s?.id_solicitud ?? ""));
+      }
+    }
+    const paquetes = Array.from(paquetePorSolicitud.keys());
+    if (!paquetes.length) {
+      return { ok: true, vinculados: 0, mensaje: "Esta corrida no conserva referencias de paquete: no hay nada que reconciliar." };
+    }
+
+    const { data: sinVinculo } = await supabase
+      .from("cfdi_xml")
+      .select("id, uuid, archivo_hash, sat_run_id, sat_paquete_id")
+      .eq("cliente_id", scope.cliente_id)
+      .is("sat_run_id", null)
+      .in("sat_paquete_id", paquetes)
+      .limit(500);
+
+    const candidatos = candidatosReconciliacion({
+      paquetes,
+      documentos: (sinVinculo ?? []) as any[],
+    });
+    if (!candidatos.length) {
+      return { ok: true, vinculados: 0, mensaje: "No hay comprobantes sin vínculo para esta corrida." };
+    }
+
+    let vinculados = 0;
+    for (const doc of candidatos) {
+      const paquete = String(doc.sat_paquete_id ?? "").trim();
+      const solicitudId = paquetePorSolicitud.get(paquete.toUpperCase()) || null;
+      // Condición `is('sat_run_id', null)`: bajo concurrencia sólo un proceso
+      // logra vincular cada documento.
+      const { data: upd } = await supabase
+        .from("cfdi_xml")
+        .update({
+          sat_run_id: data.run_id,
+          sat_solicitud_id: solicitudId,
+          origen: "sat_descarga_masiva",
+          proveedor: "sat_directo",
+        })
+        .eq("id", doc.id)
+        .is("sat_run_id", null)
+        .select("id")
+        .maybeSingle();
+      if (!upd?.id) continue;
+      vinculados++;
+      await supabase.from("sat_sync_eventos").insert({
+        despacho_id: scope.despacho_id,
+        cliente_id: scope.cliente_id,
+        run_id: data.run_id,
+        tipo: "nuevo",
+        uuid_cfdi: normalizarUuid(doc.uuid),
+        mensaje:
+          "Linaje reconciliado: el comprobante ya estaba en el expediente y se reasoció a su corrida por paquete, folio y huella.",
+        payload: {
+          reconciliacion: true,
+          cfdi_id: doc.id,
+          paquete_id: paquete,
+          solicitud_id: solicitudId,
+          hash: doc.archivo_hash ?? null,
+          reversible: "Para deshacerlo basta con limpiar sat_run_id de estos comprobantes.",
+        },
+      });
+    }
+
+    await supabase.from("audit_logs").insert({
+      user_id: userId,
+      despacho_id: scope.despacho_id,
+      accion: "sat_sync.reconciliar_linaje",
+      entidad: "sat_sync_runs",
+      entidad_id: data.run_id,
+      payload: { candidatos: candidatos.length, vinculados },
+    });
+
+    return {
+      ok: true,
+      vinculados,
+      mensaje: `Se reconciliaron ${vinculados} comprobante(s) con esta corrida. No se contactó al SAT ni se modificó ningún XML.`,
+    };
+  });

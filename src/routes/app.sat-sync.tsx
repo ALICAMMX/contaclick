@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { CorridaDetalleDialog } from "@/components/sat/CorridaDetalle";
 import { corridaReintentable, motivoSinReintento } from "@/lib/sat/linaje";
+import { resumirEnvio } from "@/lib/sat/metricas";
 import { dashboardSatSync, runSyncNow, listSyncRuns, listSyncEventos, setSyncActivo, getSatSyncConfig, upsertSatSyncConfig, estadoServicioSat, cosecharAhora, reintentarCorrida, cerrarCorridaSat } from "@/lib/sat/sat-sync.functions";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { Button } from "@/components/ui/button";
@@ -581,6 +582,25 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
 
   const set = (k: string, v: any) => setForm({ ...f, [k]: v });
 
+  // Resumen previo al envío: dice EXACTAMENTE qué se pedirá al SAT.
+  const rangoUI = (() => {
+    const hoy = new Date();
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    if (f.periodo === "personalizado") return { desde: f.fecha_desde ?? "", hasta: f.fecha_hasta ?? "" };
+    if (f.periodo === "30d") {
+      const d = new Date(hoy); d.setDate(d.getDate() - 30);
+      return { desde: iso(d), hasta: iso(hoy) };
+    }
+    if (f.periodo === "ejercicio") return { desde: `${hoy.getFullYear()}-01-01`, hasta: iso(hoy) };
+    return { desde: iso(new Date(hoy.getFullYear(), hoy.getMonth(), 1)), hasta: iso(hoy) };
+  })();
+  const envio = resumirEnvio({
+    emitidos: !!f.emitidos,
+    recibidos: !!f.recibidos,
+    desde: rangoUI.desde,
+    hasta: rangoUI.hasta,
+  });
+
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-border bg-card p-4">
@@ -596,8 +616,17 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
             <Button
               size="sm"
               variant="hero"
-              onClick={() => runNow.mutate()}
-              disabled={runNow.isPending || estadoQ.isLoading || bloqueado}
+              onClick={() => {
+                if (!envio.valido) { toast.error(envio.motivo!); return; }
+                const ok = window.confirm(
+                  `Se enviarán ${envio.solicitudes} solicitud(es) al SAT.\n\n` +
+                    `Dirección: ${envio.direcciones_label}\n` +
+                    `Periodo: ${rangoUI.desde} a ${rangoUI.hasta} (${envio.dias} día(s), ambos incluidos)\n\n` +
+                    `Los comprobantes que ya estén en el expediente se contarán como duplicados y no se guardarán dos veces.`,
+                );
+                if (ok) runNow.mutate();
+              }}
+              disabled={runNow.isPending || estadoQ.isLoading || bloqueado || !envio.valido}
               title={estado?.motivo ?? undefined}
             >
               {runNow.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -644,6 +673,12 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
             {f.recibidos && <li>• {descripcionAlcance("recibidos", "CFDI", "Vigente")} El SAT no permite descargar XML cancelados recibidos.</li>}
             {f.emitidos && <li>• {descripcionAlcance("emitidos", "CFDI", "Vigente")}</li>}
             {!f.emitidos && !f.recibidos && <li>• Selecciona al menos una dirección para poder sincronizar.</li>}
+            <li data-testid="resumen-envio">
+              •{" "}
+              {envio.valido
+                ? `Al sincronizar se enviarán ${envio.solicitudes} solicitud(es): ${envio.direcciones_label}, del ${rangoUI.desde} al ${rangoUI.hasta} (${envio.dias} día(s), ambos incluidos).`
+                : envio.motivo}
+            </li>
           </ul>
         </div>
 

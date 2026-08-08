@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 import { z } from "zod";
+import { normalizarUuid } from "@/lib/sat/metricas";
 import { parseCfdi } from "@/lib/tools/cfdi-parser";
 import { analyzeCfdi, maxLevel } from "@/lib/cfdi/risk";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -162,15 +163,21 @@ export async function ingestOneInternal(
 
   const hash = await sha256Hex(xml);
 
-  // dedupe por uuid o hash
+  // UUID CANÓNICO: mayúsculas y sin espacios. Sin esto, el mismo comprobante
+  // con distinta caja crearía una segunda fila y jamás se contaría duplicado.
+  const uuidCanonico = normalizarUuid(parsed.uuid);
+
+  // dedupe por uuid (en cualquier caja) o por hash
   const { data: dup } = await supabase
     .from("cfdi_xml")
     .select("id, uuid")
     .eq("despacho_id", despachoId)
-    .or(`uuid.eq.${parsed.uuid},archivo_hash.eq.${hash}`)
+    .or(
+      `uuid.eq.${uuidCanonico},uuid.eq.${uuidCanonico.toLowerCase()},archivo_hash.eq.${hash}`,
+    )
     .limit(1)
     .maybeSingle();
-  if (dup?.id) return { id: dup.id as string, uuid: parsed.uuid, duplicado: true, hash };
+  if (dup?.id) return { id: dup.id as string, uuid: uuidCanonico, duplicado: true, hash };
 
   // RFC al que se vincula = el del cliente activo si coincide; si no, usa el emisor
   const { data: cli } = await supabase.from("clientes").select("rfc").eq("id", clienteId).maybeSingle();
@@ -194,7 +201,7 @@ export async function ingestOneInternal(
       despacho_id: despachoId,
       cliente_id: clienteId,
       rfc_id: rfcId,
-      uuid: parsed.uuid,
+      uuid: uuidCanonico,
       tipo_cfdi: parsed.tipoComprobante ?? "I",
       version: parsed.version ?? "4.0",
       rfc_emisor: parsed.emisor.rfc!.toUpperCase(),
@@ -313,7 +320,7 @@ export async function ingestOneInternal(
     console.warn("[workflow trigger xml_uploaded] error:", (e as any)?.message);
   }
 
-  return { id: ins.id as string, uuid: parsed.uuid, duplicado: false, hash };
+  return { id: ins.id as string, uuid: uuidCanonico, duplicado: false, hash };
 }
 
 

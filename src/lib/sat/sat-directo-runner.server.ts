@@ -214,7 +214,8 @@ export async function cosecharSolicitud(args: {
   despachoId: string;
   clienteId: string;
   rfc?: string;
-  runId?: string | null;
+  /** Obligatorio y explícito: sin él la ingesta no deja linaje. */
+  runId: string | null;
   solicitud: SolicitudRegistro;
   creds?: ContextoEFirma;
   token?: string;
@@ -242,7 +243,8 @@ export async function cosecharCorrida(args: {
   despachoId: string;
   clienteId: string;
   rfc?: string;
-  runId?: string | null;
+  /** Obligatorio y explícito: sin él la ingesta no deja linaje. */
+  runId: string | null;
   solicitudes: SolicitudRegistro[];
 }): Promise<{ solicitudes: SolicitudRegistro[]; resumen: ResumenCorrida }> {
   const pendientes = args.solicitudes.filter((s) => s.estado === "pendiente");
