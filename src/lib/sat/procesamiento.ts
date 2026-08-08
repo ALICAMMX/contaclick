@@ -110,7 +110,8 @@ export function etiquetaTipoComprobante(tipo?: string | null): string {
 // "completado" sin que exista un evento terminal por cada módulo obligatorio.
 // ---------------------------------------------------------------------
 
-export const VERSION_PROCESAMIENTO = "v1";
+export const VERSION_PROCESAMIENTO = "v2";
+export const VERSION_SOPORTE_SAT = "sat-processing-2026.08.08.2";
 
 export type EstadoModulo = "iniciado" | "completado" | "omitido" | "fallido";
 

@@ -237,6 +237,10 @@ describe("Ejecutor · contrato de persistencia", () => {
     expect(cola).toContain("evaluarProcesamiento");
   });
 
+  it("cero eventos después de ejecutar es un error explícito", () => {
+    expect(srv).toContain("La lectura de verificación devolvió cero recibos");
+  });
+
   it("no contacta al SAT ni consume cuota o PAC", () => {
     expect(srv).not.toMatch(/satAutenticar|solicitarDescargas|descargarPaquete|pac_reservar|incrementar_uso_sat/);
   });
@@ -270,6 +274,17 @@ describe("Acción de recuperación · contrato del servidor", () => {
     expect(fn).toContain("audit_logs");
     expect(fn).toContain("antes:");
     expect(fn).toContain("despues:");
+  });
+
+  it("devuelve el contrato estructurado y no permite éxito con fallos", () => {
+    expect(fn).toContain("execution_id: executionId");
+    expect(fn).toContain("eventos_persistidos: eventos.length");
+    expect(fn).toContain("completados");
+    expect(fn).toContain("omitidos");
+    expect(fn).toContain("fallidos");
+    expect(fn).toContain("pendientes: despues.faltantes");
+    expect(fn).toContain("estado_derivado");
+    expect(fn).toContain("cobertura_derivada");
   });
 });
 
@@ -305,5 +320,9 @@ describe("Detalle · interfaz honesta", () => {
   it("ofrece la acción de recuperación sólo cuando el servidor la habilita", () => {
     expect(ui).toContain("d.procesamiento.accion_label");
     expect(ui).toContain('data-testid="completar-procesamiento"');
+  });
+
+  it("no muestra éxito cuando el contrato responde ok=false", () => {
+    expect(ui).toContain("if (!r.ok) throw new Error");
   });
 });

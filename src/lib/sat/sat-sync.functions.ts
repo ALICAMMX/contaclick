@@ -28,6 +28,7 @@ import {
   evaluarProcesamiento,
   resumirPaquetes,
   ESTADO_MODULO_LABEL,
+  VERSION_SOPORTE_SAT,
   type EventoModulo,
 } from "./procesamiento";
 
@@ -253,7 +254,10 @@ export const dashboardSatSync = createServerFn({ method: "GET" })
       errores: errores ?? 0,
       /** Corridas vivas: el SAT sigue procesándolas. */
       pendientes: enProceso ?? 0,
-      actividad: actividad ?? [],
+      actividad: await (async () => {
+        const { evaluarCorridasConEventos } = await import("./procesamiento.server");
+        return evaluarCorridasConEventos(supabase, actividad ?? []);
+      })(),
       desconectados: desconectados ?? [],
       conErrores: conErrores ?? [],
       novedades: novedades ?? [],
@@ -272,7 +276,8 @@ export const listSyncRuns = createServerFn({ method: "GET" })
       .eq("despacho_id", scope.despacho_id)
       .order("iniciado_at", { ascending: false })
       .limit(data.limit);
-    return rows ?? [];
+    const { evaluarCorridasConEventos } = await import("./procesamiento.server");
+    return evaluarCorridasConEventos(context.supabase, rows ?? []);
   });
 
 export const listSyncEventos = createServerFn({ method: "GET" })
@@ -442,6 +447,11 @@ export const detalleCorrida = createServerFn({ method: "GET" })
       documentos,
       recalculos,
       procesamiento,
+      soporte: {
+        release: VERSION_SOPORTE_SAT,
+        procesamiento: VERSION_PROCESAMIENTO,
+        eventos_persistidos: eventosModulo.length,
+      },
       eventos: evs.map((e: any) => ({
         id: e.id as string,
         tipo: e.tipo as string,
@@ -477,8 +487,9 @@ export const completarProcesamiento = createServerFn({ method: "POST" })
     if (!run) throw new Error("La corrida no existe o no pertenece a este expediente.");
     const scope = await assertClienteScope(supabase as any, userId, (run as any).cliente_id);
 
+    const executionId = crypto.randomUUID();
     const { ejecutarProcesamientoPosterior } = await import("./procesamiento.server");
-    const { antes, despues, resultados } = await ejecutarProcesamientoPosterior({
+    const { antes, despues, resultados, eventos } = await ejecutarProcesamientoPosterior({
       supabase,
       runId: (run as any).id as string,
       clienteId: scope.cliente_id,
@@ -486,7 +497,16 @@ export const completarProcesamiento = createServerFn({ method: "POST" })
       nuevos: Number((run as any).nuevos ?? 0),
       cobertura: (run as any).cobertura as string | null,
       runInicioAt: (run as any).iniciado_at as string | null,
+      executionId,
     });
+
+    const terminales = eventos.filter((evento) =>
+      evento.estado === "completado" || evento.estado === "fallido" ||
+      (evento.estado === "omitido" && !!String(evento.motivo ?? "").trim()),
+    );
+    if (Number((run as any).nuevos ?? 0) > 0 && terminales.length === 0) {
+      throw new Error("No se persistió ningún recibo terminal. No se modificó el resumen de la corrida.");
+    }
 
     const ejecutado = resultados.some((r) => r.estado !== "omitido_por_idempotencia");
 
@@ -521,9 +541,13 @@ export const completarProcesamiento = createServerFn({ method: "POST" })
     if (despues.terminal) {
       patch['finalizado_at'] = (run as any).finalizado_at ?? new Date().toISOString();
     }
-    await supabase.from("sat_sync_runs").update(patch as any).eq("id", (run as any).id);
+    const { error: runUpdateError } = await supabase
+      .from("sat_sync_runs")
+      .update(patch as any)
+      .eq("id", (run as any).id);
+    if (runUpdateError) throw new Error(`No se pudo actualizar el resumen verificado: ${runUpdateError.message}`);
 
-    await supabase.from("audit_logs").insert({
+    const { error: auditError } = await supabase.from("audit_logs").insert({
       user_id: userId,
       despacho_id: scope.despacho_id,
       accion: "sat_sync.completar_procesamiento",
@@ -537,11 +561,27 @@ export const completarProcesamiento = createServerFn({ method: "POST" })
         sin_descarga: true,
         sin_consumo_cuota: true,
         sin_consumo_pac: true,
+        execution_id: executionId,
+        release: VERSION_SOPORTE_SAT,
       },
     });
+    if (auditError) throw new Error(`No se pudo registrar la auditoría de la ejecución: ${auditError.message}`);
+
+    const completados = terminales.filter((e) => e.estado === "completado").map((e) => e.module_id);
+    const omitidos = terminales.filter((e) => e.estado === "omitido").map((e) => e.module_id);
+    const fallidos = terminales.filter((e) => e.estado === "fallido").map((e) => e.module_id);
 
     return {
-      ok: despues.completo || !despues.requerido,
+      ok: (despues.completo && fallidos.length === 0) || !despues.requerido,
+      execution_id: executionId,
+      release: VERSION_SOPORTE_SAT,
+      eventos_persistidos: eventos.length,
+      completados,
+      omitidos,
+      fallidos,
+      pendientes: despues.faltantes,
+      estado_derivado: despues.estado_honesto,
+      cobertura_derivada: despues.cobertura_honesta,
       ejecutado,
       mensaje: !ejecutado
         ? despues.completo
