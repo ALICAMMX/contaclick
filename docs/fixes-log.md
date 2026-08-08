@@ -1008,3 +1008,9 @@ EFOS, que son módulos de lectura. No se volvió a ejecutar la corrida para audi
 **Validación disponible.** 56 pruebas SAT y typecheck en verde. La prueba E2E
 autenticada quedó pendiente porque el entorno de verificación no tenía sesión; por
 lo tanto no se declaró resuelto ni se autorizó al usuario a pulsar.
+
+## 2026-08-08 — Causa raíz real: bitácora de procesamiento sin permisos de tabla
+- **Síntoma:** `sat_procesamiento_eventos` siempre con 0 filas; el botón "Completar procesamiento posterior" reportaba éxito pero el detalle seguía "pendiente".
+- **Diagnóstico:** la tabla se creó con RLS y políticas correctas, pero **sin ningún GRANT**. Sin privilegios de tabla, PostgREST rechaza la escritura antes de evaluar RLS, así que ningún recibo podía persistirse jamás — con independencia de la versión de código desplegada.
+- **Corrección:** migración con `GRANT SELECT, INSERT, UPDATE ... TO authenticated` y `GRANT ALL ... TO service_role`. Verificado con `has_table_privilege` y auditadas todas las tablas públicas (ninguna otra sin grants).
+- **Efecto:** el botón se libera de nuevo; la ejecución sigue siendo idempotente, con candado por módulo y reconstrucción de recibo cuando ya existen resultados (no se reejecutan módulos ni se contacta al SAT).

@@ -286,12 +286,14 @@ export function CorridaDetalleDialog({
               {d.procesamiento.accion_label && (
                 <div className="mt-3 space-y-2">
                   <p className="text-xs text-muted-foreground">
-                    La acción permanece bloqueada para el usuario hasta terminar la validación desplegada.
+                    Cada módulo deja un recibo verificable en esta bitácora. Si un
+                    módulo ya dejó resultados, se reconstruye su recibo sin volver a
+                    ejecutarlo y sin contactar al SAT.
                   </p>
                   <Button
                     size="sm"
                     onClick={onCompletar}
-                    disabled
+                    disabled={enviando}
                     data-testid="completar-procesamiento"
                   >
                     {enviando && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
@@ -299,6 +301,7 @@ export function CorridaDetalleDialog({
                   </Button>
                 </div>
               )}
+
             </Bloque>
 
 
