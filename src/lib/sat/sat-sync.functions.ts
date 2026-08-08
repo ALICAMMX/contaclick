@@ -585,7 +585,16 @@ export const runSyncNow = createServerFn({ method: "POST" })
           detalle: mensaje,
         })
         .eq("id", runId);
-      throw new Error(mensaje);
+      return fallo({
+        etapa: "cuota",
+        codigo: "cuota_o_saldo",
+        mensaje,
+        accion: "Revisa el límite de solicitudes de tu plan o espera al siguiente periodo.",
+        corrida_creada: true,
+        solicitud_enviada: false,
+        run_id: runId,
+      });
+
     }
 
     const errores: { fase: string; mensaje: string }[] = [];
