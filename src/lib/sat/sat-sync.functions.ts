@@ -1149,6 +1149,26 @@ async function ejecutarCascada(
     soloModulos?: string[];
   },
 ) {
+  // Con corrida: se usa el ejecutor con bitácora por módulo (fuente única).
+  if (ctx?.supabase && ctx.runId) {
+    const { ejecutarProcesamientoPosterior } = await import("./procesamiento.server");
+    const { resultados } = await ejecutarProcesamientoPosterior({
+      supabase: ctx.supabase,
+      runId: ctx.runId,
+      clienteId,
+      despachoId: (ctx.despachoId ?? null) as string,
+      nuevos: 1,
+      soloModulos: ctx.soloModulos,
+    });
+    return resultados.map((r) => ({
+      modulo: r.module_id,
+      ok: r.estado === "completado" || r.estado === "omitido",
+      mensaje: r.motivo ?? undefined,
+      ms: 0,
+    }));
+  }
+
+  // Sin corrida (recálculo suelto): se ejecuta sin bitácora de corrida.
   const resultados: Array<{ modulo: string; ok: boolean; mensaje?: string; ms: number }> = [];
   const filtro = ctx?.soloModulos;
   const safe = async (fn: () => Promise<any>, modulo: string) => {
@@ -1167,28 +1187,9 @@ async function ejecutarCascada(
   await safe(() => computeRiesgoSAT({ data: { cliente_id: clienteId } }), "riesgo_sat");
   await safe(() => runExpressAudit({ data: { cliente_id: clienteId } }), "auditor_cfdi");
   await safe(() => scanClienteEfos({ data: { cliente_id: clienteId } }), "efos");
-
-
-  if (ctx?.supabase && ctx.runId) {
-    try {
-      await ctx.supabase.from("sat_sync_eventos").insert(
-        resultados.map((r) => ({
-          despacho_id: ctx.despachoId ?? null,
-          cliente_id: clienteId,
-          run_id: ctx.runId,
-          tipo: r.ok ? "recalculo_ok" : "recalculo_fallido",
-          mensaje: r.ok
-            ? `${MODULO_LABEL[r.modulo] ?? r.modulo} recalculado tras la descarga.`
-            : `${MODULO_LABEL[r.modulo] ?? r.modulo} no pudo recalcularse: ${r.mensaje}`,
-          payload: { modulo: r.modulo, ok: r.ok, duracion_ms: r.ms },
-        })),
-      );
-    } catch (e: any) {
-      console.warn("[sat-sync cascada] no se pudieron registrar los eventos:", e?.message ?? e);
-    }
-  }
   return resultados;
 }
+
 
 /** Ejecuta los recálculos y cierra la corrida que quedó en `recalculando`. */
 async function recalcularYCerrar(args: {
