@@ -3418,6 +3418,60 @@ export type Database = {
         }
         Relationships: []
       }
+      sat_cron_heartbeat: {
+        Row: {
+          corridas_iniciadas: number
+          created_at: string
+          duracion_ms: number | null
+          error: string | null
+          fin_at: string | null
+          http_status: number | null
+          id: string
+          inicio_at: string
+          ok: boolean
+          paquetes_descargados: number
+          runs_reencauzados: number
+          runs_revisados: number
+          runs_saneados: number
+          solicitudes_consultadas: number
+          version: string
+        }
+        Insert: {
+          corridas_iniciadas?: number
+          created_at?: string
+          duracion_ms?: number | null
+          error?: string | null
+          fin_at?: string | null
+          http_status?: number | null
+          id?: string
+          inicio_at?: string
+          ok?: boolean
+          paquetes_descargados?: number
+          runs_reencauzados?: number
+          runs_revisados?: number
+          runs_saneados?: number
+          solicitudes_consultadas?: number
+          version?: string
+        }
+        Update: {
+          corridas_iniciadas?: number
+          created_at?: string
+          duracion_ms?: number | null
+          error?: string | null
+          fin_at?: string | null
+          http_status?: number | null
+          id?: string
+          inicio_at?: string
+          ok?: boolean
+          paquetes_descargados?: number
+          runs_reencauzados?: number
+          runs_revisados?: number
+          runs_saneados?: number
+          solicitudes_consultadas?: number
+          version?: string
+        }
+        Relationships: []
+      }
       sat_pac_movimientos: {
         Row: {
           costo_centavos: number
