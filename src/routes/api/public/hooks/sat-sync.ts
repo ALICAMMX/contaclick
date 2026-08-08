@@ -241,13 +241,48 @@ export const Route = createFileRoute("/api/public/hooks/sat-sync")({
           contarSolicitudes({ direcciones, desde, hasta });
         }
 
-        return Response.json({ ok: true, cosecha, procesados, iniciadas, omitidas });
+        // ---- 3. Heartbeat: se registra SIEMPRE, incluso sin trabajo --------
+        const duracion = Date.now() - inicio;
+        const cuerpo = {
+          ok: fallos.length === 0,
+          version: CRON_SAT_VERSION,
+          saneamiento: saneo,
+          cosecha,
+          procesados,
+          iniciadas,
+          omitidas,
+          duracion_ms: duracion,
+          errores: fallos,
+        };
+        try {
+          await supabase.from("sat_cron_heartbeat").insert({
+            inicio_at: inicioIso,
+            fin_at: new Date().toISOString(),
+            duracion_ms: duracion,
+            http_status: 200,
+            version: CRON_SAT_VERSION,
+            runs_revisados: saneo.revisadas,
+            runs_saneados: saneo.cerradas,
+            runs_reencauzados: saneo.reencauzadas,
+            solicitudes_consultadas: cosecha.revisadas,
+            paquetes_descargados: cosecha.nuevos,
+            corridas_iniciadas: iniciadas,
+            ok: fallos.length === 0,
+            error: fallos.length ? fallos.join(" | ").slice(0, 500) : null,
+          });
+        } catch (e) {
+          console.error("[cron sat] heartbeat:", (e as Error)?.message);
+        }
+
+        return Response.json(cuerpo);
       },
       GET: async () =>
         Response.json({
           ok: true,
+          version: CRON_SAT_VERSION,
           info: "POST con apikey para cosechar corridas SAT vivas y lanzar las programadas.",
         }),
+
     },
   },
 });
