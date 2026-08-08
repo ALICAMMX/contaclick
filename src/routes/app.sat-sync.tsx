@@ -147,6 +147,15 @@ function motivoCorridaUi(r: any): string {
   return "Corrida no completada.";
 }
 
+/**
+ * Un rechazo terminal del SAT (familia 3xx) no se reintenta: hay que corregir
+ * la configuración y crear una corrida nueva.
+ */
+function esRechazoTerminal(r: any): boolean {
+  const sols: any[] = Array.isArray(r?.solicitudes) ? r.solicitudes : [];
+  return sols.some((s) => s?.codigo && semanticaCodigo(String(s.codigo)).terminal);
+}
+
 function Kpi({ icon: Icon, label, value, hint, tone }: any) {
   const toneCls = tone === "danger" ? "text-destructive" : tone === "warn" ? "text-warning" : tone === "ok" ? "text-success" : "text-foreground";
   return (
@@ -594,6 +603,11 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
               </label>
             ))}
           </div>
+          <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
+            {f.recibidos && <li>• {descripcionAlcance("recibidos", "CFDI", "Vigente")} El SAT no permite descargar XML cancelados recibidos.</li>}
+            {f.emitidos && <li>• {descripcionAlcance("emitidos", "CFDI", "Vigente")}</li>}
+            {!f.emitidos && !f.recibidos && <li>• Selecciona al menos una dirección para poder sincronizar.</li>}
+          </ul>
         </div>
 
         <div>
@@ -662,9 +676,12 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
                     {r.desde} → {r.hasta} · {r.nuevos ?? 0} nuevos · {r.duplicados ?? 0} duplicados · {r.rechazados ?? 0} rechazados
                   </div>
                   {r.advertencia && <div className="text-xs text-warning mt-0.5">{r.advertencia}</div>}
+                  {(r.estado === "error" || r.estado === "vencida") && (
+                    <div className="text-xs text-destructive mt-0.5">{motivoCorridaUi(r)}</div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  {["error", "parcial", "vencida"].includes(String(r.estado ?? "")) && (
+                  {["error", "parcial", "vencida"].includes(String(r.estado ?? "")) && !esRechazoTerminal(r) && (
                     <Button
                       size="sm"
                       variant="outline"
