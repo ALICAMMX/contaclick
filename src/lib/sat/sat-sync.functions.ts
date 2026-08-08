@@ -292,7 +292,7 @@ async function calcularEstado(
     (cred as any)?.estatus === "activo" &&
     !!(cred as any)?.efirma_cer &&
     !!(cred as any)?.efirma_key_enc;
-  const efirmaVenceAt = ((cred as any)?.vigencia_hasta ?? null) as string | null;
+  const efirmaVenceAt = ((cred as any)?.efirma_vence_at ?? null) as string | null;
 
   const { data: activa } = await supabase
     .from("sat_sync_runs")
