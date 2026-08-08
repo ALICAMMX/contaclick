@@ -105,12 +105,14 @@ function SatSyncPage() {
         hydrating ? <div className="text-sm text-muted-foreground">Cargando expediente activo…</div> : <SinExpediente />
       ) : (
         <>
+          <EFirmaCard clienteId={cliente.id} rfc={cliente.rfc} />
           {tab === "dashboard" && <DashboardTab d={dash.data} loading={dash.isLoading} />}
           {tab === "actividad" && <ActividadTab clienteId={cliente.id} />}
           {tab === "novedades" && <NovedadesTab clienteId={cliente.id} />}
           {tab === "config" && <ConfigTab />}
         </>
       )}
+
     </div>
   );
 }
