@@ -492,15 +492,30 @@ export const completarProcesamiento = createServerFn({ method: "POST" })
     // El estado de la corrida se deriva de la bitácora releída, nunca del
     // resultado en memoria. `finalizado_at` sólo se fija cuando el
     // procesamiento quedó terminal.
+    // La columna `estado` sólo admite los valores del ciclo de la corrida: un
+    // procesamiento pendiente se guarda como `recalculando` y la lectura
+    // honesta la aporta `evaluarProcesamiento`. La cobertura sólo admite
+    // total/parcial/nula, así que nunca se escribe un texto libre.
+    const ESTADO_DB: Record<string, string> = {
+      completada: "completada",
+      parcial: "parcial",
+      error: "error",
+      recalculando: "recalculando",
+      procesamiento_pendiente: "recalculando",
+    };
+    const estadoDb = despues.estado_honesto ? ESTADO_DB[despues.estado_honesto] : null;
     const patch: Record<string, unknown> = {
-      estado: despues.estado_honesto ?? (run as any).estado,
-      cobertura: despues.cobertura_honesta ?? undefined,
       detalle: `Nuevos: ${Number((run as any).nuevos ?? 0)} · duplicados: ${Number(
         (run as any).duplicados ?? 0,
       )} · rechazados: ${Number((run as any).rechazados ?? 0)} · ${despues.mensaje}`,
     };
-    if (despues.estado_honesto && ESTATUS_MAPEABLE.has(despues.estado_honesto)) {
-      patch['estatus'] = estatusLegado(despues.estado_honesto as any);
+    if (estadoDb) {
+      patch['estado'] = estadoDb;
+      patch['estatus'] = estatusLegado(estadoDb as any);
+    }
+    if (despues.terminal && despues.cobertura_honesta &&
+        ["total", "parcial", "nula"].includes(despues.cobertura_honesta)) {
+      patch['cobertura'] = despues.cobertura_honesta;
     }
     if (despues.terminal) {
       patch['finalizado_at'] = (run as any).finalizado_at ?? new Date().toISOString();
