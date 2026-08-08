@@ -260,24 +260,30 @@ async function calcularEstado(
   supabase: any,
   userId: string,
   scope: { cliente_id: string; despacho_id: string },
+  opts: { verificarDescifrado?: boolean } = {},
 ): Promise<EstadoServicioSat> {
   const ent = await getEntitlements(supabase, scope.despacho_id);
 
-  const [{ data: cfg }, { data: cred }, { data: sa }] = await Promise.all([
+  const { resolverCredencialEFirma } = await import("@/lib/sat/credencial.server");
+
+  const [{ data: cfg }, { data: cli }, { data: sa }] = await Promise.all([
     supabase
       .from("sat_sync_config")
       .select("proveedor, emitidos, recibidos, periodo, fecha_desde, fecha_hasta")
       .eq("cliente_id", scope.cliente_id)
       .eq("despacho_id", scope.despacho_id)
       .maybeSingle(),
-    supabase
-      .from("sat_credenciales")
-      .select("estatus, efirma_vence_at, efirma_cer, efirma_key_enc")
-      .eq("cliente_id", scope.cliente_id)
-      .eq("despacho_id", scope.despacho_id)
-      .maybeSingle(),
+    supabase.from("clientes").select("rfc").eq("id", scope.cliente_id).maybeSingle(),
     supabase.from("user_roles").select("user_id").eq("user_id", userId).eq("role", "super_admin").limit(1),
   ]);
+
+  // FUENTE ÚNICA: la interfaz y el runner resuelven la e.firma con esta función.
+  const credencial = await resolverCredencialEFirma(supabase, {
+    clienteId: scope.cliente_id,
+    despachoId: scope.despacho_id,
+    rfcExpediente: (cli as any)?.rfc ?? null,
+    verificarDescifrado: opts.verificarDescifrado ?? false,
+  });
 
   const c = (cfg ?? {
     proveedor: "sat_directo",
@@ -299,15 +305,12 @@ async function calcularEstado(
   const ilimitado = limite < 0;
   const restante = ilimitado ? null : Math.max(0, limite - usado);
 
-  const credencialActiva =
-    (cred as any)?.estatus === "activo" &&
-    !!(cred as any)?.efirma_cer &&
-    !!(cred as any)?.efirma_key_enc;
-  const efirmaVenceAt = ((cred as any)?.efirma_vence_at ?? null) as string | null;
+  const credencialActiva = credencial.utilizable;
+  const efirmaVenceAt = credencial.vence_at;
 
   const { data: activa } = await supabase
     .from("sat_sync_runs")
-    .select("id, estado, iniciado_at, desde, hasta")
+    .select("id, estado, iniciado_at, desde, hasta, solicitudes")
     .eq("cliente_id", scope.cliente_id)
     .eq("despacho_id", scope.despacho_id)
     .in("estado", ESTADOS_ACTIVOS)
@@ -316,6 +319,15 @@ async function calcularEstado(
     .maybeSingle();
   const mismaVentana =
     !!activa && (activa as any).desde === rango.desde && (activa as any).hasta === rango.hasta;
+
+  const cierre = activa
+    ? puedeCerrarseManualmente({
+        id: (activa as any).id,
+        estado: (activa as any).estado,
+        iniciado_at: (activa as any).iniciado_at,
+        solicitudes: (activa as any).solicitudes ?? [],
+      })
+    : null;
 
   const base = {
     proveedor,
@@ -327,15 +339,20 @@ async function calcularEstado(
     cuota: { usado, limite, ilimitado, restante },
     es_sandbox: ent.es_sandbox,
     credencial_activa: credencialActiva,
+    credencial,
     efirma_vence_at: efirmaVenceAt,
     corrida_activa: activa
       ? {
           id: (activa as any).id as string,
           estado: (activa as any).estado as EstadoCorrida,
           iniciado_at: (activa as any).iniciado_at as string,
+          con_folio_sat: tieneFolioSat(((activa as any).solicitudes ?? []) as SolicitudRegistro[]),
+          puede_cerrarse: !!cierre?.permitido,
+          motivo_cierre: cierre?.motivo ?? "",
         }
       : null,
   };
+
 
   const entrada = {
     proveedor,
