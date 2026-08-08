@@ -14,6 +14,8 @@ import { useActiveCliente } from "@/lib/active-cliente";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { HerramientaHelp } from "@/components/HerramientaHelp";
+import { EFirmaCard } from "@/components/EFirmaCard";
+
 
 export const Route = createFileRoute("/app/sat-sync")({ component: SatSyncPage });
 
