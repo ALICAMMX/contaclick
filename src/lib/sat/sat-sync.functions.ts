@@ -37,6 +37,13 @@ import {
 } from "@/lib/sat/providers/contrato";
 import { contarSolicitudes, rangoValido } from "@/lib/sat/consumo";
 import { llaveCorrida } from "@/lib/sat/idempotencia";
+import type { CredencialEFirma } from "@/lib/sat/credencial.server";
+import {
+  MINUTOS_ATORADA,
+  puedeCerrarseManualmente,
+  tieneFolioSat,
+} from "@/lib/sat/saneamiento";
+
 import {
   ESTADOS_ACTIVOS,
   estatusLegado,
