@@ -73,7 +73,19 @@ export function CorridaDetalleDialog({
 
         {d && (
           <div className="space-y-3">
+            {d.solicitudes.length === 0 &&
+              d.paquetes.length === 0 &&
+              d.documentos.length === 0 &&
+              d.recalculos.length === 0 && (
+                <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+                  Información histórica no disponible: esta corrida es anterior al registro de
+                  linaje, por lo que no conserva solicitudes, paquetes ni la relación con los
+                  comprobantes descargados. Los datos generales sí se muestran abajo.
+                </div>
+              )}
+
             <Bloque titulo="Identificación">
+
               <Fila label="Expediente">
                 {d.run.razon_social ?? "—"} · {d.run.rfc ?? "—"}
               </Fila>
