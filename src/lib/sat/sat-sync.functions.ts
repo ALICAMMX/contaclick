@@ -470,7 +470,7 @@ export const completarProcesamiento = createServerFn({ method: "POST" })
     const { data: run } = await supabase
       .from("sat_sync_runs")
       .select(
-        "id, cliente_id, despacho_id, estado, cobertura, nuevos, duplicados, rechazados, finalizado_at",
+        "id, cliente_id, despacho_id, estado, cobertura, nuevos, duplicados, rechazados, iniciado_at, finalizado_at",
       )
       .eq("id", data.run_id)
       .maybeSingle();
@@ -485,6 +485,7 @@ export const completarProcesamiento = createServerFn({ method: "POST" })
       despachoId: scope.despacho_id,
       nuevos: Number((run as any).nuevos ?? 0),
       cobertura: (run as any).cobertura as string | null,
+      runInicioAt: (run as any).iniciado_at as string | null,
     });
 
     const ejecutado = resultados.some((r) => r.estado !== "omitido_por_idempotencia");
@@ -1162,7 +1163,7 @@ async function ejecutarCascada(
     });
     return resultados.map((r) => ({
       modulo: r.module_id,
-      ok: r.estado === "completado" || r.estado === "omitido",
+      ok: r.estado === "completado" || r.estado === "omitido" || r.estado === "recuperado",
       mensaje: r.motivo ?? undefined,
       ms: 0,
     }));
