@@ -784,3 +784,42 @@ y cambiar `proveedor` en `sat_sync_config`; no se requieren cambios de esquema.
 - **Formulario**: valida extensión y tamaño, la contraseña vive sólo en el input (nunca en estado, caché ni almacenamiento), se limpia al enviar, botón bloqueado durante la validación y sin doble envío.
 - **Validación server-side** (`src/lib/sat/efirma-validacion.server.ts`): legibilidad del .cer, apertura del .key con contraseña, correspondencia criptográfica llave↔certificado, RFC igual al del expediente, vigencia y descarte de CSD. Falla cerrado con mensajes diferenciados y sin detalle técnico.
 - **Alcance y bitácora**: `conectarSat` y `desconectarSat` ahora pasan por `assertClienteScope` y registran `sat.efirma.conectar/reemplazar/eliminar` en `audit_logs` sin secretos. Se conserva la bóveda AES-256-GCM v2 con AAD y versión de llave.
+
+## SAT Sync — corrida atorada en "solicitando" y e.firma "inactiva" tras conectar
+
+**Síntoma (prueba controlada en vivo):** con la e.firma mostrada como *Conectado*,
+la corrida manual devolvía un error genérico, quedaba creada en `solicitando`,
+la misma pantalla afirmaba después que el expediente *no tenía e.firma activa*,
+y a los 52 minutos seguía viva: el cron no la recuperaba y el candado impedía
+crear otra sin ofrecer una salida segura.
+
+**Causas reales**
+1. El runner consultaba `sat_credenciales.rfc` (columna inexistente: es `efirma_rfc`),
+   por lo que la lectura devolvía nulo y el flujo concluía "sin e.firma".
+2. El AAD de descifrado se armaba con ese RFC nulo, así que ni con la columna
+   correcta habría abierto la llave: la validación al conectar y la validación al
+   ejecutar eran caminos distintos (divergencia de preflight).
+3. La excepción ocurría después del INSERT de la corrida, dejándola huérfana en
+   `solicitando`; el cosechador ignora corridas sin folio, así que nadie la cerraba.
+
+**Correcciones**
+- `src/lib/sat/credencial.server.ts`: fuente única de verdad de la e.firma
+  (existencia, vigencia, coincidencia de RFC y verificación real de descifrado).
+  La tarjeta de conexión, el preflight y el runner leen de aquí.
+- Preflight completo en `runSyncNow` **antes** de insertar la corrida: si la
+  e.firma no es utilizable no se crea corrida, no se consume cuota, no hay candado
+  y no se contacta al SAT.
+- `runSyncNow` ya no lanza errores genéricos: devuelve `{ ok:false, error }` con
+  etapa, código, mensaje, acción y si hubo o no solicitud enviada; toda excepción
+  posterior al INSERT cierra la corrida y devuelve la reserva no consumida.
+- `src/lib/sat/saneamiento.ts` / `.server.ts`: barrido que cierra como
+  `error_inicio_incompleto` las corridas con más de 15 minutos en `solicitando`
+  sin folio SAT, y reencauza a `esperando_sat` las que sí lo tienen. Se ejecuta
+  al inicio de cada cron, antes de cosechar.
+- `cerrarCorridaSat`: salida manual segura (sólo sin folio SAT, o con folio pero
+  abandonada más de 24 h), con registro en bitácora de auditoría.
+- UI `/app/sat-sync`: el panel de estado indica si la corrida tiene folio del SAT,
+  explica por qué se puede o no cerrar y ofrece el botón "Cerrar corrida atorada".
+  El mensaje de e.firma distingue "nunca conectada" de "conectada pero no usable".
+- Pruebas: `src/lib/sat/saneamiento.test.ts` (6 casos) fija que nunca se reenvía
+  al SAT una solicitud cuyo destino se desconoce.
