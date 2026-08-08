@@ -26,12 +26,65 @@ import {
   llaveModulo,
   type EventoModulo,
 } from "./procesamiento";
+import {
+  candadoRecuperable,
+  decidirRecuperacion,
+  type EvidenciaEfecto,
+} from "./reconciliacion";
 
 export type ResultadoModulo = {
   module_id: string;
-  estado: "completado" | "omitido" | "fallido" | "omitido_por_idempotencia";
+  estado:
+    | "completado"
+    | "omitido"
+    | "fallido"
+    | "recuperado"
+    | "bloqueado"
+    | "omitido_por_idempotencia";
   motivo?: string | null;
 };
+
+/**
+ * Busca en las tablas derivadas si un intento anterior ya dejó efectos para
+ * este módulo y esta corrida. Sólo lectura: nunca escribe ni recalcula.
+ */
+async function detectarEvidencia(
+  supabase: any,
+  module_id: string,
+  clienteId: string,
+  runInicioAt: string | null,
+): Promise<EvidenciaEfecto | null> {
+  if (module_id !== "salud_fiscal") return null;
+  const { data } = await supabase
+    .from("salud_fiscal_snapshots")
+    .select("score, semaforo, subscores, periodo, created_at, updated_at")
+    .eq("cliente_id", clienteId)
+    .order("periodo", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data) return { existe: false, determinable: false };
+
+  const at = (data.updated_at ?? data.created_at) as string | null;
+  const desde = runInicioAt ? Date.parse(runInicioAt) : NaN;
+  const escritoAt = at ? Date.parse(at) : NaN;
+  // Sólo cuenta como efecto del intento anterior si se escribió DESPUÉS de que
+  // inició la corrida. Un snapshot viejo no prueba nada.
+  const existe =
+    Number.isFinite(escritoAt) && (!Number.isFinite(desde) ? false : escritoAt >= desde);
+  if (!existe) return { existe: false, determinable: false };
+
+  const determinable = data.score !== null && data.score !== undefined && !!data.semaforo;
+  return {
+    existe: true,
+    determinable,
+    resultado: determinable
+      ? { score: data.score, semaforo: data.semaforo, periodo: data.periodo }
+      : {},
+    at,
+    fuente: "salud_fiscal_snapshots",
+  };
+}
+
 
 /** Ejecutores por módulo. Devuelven un resumen SANEADO (sin datos sensibles). */
 const EJECUTORES: Record<
