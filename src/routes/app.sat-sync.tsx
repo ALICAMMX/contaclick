@@ -293,7 +293,7 @@ function ConfigTab() {
   return <ConfigExpediente clienteId={cliente.id} rfc={cliente.rfc} />;
 }
 
-function EstadoServicio({ q }: { q: any }) {
+function EstadoServicio({ q, onCerrar, cerrando }: { q: any; onCerrar?: (runId: string) => void; cerrando?: boolean }) {
   if (q.isLoading) {
     return (
       <div className="mt-4 rounded-lg border border-border bg-muted/20 p-3 animate-pulse space-y-2">
