@@ -40,6 +40,7 @@ import { llaveCorrida } from "@/lib/sat/idempotencia";
 import {
   ESTADOS_ACTIVOS,
   estatusLegado,
+  reabrirSolicitudes,
   resolverEstadoCorrida,
   type EstadoCorrida,
   type SolicitudRegistro,
@@ -715,6 +716,98 @@ export const cosecharAhora = createServerFn({ method: "POST" })
     }
     if (nuevos > 0) await ejecutarCascada(scope.cliente_id);
     return { ok: true, revisadas: runs.length, nuevos, terminadas };
+  });
+
+/**
+ * REINTENTO MANUAL de una corrida detenida.
+ *
+ * Reabre únicamente las solicitudes que el SAT todavía puede entregar
+ * (folio vivo y código reintentable), vuelve a poner la corrida en curso y
+ * hace una cosecha inmediata. Lo ya descargado NO se pierde y lo vencido o
+ * rechazado se informa como irrecuperable, para que el usuario genere una
+ * corrida nueva en vez de esperar en falso.
+ */
+export const reintentarCorrida = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ cliente_id: z.string().uuid(), run_id: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const scope = await assertClienteScope(supabase as any, userId, data.cliente_id);
+
+    const { data: run } = await supabase
+      .from("sat_sync_runs")
+      .select("id, estado, solicitudes")
+      .eq("id", data.run_id)
+      .eq("cliente_id", scope.cliente_id)
+      .eq("despacho_id", scope.despacho_id)
+      .maybeSingle();
+
+    if (!run) throw new Error("No se encontró la corrida en este expediente.");
+
+    const sols = (((run as any).solicitudes ?? []) as SolicitudRegistro[]) ?? [];
+    if (!sols.length) {
+      throw new Error(
+        "Esta corrida no registró solicitudes en el SAT. Ejecuta una sincronización nueva.",
+      );
+    }
+
+    const reap = reabrirSolicitudes(sols);
+    if (reap.reabiertas === 0) {
+      return {
+        ok: false,
+        reabiertas: 0,
+        nuevos: 0,
+        terminada: false,
+        irrecuperables: reap.irrecuperables,
+        mensaje:
+          reap.irrecuperables[0]?.motivo ??
+          "No hay solicitudes reintentables en esta corrida. Genera una corrida nueva.",
+      };
+    }
+
+    // Se vuelve a poner en curso ANTES de cosechar: guardarAvanceCorrida
+    // sólo escribe sobre corridas vivas.
+    const { error: errUp } = await supabase
+      .from("sat_sync_runs")
+      .update({
+        estado: "esperando_sat",
+        estatus: estatusLegado("esperando_sat" as EstadoCorrida),
+        solicitudes: reap.solicitudes as any,
+      })
+      .eq("id", (run as any).id);
+    if (errUp) {
+      throw new Error(
+        "No se pudo reabrir la corrida (probablemente ya hay otra en proceso con el mismo periodo).",
+      );
+    }
+
+    const { cosecharCorrida, guardarAvanceCorrida } = await import(
+      "@/lib/sat/sat-directo-runner.server"
+    );
+    const r = await cosecharCorrida({
+      supabase,
+      despachoId: scope.despacho_id,
+      clienteId: scope.cliente_id,
+      solicitudes: reap.solicitudes,
+    });
+    const terminada = await guardarAvanceCorrida(
+      supabase,
+      (run as any).id,
+      r.solicitudes,
+      r.resumen,
+    );
+    if (r.resumen.xml_nuevos > 0) await ejecutarCascada(scope.cliente_id);
+
+    return {
+      ok: true,
+      reabiertas: reap.reabiertas,
+      nuevos: r.resumen.xml_nuevos,
+      terminada: !!terminada,
+      irrecuperables: reap.irrecuperables,
+      mensaje: `Se reabrieron ${reap.reabiertas} solicitud(es) · ${r.resumen.xml_nuevos} CFDI nuevos.`,
+    };
   });
 
 /**
