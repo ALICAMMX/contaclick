@@ -376,7 +376,22 @@ async function calcularEstado(
     esSandbox: ent.es_sandbox,
   };
 
-  const previo = decidirEstadoSat(entrada);
+  // El motivo mostrado distingue "nunca conectada" de "conectada pero no usable".
+  const conMotivo = (dec: ReturnType<typeof decidirEstadoSat>) =>
+    dec.causa === "sin_credencial" && credencial.existe
+      ? {
+          ...dec,
+          motivo: credencial.mensaje,
+          accion:
+            credencial.accion === "renovar"
+              ? "Renueva la e.firma ante el SAT y reemplázala en el expediente."
+              : credencial.accion === "soporte"
+                ? "Es una configuración del servidor: contacta a soporte de ContaClick."
+                : "Reemplaza la e.firma del expediente con el .cer, el .key y su contraseña.",
+        }
+      : dec;
+
+  const previo = conMotivo(decidirEstadoSat(entrada));
   if (!previo.puede_ejecutar || ent.es_sandbox || !meta.consumeSaldoProveedor) {
     return { ...base, ...previo };
   }
@@ -392,8 +407,9 @@ async function calcularEstado(
     servicio: esSuperAdmin
       ? { disponible: pac.disponible, reservado: pac.reservado, umbral_critico: pac.umbral_critico, nivel }
       : undefined,
-    ...decidirEstadoSat({ ...entrada, nivelServicio: nivel }),
+    ...conMotivo(decidirEstadoSat({ ...entrada, nivelServicio: nivel })),
   };
+
 }
 
 /**
