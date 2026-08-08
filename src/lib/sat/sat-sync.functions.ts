@@ -592,50 +592,87 @@ export const runSyncNow = createServerFn({ method: "POST" })
     let solicitudes: SolicitudRegistro[] = [];
     let resumen = resolverEstadoCorrida([]);
 
-    if (estado.es_sandbox) {
-      // Cuenta demo: NO se contacta al SAT y se etiqueta con claridad.
-      const { simularCorridaDemo } = await import("@/lib/sat/demo-sat.server");
-      const sim = await simularCorridaDemo({
-        supabase,
-        despachoId: cli.despacho_id,
-        clienteId: cli.id,
-        runId,
-        direcciones,
-        desde,
-        hasta,
-      });
-      solicitudes = sim.solicitudes;
-      resumen = sim.resumen;
-    } else {
-      const { solicitarDescargas, cosecharCorrida } = await import(
-        "@/lib/sat/sat-directo-runner.server"
-      );
-      const envio = await solicitarDescargas({
-        supabase,
-        clienteId: cli.id,
-        rfc: cli.rfc,
-        desde,
-        hasta,
-        direcciones,
-      });
-      for (const m of envio.errores) errores.push({ fase: "solicitud", mensaje: m });
-      solicitudes = envio.solicitudes;
+    try {
+      if (estado.es_sandbox) {
+        // Cuenta demo: NO se contacta al SAT y se etiqueta con claridad.
+        const { simularCorridaDemo } = await import("@/lib/sat/demo-sat.server");
+        const sim = await simularCorridaDemo({
+          supabase,
+          despachoId: cli.despacho_id,
+          clienteId: cli.id,
+          runId,
+          direcciones,
+          desde,
+          hasta,
+        });
+        solicitudes = sim.solicitudes;
+        resumen = sim.resumen;
+      } else {
+        const { solicitarDescargas, cosecharCorrida } = await import(
+          "@/lib/sat/sat-directo-runner.server"
+        );
+        const envio = await solicitarDescargas({
+          supabase,
+          clienteId: cli.id,
+          despachoId: cli.despacho_id,
+          rfc: cli.rfc,
+          desde,
+          hasta,
+          direcciones,
+        });
+        for (const m of envio.errores) errores.push({ fase: "solicitud", mensaje: m });
+        solicitudes = envio.solicitudes;
 
-      // Persistir antes de cosechar: si algo falla, la corrida no se pierde.
+        // Persistir antes de cosechar: si algo falla, la corrida no se pierde.
+        await supabase
+          .from("sat_sync_runs")
+          .update({ solicitudes: solicitudes as any, estado: "esperando_sat" })
+          .eq("id", runId);
+
+        const cosecha = await cosecharCorrida({
+          supabase,
+          despachoId: cli.despacho_id,
+          clienteId: cli.id,
+          rfc: cli.rfc,
+          solicitudes,
+        });
+        solicitudes = cosecha.solicitudes;
+        resumen = cosecha.resumen;
+      }
+    } catch (e: any) {
+      // NINGUNA excepción puede dejar la corrida viva: se cierra aquí mismo,
+      // se libera el candado y se devuelve la reserva no consumida.
+      const mensaje = String(e?.message ?? e).slice(0, 300);
+      const conFolio = tieneFolioSat(solicitudes);
       await supabase
         .from("sat_sync_runs")
-        .update({ solicitudes: solicitudes as any, estado: "esperando_sat" })
+        .update({
+          estado: "error",
+          estatus: "error",
+          cobertura: "nula",
+          solicitudes: solicitudes as any,
+          finalizado_at: new Date().toISOString(),
+          duracion_ms: Date.now() - inicio,
+          errores: [...errores, { fase: "solicitud", mensaje }] as any,
+          detalle: mensaje,
+        })
         .eq("id", runId);
-
-      const cosecha = await cosecharCorrida({
-        supabase,
-        despachoId: cli.despacho_id,
-        clienteId: cli.id,
-        solicitudes,
+      if (reservaKey && !conFolio) {
+        await devolverReservaPac(supabase, reservaKey, "Corrida abortada antes de enviar al SAT");
+      }
+      return fallo({
+        etapa: "solicitud",
+        codigo: "fallo_solicitud",
+        mensaje,
+        accion: conFolio
+          ? "El SAT ya recibió la solicitud. Usa Reintentar para consultar el avance."
+          : "No se envió nada al SAT ni se consumió cuota. Corrige el problema y vuelve a intentar.",
+        corrida_creada: true,
+        solicitud_enviada: conFolio,
+        run_id: runId,
       });
-      solicitudes = cosecha.solicitudes;
-      resumen = cosecha.resumen;
     }
+
 
     const { guardarAvanceCorrida } = await import("@/lib/sat/sat-directo-runner.server");
     const terminal = await guardarAvanceCorrida(supabase, runId, solicitudes, resumen);
