@@ -24,11 +24,13 @@ import {
 } from "./linaje";
 import {
   complementosDe,
-  estadoDeEvento,
   etiquetaTipoComprobante,
   evaluarProcesamiento,
   resumirPaquetes,
+  ESTADO_MODULO_LABEL,
+  type EventoModulo,
 } from "./procesamiento";
+
 
 import { decidirEstadoSat, nivelPac, type CausaSat } from "@/lib/sat/estado-servicio";
 import { computeSaludFiscal } from "@/lib/salud/salud.functions";
