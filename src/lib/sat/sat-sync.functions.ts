@@ -147,6 +147,30 @@ export const upsertSatSyncConfig = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/**
+ * Motivo legible de una corrida fallida: código del SAT + explicación.
+ * Nunca devuelve sólo "Error".
+ */
+export function motivoCorrida(r: {
+  estado?: string | null;
+  detalle?: string | null;
+  errores?: any;
+  solicitudes?: any;
+}): string {
+  const sols: any[] = Array.isArray(r?.solicitudes) ? r.solicitudes : [];
+  const conCodigo = sols.find((s) => s?.codigo);
+  if (conCodigo) {
+    const sem = semanticaCodigo(conCodigo.codigo);
+    return `${conCodigo.codigo} · ${sem.mensaje}`;
+  }
+  const errs: any[] = Array.isArray(r?.errores) ? r.errores : [];
+  if (errs.length) return String(errs[0]?.mensaje ?? errs[0]).slice(0, 160);
+  if (r?.detalle) return String(r.detalle).slice(0, 160);
+  return r?.estado === "vencida"
+    ? "La solicitud caducó en el SAT y debe volver a generarse."
+    : "Corrida no completada.";
+}
+
 // ============= DASHBOARD (acotado al expediente activo) =============
 
 export const dashboardSatSync = createServerFn({ method: "GET" })
@@ -172,20 +196,37 @@ export const dashboardSatSync = createServerFn({ method: "GET" })
       { data: novedades },
     ] = await Promise.all([
       supabase.from("sat_credenciales").select("cliente_id", { count: "exact", head: true }).eq("despacho_id", despachoId).eq("cliente_id", clienteId).eq("estatus", "activo"),
-      supabase.from("sat_sync_runs").select("iniciado_at, cliente_id, estado, estatus").eq("despacho_id", despachoId).eq("cliente_id", clienteId).order("iniciado_at", { ascending: false }).limit(1).maybeSingle(),
+      // "Última sincronización" = última corrida que SÍ terminó bien.
+      // Una corrida fallida nunca se presenta como sincronización exitosa.
+      supabase.from("sat_sync_runs").select("iniciado_at, finalizado_at, cliente_id, estado, estatus").eq("despacho_id", despachoId).eq("cliente_id", clienteId).in("estado", ["completada", "parcial"]).order("iniciado_at", { ascending: false }).limit(1).maybeSingle(),
       supabase.from("sat_sync_runs").select("id", { count: "exact", head: true }).eq("despacho_id", despachoId).eq("cliente_id", clienteId).gte("iniciado_at", hoy.toISOString()),
       supabase.from("sat_sync_eventos").select("id", { count: "exact", head: true }).eq("despacho_id", despachoId).eq("cliente_id", clienteId).eq("tipo", "nuevo").gte("created_at", hoy.toISOString()),
       supabase.from("sat_sync_runs").select("id", { count: "exact", head: true }).eq("despacho_id", despachoId).eq("cliente_id", clienteId).in("estado", ["error", "vencida"]).gte("iniciado_at", new Date(Date.now() - 7 * 86400000).toISOString()),
       supabase.from("sat_sync_runs").select("id", { count: "exact", head: true }).eq("despacho_id", despachoId).eq("cliente_id", clienteId).in("estado", ESTADOS_ACTIVOS),
-      supabase.from("sat_sync_runs").select("id, cliente_id, iniciado_at, finalizado_at, estado, estatus, cobertura, advertencia, descargados, nuevos, duplicados, rechazados, errores, clientes(rfc, razon_social)").eq("despacho_id", despachoId).eq("cliente_id", clienteId).order("iniciado_at", { ascending: false }).limit(15),
+      supabase.from("sat_sync_runs").select("id, cliente_id, iniciado_at, finalizado_at, estado, estatus, cobertura, advertencia, descargados, nuevos, duplicados, rechazados, errores, detalle, solicitudes, clientes(rfc, razon_social)").eq("despacho_id", despachoId).eq("cliente_id", clienteId).order("iniciado_at", { ascending: false }).limit(15),
       supabase.from("sat_credenciales").select("cliente_id, estatus, last_error, clientes(rfc, razon_social)").eq("despacho_id", despachoId).eq("cliente_id", clienteId).neq("estatus", "activo").limit(10),
       supabase.from("sat_credenciales").select("cliente_id, estatus, last_error, last_sync_at, clientes(rfc, razon_social)").eq("despacho_id", despachoId).eq("cliente_id", clienteId).eq("estatus", "error").limit(10),
       supabase.from("sat_sync_eventos").select("id, tipo, uuid_cfdi, monto, mensaje, created_at, cliente_id, clientes(rfc, razon_social)").eq("despacho_id", despachoId).eq("cliente_id", clienteId).order("created_at", { ascending: false }).limit(20),
     ]);
 
+    // Corridas fallidas de los últimos 7 días: alimentan el Centro de
+    // incidencias para que nunca contradiga al KPI "Errores (7d)".
+    const runsConError = (actividad ?? []).filter(
+      (r: any) =>
+        (r.estado === "error" || r.estado === "vencida") &&
+        new Date(r.iniciado_at).getTime() >= Date.now() - 7 * 86400000,
+    );
+
     return {
       conectados: conectados ?? 0,
-      ultima: ultima?.iniciado_at ?? null,
+      ultima: (ultima as any)?.finalizado_at ?? (ultima as any)?.iniciado_at ?? null,
+      incidenciasCorridas: runsConError.map((r: any) => ({
+        id: r.id,
+        iniciado_at: r.iniciado_at,
+        estado: r.estado,
+        rfc: r.clientes?.rfc ?? null,
+        motivo: motivoCorrida(r),
+      })),
       hoy: hoyCount ?? 0,
       nuevos: nuevos ?? 0,
       errores: errores ?? 0,
