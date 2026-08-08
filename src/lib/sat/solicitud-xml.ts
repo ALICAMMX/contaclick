@@ -14,6 +14,8 @@
 // Por eso el estado es OBLIGATORIO y explícito en toda solicitud XML.
 // =====================================================================
 
+import { validarContraEsquema } from "./contrato-wsdl";
+
 export type DireccionSolicitud = "emitidos" | "recibidos";
 export type TipoDescargaSat = "CFDI" | "Metadata";
 export type EstadoComprobante = "Vigente" | "Cancelado" | "Todos";
