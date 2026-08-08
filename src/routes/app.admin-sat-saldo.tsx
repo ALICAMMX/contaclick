@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ShieldCheck, Download, AlertTriangle, ArrowLeft, Wallet } from "lucide-react";
+import { ShieldCheck, Download, AlertTriangle, ArrowLeft, Wallet, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -241,6 +241,100 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className="text-2xl font-bold mt-1">{value}</div>
       {sub && <div className="text-[11px] text-muted-foreground">{sub}</div>}
+    </div>
+  );
+}
+
+/** Vigilancia del proceso automático (cron) que sanea y cosecha corridas SAT. */
+function CronSaludPanel() {
+  const saludFn = useServerFn(getSatCronSalud);
+  const q = useQuery({
+    queryKey: ["sat-cron-salud"],
+    queryFn: () => saludFn(),
+    refetchInterval: 60_000,
+  });
+
+  if (q.isLoading || !q.data) {
+    return (
+      <div className="rounded-xl border border-border/60 bg-card/50 p-5 text-sm text-muted-foreground">
+        Cargando estado del proceso automático…
+      </div>
+    );
+  }
+
+  const d = q.data;
+  const estado = d.salud.estado;
+  const tono =
+    estado === "saludable"
+      ? "border-primary/40 bg-primary/5"
+      : "border-destructive/50 bg-destructive/10";
+
+  return (
+    <div className={`rounded-xl border p-5 space-y-3 ${tono}`}>
+      <h2 className="font-semibold flex items-center gap-2">
+        <Activity className="h-4 w-4 text-primary" /> Proceso automático SAT (cada 10 min)
+      </h2>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <Stat
+          label="Estado"
+          value={estado === "saludable" ? "Saludable" : estado === "degradado" ? "Degradado" : "Sin datos"}
+          sub={d.salud.mensaje}
+        />
+        <Stat
+          label="Última ejecución exitosa"
+          value={d.ultimo_exito ? new Date(d.ultimo_exito).toLocaleTimeString("es-MX") : "—"}
+          sub={d.ultimo_exito ? new Date(d.ultimo_exito).toLocaleDateString("es-MX") : "sin registro"}
+        />
+        <Stat
+          label="Próxima estimada"
+          value={d.salud.proxima_estimada ? new Date(d.salud.proxima_estimada).toLocaleTimeString("es-MX") : "—"}
+          sub="frecuencia cada 10 minutos"
+        />
+        <Stat
+          label="Versión desplegada"
+          value={d.version_al_dia === true ? "Al día" : d.version_al_dia === false ? "Atrasada" : "—"}
+          sub={d.version_desplegada ?? "sin heartbeat"}
+        />
+      </div>
+      {d.ultimo_error && (
+        <p className="text-xs text-destructive">Último error registrado: {d.ultimo_error}</p>
+      )}
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Inicio</TableHead>
+            <TableHead className="text-right">Revisadas</TableHead>
+            <TableHead className="text-right">Saneadas</TableHead>
+            <TableHead className="text-right">Reencauzadas</TableHead>
+            <TableHead className="text-right">Consultadas</TableHead>
+            <TableHead className="text-right">Paquetes</TableHead>
+            <TableHead className="text-right">ms</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {(d.ejecuciones as any[]).length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={7} className="text-center text-muted-foreground text-sm py-6">
+                Aún no hay ejecuciones registradas.
+              </TableCell>
+            </TableRow>
+          ) : (
+            (d.ejecuciones as any[]).map((h) => (
+              <TableRow key={h.id}>
+                <TableCell className="text-xs">
+                  {new Date(h.inicio_at).toLocaleString("es-MX")} {h.ok ? "" : "⚠︎"}
+                </TableCell>
+                <TableCell className="text-right">{h.runs_revisados}</TableCell>
+                <TableCell className="text-right">{h.runs_saneados}</TableCell>
+                <TableCell className="text-right">{h.runs_reencauzados}</TableCell>
+                <TableCell className="text-right">{h.solicitudes_consultadas}</TableCell>
+                <TableCell className="text-right">{h.paquetes_descargados}</TableCell>
+                <TableCell className="text-right">{h.duracion_ms ?? "—"}</TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
     </div>
   );
 }
