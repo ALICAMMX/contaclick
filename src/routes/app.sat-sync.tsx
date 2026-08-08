@@ -422,7 +422,12 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
 
   const runNow = useMutation({
     mutationFn: () => fnRun({ data: { cliente_id: clienteId, origen: "expediente", cascade: true } }),
-    onSuccess: (r) => {
+    onSuccess: (r: any) => {
+      // El servidor ya no lanza excepciones genéricas: devuelve el motivo real.
+      if (r?.ok === false) {
+        toast.error(r.error.mensaje, { description: r.error.accion });
+        return;
+      }
       if (r.duplicada) toast.info(r.mensaje);
       else toast.success(r.mensaje);
       qc.invalidateQueries({ queryKey: ["sat-sync"] });
@@ -441,6 +446,18 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
     onError: (e: any) => toast.error(e?.message ?? "No se pudo reintentar la corrida"),
     onSettled: () => qc.invalidateQueries({ queryKey: ["sat-sync"] }),
   });
+
+  const fnCerrar = useServerFn(cerrarCorridaSat);
+  const cerrar = useMutation({
+    mutationFn: (runId: string) => fnCerrar({ data: { cliente_id: clienteId, run_id: runId } }),
+    onSuccess: (r: any) => (r.ok ? toast.success(r.mensaje) : toast.warning(r.mensaje)),
+    onError: (e: any) => toast.error(e?.message ?? "No se pudo cerrar la corrida"),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["sat-sync"] });
+      qc.invalidateQueries({ queryKey: ["sat-sync", "estado", clienteId] });
+    },
+  });
+
 
   const consultar = useMutation({
     mutationFn: () => fnCosechar({ data: { cliente_id: clienteId } }),
