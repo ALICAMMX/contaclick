@@ -766,3 +766,11 @@ y cambiar `proveedor` en `sat_sync_config`; no se requieren cambios de esquema.
   reintentable), conserva intacto lo ya descargado y reporta como irrecuperable
   lo vencido (5011) o rechazado de origen (5001/5002/5003), exigiendo corrida nueva.
 - Pruebas: `src/lib/sat/reintento.test.ts` (7 casos).
+
+## Conexión de e.firma accesible desde /app/sat-sync
+
+- **Síntoma**: el aviso "este expediente no tiene una e.firma activa" no ofrecía ninguna acción; el formulario existía sólo dentro del detalle del expediente.
+- **Corrección**: nueva tarjeta reutilizable `src/components/EFirmaCard.tsx` ("Conexión con el SAT mediante e.firma") mostrada en Descarga Masiva SAT y en el expediente; el aviso rojo ahora incluye el botón "Conectar e.firma ahora".
+- **Formulario**: valida extensión y tamaño, la contraseña vive sólo en el input (nunca en estado, caché ni almacenamiento), se limpia al enviar, botón bloqueado durante la validación y sin doble envío.
+- **Validación server-side** (`src/lib/sat/efirma-validacion.server.ts`): legibilidad del .cer, apertura del .key con contraseña, correspondencia criptográfica llave↔certificado, RFC igual al del expediente, vigencia y descarte de CSD. Falla cerrado con mensajes diferenciados y sin detalle técnico.
+- **Alcance y bitácora**: `conectarSat` y `desconectarSat` ahora pasan por `assertClienteScope` y registran `sat.efirma.conectar/reemplazar/eliminar` en `audit_logs` sin secretos. Se conserva la bóveda AES-256-GCM v2 con AAD y versión de llave.
