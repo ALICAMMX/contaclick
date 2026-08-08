@@ -15,6 +15,8 @@ import { direccionesDe, proveedorActivo } from "@/lib/sat/providers/contrato";
 import { contarSolicitudes, rangoValido } from "@/lib/sat/consumo";
 import { llaveCorrida } from "@/lib/sat/idempotencia";
 import { resolverEstadoCorrida } from "@/lib/sat/maquina-estados";
+import { CRON_SAT_VERSION } from "@/lib/sat/cron-version";
+
 
 function resolverRango(cfg: {
   periodo?: string | null;
@@ -41,6 +43,8 @@ export const Route = createFileRoute("/api/public/hooks/sat-sync")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const inicio = Date.now();
+        const inicioIso = new Date().toISOString();
         const apiKey = request.headers.get("apikey") ?? "";
         const expected = process.env["SUPABASE_PUBLISHABLE_KEY"] ?? "";
         if (!apiKey || apiKey !== expected) {
@@ -56,13 +60,18 @@ export const Route = createFileRoute("/api/public/hooks/sat-sync")({
           "@/lib/sat/sat-directo-runner.server"
         );
 
+        const fallos: string[] = [];
+
         // ---- 0. Saneamiento: cerrar corridas que nunca llegaron al SAT ----
+        // Corre SIEMPRE y primero, aunque no haya nada que cosechar ni programado.
         let saneo = { revisadas: 0, cerradas: 0, reencauzadas: 0 };
         try {
           const { sanearCorridasAtoradas } = await import("@/lib/sat/saneamiento.server");
           saneo = await sanearCorridasAtoradas(supabase, 50);
         } catch (e) {
-          console.error("[cron sat] saneamiento:", (e as Error)?.message);
+          const m = `saneamiento: ${(e as Error)?.message ?? e}`;
+          console.error("[cron sat]", m);
+          fallos.push(m);
         }
 
         // ---- 1. Cosecha de las corridas vivas -------------------------
@@ -70,8 +79,12 @@ export const Route = createFileRoute("/api/public/hooks/sat-sync")({
         try {
           cosecha = await cosecharPendientes(supabase, 25);
         } catch (e) {
-          console.error("[cron sat] cosecha:", (e as Error)?.message);
+          const m = `cosecha: ${(e as Error)?.message ?? e}`;
+          console.error("[cron sat]", m);
+          fallos.push(m);
         }
+
+
 
 
         // ---- 2. Nuevas corridas programadas ---------------------------
@@ -152,7 +165,8 @@ export const Route = createFileRoute("/api/public/hooks/sat-sync")({
             hasta,
           });
 
-          const inicio = Date.now();
+          const inicioRun = Date.now();
+
           const { data: runIns, error: runErr } = await supabase
             .from("sat_sync_runs")
             .insert({
@@ -192,7 +206,7 @@ export const Route = createFileRoute("/api/public/hooks/sat-sync")({
             await supabase
               .from("sat_sync_runs")
               .update({
-                duracion_ms: Date.now() - inicio,
+                duracion_ms: Date.now() - inicioRun,
                 errores: envio.errores.map((m) => ({ fase: "solicitud", mensaje: m })) as any,
               })
               .eq("id", runId);
@@ -216,7 +230,7 @@ export const Route = createFileRoute("/api/public/hooks/sat-sync")({
                 estatus: "error",
                 cobertura: "nula",
                 finalizado_at: new Date().toISOString(),
-                duracion_ms: Date.now() - inicio,
+                duracion_ms: Date.now() - inicioRun,
                 errores: [
                   { fase: "solicitud", mensaje: String((e as Error)?.message ?? e).slice(0, 300) },
                 ] as any,
@@ -229,13 +243,48 @@ export const Route = createFileRoute("/api/public/hooks/sat-sync")({
           contarSolicitudes({ direcciones, desde, hasta });
         }
 
-        return Response.json({ ok: true, cosecha, procesados, iniciadas, omitidas });
+        // ---- 3. Heartbeat: se registra SIEMPRE, incluso sin trabajo --------
+        const duracion = Date.now() - inicio;
+        const cuerpo = {
+          ok: fallos.length === 0,
+          version: CRON_SAT_VERSION,
+          saneamiento: saneo,
+          cosecha,
+          procesados,
+          iniciadas,
+          omitidas,
+          duracion_ms: duracion,
+          errores: fallos,
+        };
+        try {
+          await supabase.from("sat_cron_heartbeat").insert({
+            inicio_at: inicioIso,
+            fin_at: new Date().toISOString(),
+            duracion_ms: duracion,
+            http_status: 200,
+            version: CRON_SAT_VERSION,
+            runs_revisados: saneo.revisadas,
+            runs_saneados: saneo.cerradas,
+            runs_reencauzados: saneo.reencauzadas,
+            solicitudes_consultadas: cosecha.revisadas,
+            paquetes_descargados: cosecha.nuevos,
+            corridas_iniciadas: iniciadas,
+            ok: fallos.length === 0,
+            error: fallos.length ? fallos.join(" | ").slice(0, 500) : null,
+          });
+        } catch (e) {
+          console.error("[cron sat] heartbeat:", (e as Error)?.message);
+        }
+
+        return Response.json(cuerpo);
       },
       GET: async () =>
         Response.json({
           ok: true,
+          version: CRON_SAT_VERSION,
           info: "POST con apikey para cosechar corridas SAT vivas y lanzar las programadas.",
         }),
+
     },
   },
 });

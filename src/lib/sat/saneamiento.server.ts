@@ -51,7 +51,7 @@ export async function cerrarCorridaConError(
 ) {
   const previos = await supabase
     .from("sat_sync_runs")
-    .select("errores")
+    .select("errores, idempotency_key")
     .eq("id", runId)
     .maybeSingle();
   const historial = Array.isArray(previos?.data?.errores) ? previos.data.errores : [];
@@ -67,27 +67,65 @@ export async function cerrarCorridaConError(
     })
     .eq("id", runId)
     .in("estado", ["preparando", "solicitando", "esperando_sat", "descargando", "ingiriendo", "recalculando"]);
+
+  // Sin contacto confirmado con el SAT no debe quedar reserva viva de saldo PAC.
+  const key = previos?.data?.idempotency_key;
+  if (!diag.folio_sat && key) {
+    try {
+      await supabase.rpc("pac_devolver_reserva", {
+        _key: key,
+        _motivo: `saneamiento:${diag.codigo}`,
+      });
+    } catch {
+      /* la reserva puede no existir en el proveedor directo: no es un error */
+    }
+  }
 }
 
 /**
  * Barrido periódico. Se ejecuta ANTES de cosechar, para que el cosechador no
  * pierda ciclos con corridas que nunca llegaron a enviarse.
+ *
+ * Es idempotente y seguro ante dos ejecuciones simultáneas: cada actualización
+ * está condicionada al estado exacto que se leyó, así que el segundo cron no
+ * reabre ni vuelve a cerrar lo que el primero ya movió.
  */
 export async function sanearCorridasAtoradas(
   supabase: any,
   limite = 50,
   ahora = Date.now(),
 ): Promise<{ revisadas: number; cerradas: number; reencauzadas: number }> {
-  const { data: runs } = await supabase
+  const columnas = "id, estado, estatus, iniciado_at, created_at, solicitudes, errores";
+
+  const { data: porEstado } = await supabase
     .from("sat_sync_runs")
-    .select("id, estado, iniciado_at, solicitudes, errores")
+    .select(columnas)
     .in("estado", ["preparando", "solicitando"])
     .order("iniciado_at", { ascending: true })
     .limit(limite);
 
+  // Red de seguridad: corridas viejas marcadas sólo con el estatus heredado.
+  const { data: porEstatus } = await supabase
+    .from("sat_sync_runs")
+    .select(columnas)
+    .is("estado", null)
+    .eq("estatus", "en_curso")
+    .order("iniciado_at", { ascending: true })
+    .limit(limite);
+
+  const mapa = new Map<string, CorridaParaSanear>();
+  for (const r of [...(porEstado ?? []), ...(porEstatus ?? [])]) {
+    const run = r as any;
+    mapa.set(run.id, {
+      ...run,
+      estado: run.estado ?? "solicitando",
+      iniciado_at: run.iniciado_at ?? run.created_at,
+    } as CorridaParaSanear);
+  }
+
   let cerradas = 0;
   let reencauzadas = 0;
-  const lista = (runs ?? []) as CorridaParaSanear[];
+  const lista = [...mapa.values()];
 
   for (const run of lista) {
     const d = clasificarCorridaAtorada(run, ahora, MINUTOS_ATORADA);
@@ -98,7 +136,7 @@ export async function sanearCorridasAtoradas(
         .from("sat_sync_runs")
         .update({ estado: d.estado, estatus: estatusLegado(d.estado) })
         .eq("id", run.id)
-        .eq("estado", run.estado);
+        .in("estado", ["preparando", "solicitando"]);
       reencauzadas++;
       continue;
     }
@@ -120,3 +158,4 @@ export async function sanearCorridasAtoradas(
 
   return { revisadas: lista.length, cerradas, reencauzadas };
 }
+
