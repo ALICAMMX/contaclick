@@ -261,7 +261,7 @@ async function calcularEstado(
       .maybeSingle(),
     supabase
       .from("sat_credenciales")
-      .select("estatus, vigencia_hasta, efirma_cer, efirma_key_enc")
+      .select("estatus, efirma_vence_at, efirma_cer, efirma_key_enc")
       .eq("cliente_id", scope.cliente_id)
       .eq("despacho_id", scope.despacho_id)
       .maybeSingle(),
