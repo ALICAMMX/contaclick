@@ -685,6 +685,14 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
                 ? `Al sincronizar se enviarán ${envio.solicitudes} solicitud(es): ${envio.direcciones_label}, del ${rangoUI.desde} al ${rangoUI.hasta} (${envio.dias} día(s), ambos incluidos).`
                 : envio.motivo}
             </li>
+            {periodo.valido && (
+              <li data-testid="periodo-efectivo">
+                • Periodo efectivo enviado al SAT: <span className="font-mono">{periodo.fechaInicial}</span> a{" "}
+                <span className="font-mono">{periodo.fechaFinal}</span> ({ETIQUETA_ZONA_SAT}).
+              </li>
+            )}
+            {f.emitidos && <li>• {notaCriterio("emitidos")}</li>}
+            {f.recibidos && <li>• {notaCriterio("recibidos")}</li>}
           </ul>
         </div>
 
