@@ -43,6 +43,7 @@ const ESTADO_LABEL: Record<string, { texto: string; cls: string }> = {
   recalculando: { texto: "Recalculando módulos", cls: "bg-warning/15 text-warning" },
   completada: { texto: "Completada", cls: "bg-success/15 text-success" },
   parcial: { texto: "Cobertura parcial", cls: "bg-warning/15 text-warning" },
+  procesamiento_pendiente: { texto: "Procesamiento pendiente", cls: "bg-warning/15 text-warning" },
   error: { texto: "Error", cls: "bg-destructive/15 text-destructive" },
   vencida: { texto: "Vencida en el SAT", cls: "bg-destructive/15 text-destructive" },
 };
@@ -198,12 +199,13 @@ function DashboardTab({ d, loading }: { d: any; loading: boolean }) {
               <li key={r.id} className="flex items-center justify-between border-b border-border/40 pb-1.5">
                 <div className="min-w-0">
                   <div className="font-medium">{r.clientes?.rfc ?? r.cliente_id.slice(0, 8)}</div>
-                  <div className="text-xs text-muted-foreground">{fmtFecha(r.iniciado_at)} · {r.nuevos ?? 0} nuevos</div>
+                   <div className="text-xs text-muted-foreground">{fmtFecha(r.iniciado_at)} · {r.nuevos ?? 0} nuevos</div>
+                   {r.resultado_honesto && <div className="text-xs text-muted-foreground">{r.resultado_honesto}</div>}
                   {(r.estado === "error" || r.estado === "vencida") && (
                     <div className="text-xs text-destructive truncate">{motivoCorridaUi(r)}</div>
                   )}
                 </div>
-                <EstadoBadge estado={r.estado ?? r.estatus} />
+                 <EstadoBadge estado={r.estado_honesto ?? r.estado ?? r.estatus} />
               </li>
             ))}
           </ul>
@@ -311,9 +313,9 @@ function ActividadTab({ clienteId }: { clienteId: string }) {
               <td className="p-3 text-right">{r.descargados}</td>
               <td className="p-3 text-right text-success">{r.nuevos}</td>
               <td className="p-3 text-right">{Array.isArray(r.errores) ? r.errores.length : 0}</td>
-              <td className="p-3 text-xs">{r.duracion_ms != null ? `${r.duracion_ms} ms` : "—"}</td>
+               <td className="p-3 text-xs">{r.finalizado_at_honesto && r.duracion_ms != null ? `${r.duracion_ms} ms` : "—"}</td>
               <td className="p-3">
-                <EstadoBadge estado={r.estado ?? r.estatus} />
+                 <EstadoBadge estado={r.estado_honesto ?? r.estado ?? r.estatus} />
                 {(r.estado === "error" || r.estado === "vencida") && (
                   <div className="text-xs text-destructive mt-1 max-w-[22rem]">{motivoCorridaUi(r)}</div>
                 )}

@@ -225,16 +225,20 @@ describe("Ejecutor · contrato de persistencia", () => {
     expect(srv).toContain("idempotency_key");
   });
 
-  it("si la evidencia no puede guardarse, se revierte y falla en vez de declarar éxito", () => {
+  it("si la evidencia no puede cerrarse, conserva el iniciado y falla en vez de declarar éxito", () => {
     expect(srv).toContain("if (errFin)");
     expect(srv).toContain("No se declara ningún procesamiento como completado");
-    expect(srv).toContain('.delete().eq("id", eventoId)');
+    expect(srv).not.toContain('.delete().eq("id", eventoId)');
   });
 
   it("el estado final se relee de la bitácora, nunca de memoria", () => {
     const cola = srv.slice(srv.lastIndexOf("// 3) Releer"));
     expect(cola).toContain("await leerEventos(supabase, runId)");
     expect(cola).toContain("evaluarProcesamiento");
+  });
+
+  it("cero eventos después de ejecutar es un error explícito", () => {
+    expect(srv).toContain("La lectura de verificación devolvió cero recibos");
   });
 
   it("no contacta al SAT ni consume cuota o PAC", () => {
@@ -271,6 +275,17 @@ describe("Acción de recuperación · contrato del servidor", () => {
     expect(fn).toContain("antes:");
     expect(fn).toContain("despues:");
   });
+
+  it("devuelve el contrato estructurado y no permite éxito con fallos", () => {
+    expect(fn).toContain("execution_id: executionId");
+    expect(fn).toContain("eventos_persistidos: eventos.length");
+    expect(fn).toContain("completados");
+    expect(fn).toContain("omitidos");
+    expect(fn).toContain("fallidos");
+    expect(fn).toContain("pendientes: despues.faltantes");
+    expect(fn).toContain("estado_derivado");
+    expect(fn).toContain("cobertura_derivada");
+  });
 });
 
 describe("Detalle · interfaz honesta", () => {
@@ -305,5 +320,14 @@ describe("Detalle · interfaz honesta", () => {
   it("ofrece la acción de recuperación sólo cuando el servidor la habilita", () => {
     expect(ui).toContain("d.procesamiento.accion_label");
     expect(ui).toContain('data-testid="completar-procesamiento"');
+  });
+
+  it("mantiene la acción bloqueada hasta validar el despliegue", () => {
+    expect(ui).toContain("disabled");
+    expect(ui).toContain("permanece bloqueada");
+  });
+
+  it("no muestra éxito cuando el contrato responde ok=false", () => {
+    expect(ui).toContain("if (!r.ok) throw new Error");
   });
 });

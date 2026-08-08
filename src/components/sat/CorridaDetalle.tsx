@@ -73,6 +73,7 @@ export function CorridaDetalleDialog({
     setEnviando(true);
     try {
       const r = await completar({ data: { run_id: runId } });
+      if (!r.ok) throw new Error(r.mensaje || "El procesamiento no dejó evidencia terminal completa.");
       toast.success(r.mensaje);
       await qc.invalidateQueries({ queryKey: ["sat-corrida-detalle", runId] });
       await qc.invalidateQueries({ queryKey: ["sat-sync"] });
@@ -130,6 +131,9 @@ export function CorridaDetalleDialog({
                 </Badge>
               </Fila>
               <Fila label="Cobertura">{d.run.cobertura ?? "—"}</Fila>
+              <Fila label="Versión de soporte">
+                <span className="font-mono text-xs">{d.soporte.release}</span>
+              </Fila>
               {d.run.detalle && <Fila label="Resultado">{d.run.detalle}</Fila>}
             </Bloque>
 
@@ -282,13 +286,12 @@ export function CorridaDetalleDialog({
               {d.procesamiento.accion_label && (
                 <div className="mt-3 space-y-2">
                   <p className="text-xs text-muted-foreground">
-                    Esta acción no contacta al SAT, no vuelve a descargar, no consume cuota ni
-                    saldo PAC y no duplica comprobantes: sólo ejecuta los recálculos faltantes.
+                    La acción permanece bloqueada para el usuario hasta terminar la validación desplegada.
                   </p>
                   <Button
                     size="sm"
                     onClick={onCompletar}
-                    disabled={enviando}
+                    disabled
                     data-testid="completar-procesamiento"
                   >
                     {enviando && <Loader2 className="h-4 w-4 animate-spin mr-2" />}

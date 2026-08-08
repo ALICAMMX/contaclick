@@ -4,7 +4,7 @@
 // Reglas duras:
 //   - Cada módulo deja SIEMPRE un evento propio en `sat_procesamiento_eventos`
 //     (iniciado → completado | omitido | fallido). Si el evento no puede
-//     persistirse, el módulo se revierte y la acción global FALLA: nunca se
+//     persistirse, el recibo queda iniciado y la acción global FALLA: nunca se
 //     responde "completado" sin evidencia.
 //   - La llave de idempotencia impide repetir un módulo ya terminado y
 //     protege contra el doble clic (dos intentos concurrentes chocan en la
@@ -152,6 +152,39 @@ export async function leerEventosProcesamiento(supabase: any, runId: string) {
   return leerEventos(supabase, runId);
 }
 
+/** Proyecta la misma evaluación honesta sobre listados, KPIs y detalle. */
+export async function evaluarCorridasConEventos(supabase: any, runs: any[]) {
+  if (!runs.length) return [];
+  const ids = runs.map((run) => run.id as string);
+  const { data, error } = await supabase
+    .from("sat_procesamiento_eventos")
+    .select("run_id, module_id, estado, iniciado_at, finalizado_at, motivo, resultado, version")
+    .in("run_id", ids)
+    .limit(Math.max(200, ids.length * 8));
+  if (error) throw new Error(`No se pudo evaluar el estado de las corridas: ${error.message}`);
+  const porRun = new Map<string, EventoModulo[]>();
+  for (const evento of data ?? []) {
+    const lista = porRun.get(evento.run_id as string) ?? [];
+    lista.push(evento as EventoModulo);
+    porRun.set(evento.run_id as string, lista);
+  }
+  return runs.map((run) => {
+    const procesamiento = evaluarProcesamiento({
+      cobertura: run.cobertura as string | null,
+      nuevos: Number(run.nuevos ?? 0),
+      eventos: porRun.get(run.id as string) ?? [],
+    });
+    return {
+      ...run,
+      estado_honesto: procesamiento.estado_honesto ?? run.estado,
+      cobertura_honesta: procesamiento.cobertura_honesta ?? run.cobertura,
+      resultado_honesto: procesamiento.mensaje,
+      finalizado_at_honesto: procesamiento.terminal ? run.finalizado_at : null,
+      procesamiento,
+    };
+  });
+}
+
 /**
  * Ejecuta los módulos faltantes de una corrida dejando un evento por módulo.
  * Devuelve la evaluación releída desde la base, nunca un estado en memoria.
@@ -165,6 +198,7 @@ export async function ejecutarProcesamientoPosterior(args: {
   cobertura?: string | null;
   /** Inicio de la corrida: acota qué escrituras son atribuibles a ella. */
   runInicioAt?: string | null;
+  executionId: string;
   /** Restringe la ejecución a estos módulos (por omisión: los faltantes). */
   soloModulos?: string[];
 }) {
@@ -209,6 +243,7 @@ export async function ejecutarProcesamientoPosterior(args: {
         estado: "iniciado",
         iniciado_at,
         version: VERSION_PROCESAMIENTO,
+        execution_id: args.executionId,
         idempotency_key,
       })
       .select("id")
@@ -219,11 +254,15 @@ export async function ejecutarProcesamientoPosterior(args: {
     if (!eventoId) {
       // Puede ser un candado huérfano de una caída anterior: sólo se reclama
       // cuando venció el plazo y la operación es idempotente.
-      const { data: previo } = await supabase
+      if (errIni && errIni.code !== "23505") {
+        throw new Error(`No se pudo crear el recibo iniciado de ${module_id}: ${errIni.message}`);
+      }
+      const { data: previo, error: errPrevio } = await supabase
         .from("sat_procesamiento_eventos")
         .select("id, estado, iniciado_at")
         .eq("idempotency_key", idempotency_key)
         .maybeSingle();
+      if (errPrevio) throw new Error(`No se pudo comprobar la idempotencia de ${module_id}: ${errPrevio.message}`);
 
       const reclamable =
         previo?.estado === "iniciado" &&
@@ -238,19 +277,15 @@ export async function ejecutarProcesamientoPosterior(args: {
         continue;
       }
 
-      const { error: errRe } = await supabase
+      const { data: reclamado, error: errRe } = await supabase
         .from("sat_procesamiento_eventos")
-        .update({ iniciado_at, motivo: "Candado vencido reclamado tras una interrupción." })
+        .update({ iniciado_at, execution_id: args.executionId, motivo: "Candado vencido reclamado tras una interrupción." })
         .eq("id", previo!.id)
-        .eq("estado", "iniciado");
-      if (errRe) {
-        resultados.push({
-          module_id,
-          estado: "omitido_por_idempotencia",
-          motivo: "Otro proceso conserva el candado de este módulo.",
-        });
-        continue;
-      }
+        .eq("estado", "iniciado")
+        .select("id")
+        .maybeSingle();
+      if (errRe) throw new Error(`No se pudo reclamar el recibo de ${module_id}: ${errRe.message}`);
+      if (!reclamado?.id) throw new Error(`No se confirmó el candado recuperado de ${module_id}.`);
       eventoId = previo!.id as string;
     }
 
@@ -279,8 +314,8 @@ export async function ejecutarProcesamientoPosterior(args: {
       }
     }
 
-    // 2) Cierre del evento. Si no puede persistirse, se revierte el intento y
-    //    la acción global falla: sin evidencia no hay "completado".
+    // 2) Cierre del evento. Si no puede persistirse, el recibo iniciado se
+    //    conserva como evidencia del fallo y la acción global falla.
     const { error: errFin } = await supabase
       .from("sat_procesamiento_eventos")
       .update({
@@ -299,7 +334,6 @@ export async function ejecutarProcesamientoPosterior(args: {
       .eq("id", eventoId);
 
     if (errFin) {
-      await supabase.from("sat_procesamiento_eventos").delete().eq("id", eventoId);
       throw new Error(
         `No se pudo registrar la evidencia del módulo ${module_id}: ${errFin.message}. No se declara ningún procesamiento como completado.`,
       );
@@ -320,6 +354,10 @@ export async function ejecutarProcesamientoPosterior(args: {
     nuevos: args.nuevos,
     eventos,
   });
+
+  if (args.nuevos > 0 && eventos.length === 0) {
+    throw new Error("La lectura de verificación devolvió cero recibos. La corrida conserva su estado anterior.");
+  }
 
   return { antes, despues, eventos, resultados };
 }
