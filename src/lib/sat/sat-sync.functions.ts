@@ -48,6 +48,8 @@ import {
   ESTADOS_ACTIVOS,
   estatusLegado,
   reabrirSolicitudes,
+  semanticaCodigo,
+
   resolverEstadoCorrida,
   type EstadoCorrida,
   type SolicitudRegistro,
