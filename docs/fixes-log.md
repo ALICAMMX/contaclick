@@ -830,3 +830,23 @@ crear otra sin ofrecer una salida segura.
 **Corrección:** se quitó la columna inexistente, y ahora un error de lectura se lanza y queda registrado en el heartbeat en vez de silenciarse.
 **Observabilidad nueva:** tabla `sat_cron_heartbeat` (una fila por ejecución, aunque no haya trabajo), sello de versión desplegada y panel de salud en Saldo PAC SAT.
 **Sin efectos colaterales:** saldo PAC 0/0 y cuota del despacho en 0 antes y después.
+
+### Verificación en ciclo real del cron (2026-08-08 18:40 UTC)
+Prueba con expediente y corridas sintéticas (proveedor `sintetico`), sin e.firma real
+y sin contacto con el SAT. Datos anonimizados.
+
+| Elemento | Antes | Después del ciclo 18:40 UTC |
+|---|---|---|
+| Corrida **sin folio** (16:25 UTC) | `solicitando` / `en_curso` | `error` / `error`, cobertura `nula`, cerrada 18:40:02, código `error_inicio_incompleto` |
+| Corrida **con folio simulado** (16:20 UTC) | `solicitando` / `en_curso` | `esperando_sat`, folio conservado, sin reenvío |
+
+- **Heartbeat 18:40:02 UTC:** `ok = true`, HTTP 200, duración 767 ms.
+- **Métricas:** `runs_revisados = 2`, `runs_saneados = 1`, `runs_reencauzados = 1`.
+- **Versión desplegada:** `sat-cron-2026.08.08b-fix-columna-created_at` (coincide con la esperada).
+- **Sin contacto con el SAT:** `solicitudes_consultadas = 0`, `paquetes_descargados = 0`,
+  `corridas_iniciadas = 0`, y cero eventos de sincronización en las últimas 3 horas.
+- **Cuota y saldo sin cambios:** saldo PAC 0 disponible / 0 reservado (última modificación
+  25-jun-2026); consumo del periodo sin variación (último cambio 04:51 UTC, previo a la prueba);
+  cero movimientos en el libro PAC durante la ventana de prueba.
+- **Limpieza:** el expediente y las dos corridas sintéticas se eliminaron al validar
+  ambas transiciones; ningún dato real fue tocado.
