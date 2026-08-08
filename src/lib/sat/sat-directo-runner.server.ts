@@ -32,14 +32,10 @@ import {
   type Ingestar,
 } from "./ciclo-asincrono";
 import {
-  MAX_INTENTOS_SOLICITUD,
-  acumularSolicitud,
-  estadoDesdeSat,
+  ESTADOS_ACTIVOS,
+  ESTADOS_TERMINALES,
   estatusLegado,
-  nuevaSolicitud,
   resolverEstadoCorrida,
-  semanticaCodigo,
-  siguienteIntento,
   type ResumenCorrida,
   type SolicitudRegistro,
 } from "./maquina-estados";
