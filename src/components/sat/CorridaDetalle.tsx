@@ -84,6 +84,8 @@ export function CorridaDetalleDialog({
                 </div>
               )}
 
+            <Bloque titulo="Identificación">
+
               <Fila label="Expediente">
                 {d.run.razon_social ?? "—"} · {d.run.rfc ?? "—"}
               </Fila>
