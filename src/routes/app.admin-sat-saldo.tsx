@@ -199,8 +199,11 @@ function SatSaldoPage() {
         </div>
       </div>
 
+      <CronSaludPanel />
+
       <div className="rounded-xl border border-border/60 bg-card/50 p-5">
         <h2 className="font-semibold mb-3 flex items-center gap-2"><Download className="h-4 w-4 text-primary" /> Top 10 despachos del mes</h2>
+
         <Table>
           <TableHeader>
             <TableRow>
