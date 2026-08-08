@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { EFirmaCard } from "@/components/EFirmaCard";
+import { semanticaCodigo } from "@/lib/sat/maquina-estados";
+import { descripcionAlcance } from "@/lib/sat/solicitud-xml";
 
 
 export const Route = createFileRoute("/app/sat-sync")({ component: SatSyncPage });
@@ -130,6 +132,21 @@ function SinExpediente() {
   );
 }
 
+/**
+ * Motivo legible de una corrida fallida (código del SAT + explicación).
+ * Nunca se muestra únicamente "Error".
+ */
+function motivoCorridaUi(r: any): string {
+  if (r?.motivo) return r.motivo;
+  const sols: any[] = Array.isArray(r?.solicitudes) ? r.solicitudes : [];
+  const conCodigo = sols.find((s) => s?.codigo);
+  if (conCodigo) return `${conCodigo.codigo} · ${semanticaCodigo(conCodigo.codigo).mensaje}`;
+  const errs: any[] = Array.isArray(r?.errores) ? r.errores : [];
+  if (errs.length) return String(errs[0]?.mensaje ?? errs[0]).slice(0, 160);
+  if (r?.detalle) return String(r.detalle).slice(0, 160);
+  return "Corrida no completada.";
+}
+
 function Kpi({ icon: Icon, label, value, hint, tone }: any) {
   const toneCls = tone === "danger" ? "text-destructive" : tone === "warn" ? "text-warning" : tone === "ok" ? "text-success" : "text-foreground";
   return (
@@ -148,7 +165,12 @@ function DashboardTab({ d, loading }: { d: any; loading: boolean }) {
     <div className="space-y-6">
       <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
         <Kpi icon={PlugZap} label="RFC conectados" value={d.conectados} tone="ok" />
-        <Kpi icon={Clock} label="Última sincronización" value={fmtRel(d.ultima)} hint={fmtFecha(d.ultima)} />
+        <Kpi
+          icon={Clock}
+          label="Última sincronización exitosa"
+          value={d.ultima ? fmtRel(d.ultima) : "Sin corridas exitosas"}
+          hint={d.ultima ? fmtFecha(d.ultima) : "Las corridas fallidas no cuentan como sincronización"}
+        />
         <Kpi icon={FileStack} label="Corridas hoy" value={d.hoy} />
         <Kpi icon={ShieldCheck} label="CFDI nuevos hoy" value={d.nuevos} tone="ok" />
         <Kpi icon={AlertTriangle} label="Errores (7d)" value={d.errores} tone={d.errores > 0 ? "danger" : undefined} />
@@ -162,9 +184,12 @@ function DashboardTab({ d, loading }: { d: any; loading: boolean }) {
           <ul className="space-y-2 text-sm">
             {d.actividad.slice(0, 10).map((r: any) => (
               <li key={r.id} className="flex items-center justify-between border-b border-border/40 pb-1.5">
-                <div>
+                <div className="min-w-0">
                   <div className="font-medium">{r.clientes?.rfc ?? r.cliente_id.slice(0, 8)}</div>
                   <div className="text-xs text-muted-foreground">{fmtFecha(r.iniciado_at)} · {r.nuevos ?? 0} nuevos</div>
+                  {(r.estado === "error" || r.estado === "vencida") && (
+                    <div className="text-xs text-destructive truncate">{motivoCorridaUi(r)}</div>
+                  )}
                 </div>
                 <EstadoBadge estado={r.estado ?? r.estatus} />
               </li>
@@ -174,8 +199,21 @@ function DashboardTab({ d, loading }: { d: any; loading: boolean }) {
 
         <section className="rounded-xl border border-border bg-card p-4">
           <h3 className="text-sm font-medium mb-3">Centro de incidencias</h3>
-          {d.conErrores.length === 0 && d.desconectados.length === 0 && <div className="text-xs text-muted-foreground">Todo en orden.</div>}
+          {d.conErrores.length === 0 &&
+            d.desconectados.length === 0 &&
+            (d.incidenciasCorridas?.length ?? 0) === 0 && (
+              <div className="text-xs text-muted-foreground">Todo en orden.</div>
+            )}
           <ul className="space-y-2 text-sm">
+            {(d.incidenciasCorridas ?? []).map((r: any) => (
+              <li key={r.id} className="flex items-start justify-between gap-3 border-b border-border/40 pb-1.5">
+                <div className="min-w-0">
+                  <div className="font-medium">{r.rfc ?? "Corrida"} · {fmtFecha(r.iniciado_at)}</div>
+                  <div className="text-xs text-destructive">{r.motivo}</div>
+                </div>
+                <span className="text-[10px] uppercase tracking-wider text-destructive">{r.estado}</span>
+              </li>
+            ))}
             {d.conErrores.map((c: any) => (
               <li key={c.cliente_id} className="flex items-start justify-between gap-3 border-b border-border/40 pb-1.5">
                 <div>
@@ -249,6 +287,9 @@ function ActividadTab({ clienteId }: { clienteId: string }) {
               <td className="p-3 text-xs">{r.duracion_ms != null ? `${r.duracion_ms} ms` : "—"}</td>
               <td className="p-3">
                 <EstadoBadge estado={r.estado ?? r.estatus} />
+                {(r.estado === "error" || r.estado === "vencida") && (
+                  <div className="text-xs text-destructive mt-1 max-w-[22rem]">{motivoCorridaUi(r)}</div>
+                )}
               </td>
             </tr>
           ))}
