@@ -535,7 +535,7 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
           </div>
         </div>
 
-        <EstadoServicio q={estadoQ} />
+        <EstadoServicio q={estadoQ} onCerrar={(id) => cerrar.mutate(id)} cerrando={cerrar.isPending} />
       </div>
 
       <div className="rounded-xl border border-border bg-card p-4 space-y-4">
