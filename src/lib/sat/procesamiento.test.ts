@@ -225,10 +225,10 @@ describe("Ejecutor · contrato de persistencia", () => {
     expect(srv).toContain("idempotency_key");
   });
 
-  it("si la evidencia no puede guardarse, se revierte y falla en vez de declarar éxito", () => {
+  it("si la evidencia no puede cerrarse, conserva el iniciado y falla en vez de declarar éxito", () => {
     expect(srv).toContain("if (errFin)");
     expect(srv).toContain("No se declara ningún procesamiento como completado");
-    expect(srv).toContain('.delete().eq("id", eventoId)');
+    expect(srv).not.toContain('.delete().eq("id", eventoId)');
   });
 
   it("el estado final se relee de la bitácora, nunca de memoria", () => {

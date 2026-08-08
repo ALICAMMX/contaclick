@@ -4,7 +4,7 @@
 // Reglas duras:
 //   - Cada módulo deja SIEMPRE un evento propio en `sat_procesamiento_eventos`
 //     (iniciado → completado | omitido | fallido). Si el evento no puede
-//     persistirse, el módulo se revierte y la acción global FALLA: nunca se
+//     persistirse, el recibo queda iniciado y la acción global FALLA: nunca se
 //     responde "completado" sin evidencia.
 //   - La llave de idempotencia impide repetir un módulo ya terminado y
 //     protege contra el doble clic (dos intentos concurrentes chocan en la
@@ -314,8 +314,8 @@ export async function ejecutarProcesamientoPosterior(args: {
       }
     }
 
-    // 2) Cierre del evento. Si no puede persistirse, se revierte el intento y
-    //    la acción global falla: sin evidencia no hay "completado".
+    // 2) Cierre del evento. Si no puede persistirse, el recibo iniciado se
+    //    conserva como evidencia del fallo y la acción global falla.
     const { error: errFin } = await supabase
       .from("sat_procesamiento_eventos")
       .update({
