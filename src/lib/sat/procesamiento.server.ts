@@ -26,12 +26,65 @@ import {
   llaveModulo,
   type EventoModulo,
 } from "./procesamiento";
+import {
+  candadoRecuperable,
+  decidirRecuperacion,
+  type EvidenciaEfecto,
+} from "./reconciliacion";
 
 export type ResultadoModulo = {
   module_id: string;
-  estado: "completado" | "omitido" | "fallido" | "omitido_por_idempotencia";
+  estado:
+    | "completado"
+    | "omitido"
+    | "fallido"
+    | "recuperado"
+    | "bloqueado"
+    | "omitido_por_idempotencia";
   motivo?: string | null;
 };
+
+/**
+ * Busca en las tablas derivadas si un intento anterior ya dejó efectos para
+ * este módulo y esta corrida. Sólo lectura: nunca escribe ni recalcula.
+ */
+async function detectarEvidencia(
+  supabase: any,
+  module_id: string,
+  clienteId: string,
+  runInicioAt: string | null,
+): Promise<EvidenciaEfecto | null> {
+  if (module_id !== "salud_fiscal") return null;
+  const { data } = await supabase
+    .from("salud_fiscal_snapshots")
+    .select("score, semaforo, subscores, periodo, created_at, updated_at")
+    .eq("cliente_id", clienteId)
+    .order("periodo", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data) return { existe: false, determinable: false };
+
+  const at = (data.updated_at ?? data.created_at) as string | null;
+  const desde = runInicioAt ? Date.parse(runInicioAt) : NaN;
+  const escritoAt = at ? Date.parse(at) : NaN;
+  // Sólo cuenta como efecto del intento anterior si se escribió DESPUÉS de que
+  // inició la corrida. Un snapshot viejo no prueba nada.
+  const existe =
+    Number.isFinite(escritoAt) && (!Number.isFinite(desde) ? false : escritoAt >= desde);
+  if (!existe) return { existe: false, determinable: false };
+
+  const determinable = data.score !== null && data.score !== undefined && !!data.semaforo;
+  return {
+    existe: true,
+    determinable,
+    resultado: determinable
+      ? { score: data.score, semaforo: data.semaforo, periodo: data.periodo }
+      : {},
+    at,
+    fuente: "salud_fiscal_snapshots",
+  };
+}
+
 
 /** Ejecutores por módulo. Devuelven un resumen SANEADO (sin datos sensibles). */
 const EJECUTORES: Record<
@@ -110,6 +163,8 @@ export async function ejecutarProcesamientoPosterior(args: {
   despachoId: string;
   nuevos: number;
   cobertura?: string | null;
+  /** Inicio de la corrida: acota qué escrituras son atribuibles a ella. */
+  runInicioAt?: string | null;
   /** Restringe la ejecución a estos módulos (por omisión: los faltantes). */
   soloModulos?: string[];
 }) {
@@ -132,8 +187,18 @@ export async function ejecutarProcesamientoPosterior(args: {
     const idempotency_key = llaveModulo(runId, module_id);
     const iniciado_at = new Date().toISOString();
 
+    // 0) ¿Qué dejó el intento anterior? La decisión NO depende sólo de la
+    //    llave única de la bitácora: depende de la semántica de escritura.
+    const evidencia = await detectarEvidencia(supabase, module_id, clienteId, args.runInicioAt ?? null);
+    const decision = decidirRecuperacion({ module_id, evidencia });
+
+    if (decision.accion === "bloquear") {
+      resultados.push({ module_id, estado: "bloqueado", motivo: decision.motivo });
+      continue;
+    }
+
     // 1) Candado + evidencia de inicio. El choque de llave significa que otro
-    //    intento ya lo tomó (doble clic) o que el módulo ya terminó.
+    //    intento ya lo tomó (doble clic / segundo worker) o que ya terminó.
     const { data: abierto, error: errIni } = await supabase
       .from("sat_procesamiento_eventos")
       .insert({
@@ -149,30 +214,69 @@ export async function ejecutarProcesamientoPosterior(args: {
       .select("id")
       .maybeSingle();
 
-    if (errIni || !abierto?.id) {
-      resultados.push({
-        module_id,
-        estado: "omitido_por_idempotencia",
-        motivo: errIni?.message ?? "Ya existe un intento registrado para este módulo.",
-      });
-      continue;
+    let eventoId = abierto?.id as string | undefined;
+
+    if (!eventoId) {
+      // Puede ser un candado huérfano de una caída anterior: sólo se reclama
+      // cuando venció el plazo y la operación es idempotente.
+      const { data: previo } = await supabase
+        .from("sat_procesamiento_eventos")
+        .select("id, estado, iniciado_at")
+        .eq("idempotency_key", idempotency_key)
+        .maybeSingle();
+
+      const reclamable =
+        previo?.estado === "iniciado" &&
+        candadoRecuperable({ module_id, iniciado_at: previo?.iniciado_at as string | null });
+
+      if (!reclamable) {
+        resultados.push({
+          module_id,
+          estado: "omitido_por_idempotencia",
+          motivo: errIni?.message ?? "Ya existe un intento registrado para este módulo.",
+        });
+        continue;
+      }
+
+      const { error: errRe } = await supabase
+        .from("sat_procesamiento_eventos")
+        .update({ iniciado_at, motivo: "Candado vencido reclamado tras una interrupción." })
+        .eq("id", previo!.id)
+        .eq("estado", "iniciado");
+      if (errRe) {
+        resultados.push({
+          module_id,
+          estado: "omitido_por_idempotencia",
+          motivo: "Otro proceso conserva el candado de este módulo.",
+        });
+        continue;
+      }
+      eventoId = previo!.id as string;
     }
 
-    const eventoId = abierto.id as string;
     let estadoFinal: "completado" | "omitido" | "fallido" = "completado";
     let motivo: string | null = null;
     let resultado: Record<string, unknown> = {};
+    let recuperacion_historica = false;
 
-    try {
-      const r = await EJECUTORES[module_id]!(clienteId);
-      resultado = r.resultado ?? {};
-      if (r.omitido) {
-        estadoFinal = "omitido";
-        motivo = r.omitido;
+    if (decision.accion === "reconstruir") {
+      // 1.b) Hay efectos comprobables: NO se reejecuta el módulo. Se levanta
+      //      el recibo del resultado ya persistido y se marca la recuperación.
+      recuperacion_historica = true;
+      resultado = { ...(evidencia?.resultado ?? {}), origen: "recuperacion_historica" };
+      motivo = decision.motivo;
+    } else {
+      try {
+        const r = await EJECUTORES[module_id]!(clienteId);
+        resultado = r.resultado ?? {};
+        if (r.omitido) {
+          estadoFinal = "omitido";
+          motivo = r.omitido;
+        }
+      } catch (e: any) {
+        estadoFinal = "fallido";
+        motivo = String(e?.message ?? e).slice(0, 250);
       }
-    } catch (e: any) {
-      estadoFinal = "fallido";
-      motivo = String(e?.message ?? e).slice(0, 250);
     }
 
     // 2) Cierre del evento. Si no puede persistirse, se revierte el intento y
@@ -184,7 +288,13 @@ export async function ejecutarProcesamientoPosterior(args: {
         finalizado_at: new Date().toISOString(),
         motivo,
         resultado,
-        derivados: { modulo: module_id, aplicado: estadoFinal === "completado" },
+        derivados: {
+          modulo: module_id,
+          aplicado: estadoFinal === "completado",
+          recuperacion_historica,
+          evidencia_at: evidencia?.at ?? null,
+          fuente: evidencia?.fuente ?? null,
+        },
       })
       .eq("id", eventoId);
 
@@ -195,8 +305,13 @@ export async function ejecutarProcesamientoPosterior(args: {
       );
     }
 
-    resultados.push({ module_id, estado: estadoFinal, motivo });
+    resultados.push({
+      module_id,
+      estado: recuperacion_historica ? "recuperado" : estadoFinal,
+      motivo,
+    });
   }
+
 
   // 3) Releer SIEMPRE: el estado se deriva de la bitácora, no de la memoria.
   const eventos = await leerEventos(supabase, runId);
