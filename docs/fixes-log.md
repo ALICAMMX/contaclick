@@ -823,3 +823,10 @@ crear otra sin ofrecer una salida segura.
   El mensaje de e.firma distingue "nunca conectada" de "conectada pero no usable".
 - Pruebas: `src/lib/sat/saneamiento.test.ts` (6 casos) fija que nunca se reenvía
   al SAT una solicitud cuyo destino se desconoce.
+
+## 2026-08-08 — Barrido automático SAT no cerraba corridas atoradas
+**Causa raíz:** la consulta del saneamiento pedía la columna `created_at`, que no existe en `sat_sync_runs`. PostgREST devolvía error, el código sólo leía `data` (que quedaba vacío) y el barrido reportaba "0 revisadas" con éxito aparente. Por eso una corrida estuvo 11 horas en `solicitando`.
+**Cómo se demostró:** dos corridas sintéticas (proveedor `sintetico`, sin contacto con el SAT) sobrevivieron a los ciclos reales del cron de las 17:50 y 18:00 UTC con `runs_revisados = 0`.
+**Corrección:** se quitó la columna inexistente, y ahora un error de lectura se lanza y queda registrado en el heartbeat en vez de silenciarse.
+**Observabilidad nueva:** tabla `sat_cron_heartbeat` (una fila por ejecución, aunque no haya trabajo), sello de versión desplegada y panel de salud en Saldo PAC SAT.
+**Sin efectos colaterales:** saldo PAC 0/0 y cuota del despacho en 0 antes y después.
