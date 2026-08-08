@@ -43,38 +43,28 @@ import {
 
 export type ContextoEFirma = Awaited<ReturnType<typeof abrirEFirma>>;
 
+/**
+ * Abre la e.firma del expediente usando el RESOLVEDOR CENTRAL.
+ * La tarjeta de conexión, el preflight y este runner comparten exactamente la
+ * misma definición de "e.firma activa" y el mismo AAD.
+ */
 async function credencialesDe(
   supabase: SupabaseClient,
   clienteId: string,
+  opts: { despachoId?: string | null; rfcExpediente?: string | null } = {},
 ): Promise<ContextoEFirma> {
-  const { data } = await supabase
-    .from("sat_credenciales")
-    .select("despacho_id, efirma_cer, efirma_key_enc, efirma_pass_enc, estatus, rfc")
-    .eq("cliente_id", clienteId)
-    .maybeSingle();
-  if (!data || data.estatus !== "activo" || !data.efirma_cer || !data.efirma_key_enc) {
-    throw new Error(
-      "Este expediente no tiene una e.firma activa. Cárgala en Descarga SAT para poder solicitar comprobantes.",
-    );
-  }
-  const aadKey = aadExpediente({
-    despachoId: (data as any).despacho_id ?? null,
+  const material = await materialEFirma(supabase, {
     clienteId,
-    rfc: (data as any).rfc ?? null,
-    campo: "key",
-  });
-  const aadPass = aadExpediente({
-    despachoId: (data as any).despacho_id ?? null,
-    clienteId,
-    rfc: (data as any).rfc ?? null,
-    campo: "pass",
+    despachoId: opts.despachoId ?? null,
+    rfcExpediente: opts.rfcExpediente ?? null,
   });
   return abrirEFirma({
-    cer_b64: data.efirma_cer as string,
-    key_b64: await descifrar(data.efirma_key_enc as string, aadKey),
-    password: await descifrar(data.efirma_pass_enc as string, aadPass),
+    cer_b64: material.cer_b64,
+    key_b64: material.key_b64,
+    password: material.password,
   });
 }
+
 
 // ---------------------------------------------------------------------
 // Adaptador: el ciclo asíncrono genérico hablando con el SAT real
