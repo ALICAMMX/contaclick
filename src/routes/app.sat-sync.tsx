@@ -20,6 +20,7 @@ import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { EFirmaCard } from "@/components/EFirmaCard";
 import { semanticaCodigo } from "@/lib/sat/maquina-estados";
 import { descripcionAlcance } from "@/lib/sat/solicitud-xml";
+import { fechaLocalSat, periodoEfectivo, notaCriterio, ETIQUETA_ZONA_SAT } from "@/lib/sat/periodo";
 
 
 export const Route = createFileRoute("/app/sat-sync")({ component: SatSyncPage });
@@ -585,14 +586,17 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
   // Resumen previo al envío: dice EXACTAMENTE qué se pedirá al SAT.
   const rangoUI = (() => {
     const hoy = new Date();
-    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    // Día local del centro de México: usar toISOString adelantaba el día
+    // después de las 18:00 y pedía al SAT un periodo distinto al mostrado.
+    const iso = (d: Date) => fechaLocalSat(d);
     if (f.periodo === "personalizado") return { desde: f.fecha_desde ?? "", hasta: f.fecha_hasta ?? "" };
     if (f.periodo === "30d") {
       const d = new Date(hoy); d.setDate(d.getDate() - 30);
       return { desde: iso(d), hasta: iso(hoy) };
     }
-    if (f.periodo === "ejercicio") return { desde: `${hoy.getFullYear()}-01-01`, hasta: iso(hoy) };
-    return { desde: iso(new Date(hoy.getFullYear(), hoy.getMonth(), 1)), hasta: iso(hoy) };
+    const hoyLocal = iso(hoy);
+    if (f.periodo === "ejercicio") return { desde: `${hoyLocal.slice(0, 4)}-01-01`, hasta: hoyLocal };
+    return { desde: `${hoyLocal.slice(0, 7)}-01`, hasta: hoyLocal };
   })();
   const envio = resumirEnvio({
     emitidos: !!f.emitidos,
@@ -600,6 +604,7 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
     desde: rangoUI.desde,
     hasta: rangoUI.hasta,
   });
+  const periodo = periodoEfectivo(rangoUI.desde, rangoUI.hasta);
 
   return (
     <div className="space-y-4">
@@ -621,7 +626,8 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
                 const ok = window.confirm(
                   `Se enviarán ${envio.solicitudes} solicitud(es) al SAT.\n\n` +
                     `Dirección: ${envio.direcciones_label}\n` +
-                    `Periodo: ${rangoUI.desde} a ${rangoUI.hasta} (${envio.dias} día(s), ambos incluidos)\n\n` +
+                    `Periodo efectivo: ${periodo.valido ? periodo.etiqueta : `${rangoUI.desde} a ${rangoUI.hasta}`}\n\n` +
+                    (f.recibidos ? `${notaCriterio("recibidos")}\n\n` : "") +
                     `Los comprobantes que ya estén en el expediente se contarán como duplicados y no se guardarán dos veces.`,
                 );
                 if (ok) runNow.mutate();
@@ -679,6 +685,14 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
                 ? `Al sincronizar se enviarán ${envio.solicitudes} solicitud(es): ${envio.direcciones_label}, del ${rangoUI.desde} al ${rangoUI.hasta} (${envio.dias} día(s), ambos incluidos).`
                 : envio.motivo}
             </li>
+            {periodo.valido && (
+              <li data-testid="periodo-efectivo">
+                • Periodo efectivo enviado al SAT: <span className="font-mono">{periodo.fechaInicial}</span> a{" "}
+                <span className="font-mono">{periodo.fechaFinal}</span> ({ETIQUETA_ZONA_SAT}).
+              </li>
+            )}
+            {f.emitidos && <li>• {notaCriterio("emitidos")}</li>}
+            {f.recibidos && <li>• {notaCriterio("recibidos")}</li>}
           </ul>
         </div>
 
