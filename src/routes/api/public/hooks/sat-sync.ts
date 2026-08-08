@@ -15,6 +15,8 @@ import { direccionesDe, proveedorActivo } from "@/lib/sat/providers/contrato";
 import { contarSolicitudes, rangoValido } from "@/lib/sat/consumo";
 import { llaveCorrida } from "@/lib/sat/idempotencia";
 import { resolverEstadoCorrida } from "@/lib/sat/maquina-estados";
+import { CRON_SAT_VERSION } from "@/lib/sat/cron-version";
+
 
 function resolverRango(cfg: {
   periodo?: string | null;
