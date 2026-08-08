@@ -13,6 +13,14 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 import { z } from "zod";
+import {
+  MODULO_LABEL,
+  clasificarCfdi,
+  corridaReintentable,
+  enmascararUuid,
+  motivoSinReintento,
+  paqueteSaneado,
+} from "./linaje";
 import { decidirEstadoSat, nivelPac, type CausaSat } from "@/lib/sat/estado-servicio";
 import { computeSaludFiscal } from "@/lib/salud/salud.functions";
 import { computeRiesgoSAT } from "@/lib/riesgo/riesgo.functions";
@@ -269,6 +277,145 @@ export const listSyncEventos = createServerFn({ method: "GET" })
       .order("created_at", { ascending: false })
       .limit(data.limit);
     return rows ?? [];
+  });
+
+/**
+ * DETALLE COMPLETO DE UNA CORRIDA.
+ *
+ * Responde, con evidencia y sin exponer material sensible:
+ *   - identificación y periodo,
+ *   - folios y códigos devueltos por el SAT,
+ *   - paquetes procesados,
+ *   - los comprobantes que entraron (o por qué no entraron),
+ *   - los recálculos ejecutados después.
+ * El alcance está acotado por `assertClienteScope`: sólo el expediente propio.
+ */
+export const detalleCorrida = createServerFn({ method: "GET" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ run_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: run } = await supabase
+      .from("sat_sync_runs")
+      .select("*, clientes(rfc, razon_social)")
+      .eq("id", data.run_id)
+      .maybeSingle();
+    if (!run) throw new Error("La corrida no existe o no pertenece a este expediente.");
+    const scope = await assertClienteScope(supabase as any, userId, (run as any).cliente_id);
+
+    const [{ data: eventos }, { data: docs }] = await Promise.all([
+      supabase
+        .from("sat_sync_eventos")
+        .select("id, tipo, mensaje, uuid_cfdi, monto, payload, created_at")
+        .eq("run_id", data.run_id)
+        .eq("cliente_id", scope.cliente_id)
+        .order("created_at", { ascending: true })
+        .limit(500),
+      supabase
+        .from("cfdi_xml")
+        .select(
+          "id, uuid, tipo_cfdi, fecha, total, rfc_emisor, rfc_receptor, nombre_emisor, nombre_receptor, estatus_sat, validacion, sat_solicitud_id, sat_paquete_id, fecha_carga",
+        )
+        .eq("sat_run_id", data.run_id)
+        .eq("cliente_id", scope.cliente_id)
+        .order("fecha", { ascending: false })
+        .limit(500),
+    ]);
+
+    const rfcExpediente = ((run as any).clientes?.rfc as string) ?? null;
+    const solicitudes = (Array.isArray((run as any).solicitudes) ? (run as any).solicitudes : []) as any[];
+
+    const documentos = (docs ?? []).map((d: any) => ({
+      id: d.id as string,
+      uuid: d.uuid as string,
+      uuid_visible: enmascararUuid(d.uuid),
+      clasificacion: clasificarCfdi({
+        tipo_cfdi: d.tipo_cfdi,
+        rfc_emisor: d.rfc_emisor,
+        rfc_receptor: d.rfc_receptor,
+        rfc_expediente: rfcExpediente,
+      }),
+      tipo_cfdi: d.tipo_cfdi as string,
+      fecha: d.fecha as string,
+      total: Number(d.total ?? 0),
+      contraparte:
+        (d.rfc_emisor ?? "").toUpperCase() === (rfcExpediente ?? "").toUpperCase()
+          ? { rfc: d.rfc_receptor, nombre: d.nombre_receptor }
+          : { rfc: d.rfc_emisor, nombre: d.nombre_emisor },
+      estatus_sat: d.estatus_sat as string,
+      validacion: (d.validacion as string) ?? "aceptado",
+      solicitud_id: d.sat_solicitud_id as string | null,
+      paquete: paqueteSaneado(d.sat_paquete_id),
+      ingresado_at: d.fecha_carga as string,
+    }));
+
+    const evs = eventos ?? [];
+    const recalculos = evs
+      .filter((e: any) => String(e.tipo).startsWith("recalculo"))
+      .map((e: any) => ({
+        modulo: (e.payload?.modulo as string) ?? "desconocido",
+        etiqueta: MODULO_LABEL[e.payload?.modulo as string] ?? "Módulo",
+        ok: e.tipo === "recalculo_ok",
+        pendiente: e.tipo === "recalculo_pendiente",
+        mensaje: e.mensaje as string | null,
+        at: e.created_at as string,
+      }));
+
+    const paquetes = Array.from(
+      new Set(
+        solicitudes
+          .flatMap((s: any) => (Array.isArray(s?.paquetes) ? s.paquetes : []))
+          .map((x: any) => String(x?.id ?? x ?? "")),
+      ),
+    )
+      .filter(Boolean)
+      .map((id) => ({ referencia: paqueteSaneado(id) }));
+
+    return {
+      run: {
+        id: (run as any).id as string,
+        estado: (run as any).estado as string,
+        cobertura: (run as any).cobertura as string | null,
+        detalle: (run as any).detalle as string | null,
+        advertencia: (run as any).advertencia as string | null,
+        periodo: { desde: (run as any).desde as string, hasta: (run as any).hasta as string },
+        proveedor: (run as any).proveedor as string | null,
+        iniciado_at: (run as any).iniciado_at as string,
+        finalizado_at: (run as any).finalizado_at as string | null,
+        duracion_ms: (run as any).duracion_ms as number | null,
+        rfc: rfcExpediente,
+        razon_social: ((run as any).clientes?.razon_social as string) ?? null,
+        totales: {
+          encontrados: Number((run as any).descargados ?? 0),
+          nuevos: Number((run as any).nuevos ?? 0),
+          duplicados: Number((run as any).duplicados ?? 0),
+          rechazados: Number((run as any).rechazados ?? 0),
+          paquetes: Number((run as any).paquetes_procesados ?? 0),
+        },
+      },
+      solicitudes: solicitudes.map((s: any) => ({
+        direccion: s?.direccion ?? null,
+        tipo: s?.tipo ?? null,
+        estado_comprobante: s?.estado ?? null,
+        folio_sat: s?.id_solicitud ?? null,
+        codigo: s?.codigo ?? null,
+        mensaje: s?.mensaje ?? null,
+        estado: s?.estado_solicitud ?? null,
+        terminal: semanticaCodigo(String(s?.codigo ?? "")).terminal,
+      })),
+      paquetes,
+      documentos,
+      recalculos,
+      eventos: evs.map((e: any) => ({
+        id: e.id as string,
+        tipo: e.tipo as string,
+        mensaje: e.mensaje as string | null,
+        uuid_visible: e.uuid_cfdi ? enmascararUuid(e.uuid_cfdi) : null,
+        at: e.created_at as string,
+      })),
+      reintentable: corridaReintentable(run as any),
+      motivo_sin_reintento: corridaReintentable(run as any) ? null : motivoSinReintento(run as any),
+    };
   });
 
 // ============= ESTADO DEL SERVICIO (fuente única del candado) =============
@@ -815,7 +962,17 @@ export const runSyncNow = createServerFn({ method: "POST" })
 
     // 5) Cascada SOLO si la corrida terminó y trajo comprobantes nuevos.
     if (data.cascade && terminal && resumen.xml_nuevos > 0) {
-      await ejecutarCascada(cli.id);
+      await recalcularYCerrar({
+        supabase,
+        clienteId: cli.id,
+        despachoId: cli.despacho_id,
+        runId,
+        resumen: {
+          xml_nuevos: resumen.xml_nuevos,
+          duplicados: resumen.duplicados,
+          rechazados: resumen.rechazados,
+        },
+      });
     }
 
     return {
@@ -835,18 +992,70 @@ export const runSyncNow = createServerFn({ method: "POST" })
     };
   });
 
-async function ejecutarCascada(clienteId: string) {
-  const safe = async (fn: () => Promise<any>, label: string) => {
+/**
+ * Recálculos posteriores a una descarga.
+ *
+ * Cada módulo deja un EVENTO con su resultado (ok o fallo) ligado a la corrida:
+ * el detalle de la corrida debe poder responder "qué se recalculó y cuándo",
+ * y una corrida no se declara completada sin esa evidencia.
+ */
+async function ejecutarCascada(
+  clienteId: string,
+  ctx?: { supabase: any; despachoId?: string | null; runId?: string | null },
+) {
+  const resultados: Array<{ modulo: string; ok: boolean; mensaje?: string; ms: number }> = [];
+  const safe = async (fn: () => Promise<any>, modulo: string) => {
+    const t0 = Date.now();
     try {
       await fn();
+      resultados.push({ modulo, ok: true, ms: Date.now() - t0 });
     } catch (e: any) {
-      console.warn(`[sat-sync cascada] ${label} falló:`, e?.message ?? e);
+      const mensaje = String(e?.message ?? e).slice(0, 250);
+      console.warn(`[sat-sync cascada] ${modulo} falló:`, mensaje);
+      resultados.push({ modulo, ok: false, mensaje, ms: Date.now() - t0 });
     }
   };
-  await safe(() => computeSaludFiscal({ data: { cliente_id: clienteId } }), "Salud Fiscal");
-  await safe(() => computeRiesgoSAT({ data: { cliente_id: clienteId } }), "Riesgo SAT");
-  await safe(() => runExpressAudit({ data: { cliente_id: clienteId } }), "Auditor Express");
-  await safe(() => scanClienteEfos({ data: { cliente_id: clienteId } }), "EFOS");
+  await safe(() => computeSaludFiscal({ data: { cliente_id: clienteId } }), "salud_fiscal");
+  await safe(() => computeRiesgoSAT({ data: { cliente_id: clienteId } }), "riesgo_sat");
+  await safe(() => runExpressAudit({ data: { cliente_id: clienteId } }), "auditor_cfdi");
+  await safe(() => scanClienteEfos({ data: { cliente_id: clienteId } }), "efos");
+
+  if (ctx?.supabase && ctx.runId) {
+    try {
+      await ctx.supabase.from("sat_sync_eventos").insert(
+        resultados.map((r) => ({
+          despacho_id: ctx.despachoId ?? null,
+          cliente_id: clienteId,
+          run_id: ctx.runId,
+          tipo: r.ok ? "recalculo_ok" : "recalculo_fallido",
+          mensaje: r.ok
+            ? `${MODULO_LABEL[r.modulo] ?? r.modulo} recalculado tras la descarga.`
+            : `${MODULO_LABEL[r.modulo] ?? r.modulo} no pudo recalcularse: ${r.mensaje}`,
+          payload: { modulo: r.modulo, ok: r.ok, duracion_ms: r.ms },
+        })),
+      );
+    } catch (e: any) {
+      console.warn("[sat-sync cascada] no se pudieron registrar los eventos:", e?.message ?? e);
+    }
+  }
+  return resultados;
+}
+
+/** Ejecuta los recálculos y cierra la corrida que quedó en `recalculando`. */
+async function recalcularYCerrar(args: {
+  supabase: any;
+  clienteId: string;
+  despachoId?: string | null;
+  runId: string;
+  resumen: { xml_nuevos: number; duplicados: number; rechazados: number };
+}) {
+  await ejecutarCascada(args.clienteId, {
+    supabase: args.supabase,
+    despachoId: args.despachoId,
+    runId: args.runId,
+  });
+  const { cerrarTrasRecalculo } = await import("@/lib/sat/sat-directo-runner.server");
+  await cerrarTrasRecalculo(args.supabase, args.runId, args.resumen);
 }
 
 /**
@@ -885,14 +1094,27 @@ export const cosecharAhora = createServerFn({ method: "POST" })
         supabase,
         despachoId: scope.despacho_id,
         clienteId: scope.cliente_id,
+        runId: (run as any).id as string,
         solicitudes: sols,
       });
       nuevos += r.resumen.xml_nuevos;
       if (await guardarAvanceCorrida(supabase, (run as any).id, r.solicitudes, r.resumen)) {
         terminadas++;
+        if (r.resumen.xml_nuevos > 0) {
+          await recalcularYCerrar({
+            supabase,
+            clienteId: scope.cliente_id,
+            despachoId: scope.despacho_id,
+            runId: (run as any).id as string,
+            resumen: {
+              xml_nuevos: r.resumen.xml_nuevos,
+              duplicados: r.resumen.duplicados,
+              rechazados: r.resumen.rechazados,
+            },
+          });
+        }
       }
     }
-    if (nuevos > 0) await ejecutarCascada(scope.cliente_id);
     return { ok: true, revisadas: runs.length, nuevos, terminadas };
   });
 
@@ -1022,6 +1244,7 @@ export const reintentarCorrida = createServerFn({ method: "POST" })
       supabase,
       despachoId: scope.despacho_id,
       clienteId: scope.cliente_id,
+      runId: (run as any).id as string,
       solicitudes: reap.solicitudes,
     });
     const terminada = await guardarAvanceCorrida(
@@ -1030,7 +1253,19 @@ export const reintentarCorrida = createServerFn({ method: "POST" })
       r.solicitudes,
       r.resumen,
     );
-    if (r.resumen.xml_nuevos > 0) await ejecutarCascada(scope.cliente_id);
+    if (r.resumen.xml_nuevos > 0) {
+      await recalcularYCerrar({
+        supabase,
+        clienteId: scope.cliente_id,
+        despachoId: scope.despacho_id,
+        runId: (run as any).id as string,
+        resumen: {
+          xml_nuevos: r.resumen.xml_nuevos,
+          duplicados: r.resumen.duplicados,
+          rechazados: r.resumen.rechazados,
+        },
+      });
+    }
 
     return {
       ok: true,
@@ -1054,19 +1289,39 @@ export const aplicarRecalculosPendientes = createServerFn({ method: "POST" })
     const scope = await assertClienteScope(supabase as any, userId, data.cliente_id);
     const { data: pend } = await supabase
       .from("sat_sync_eventos")
-      .select("id")
+      .select("id, run_id")
       .eq("cliente_id", scope.cliente_id)
       .eq("despacho_id", scope.despacho_id)
       .eq("tipo", "recalculo_pendiente")
       .limit(20);
     if (!pend?.length) return { ok: true, recalculado: false };
 
-    await ejecutarCascada(scope.cliente_id);
+    await ejecutarCascada(scope.cliente_id, {
+      supabase,
+      despachoId: scope.despacho_id,
+      runId: (pend[0] as any)?.run_id ?? null,
+    });
     await supabase
       .from("sat_sync_eventos")
       .update({ tipo: "recalculo_aplicado" })
       .in("id", pend.map((p: any) => p.id));
-    return { ok: true, recalculado: true };
+
+    // Las corridas que el cron dejó esperando recálculo ya pueden cerrarse:
+    // la evidencia de los módulos quedó registrada arriba.
+    const { cerrarTrasRecalculo } = await import("@/lib/sat/sat-directo-runner.server");
+    const { data: pendientesRun } = await supabase
+      .from("sat_sync_runs")
+      .select("id, nuevos, duplicados, rechazados")
+      .eq("cliente_id", scope.cliente_id)
+      .eq("estado", "recalculando");
+    for (const r of pendientesRun ?? []) {
+      await cerrarTrasRecalculo(supabase, (r as any).id, {
+        xml_nuevos: Number((r as any).nuevos ?? 0),
+        duplicados: Number((r as any).duplicados ?? 0),
+        rechazados: Number((r as any).rechazados ?? 0),
+      });
+    }
+    return { ok: true, recalculado: true, cerradas: (pendientesRun ?? []).length };
   });
 
 // ============= PAUSA / REANUDA =============

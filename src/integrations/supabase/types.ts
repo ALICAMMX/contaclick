@@ -522,15 +522,21 @@ export type Database = {
           moneda: string | null
           nombre_emisor: string | null
           nombre_receptor: string | null
+          origen: string | null
+          proveedor: string | null
           rfc_emisor: string
           rfc_id: string
           rfc_receptor: string
+          sat_paquete_id: string | null
+          sat_run_id: string | null
+          sat_solicitud_id: string | null
           subtotal: number
           tipo_cambio: number | null
           tipo_cfdi: string
           total: number
           uso_cfdi: string | null
           uuid: string
+          validacion: string | null
           version: string
         }
         Insert: {
@@ -554,15 +560,21 @@ export type Database = {
           moneda?: string | null
           nombre_emisor?: string | null
           nombre_receptor?: string | null
+          origen?: string | null
+          proveedor?: string | null
           rfc_emisor: string
           rfc_id: string
           rfc_receptor: string
+          sat_paquete_id?: string | null
+          sat_run_id?: string | null
+          sat_solicitud_id?: string | null
           subtotal?: number
           tipo_cambio?: number | null
           tipo_cfdi: string
           total?: number
           uso_cfdi?: string | null
           uuid: string
+          validacion?: string | null
           version?: string
         }
         Update: {
@@ -586,15 +598,21 @@ export type Database = {
           moneda?: string | null
           nombre_emisor?: string | null
           nombre_receptor?: string | null
+          origen?: string | null
+          proveedor?: string | null
           rfc_emisor?: string
           rfc_id?: string
           rfc_receptor?: string
+          sat_paquete_id?: string | null
+          sat_run_id?: string | null
+          sat_solicitud_id?: string | null
           subtotal?: number
           tipo_cambio?: number | null
           tipo_cfdi?: string
           total?: number
           uso_cfdi?: string | null
           uuid?: string
+          validacion?: string | null
           version?: string
         }
         Relationships: [
@@ -617,6 +635,13 @@ export type Database = {
             columns: ["rfc_id"]
             isOneToOne: false
             referencedRelation: "rfcs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cfdi_xml_sat_run_id_fkey"
+            columns: ["sat_run_id"]
+            isOneToOne: false
+            referencedRelation: "sat_sync_runs"
             referencedColumns: ["id"]
           },
         ]

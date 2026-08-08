@@ -9,6 +9,8 @@ import {
   RefreshCw, ShieldCheck, AlertTriangle, FileStack, Clock, PlugZap, Loader2,
   Pause, Play, Settings as SettingsIcon, ArrowLeft, Ban, Wallet, Hourglass,
 } from "lucide-react";
+import { CorridaDetalleDialog } from "@/components/sat/CorridaDetalle";
+import { corridaReintentable, motivoSinReintento } from "@/lib/sat/linaje";
 import { dashboardSatSync, runSyncNow, listSyncRuns, listSyncEventos, setSyncActivo, getSatSyncConfig, upsertSatSyncConfig, estadoServicioSat, cosecharAhora, reintentarCorrida, cerrarCorridaSat } from "@/lib/sat/sat-sync.functions";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { Button } from "@/components/ui/button";
@@ -152,8 +154,9 @@ function motivoCorridaUi(r: any): string {
  * la configuración y crear una corrida nueva.
  */
 function esRechazoTerminal(r: any): boolean {
-  const sols: any[] = Array.isArray(r?.solicitudes) ? r.solicitudes : [];
-  return sols.some((s) => s?.codigo && semanticaCodigo(String(s.codigo)).terminal);
+  // Criterio ÚNICO compartido con el servidor: si no es reintentable, no se
+  // ofrece el botón. Así la UI nunca invita a repetir un error terminal.
+  return !corridaReintentable(r);
 }
 
 function Kpi({ icon: Icon, label, value, hint, tone }: any) {
@@ -502,6 +505,7 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
     onError: (e: any) => toast.error(e?.message ?? "Error"),
   });
 
+  const [detalleId, setDetalleId] = useState<string | null>(null);
   const fnReintentar = useServerFn(reintentarCorrida);
   const reintentar = useMutation({
     mutationFn: (runId: string) => fnReintentar({ data: { cliente_id: clienteId, run_id: runId } }),
@@ -677,10 +681,18 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
                   </div>
                   {r.advertencia && <div className="text-xs text-warning mt-0.5">{r.advertencia}</div>}
                   {(r.estado === "error" || r.estado === "vencida") && (
-                    <div className="text-xs text-destructive mt-0.5">{motivoCorridaUi(r)}</div>
+                    <>
+                      <div className="text-xs text-destructive mt-0.5">{motivoCorridaUi(r)}</div>
+                      {esRechazoTerminal(r) && (
+                        <div className="text-xs text-muted-foreground mt-0.5">{motivoSinReintento(r)}</div>
+                      )}
+                    </>
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  <Button size="sm" variant="ghost" onClick={() => setDetalleId(r.id)}>
+                    Ver detalle
+                  </Button>
                   {["error", "parcial", "vencida"].includes(String(r.estado ?? "")) && !esRechazoTerminal(r) && (
                     <Button
                       size="sm"
@@ -702,6 +714,8 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
           </ul>
         )}
       </div>
+
+      <CorridaDetalleDialog runId={detalleId} onClose={() => setDetalleId(null)} />
     </div>
   );
 }

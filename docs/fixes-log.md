@@ -884,3 +884,39 @@ combinaciones prohibidas CFDI+Cancelado/Todos).
 esperando_sat; recibidos cancelados → rechazo local sin firma ni red; 301 →
 error terminal sin reintento). Total: 423 pruebas en verde.
 Sin e.firma real y sin contacto con el SAT.
+
+## 2026-08-09 — Trazabilidad operativa de SAT Sync
+
+**Síntoma.** Una corrida real terminaba en "completada" sin poder responder qué
+trajo: no había forma de ver folios, paquetes ni los comprobantes ingresados, y
+el rechazo de la corrida aparecía en la tarjeta de e.firma como si el
+certificado estuviera roto.
+
+**Causa.** Los XML se guardaban sin linaje (no existía vínculo con la corrida,
+la solicitud ni el paquete), los recálculos posteriores no dejaban evidencia y
+la UI leía `last_error` de la credencial sin distinguir su origen.
+
+**Corrección.**
+- Columnas de linaje en `cfdi_xml`: `origen`, `proveedor`, `sat_run_id`,
+  `sat_solicitud_id`, `sat_paquete_id`, `validacion` (+ índices de consulta).
+- `ingestOneInternal` acepta y persiste el linaje; el runner registra un evento
+  por documento (`nuevo`, `duplicado`, `rechazado`) ligado a la corrida.
+- Estado `recalculando`: una corrida con comprobantes nuevos ya no puede
+  cerrarse como completada sin evidencia de los recálculos
+  (`cerrarTrasRecalculo`). Cada módulo deja `recalculo_ok` / `recalculo_fallido`.
+- Nuevo `detalleCorrida`: identificación, folios y códigos del SAT, paquetes,
+  comprobantes clasificados (ingreso/gasto/nómina/pago) y recálculos. UUID,
+  RFC y referencias de paquete se muestran enmascarados; el alcance sigue
+  acotado por `assertClienteScope`.
+- Módulo puro `src/lib/sat/linaje.ts` con el criterio ÚNICO de reintento
+  (servidor y UI) y la separación entre errores de credencial y de corrida.
+  Un rechazo terminal (familia 3xx) ya no ofrece "Reintentar" y explica por qué.
+- `EFirmaCard` sólo muestra fallos del certificado; los errores de corrida
+  quedaron en SAT Sync.
+
+**Pruebas.** `src/lib/sat/linaje.test.ts` (14 casos) + suite completa: 437 pasan.
+
+**Verificación de la corrida real** (anonimizada): corrida `c80cbaa3…`,
+1 comprobante `BCDD4B19…4703`. Se reconstruyó su linaje (proveedor
+`sat_directo`, paquete `58F4A014…_01`) y se registró el evento correspondiente.
+No se contactó al SAT ni se usó la e.firma real.
