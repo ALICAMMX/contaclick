@@ -123,13 +123,18 @@ function ingestorDe(
 export async function solicitarDescargas(args: {
   supabase: SupabaseClient;
   clienteId: string;
+  despachoId?: string | null;
   rfc: string;
   desde: string;
   hasta: string;
   direcciones: DireccionDescarga[];
 }): Promise<{ solicitudes: SolicitudRegistro[]; errores: string[] }> {
-  const creds = await credencialesDe(args.supabase, args.clienteId);
+  const creds = await credencialesDe(args.supabase, args.clienteId, {
+    despachoId: args.despachoId ?? null,
+    rfcExpediente: args.rfc,
+  });
   const token = await satAutenticar(creds);
+
   return solicitarCiclo(clienteSat(creds, token, args.rfc), {
     desde: args.desde,
     hasta: args.hasta,
