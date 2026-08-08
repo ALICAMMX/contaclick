@@ -520,7 +520,7 @@ export const completarProcesamiento = createServerFn({ method: "POST" })
     if (despues.terminal) {
       patch['finalizado_at'] = (run as any).finalizado_at ?? new Date().toISOString();
     }
-    await supabase.from("sat_sync_runs").update(patch).eq("id", (run as any).id);
+    await supabase.from("sat_sync_runs").update(patch as any).eq("id", (run as any).id);
 
     await supabase.from("audit_logs").insert({
       user_id: userId,
