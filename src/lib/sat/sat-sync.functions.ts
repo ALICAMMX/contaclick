@@ -382,7 +382,7 @@ export const detalleCorrida = createServerFn({ method: "GET" })
       pendiente: e.estado === "iniciado",
       omitido: e.estado === "omitido",
       motivo: e.motivo ?? null,
-      resultado: (e.resultado as Record<string, unknown>) ?? null,
+      resultado: (e.resultado as Record<string, string | number | boolean | null>) ?? null,
       iniciado_at: e.iniciado_at ?? null,
       finalizado_at: e.finalizado_at ?? null,
     }));
