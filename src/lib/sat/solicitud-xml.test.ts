@@ -80,10 +80,11 @@ describe("constructor corregido — XML recibidos", () => {
   });
 
   it("mantiene el orden alfabético de la canonicalización", () => {
-    const orden = [...s.canonical.matchAll(/(\w+)="/g)].map((m) => m[1]!).filter(
-      (n) => n !== "xmlns:des",
-    );
+    const orden = [...s.canonical.matchAll(/([\w:]+)="/g)]
+      .map((m) => m[1]!)
+      .filter((n) => !n.startsWith("xmlns") && n !== "des");
     expect(orden).toEqual([...orden].sort());
+
   });
 
   it("por omisión del estado cae en el valor seguro Vigente", () => {
