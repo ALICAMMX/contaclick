@@ -100,9 +100,15 @@ BEGIN
   INSERT INTO qa VALUES ('negativo: corrida de otro expediente/despacho',
     v_res->>'motivo' = 'CORRIDA_FUERA_DE_ALCANCE', v_res::text);
 
-  v_res := public.cfdi_registrar_evidencia_sat(v_cfdi_b, v_run_a, 'SOL-A', 'PKG-A1');
-  INSERT INTO qa VALUES ('negativo: CFDI de otro despacho',
-    v_res->>'motivo' = 'CORRIDA_FUERA_DE_ALCANCE', v_res::text);
+  -- El CFDI pertenece a OTRO despacho: la autorización corta antes de cualquier lectura.
+  v_ok := false;
+  BEGIN
+    PERFORM public.cfdi_registrar_evidencia_sat(v_cfdi_b, v_run_a, 'SOL-A', 'PKG-A1');
+    v_msg := 'no lanzó excepción';
+  EXCEPTION WHEN OTHERS THEN
+    v_ok := SQLERRM LIKE '%No autorizado%'; v_msg := SQLERRM;
+  END;
+  INSERT INTO qa VALUES ('negativo: CFDI de otro despacho rechazado por autorización', v_ok, v_msg);
 
   v_res := public.cfdi_registrar_evidencia_sat(v_cfdi_a, v_run_a, 'SOL-INEXISTENTE', 'PKG-A1');
   INSERT INTO qa VALUES ('negativo: solicitud fuera de la corrida',
