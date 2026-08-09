@@ -247,6 +247,11 @@ export async function ingestOneInternal(
     .single();
   if (error || !ins) throw new Error(`Error al guardar CFDI: ${error?.message}`);
 
+  // Bitácora inmutable de evidencia también para el documento NUEVO que llega
+  // dentro del paquete. Idempotente: repetir el paquete no duplica evidencia.
+  await reconciliarEvidenciaSat(supabase, ins.id as string, linaje);
+
+
   // NORMALIZACIÓN FISCAL: conceptos, impuestos detallados, relaciones y
   // complemento de pagos 2.0. Fuente única: `src/lib/cierre/persistencia.ts`.
   // Sólo se normaliza ESTE documento; ningún análisis pesado se dispara aquí.
