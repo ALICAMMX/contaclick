@@ -22,7 +22,6 @@ import {
 import { MOTIVOS_EXCEPCION, type CodigoExcepcion } from "./motivos";
 import {
   ACTOR_SISTEMA,
-  ESTADO_CIERRE_AUTOMATICO,
   MOTIVO_CAUSA_DESAPARECIO,
   planificarExcepciones,
 } from "./excepciones";
