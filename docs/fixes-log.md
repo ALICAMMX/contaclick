@@ -1157,3 +1157,21 @@ contra base de datos.
 5. **Pruebas permanentes de base de datos.** `supabase/tests/cierre_audit.sql`
    (transacción con ROLLBACK). Ejecución real: `QA_RESULTADO=TODAS_PASARON`,
    sin datos residuales.
+
+## 2026-08-09 — Cierre final del bloque de cierre mensual
+
+1. **Evidencia SAT sin valores por defecto**: se eliminó el fallback
+   `solicitud.estado_comprobante ?? "Vigente"` en la cosecha
+   (`src/lib/sat/ciclo-asincrono.ts`) y el default de `nuevaSolicitud`
+   (`maquina-estados.ts`). Una solicitud histórica sin `EstadoComprobante`
+   persistido ingesta el XML con `estatus_sat="desconocido"`, sin fuente ni
+   fecha de evidencia. Prueba: `src/lib/sat/evidencia.test.ts`.
+2. **Excepciones y bitácora atómicas**: nuevas funciones SQL
+   `cierre_excepcion_cerrar_automatica` y `cierre_excepcion_crear_ocurrencia`.
+   `sincronizarExcepciones` las invoca y comprueba TODOS los errores.
+3. **Pruebas por la ruta real**: `supabase/tests/cierre_audit.sql` ejecuta las
+   mismas funciones de producción (nada de UPDATE/INSERT manuales), usa la
+   fuente canónica `descarga_masiva_sat`, prueba `UPDATE` sobre columnas
+   existentes (`proceso`, `estado_anterior`) y verifica rollback total ante
+   fallo intencional de bitácora. Resultado: `QA_RESULTADO=TODAS_PASARON`,
+   cero residuos.

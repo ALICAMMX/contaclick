@@ -5547,6 +5547,28 @@ export type Database = {
           reset_at: string
         }[]
       }
+      cierre_excepcion_cerrar_automatica: {
+        Args: { _actor?: string; _ids: string[]; _motivo?: string }
+        Returns: {
+          cerrada_id: string
+        }[]
+      }
+      cierre_excepcion_crear_ocurrencia: {
+        Args: {
+          _actor?: string
+          _cfdi_id: string
+          _cliente_id: string
+          _codigo: string
+          _despacho_id: string
+          _detalle: Json
+          _excepcion_previa_id?: string
+          _ocurrencia: number
+          _periodo: string
+          _severidad: string
+          _titulo: string
+        }
+        Returns: string
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean

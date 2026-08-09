@@ -46,8 +46,11 @@ export type SolicitudRegistro = {
   desde: string;
   hasta: string;
   tipo: TipoSolicitudSat;
-  /** Atributo EstadoComprobante realmente enviado al SAT en esta solicitud. */
-  estado_comprobante: EstadoComprobante;
+  /**
+   * Atributo EstadoComprobante realmente enviado al SAT en esta solicitud.
+   * `null` en solicitudes históricas que no lo persistieron: NUNCA se supone.
+   */
+  estado_comprobante: EstadoComprobante | null;
   id_solicitud: string;
   codigo: string;
   mensaje: string;
@@ -73,14 +76,14 @@ export function nuevaSolicitud(args: {
   mensaje?: string;
   estado?: EstadoSolicitud;
   error?: string | null;
-  estado_comprobante?: EstadoComprobante;
+  estado_comprobante?: EstadoComprobante | null;
 }): SolicitudRegistro {
   return {
     direccion: args.direccion,
     desde: args.desde,
     hasta: args.hasta,
     tipo: "CFDI",
-    estado_comprobante: args.estado_comprobante ?? "Vigente",
+    estado_comprobante: args.estado_comprobante ?? null,
     id_solicitud: args.id_solicitud,
     codigo: args.codigo ?? "",
     mensaje: args.mensaje ?? "",

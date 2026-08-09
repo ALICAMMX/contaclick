@@ -57,8 +57,12 @@ export type AbrirPaquete = (zipB64: string) => Promise<ArchivoPaquete[]>;
 export type ContextoIngesta = {
   idSolicitud: string;
   idPaquete: string;
-  /** EstadoComprobante de la solicitud persistida. Nunca lo elige el cliente. */
-  estadoComprobante: EstadoComprobante;
+  /**
+   * EstadoComprobante de la solicitud persistida. Nunca lo elige el cliente y
+   * nunca se rellena por defecto: si la solicitud no lo declara, viaja `null`
+   * y el documento se ingesta sin evidencia de estatus.
+   */
+  estadoComprobante: EstadoComprobante | null;
 };
 export type Ingestar = (
   archivo: ArchivoPaquete,
@@ -75,13 +79,13 @@ export async function solicitarCiclo(
     desde: string;
     hasta: string;
     direcciones: DireccionDescarga[];
-    /** EstadoComprobante enviado al SAT. Se persiste con la solicitud. */
-    estadoComprobante?: EstadoComprobante;
+    /** EstadoComprobante enviado al SAT. Se persiste tal cual con la solicitud. */
+    estadoComprobante: EstadoComprobante;
   },
 ): Promise<{ solicitudes: SolicitudRegistro[]; errores: string[] }> {
   const solicitudes: SolicitudRegistro[] = [];
   const errores: string[] = [];
-  const estado_comprobante: EstadoComprobante = args.estadoComprobante ?? "Vigente";
+  const estado_comprobante: EstadoComprobante = args.estadoComprobante;
 
   for (const direccion of args.direcciones) {
     try {
@@ -229,7 +233,9 @@ export async function cosecharSolicitudCiclo(args: {
           idSolicitud: solicitud.id_solicitud,
           idPaquete,
           // Evidencia server-side: sale de la solicitud persistida, no del cliente.
-          estadoComprobante: solicitud.estado_comprobante ?? "Vigente",
+          // Sin fallback: una solicitud histórica sin EstadoComprobante
+          // persistido produce ingesta SIN evidencia (estatus desconocido).
+          estadoComprobante: solicitud.estado_comprobante ?? null,
         });
         if (r.duplicado) duplicados++;
         else nuevos++;

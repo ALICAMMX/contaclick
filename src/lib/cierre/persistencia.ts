@@ -22,7 +22,6 @@ import {
 import { MOTIVOS_EXCEPCION, type CodigoExcepcion } from "./motivos";
 import {
   ACTOR_SISTEMA,
-  ESTADO_CIERRE_AUTOMATICO,
   MOTIVO_CAUSA_DESAPARECIO,
   planificarExcepciones,
 } from "./excepciones";
@@ -289,12 +288,13 @@ export async function sincronizarExcepciones(
   supabase: SupabaseClient,
   args: { despachoId: string; clienteId: string; periodo: string; evaluacion: EvaluacionPeriodo },
 ): Promise<{ creadas: number; cerradas: number; vigentes: number }> {
-  const { data: existentes } = await supabase
+  const { data: existentes, error: errLectura } = await supabase
     .from("cierre_excepciones")
     .select("id, codigo, cfdi_id, estado, ocurrencia, created_at")
     .eq("cliente_id", args.clienteId)
     .eq("periodo", args.periodo)
     .order("created_at", { ascending: true });
+  if (errLectura) throw new Error(`No se pudo leer la bandeja de excepciones: ${errLectura.message}`);
 
   const plan = planificarExcepciones({
     existentes: (existentes ?? []) as any,
@@ -306,63 +306,34 @@ export async function sincronizarExcepciones(
     })),
   });
 
-  if (plan.nuevas.length) {
-    const { data: creadas } = await supabase
-      .from("cierre_excepciones")
-      .insert(
-        plan.nuevas.map((e) => ({
-          despacho_id: args.despachoId,
-          cliente_id: args.clienteId,
-          periodo: args.periodo,
-          cfdi_id: e.cfdi_id,
-          codigo: e.codigo,
-          severidad: MOTIVOS_EXCEPCION[e.codigo as CodigoExcepcion].severidad,
-          titulo: e.titulo,
-          detalle: e.detalle as any,
-          estado: "pendiente",
-          ocurrencia: e.ocurrencia,
-          excepcion_previa_id: e.excepcion_previa_id,
-          reactivada_at: e.excepcion_previa_id ? new Date().toISOString() : null,
-        })),
-      )
-      .select("id, ocurrencia, excepcion_previa_id");
-
-    // Bitácora de la reaparición: nunca se pierde el rastro de la ocurrencia previa.
-    const reaparecidas = ((creadas ?? []) as any[]).filter((c: any) => c.excepcion_previa_id);
-    if (reaparecidas.length) {
-      await supabase.from("cierre_excepcion_bitacora").insert(
-        reaparecidas.map((c: any) => ({
-          excepcion_id: c.id,
-          user_id: null,
-          accion: "reaparicion",
-          motivo: `Ocurrencia ${c.ocurrencia}. La causa reapareció tras un cierre automático (actor: ${ACTOR_SISTEMA}).`,
-        })),
-      );
-    }
+  // ALTA + EVENTO DE REAPARICIÓN: una sola transacción por ocurrencia. Si la
+  // bitácora falla, la base revierte el alta: nunca queda un evento huérfano
+  // ni una reaparición sin rastro.
+  for (const e of plan.nuevas) {
+    const { error } = await supabase.rpc("cierre_excepcion_crear_ocurrencia", {
+      _despacho_id: args.despachoId,
+      _cliente_id: args.clienteId,
+      _periodo: args.periodo,
+      _cfdi_id: e.cfdi_id,
+      _codigo: e.codigo,
+      _severidad: MOTIVOS_EXCEPCION[e.codigo as CodigoExcepcion].severidad,
+      _titulo: e.titulo,
+      _detalle: (e.detalle ?? {}) as any,
+      _ocurrencia: e.ocurrencia,
+      _excepcion_previa_id: e.excepcion_previa_id,
+      _actor: ACTOR_SISTEMA,
+    });
+    if (error) throw new Error(`La excepción no se registró (transacción revertida): ${error.message}`);
   }
 
+  // CIERRE AUTOMÁTICO + BITÁCORA: también atómico y sin DELETE.
   if (plan.cerrar.length) {
-    const ahora = new Date().toISOString();
-    await supabase
-      .from("cierre_excepciones")
-      .update({
-        estado: ESTADO_CIERRE_AUTOMATICO,
-        cerrada_motivo: MOTIVO_CAUSA_DESAPARECIO,
-        motivo: MOTIVO_CAUSA_DESAPARECIO,
-        resuelta_at: ahora,
-        resuelta_por: null,
-        updated_at: ahora,
-      })
-      .in("id", plan.cerrar);
-
-    await supabase.from("cierre_excepcion_bitacora").insert(
-      plan.cerrar.map((id: string) => ({
-        excepcion_id: id,
-        user_id: null,
-        accion: ESTADO_CIERRE_AUTOMATICO,
-        motivo: `${MOTIVO_CAUSA_DESAPARECIO} · actor: ${ACTOR_SISTEMA} · ${ahora}`,
-      })),
-    );
+    const { error } = await supabase.rpc("cierre_excepcion_cerrar_automatica", {
+      _ids: plan.cerrar,
+      _motivo: MOTIVO_CAUSA_DESAPARECIO,
+      _actor: ACTOR_SISTEMA,
+    });
+    if (error) throw new Error(`El cierre automático no se guardó (transacción revertida): ${error.message}`);
   }
 
   return {
@@ -371,4 +342,5 @@ export async function sincronizarExcepciones(
     vigentes: args.evaluacion.excepciones.length,
   };
 }
+
 

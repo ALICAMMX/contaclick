@@ -153,7 +153,57 @@ describe("cadena solicitud vigente → paquete → ingesta → cfdi_xml", () => 
     expect(fila.estatus_sat_evidencia_at).toBeNull();
     expect(fila.origen).toBe("carga_manual");
   });
+
+  // Solicitudes históricas: se persistieron ANTES de que el registro guardara
+  // EstadoComprobante. Tienen folio y paquete reales, pero el dato no existe.
+  // El XML se ingesta —no se pierde— pero SIN evidencia inventada.
+  it("solicitud histórica sin estado_comprobante ingesta como desconocida", async () => {
+    const cliente = clienteSintetico();
+    const { solicitudes } = await solicitarCiclo(cliente, {
+      desde: "2026-03-01",
+      hasta: "2026-03-31",
+      direcciones: ["recibidos"],
+      estadoComprobante: "Vigente",
+    });
+    // Registro histórico: folio y paquete sí; EstadoComprobante no.
+    const historica = {
+      ...solicitudes[0]!,
+      estado_comprobante: null,
+      paquetes_encontrados: ["PKG-0001"],
+    };
+
+    const fake = fakeSupabase();
+    await cosecharSolicitudCiclo({
+      cliente,
+      solicitud: historica,
+      abrirPaquete: async () => [{ nombre: "cfdi.xml", xml: XML }],
+      ingestar: async (archivo, ctx) => {
+        expect(ctx.idSolicitud).toBe("SOL-0001");
+        expect(ctx.idPaquete).toBe("PKG-0001");
+        // Sin fallback: el contexto llega nulo, no "Vigente".
+        expect(ctx.estadoComprobante).toBeNull();
+        const r = await ingestOneInternal(fake.client, DESPACHO, CLIENTE, archivo.nombre, archivo.xml, {
+          origen: ORIGEN_DESCARGA_MASIVA,
+          proveedor: "sat_directo",
+          run_id: null,
+          solicitud_id: ctx.idSolicitud,
+          paquete_id: ctx.idPaquete,
+          estado_comprobante: ctx.estadoComprobante,
+        });
+        return { duplicado: r.duplicado };
+      },
+    });
+
+    const fila = (fake.insertados["cfdi_xml"] ?? [])[0];
+    expect(fila).toBeTruthy();
+    expect(fila.sat_solicitud_id).toBe("SOL-0001");
+    expect(fila.sat_paquete_id).toBe("PKG-0001");
+    expect(fila.estatus_sat).toBe("desconocido");
+    expect(fila.estatus_sat_fuente).toBeNull();
+    expect(fila.estatus_sat_evidencia_at).toBeNull();
+  });
 });
+
 
 describe("la evidencia no puede fabricarse", () => {
   it("sin paquete, sin solicitud o con otro estado no hay evidencia", () => {
