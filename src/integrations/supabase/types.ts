@@ -759,6 +759,86 @@ export type Database = {
           },
         ]
       }
+      cfdi_sat_evidencias: {
+        Row: {
+          cfdi_id: string
+          cliente_id: string
+          created_at: string
+          despacho_id: string
+          estado_comprobante: string
+          estatus_derivado: string
+          fuente: string
+          id: string
+          idempotency_key: string
+          observada_at: string
+          paquete_id: string
+          proveedor: string | null
+          run_id: string
+          solicitud_id: string
+        }
+        Insert: {
+          cfdi_id: string
+          cliente_id: string
+          created_at?: string
+          despacho_id: string
+          estado_comprobante: string
+          estatus_derivado: string
+          fuente?: string
+          id?: string
+          idempotency_key: string
+          observada_at?: string
+          paquete_id: string
+          proveedor?: string | null
+          run_id: string
+          solicitud_id: string
+        }
+        Update: {
+          cfdi_id?: string
+          cliente_id?: string
+          created_at?: string
+          despacho_id?: string
+          estado_comprobante?: string
+          estatus_derivado?: string
+          fuente?: string
+          id?: string
+          idempotency_key?: string
+          observada_at?: string
+          paquete_id?: string
+          proveedor?: string | null
+          run_id?: string
+          solicitud_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cfdi_sat_evidencias_cfdi_id_fkey"
+            columns: ["cfdi_id"]
+            isOneToOne: false
+            referencedRelation: "cfdi_xml"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cfdi_sat_evidencias_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cfdi_sat_evidencias_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cfdi_sat_evidencias_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "sat_sync_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cfdi_xml: {
         Row: {
           archivo_hash: string
@@ -5537,6 +5617,15 @@ export type Database = {
       accept_invitation: { Args: { _token: string }; Returns: string }
       cfdi_normalizacion_reemplazar: {
         Args: { _cfdi_id: string; _payload: Json }
+        Returns: Json
+      }
+      cfdi_registrar_evidencia_sat: {
+        Args: {
+          _cfdi_id: string
+          _paquete_id: string
+          _run_id: string
+          _solicitud_id: string
+        }
         Returns: Json
       }
       check_rate_limit: {
