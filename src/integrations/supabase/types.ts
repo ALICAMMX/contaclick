@@ -5550,7 +5550,7 @@ export type Database = {
       cierre_excepcion_cerrar_automatica: {
         Args: { _actor?: string; _ids: string[]; _motivo?: string }
         Returns: {
-          excepcion_id: string
+          cerrada_id: string
         }[]
       }
       cierre_excepcion_crear_ocurrencia: {
