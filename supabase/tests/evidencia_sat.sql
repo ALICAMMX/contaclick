@@ -163,13 +163,21 @@ BEGIN
     UPDATE public.cfdi_sat_evidencias SET proveedor = 'falsificado' WHERE cfdi_id = v_cfdi_a;
     INSERT INTO qa VALUES ('UPDATE bloqueado por trigger', false, 'no lanzó excepción');
   EXCEPTION WHEN OTHERS THEN
-    INSERT INTO qa VALUES ('UPDATE bloqueado por trigger', SQLERRM LIKE '%inmutable%', SQLERRM);
+    -- Si el ejecutor ni siquiera tiene el privilegio, el trigger no llega a
+    -- probarse: se marca OMITIDO en lugar de darlo por aprobado.
+    INSERT INTO qa VALUES ('UPDATE bloqueado por trigger',
+      CASE WHEN SQLERRM LIKE '%permission denied%' THEN NULL
+           ELSE SQLERRM LIKE '%inmutable%' END, SQLERRM);
   END;
   BEGIN
     DELETE FROM public.cfdi_sat_evidencias WHERE cfdi_id = v_cfdi_a;
     INSERT INTO qa VALUES ('DELETE bloqueado por trigger', false, 'no lanzó excepción');
   EXCEPTION WHEN OTHERS THEN
-    INSERT INTO qa VALUES ('DELETE bloqueado por trigger', SQLERRM LIKE '%inmutable%', SQLERRM);
+    -- Si el ejecutor ni siquiera tiene el privilegio, el trigger no llega a
+    -- probarse: se marca OMITIDO en lugar de darlo por aprobado.
+    INSERT INTO qa VALUES ('DELETE bloqueado por trigger',
+      CASE WHEN SQLERRM LIKE '%permission denied%' THEN NULL
+           ELSE SQLERRM LIKE '%inmutable%' END, SQLERRM);
   END;
 
   -- =================== SAT → manual (no degrada) ===================
@@ -260,7 +268,7 @@ BEGIN
       json_build_object('role','service_role')::text, true);
     v_res := public.cfdi_registrar_evidencia_sat(v_cfdi_b, v_run_b, 'SOL-B', 'PKG-B1');
     INSERT INTO qa VALUES ('service_role (sin usuario) sí puede registrar evidencia',
-      CASE WHEN v_rol_ok THEN coalesce((v_res->>'creada')::boolean,false) END, v_res::text);
+      coalesce((v_res->>'creada')::boolean,false), v_res::text);
 
     -- ANON: sin usuario y sin rol interno ⇒ rechazo duro.
     v_rol_ok := pg_temp.qa_rol('anon');
@@ -273,8 +281,7 @@ BEGIN
       v_ok := SQLERRM LIKE '%No autorizado%' OR SQLERRM LIKE '%permission denied%';
       v_msg := SQLERRM;
     END;
-    INSERT INTO qa VALUES ('anon no puede registrar evidencia',
-      CASE WHEN v_rol_ok THEN v_ok END, v_msg);
+    INSERT INTO qa VALUES ('anon no puede registrar evidencia', v_ok, v_msg);
 
     v_rol_ok := pg_temp.qa_rol('postgres');
     PERFORM set_config('request.jwt.claims',
