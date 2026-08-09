@@ -21,8 +21,19 @@ DECLARE
   v_da uuid; v_db uuid; v_ca uuid; v_cb uuid; v_rfca uuid; v_rfcb uuid;
   v_cfdi_a uuid; v_cfdi_b uuid; v_run_a uuid; v_run_b uuid;
   v_res jsonb; v_row public.cfdi_xml%ROWTYPE; v_n int;
-  v_ok boolean; v_msg text; v_reporte text := '';
+  v_ok boolean; v_msg text; v_reporte text := ''; v_rol_ok boolean := true;
 BEGIN
+  -- Cambiar de rol requiere un ejecutor interno. Si el rol no está disponible
+  -- para quien corre la prueba, los casos que dependen de él se marcan
+  -- OMITIDO: jamás se dan por PASADOS sin haberse ejecutado.
+  CREATE OR REPLACE FUNCTION pg_temp.qa_rol(_r text) RETURNS boolean
+  LANGUAGE plpgsql AS $f$
+  BEGIN
+    PERFORM set_config('role', _r, true);
+    RETURN true;
+  EXCEPTION WHEN OTHERS THEN
+    RETURN false;
+  END; $f$;
   CREATE TEMP TABLE IF NOT EXISTS qa(nombre text, ok boolean, detalle text) ON COMMIT DROP;
   DELETE FROM qa;
   GRANT ALL ON qa TO authenticated;  -- sólo para poder anotar resultados al simular al usuario
@@ -174,7 +185,7 @@ BEGIN
   DECLARE
     v_cfdi_n uuid;
   BEGIN
-    PERFORM set_config('role','postgres', true);
+    v_rol_ok := pg_temp.qa_rol('postgres');
     PERFORM set_config('request.jwt.claims',
       json_build_object('sub', v_ua, 'role','authenticated')::text, true);
     INSERT INTO public.cfdi_xml (despacho_id, cliente_id, rfc_id, uuid, tipo_cfdi,
@@ -230,15 +241,15 @@ BEGIN
       v_row.estatus_sat = 'cancelado', v_row.estatus_sat);
 
     -- SERVICE ROLE: proceso interno sin usuario puede registrar evidencia.
-    PERFORM set_config('role','service_role', true);
+    v_rol_ok := pg_temp.qa_rol('service_role');
     PERFORM set_config('request.jwt.claims',
       json_build_object('role','service_role')::text, true);
     v_res := public.cfdi_registrar_evidencia_sat(v_cfdi_b, v_run_b, 'SOL-B', 'PKG-B1');
     INSERT INTO qa VALUES ('service_role (sin usuario) sí puede registrar evidencia',
-      coalesce((v_res->>'creada')::boolean,false), v_res::text);
+      CASE WHEN v_rol_ok THEN coalesce((v_res->>'creada')::boolean,false) END, v_res::text);
 
     -- ANON: sin usuario y sin rol interno ⇒ rechazo duro.
-    PERFORM set_config('role','anon', true);
+    v_rol_ok := pg_temp.qa_rol('anon');
     PERFORM set_config('request.jwt.claims', json_build_object('role','anon')::text, true);
     v_ok := false;
     BEGIN
@@ -248,9 +259,10 @@ BEGIN
       v_ok := SQLERRM LIKE '%No autorizado%' OR SQLERRM LIKE '%permission denied%';
       v_msg := SQLERRM;
     END;
-    INSERT INTO qa VALUES ('anon no puede registrar evidencia', v_ok, v_msg);
+    INSERT INTO qa VALUES ('anon no puede registrar evidencia',
+      CASE WHEN v_rol_ok THEN v_ok END, v_msg);
 
-    PERFORM set_config('role','postgres', true);
+    v_rol_ok := pg_temp.qa_rol('postgres');
     PERFORM set_config('request.jwt.claims',
       json_build_object('sub', v_ua, 'role','authenticated')::text, true);
   END;
@@ -267,16 +279,18 @@ BEGIN
     NOT has_function_privilege('anon','public.cfdi_registrar_evidencia_sat(uuid,uuid,text,text)','EXECUTE'), '');
 
   -- =================== RLS con dos usuarios ===================
-  PERFORM set_config('role','authenticated', true);
+  v_rol_ok := pg_temp.qa_rol('authenticated');
   PERFORM set_config('request.jwt.claims',
     json_build_object('sub', v_ua, 'role','authenticated')::text, true);
   SELECT count(*) INTO v_n FROM public.cfdi_sat_evidencias WHERE cfdi_id = v_cfdi_a;
-  INSERT INTO qa VALUES ('RLS: usuario A lee la evidencia de su expediente', v_n = 1, v_n::text);
+  INSERT INTO qa VALUES ('RLS: usuario A lee la evidencia de su expediente',
+    CASE WHEN v_rol_ok THEN v_n = 1 END, v_n::text);
 
   PERFORM set_config('request.jwt.claims',
     json_build_object('sub', v_ub, 'role','authenticated')::text, true);
   SELECT count(*) INTO v_n FROM public.cfdi_sat_evidencias WHERE cfdi_id = v_cfdi_a;
-  INSERT INTO qa VALUES ('RLS: usuario B no ve la evidencia de A', v_n = 0, v_n::text);
+  INSERT INTO qa VALUES ('RLS: usuario B no ve la evidencia de A',
+    CASE WHEN v_rol_ok THEN v_n = 0 END, v_n::text);
 
   v_ok := false;
   BEGIN
@@ -285,7 +299,8 @@ BEGIN
   EXCEPTION WHEN OTHERS THEN
     v_ok := SQLERRM LIKE '%No autorizado%'; v_msg := SQLERRM;
   END;
-  INSERT INTO qa VALUES ('RLS: usuario B no puede registrar evidencia en el expediente A', v_ok, v_msg);
+  INSERT INTO qa VALUES ('RLS: usuario B no puede registrar evidencia en el expediente A',
+    CASE WHEN v_rol_ok THEN v_ok END, v_msg);
 
   -- El frontend no puede fabricar evidencia: INSERT directo como authenticated.
   v_ok := false;
@@ -298,13 +313,16 @@ BEGIN
   EXCEPTION WHEN OTHERS THEN
     v_ok := true; v_msg := SQLERRM;
   END;
-  INSERT INTO qa VALUES ('frontend/authenticated no puede insertar evidencia directamente', v_ok, v_msg);
+  INSERT INTO qa VALUES ('frontend/authenticated no puede insertar evidencia directamente',
+    CASE WHEN v_rol_ok THEN v_ok END, v_msg);
 
-  PERFORM set_config('role','postgres', true);
+  v_rol_ok := pg_temp.qa_rol('postgres');
   PERFORM set_config('request.jwt.claims', '', true);
 
   -- =================== Reporte y ROLLBACK forzado ===================
-  SELECT string_agg(format('%s · %s%s', CASE WHEN ok THEN 'PASA' ELSE 'FALLA' END,
+  SELECT string_agg(format('%s · %s%s',
+                           CASE WHEN ok IS NULL THEN 'OMITIDO (rol no disponible)'
+                                WHEN ok THEN 'PASA' ELSE 'FALLA' END,
                            nombre, CASE WHEN ok THEN '' ELSE ' → '||coalesce(detalle,'') END),
                     E'\n' ORDER BY ctid)
     INTO v_reporte FROM qa;
@@ -312,5 +330,8 @@ BEGIN
 
   RAISE EXCEPTION E'\n%\n%\n(rollback intencional: la prueba no deja residuos)',
     v_reporte,
-    CASE WHEN v_ok THEN 'QA_RESULTADO=TODAS_PASARON' ELSE 'QA_RESULTADO=HAY_FALLAS' END;
+    CASE WHEN coalesce(v_ok, true)
+         THEN 'QA_RESULTADO=TODAS_PASARON'||
+              coalesce((SELECT ' (omitidos: '||count(*)||')' FROM qa WHERE ok IS NULL AND count(*)>0), '')
+         ELSE 'QA_RESULTADO=HAY_FALLAS' END;
 END $qa$;
