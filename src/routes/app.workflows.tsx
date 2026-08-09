@@ -49,7 +49,7 @@ import {
   type RunRow,
 } from "@/lib/workflows/workflows.functions";
 import { runWorkflowAhora } from "@/lib/workflows/engine.functions";
-import { TRIGGERS, ACTIONS, CONDITIONS, TEMPLATES, catalogEntry, type WorkflowNode } from "@/lib/workflows/catalogo";
+import { TRIGGERS, ACCIONES_DISPONIBLES, CONDITIONS, TEMPLATES, catalogEntry, type WorkflowNode } from "@/lib/workflows/catalogo";
 
 export const Route = createFileRoute("/app/workflows")({
   component: WorkflowsPage,
@@ -512,7 +512,7 @@ function BuilderVisual({ workflow, onSaved, onCancel }: { workflow: WorkflowRow 
             <Select onValueChange={(v) => addNode(v, "action")}>
               <SelectTrigger className="w-44 h-8 text-xs"><SelectValue placeholder="+ Acción" /></SelectTrigger>
               <SelectContent>
-                {Object.values(ACTIONS).map((a) => <SelectItem key={a.kind} value={a.kind}>{a.label}</SelectItem>)}
+                {ACCIONES_DISPONIBLES.map((a) => <SelectItem key={a.kind} value={a.kind}>{a.label}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select onValueChange={(v) => addNode(v, "condition")}>

@@ -8,7 +8,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 import { resolveActiveDespachoId } from "@/lib/despacho/resolve";
-import { catalogEntry, nextRunFromFrecuencia, type WorkflowNode, type WorkflowEdge } from "./catalogo";
+import { accionImplementada, catalogEntry, nextRunFromFrecuencia, type WorkflowNode, type WorkflowEdge } from "./catalogo";
 
 type WorkflowRow = {
   id: string;
@@ -25,7 +25,9 @@ type WorkflowRow = {
   total_failed: number;
 };
 
-// -------- Acciones reales (stubs que devuelven outputs útiles para la bitácora) --------
+// -------- Acciones ejecutables --------
+// Sólo se ejecuta lo que realmente hace algo en la base. Cualquier acción sin
+// implementación falla CERRADO: no se inventa un resultado ni se marca éxito.
 
 async function ejecutarAccion(
   supabase: any,
@@ -33,25 +35,16 @@ async function ejecutarAccion(
   params: Record<string, any>,
   ctx: { despachoId: string; clienteId: string | null; payload: any; userId?: string | null },
 ): Promise<{ output: any; error?: string; skipped?: boolean }> {
+  if (!accionImplementada(kind)) {
+    const entrada = catalogEntry("action", kind);
+    return {
+      output: null,
+      error: `La acción "${entrada?.label ?? kind}" no tiene implementación automática y no puede ejecutarse. Retírala del workflow y ejecuta esa herramienta manualmente.`,
+    };
+  }
   try {
     switch (kind) {
-      case "validar_cfdi":
-        return { output: { ok: true, mensaje: "CFDI estructuralmente válido (validación simulada)." } };
 
-      case "auditor_express":
-        return { output: { ok: true, hallazgos: 0, mensaje: "Auditor Express invocado." } };
-
-      case "conciliacion_bancaria":
-        return { output: { ok: true, conciliados: 0, pendientes: 0 } };
-
-      case "calcular_isr":
-        return { output: { isr_estimado_mxn: 0, periodo: new Date().toISOString().slice(0, 7) } };
-
-      case "calcular_iva":
-        return { output: { iva_estimado_mxn: 0, periodo: new Date().toISOString().slice(0, 7) } };
-
-      case "actualizar_score_riesgo":
-        return { output: { score_anterior: null, score_nuevo: null, mensaje: "Score recalculado." } };
 
       case "generar_tarea": {
         if (!ctx.clienteId) {
@@ -91,9 +84,6 @@ async function ejecutarAccion(
         if (error) return { output: null, error: error.message };
         return { output: { alerta_id: data.id } };
       }
-
-      case "generar_reporte":
-        return { output: { ok: true, mensaje: "Reporte ejecutivo solicitado al módulo de Reportes." } };
 
       case "solicitar_documento_cliente": {
         if (!ctx.clienteId) {

@@ -202,9 +202,13 @@ function CierrePage() {
                 </div>
                 <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
                   Declarar la etapa documental no presenta declaraciones ni cierra la contabilidad: certifica que los
-                  comprobantes del periodo están completos, clasificados y sin excepciones bloqueantes pendientes.
+                  comprobantes del periodo están completos, clasificados y sin ninguna excepción pendiente —bloqueante,
+                  advertencia o informativa—. Las advertencias e informativas pueden aceptarse con motivo, pero deben
+                  quedar decididas.
+                  {d.rango ? ` Periodo: ${d.rango.dias} días naturales, del 1 al ${d.rango.dias} en hora local de ${d.rango.zona}.` : ""}
                   {lista ? ` Declarada el ${fmtFecha(d.corte.declarada_at)}.` : ""}
                 </p>
+
               </div>
             </div>
             <div className="flex gap-2">

@@ -247,6 +247,8 @@ export async function ingestOneInternal(
       clienteId,
       rfcExpediente: rfcCliente ?? rfcDestino,
       xml,
+      // Documento NUEVO: si el mes ya estaba declarado listo, se reabre.
+      reabrirPeriodo: true,
     });
     periodoDoc = res.periodo;
   } catch (e) {

@@ -5,7 +5,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 import { resolveActiveDespachoId } from "@/lib/despacho/resolve";
-import { TEMPLATES, nextRunFromFrecuencia } from "./catalogo";
+import { TEMPLATES, sanitizarPlantilla, accionImplementada, nextRunFromFrecuencia } from "./catalogo";
 
 export type WorkflowRow = {
   id: string;
@@ -289,6 +289,8 @@ export const aplicarTemplate = createServerFn({ method: "POST" })
     const despachoId = await resolveActiveDespachoId(supabase, userId);
     const tpl = TEMPLATES.find((t) => t.key === data.templateKey);
     if (!tpl) throw new Error("Template no encontrado");
+    // Las plantillas sólo instalan acciones realmente implementadas.
+    const limpia = sanitizarPlantilla(tpl);
     const payload: any = {
       despacho_id: despachoId,
       cliente_id: data.clienteId ?? null,
@@ -298,8 +300,8 @@ export const aplicarTemplate = createServerFn({ method: "POST" })
       status: "activo",
       trigger_type: tpl.trigger_type,
       trigger_config: tpl.trigger_config ?? {},
-      nodes: tpl.nodes,
-      edges: tpl.edges,
+      nodes: limpia.nodes,
+      edges: limpia.edges,
       prioridad: "alta",
       responsable_user_id: userId,
       created_by: userId,
@@ -393,7 +395,9 @@ export const generarSugerencias = createServerFn({ method: "POST" })
           patron_detectado: `template_no_aplicado:${tpl.key}`,
           template_sugerido: tpl.key,
           trigger_sugerido: tpl.trigger_type,
-          acciones_sugeridas: tpl.nodes.filter((n) => n.type === "action").map((n) => ({ kind: n.kind, params: n.params ?? {} })),
+          acciones_sugeridas: tpl.nodes
+            .filter((n) => n.type === "action" && accionImplementada(n.kind))
+            .map((n) => ({ kind: n.kind, params: n.params ?? {} })),
           confianza: 0.85,
           estado: "nueva",
           evidencia: null,

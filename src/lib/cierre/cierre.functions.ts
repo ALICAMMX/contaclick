@@ -12,6 +12,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 import { assertClienteScope, assertRecordScope } from "@/lib/despacho/scope";
 import { cargarPeriodo, normalizarYPersistir, sincronizarExcepciones } from "./persistencia";
+import { rangoMensual } from "./periodo";
 import { MOTIVOS_EXCEPCION, type CodigoExcepcion } from "./motivos";
 
 const PERIODO_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -53,6 +54,7 @@ export const getCierreMensual = createServerFn({ method: "POST" })
     return {
       expediente: { id: scope.cliente_id, rfc: scope.rfc, razon_social: scope.razon_social },
       periodo: data.periodo,
+      rango: rangoMensual(data.periodo),
       contadores: evaluacion.contadores,
       criterios: evaluacion.criterios,
       puedeDeclararse: evaluacion.puedeDeclararse,
@@ -218,17 +220,16 @@ export const reprocesarPeriodo = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const scope = await assertClienteScope(supabase, userId, data.cliente_id);
 
-    const desde = `${data.periodo}-01T00:00:00-06:00`;
-    const hastaDate = new Date(`${data.periodo}-01T00:00:00Z`);
-    hastaDate.setUTCMonth(hastaDate.getUTCMonth() + 1);
+    const rango = rangoMensual(data.periodo);
 
     const { data: docs } = await supabase
       .from("cfdi_xml")
       .select("id, xml_raw")
       .eq("cliente_id", scope.cliente_id)
-      .gte("fecha", desde)
-      .lt("fecha", hastaDate.toISOString())
+      .gte("fecha", rango.desde)
+      .lt("fecha", rango.hastaExclusivo)
       .limit(2000);
+
 
     let reprocesados = 0;
     let sinXml = 0;

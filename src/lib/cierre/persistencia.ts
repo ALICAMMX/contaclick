@@ -14,6 +14,7 @@ import { clasificarDocumento } from "@/lib/cfdi/clasificacion";
 import {
   evaluarPeriodo,
   periodoDeFecha,
+  rangoMensual,
   type DocumentoPagoPeriodo,
   type DocumentoPeriodo,
   type EvaluacionPeriodo,
@@ -26,147 +27,45 @@ export type ResultadoNormalizacion = {
   impuestos: number;
   pagos: number;
   documentos_relacionados: number;
+  periodo_reabierto: boolean;
   clasificacion: ReturnType<typeof clasificarDocumento>;
 };
 
 /**
- * Normaliza UN documento y persiste su detalle. No ejecuta Salud Fiscal,
- * Riesgo, conciliación ni cálculos fiscales: eso es explícito y posterior.
+ * Normaliza UN documento y persiste su detalle EN UNA SOLA TRANSACCIÓN.
+ *
+ * La escritura entera (borrado del detalle previo, conceptos, impuestos,
+ * relaciones, pagos, documentos relacionados, impuestos del pago y cabecera)
+ * ocurre dentro de la función SQL `cfdi_normalizacion_reemplazar`. Si algo
+ * falla, la base revierte todo: nunca queda un documento con detalle a medias.
+ *
+ * No ejecuta Salud Fiscal, Riesgo, conciliación ni cálculos fiscales.
  */
 export async function normalizarYPersistir(
   supabase: SupabaseClient,
-  args: { cfdiId: string; despachoId: string; clienteId: string; rfcExpediente: string; xml: string; guardarXml?: boolean },
+  args: {
+    cfdiId: string;
+    despachoId: string;
+    clienteId: string;
+    rfcExpediente: string;
+    xml: string;
+    guardarXml?: boolean;
+    /** Sólo la ingesta de documentos NUEVOS reabre un periodo ya declarado listo. */
+    reabrirPeriodo?: boolean;
+  },
 ): Promise<ResultadoNormalizacion> {
   const n = normalizarCfdi(args.xml);
   const enc = n.encabezado;
+  const guardarXml = args.guardarXml !== false;
 
-  // 1. Limpieza del detalle previo (reproceso idempotente).
-  await supabase.from("cfdi_impuestos").delete().eq("cfdi_id", args.cfdiId);
-  await supabase.from("cfdi_pagos").delete().eq("cfdi_id", args.cfdiId);
-  await supabase.from("cfdi_conceptos").delete().eq("cfdi_id", args.cfdiId);
-  await supabase.from("cfdi_relaciones").delete().eq("cfdi_id", args.cfdiId);
+  // EVIDENCIA DEL SAT: se lee y se conserva. Renormalizar el XML no puede
+  // borrar que el comprobante fue consultado y resultó vigente o cancelado.
+  const { data: previo } = await supabase
+    .from("cfdi_xml")
+    .select("estatus_sat, estatus_sat_check_at")
+    .eq("id", args.cfdiId)
+    .maybeSingle();
 
-  // 2. Conceptos numerados.
-  if (enc.conceptos.length) {
-    await supabase.from("cfdi_conceptos").insert(
-      enc.conceptos.slice(0, 500).map((c, i) => ({
-        cfdi_id: args.cfdiId,
-        numero: i + 1,
-        clave_prod_serv: c.claveProdServ ?? null,
-        descripcion: c.descripcion ?? null,
-        cantidad: c.cantidad ?? null,
-        valor_unitario: c.valorUnitario ?? null,
-        importe: c.importe ?? null,
-      })),
-    );
-  }
-
-  // 3. Impuestos detallados (concepto y comprobante).
-  if (n.impuestos.length) {
-    await supabase.from("cfdi_impuestos").insert(
-      n.impuestos.map((i) => ({
-        cfdi_id: args.cfdiId,
-        nivel: i.nivel,
-        concepto_numero: i.concepto_numero,
-        tipo: i.tipo,
-        impuesto: i.impuesto,
-        impuesto_nombre: i.impuesto_nombre,
-        base: i.base,
-        tipo_factor: i.tipo_factor,
-        tasa_cuota: i.tasa_cuota,
-        importe: i.importe,
-      })),
-    );
-  }
-
-  // 4. Relaciones declaradas (CfdiRelacionados y DoctoRelacionado).
-  if (enc.relacionados.length) {
-    const vistos = new Set<string>();
-    const filas = enc.relacionados
-      .map((r) => ({
-        cfdi_id: args.cfdiId,
-        uuid_relacionado: r.uuid.toUpperCase(),
-        tipo_relacion: r.tipo === "pago" ? "pago" : (r.tipoRelacion ?? "relacion"),
-      }))
-      .filter((r) => {
-        const k = `${r.uuid_relacionado}|${r.tipo_relacion}`;
-        if (vistos.has(k)) return false;
-        vistos.add(k);
-        return true;
-      });
-    if (filas.length) await supabase.from("cfdi_relaciones").insert(filas);
-  }
-
-  // 5. Complemento de pagos 2.0.
-  let docsRelacionados = 0;
-  for (const p of n.pagos) {
-    const { data: pagoRow, error: pagoErr } = await supabase
-      .from("cfdi_pagos")
-      .insert({
-        cfdi_id: args.cfdiId,
-        despacho_id: args.despachoId,
-        cliente_id: args.clienteId,
-        numero_pago: p.numero_pago,
-        fecha_pago: p.fecha_pago ? new Date(p.fecha_pago).toISOString() : null,
-        forma_pago_p: p.forma_pago_p,
-        moneda_p: p.moneda_p,
-        tipo_cambio_p: p.tipo_cambio_p,
-        monto: p.monto,
-        num_operacion: p.num_operacion,
-      })
-      .select("id")
-      .single();
-    if (pagoErr || !pagoRow) throw new Error(`No se pudo guardar el pago ${p.numero_pago}: ${pagoErr?.message}`);
-
-    const idsDocs: string[] = [];
-    for (const d of p.documentos) {
-      const { data: padre } = await supabase
-        .from("cfdi_xml")
-        .select("id")
-        .eq("cliente_id", args.clienteId)
-        .ilike("uuid", d.id_documento)
-        .maybeSingle();
-      const { data: docRow } = await supabase
-        .from("cfdi_pago_documentos")
-        .insert({
-          pago_id: pagoRow.id,
-          cfdi_id: args.cfdiId,
-          id_documento: d.id_documento,
-          serie: d.serie,
-          folio: d.folio,
-          moneda_dr: d.moneda_dr,
-          equivalencia_dr: d.equivalencia_dr,
-          num_parcialidad: d.num_parcialidad,
-          imp_saldo_ant: d.imp_saldo_ant,
-          imp_pagado: d.imp_pagado,
-          imp_saldo_insoluto: d.imp_saldo_insoluto,
-          objeto_imp_dr: d.objeto_imp_dr,
-          cfdi_padre_id: padre?.id ?? null,
-        })
-        .select("id")
-        .single();
-      idsDocs.push(docRow?.id ?? "");
-      docsRelacionados += 1;
-    }
-
-    if (p.impuestos.length) {
-      await supabase.from("cfdi_pago_impuestos").insert(
-        p.impuestos.map((i) => ({
-          pago_id: pagoRow.id,
-          documento_id: i.documento_indice != null ? (idsDocs[i.documento_indice] || null) : null,
-          ambito: i.ambito,
-          tipo: i.tipo,
-          impuesto: i.impuesto,
-          base: i.base,
-          tipo_factor: i.tipo_factor,
-          tasa_cuota: i.tasa_cuota,
-          importe: i.importe,
-        })),
-      );
-    }
-  }
-
-  // 6. Clasificación documental sobre el propio documento.
   const clasificacion = clasificarDocumento(
     {
       uuid: enc.uuid ?? null,
@@ -174,8 +73,8 @@ export async function normalizarYPersistir(
       rfc_emisor: enc.emisor.rfc ?? null,
       rfc_receptor: enc.receptor.rfc ?? null,
       metodo_pago: enc.metodoPago ?? null,
-      estatus_sat: null,
-      detalle_reconstruible: true,
+      estatus_sat: (previo?.estatus_sat as string | null) ?? null,
+      detalle_reconstruible: guardarXml,
       avisos: n.avisos,
     },
     { rfcExpediente: args.rfcExpediente },
@@ -183,12 +82,62 @@ export async function normalizarYPersistir(
 
   const periodo = periodoDeFecha(enc.fecha ?? null);
 
-  await supabase
-    .from("cfdi_xml")
-    .update({
-      xml_raw: args.guardarXml === false ? null : args.xml,
-      detalle_reconstruible: args.guardarXml === false ? false : true,
-      normalizado_at: new Date().toISOString(),
+  const payload = {
+    conceptos: enc.conceptos.slice(0, 500).map((c, i) => ({
+      numero: i + 1,
+      clave_prod_serv: c.claveProdServ ?? null,
+      descripcion: c.descripcion ?? null,
+      cantidad: c.cantidad ?? null,
+      valor_unitario: c.valorUnitario ?? null,
+      importe: c.importe ?? null,
+    })),
+    impuestos: n.impuestos.map((i) => ({
+      nivel: i.nivel,
+      concepto_numero: i.concepto_numero,
+      tipo: i.tipo,
+      impuesto: i.impuesto,
+      impuesto_nombre: i.impuesto_nombre,
+      base: i.base,
+      tipo_factor: i.tipo_factor,
+      tasa_cuota: i.tasa_cuota,
+      importe: i.importe,
+    })),
+    relaciones: dedupRelaciones(enc.relacionados),
+    pagos: n.pagos.map((p) => ({
+      numero_pago: p.numero_pago,
+      fecha_pago: p.fecha_pago ? new Date(p.fecha_pago).toISOString() : null,
+      forma_pago_p: p.forma_pago_p,
+      moneda_p: p.moneda_p,
+      tipo_cambio_p: p.tipo_cambio_p,
+      monto: p.monto,
+      num_operacion: p.num_operacion,
+      documentos: p.documentos.map((d) => ({
+        id_documento: d.id_documento,
+        serie: d.serie,
+        folio: d.folio,
+        moneda_dr: d.moneda_dr,
+        equivalencia_dr: d.equivalencia_dr,
+        num_parcialidad: d.num_parcialidad,
+        imp_saldo_ant: d.imp_saldo_ant,
+        imp_pagado: d.imp_pagado,
+        imp_saldo_insoluto: d.imp_saldo_insoluto,
+        objeto_imp_dr: d.objeto_imp_dr,
+      })),
+      impuestos: p.impuestos.map((i) => ({
+        documento_indice: i.documento_indice,
+        ambito: i.ambito,
+        tipo: i.tipo,
+        impuesto: i.impuesto,
+        base: i.base,
+        tipo_factor: i.tipo_factor,
+        tasa_cuota: i.tasa_cuota,
+        importe: i.importe,
+      })),
+    })),
+    cabecera: {
+      guardar_xml: guardarXml,
+      xml_raw: guardarXml ? args.xml : null,
+      detalle_reconstruible: guardarXml,
       normalizacion_version: NORMALIZACION_VERSION,
       periodo,
       direccion: clasificacion.direccion,
@@ -196,18 +145,45 @@ export async function normalizarYPersistir(
       estado_relacion: enc.tipoComprobante === "P" ? "completo" : "no_aplica",
       estado_procesamiento: clasificacion.estado_procesamiento,
       motivos: clasificacion.motivos,
-    })
-    .eq("id", args.cfdiId);
+    },
+    reabrir_periodo: args.reabrirPeriodo === true,
+  };
+
+  const { data: res, error } = await supabase.rpc("cfdi_normalizacion_reemplazar", {
+    _cfdi_id: args.cfdiId,
+    _payload: payload,
+  });
+  if (error) throw new Error(`La normalización no se guardó (transacción revertida): ${error.message}`);
+
+  const salida = (res ?? {}) as { documentos_relacionados?: number; periodo_reabierto?: boolean };
 
   return {
     cfdi_id: args.cfdiId,
     periodo,
     impuestos: n.impuestos.length,
     pagos: n.pagos.length,
-    documentos_relacionados: docsRelacionados,
+    documentos_relacionados: salida.documentos_relacionados ?? 0,
+    periodo_reabierto: salida.periodo_reabierto === true,
     clasificacion,
   };
 }
+
+function dedupRelaciones(relacionados: Array<{ uuid: string; tipo?: string; tipoRelacion?: string | null }>) {
+  const vistos = new Set<string>();
+  const filas: Array<{ uuid_relacionado: string; tipo_relacion: string }> = [];
+  for (const r of relacionados) {
+    const fila = {
+      uuid_relacionado: r.uuid.toUpperCase(),
+      tipo_relacion: r.tipo === "pago" ? "pago" : (r.tipoRelacion ?? "relacion"),
+    };
+    const k = `${fila.uuid_relacionado}|${fila.tipo_relacion}`;
+    if (vistos.has(k)) continue;
+    vistos.add(k);
+    filas.push(fila);
+  }
+  return filas;
+}
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Evaluación y sincronización del periodo (idempotente).
@@ -217,10 +193,11 @@ export async function cargarPeriodo(
   supabase: SupabaseClient,
   args: { clienteId: string; rfcExpediente: string; periodo: string },
 ): Promise<{ evaluacion: EvaluacionPeriodo; documentos: DocumentoPeriodo[]; corte: any }> {
-  const desde = `${args.periodo}-01T00:00:00-06:00`;
-  const hastaDate = new Date(`${args.periodo}-01T00:00:00Z`);
-  hastaDate.setUTCMonth(hastaDate.getUTCMonth() + 1);
-  const hasta = hastaDate.toISOString();
+  // Fuente única del rango mensual (hora local de America/Mexico_City).
+  const rango = rangoMensual(args.periodo);
+  const desde = rango.desde;
+  const hasta = rango.hastaExclusivo;
+
 
   const [{ data: docsRaw }, { data: universo }, { data: corte }] = await Promise.all([
     supabase

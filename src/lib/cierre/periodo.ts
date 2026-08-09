@@ -8,7 +8,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { clasificarDocumento, type ClaseDocumental, type Direccion } from "@/lib/cfdi/clasificacion";
-import { MOTIVOS_EXCEPCION, type CodigoExcepcion } from "./motivos";
+import { MOTIVOS_EXCEPCION, type CodigoExcepcion, type SeveridadExcepcion } from "./motivos";
 
 export type DocumentoPeriodo = {
   id: string;
@@ -84,13 +84,102 @@ const CLASES: ClaseDocumental[] = [
 
 const up = (v: string | null | undefined) => String(v ?? "").trim().toUpperCase();
 
-export function periodoDeFecha(fechaIso: string | null | undefined, zona = "America/Mexico_City"): string | null {
+// ─────────────────────────────────────────────────────────────────────────────
+// RANGO MENSUAL — FUENTE ÚNICA.
+//
+// Todo el sistema (lecturas, reproceso, contadores) debe usar `rangoMensual`.
+// El mes se define en hora local de America/Mexico_City y se traduce a UTC:
+// un CFDI emitido el último segundo del mes pertenece a ese mes, y uno emitido
+// el 1° a las 00:00 locales pertenece al siguiente. El desplazamiento se
+// calcula con la propia zona, así que los periodos con horario de verano
+// histórico (anteriores a 2022) también quedan correctos.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const ZONA_FISCAL = "America/Mexico_City";
+
+function desplazamientoMinutos(instante: Date, zona = ZONA_FISCAL): number {
+  const dtf = new Intl.DateTimeFormat("en-US", {
+    timeZone: zona,
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  const p: Record<string, string> = {};
+  for (const part of dtf.formatToParts(instante)) if (part.type !== "literal") p[part.type] = part.value;
+  const comoUtc = Date.UTC(
+    Number(p.year),
+    Number(p.month) - 1,
+    Number(p.day),
+    Number(p.hour) % 24,
+    Number(p.minute),
+    Number(p.second),
+  );
+  return (comoUtc - instante.getTime()) / 60000;
+}
+
+/** Convierte una fecha/hora LOCAL de la zona fiscal al instante UTC equivalente. */
+export function localAUtc(
+  y: number,
+  m: number,
+  d: number,
+  h = 0,
+  min = 0,
+  s = 0,
+  zona = ZONA_FISCAL,
+): Date {
+  const supuesto = Date.UTC(y, m - 1, d, h, min, s);
+  let ts = supuesto - desplazamientoMinutos(new Date(supuesto), zona) * 60000;
+  ts = supuesto - desplazamientoMinutos(new Date(ts), zona) * 60000;
+  return new Date(ts);
+}
+
+export type RangoMensual = {
+  periodo: string;
+  zona: string;
+  /** Inicio inclusivo, en UTC. */
+  desde: string;
+  /** Fin EXCLUSIVO (00:00 local del mes siguiente), en UTC. */
+  hastaExclusivo: string;
+  /** Último instante que pertenece al mes (23:59:59 local), en UTC. */
+  ultimoInstante: string;
+  /** Días naturales del mes: 28, 29, 30 o 31. */
+  dias: number;
+};
+
+export function rangoMensual(periodo: string, zona = ZONA_FISCAL): RangoMensual {
+  const m = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(periodo);
+  if (!m) throw new Error(`Periodo inválido: "${periodo}". Se espera AAAA-MM.`);
+  const y = Number(m[1]);
+  const mes = Number(m[2]);
+  const sigY = mes === 12 ? y + 1 : y;
+  const sigM = mes === 12 ? 1 : mes + 1;
+
+  const desde = localAUtc(y, mes, 1, 0, 0, 0, zona);
+  const hasta = localAUtc(sigY, sigM, 1, 0, 0, 0, zona);
+  const dias = Math.round((Date.UTC(sigY, sigM - 1, 1) - Date.UTC(y, mes - 1, 1)) / 86400000);
+
+  return {
+    periodo,
+    zona,
+    desde: desde.toISOString(),
+    hastaExclusivo: hasta.toISOString(),
+    ultimoInstante: new Date(hasta.getTime() - 1000).toISOString(),
+    dias,
+  };
+}
+
+export function periodoDeFecha(fechaIso: string | null | undefined, zona = ZONA_FISCAL): string | null {
   if (!fechaIso) return null;
   const d = new Date(fechaIso);
   if (Number.isNaN(d.getTime())) return null;
   const f = new Intl.DateTimeFormat("en-CA", { timeZone: zona, year: "numeric", month: "2-digit" }).format(d);
   return f.slice(0, 7);
 }
+
 
 export function evaluarPeriodo(args: {
   rfcExpediente: string;
@@ -257,6 +346,12 @@ export function evaluarPeriodo(args: {
     return estado === "pendiente";
   };
   const bloqueantesPendientes = excepciones.filter((e) => MOTIVOS_EXCEPCION[e.codigo].bloquea && pendiente(e));
+  // CRITERIO ÚNICO: ninguna excepción pendiente —sea bloqueante, advertencia o
+  // informativa— permite declarar "Documentos listos". Las advertencias e
+  // informativas se resuelven o se aceptan con motivo; nunca se ignoran solas.
+  const todasPendientes = excepciones.filter((e) => pendiente(e));
+  const porSeveridad = (s: SeveridadExcepcion) =>
+    todasPendientes.filter((e) => MOTIVOS_EXCEPCION[e.codigo].severidad === s).length;
 
   const cuenta = (c: CodigoExcepcion) => excepciones.filter((e) => e.codigo === c && pendiente(e)).length;
 
@@ -293,11 +388,15 @@ export function evaluarPeriodo(args: {
     },
     {
       id: "excepciones",
-      etiqueta: "Toda excepción bloqueante resuelta o aceptada por un contador",
-      cumplido: bloqueantesPendientes.length === 0,
-      detalle: `${bloqueantesPendientes.length} pendiente(s)`,
+      etiqueta: "Toda excepción resuelta o aceptada con motivo por un contador",
+      cumplido: todasPendientes.length === 0,
+      detalle:
+        todasPendientes.length === 0
+          ? "Sin excepciones pendientes"
+          : `${todasPendientes.length} pendiente(s): ${porSeveridad("bloqueante")} bloqueante(s) · ${porSeveridad("advertencia")} advertencia(s) · ${porSeveridad("informativa")} informativa(s)`,
     },
   ];
+
 
   const emitidos = clasificados.filter((c) => c.cls.direccion === "emitido").length;
   const recibidos = clasificados.filter((c) => c.cls.direccion === "recibido").length;
@@ -326,7 +425,7 @@ export function evaluarPeriodo(args: {
     duplicados: idsDuplicados.size,
     rechazados,
     estatusDesconocido,
-    pendientesDecision: bloqueantesPendientes.length + revision,
+    pendientesDecision: todasPendientes.length + revision,
     coberturaDocumental: total === 0 ? 0 : Math.round((listos / total) * 100),
   };
 
