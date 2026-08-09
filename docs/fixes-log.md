@@ -1064,3 +1064,68 @@ reporta la certificación sólo como dato informativo; nuevo `clasificarAusencia
 anomalía sin atribuir causa. Se conserva el cálculo del rango por defecto en hora del centro
 (corrección legítima de UTC), porque las fechas enviadas siguen el contrato oficial.
 Pruebas actualizadas: separan hecho oficial, comportamiento observado e hipótesis.
+
+---
+
+## 2026-08-09 · Auditoría de aceptación: Centro de cierre mensual y normalización CFDI
+
+Cierre del bloque con las seis brechas detectadas en la revisión de la entrega publicada.
+
+**1. Rango mensual y zona horaria.** Única fuente: `rangoMensual(periodo)` en
+`src/lib/cierre/periodo.ts`, anclada a `America/Mexico_City` vía `Intl` (correcta también
+para años con horario de verano). Devuelve inicio inclusivo, fin **exclusivo**, último
+instante del mes y días naturales. `cierre.functions.ts` y `persistencia.ts` la consumen;
+la interfaz muestra los días del periodo y la zona. Pruebas: 28/29/30/31 días, diciembre→enero,
+último segundo del mes, y el caso real del 31 de julio entre 18:00 y 23:59 hora local
+(que en UTC ya es 1 de agosto y antes se perdía).
+
+**2. Normalización atómica.** La persistencia del detalle pasó de varias escrituras sueltas a
+una sola llamada transaccional: `public.cfdi_normalizacion_reemplazar(_cfdi_id, _payload)`.
+Reemplaza conceptos, relaciones, impuestos, pagos, documentos relacionados e impuestos del pago
+dentro de una transacción. Si cualquier inserción falla, la base revierte todo: nunca queda un
+comprobante con detalle a medias.
+
+**3. Estado SAT y evidencia.** La función **no toca** `estatus_sat` ni `estatus_sat_check_at`.
+Reprocesar un XML ya no borra la evidencia de la consulta al SAT.
+
+**4. Reapertura automática.** Un comprobante **nuevo** en un periodo declarado listo lo regresa
+a `en_proceso` y limpia la declaración. Un reproceso o un duplicado ya conocido **no** reabre:
+la ingesta manda `reabrir_periodo: true`, el reproceso `false`.
+
+**5. Criterio único de "Documentos listos".** Ninguna excepción pendiente permite declarar,
+sea bloqueante, advertencia o informativa. Las advertencias e informativas pueden aceptarse
+con motivo (queda en bitácora), pero deben quedar decididas. Texto de la interfaz corregido:
+ya no dice "sin excepciones bloqueantes".
+
+**6. Workflows simulados.** Las acciones sin implementación real (`validar_cfdi`,
+`auditor_express`, `conciliacion_bancaria`, `calcular_isr`, `calcular_iva`,
+`actualizar_score_riesgo`, `generar_reporte`) llevan `implementada: false`: se ocultan del
+constructor (`ACCIONES_DISPONIBLES`), se retiran de las plantillas al instalarlas y el motor
+**falla cerrado** si un workflow antiguo intenta ejecutarlas. Siguen operativas las reales
+(crear tarea, crear alerta, notificar, etc.).
+
+| Acción | Estado |
+| --- | --- |
+| crear_tarea, crear_alerta, notificar y demás acciones del motor | Implementada |
+| validar_cfdi | Sin implementación — oculta y bloqueada |
+| auditor_express | Sin implementación — oculta y bloqueada |
+| conciliacion_bancaria | Sin implementación — oculta y bloqueada |
+| calcular_isr | Sin implementación — oculta y bloqueada |
+| calcular_iva | Sin implementación — oculta y bloqueada |
+| actualizar_score_riesgo | Sin implementación — oculta y bloqueada |
+| generar_reporte | Sin implementación — oculta y bloqueada |
+
+**Prueba real de persistencia.** `supabase/tests/cierre_normalizacion.sql` corre contra la
+base dentro de una transacción que siempre se revierte. Se ejecutó con rol privilegiado y
+pasó completa (fixtures creados y borrados; residuo verificado en cero):
+
+1. XML → `cfdi_xml` → conceptos → impuestos → pagos → documentos relacionados → impuestos del
+   pago, incluido el enlace a la factura padre y el impuesto de ámbito DR ligado a su documento.
+2. Reproceso conserva `estatus_sat = vigente` y su fecha de consulta.
+3. Carga inválida: la función lanza error, **no** queda el concepto de la transacción fallida y
+   la cabecera no avanza de versión. Rollback verificado.
+4. Periodo declarado listo: el reproceso no lo reabre; el comprobante nuevo sí, y limpia
+   `declarada_at`.
+
+No se declara cerrado el bloque sólo con typecheck: hay pruebas en memoria (29) y prueba real
+contra base de datos.

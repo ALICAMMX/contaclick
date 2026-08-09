@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from "vitest";
 import { normalizarCfdi } from "@/lib/cfdi/normalizacion";
-import { evaluarPeriodo, periodoDeFecha, type DocumentoPagoPeriodo, type DocumentoPeriodo } from "./periodo";
+import { evaluarPeriodo, periodoDeFecha, rangoMensual, type DocumentoPagoPeriodo, type DocumentoPeriodo } from "./periodo";
 import { facturaXml, pagoXml, RFC_EXPEDIENTE, RFC_OTRO, RFC_TERCERO, U } from "./fixtures";
 
 const PERIODO = "2026-07";
@@ -110,6 +110,49 @@ describe("periodo: cálculo de la fecha", () => {
   });
 });
 
+describe("rango mensual en America/Mexico_City", () => {
+  it("cuenta 28, 29, 30 y 31 días naturales", () => {
+    expect(rangoMensual("2026-02").dias).toBe(28);
+    expect(rangoMensual("2024-02").dias).toBe(29);
+    expect(rangoMensual("2026-04").dias).toBe(30);
+    expect(rangoMensual("2026-07").dias).toBe(31);
+  });
+
+  it("el fin es exclusivo y coincide con el inicio del mes siguiente", () => {
+    expect(rangoMensual("2026-07").hastaExclusivo).toBe(rangoMensual("2026-08").desde);
+  });
+
+  it("cruza diciembre a enero sin perder el año", () => {
+    const dic = rangoMensual("2025-12");
+    expect(dic.desde).toBe("2025-12-01T06:00:00.000Z");
+    expect(dic.hastaExclusivo).toBe(rangoMensual("2026-01").desde);
+    expect(rangoMensual("2026-01").desde).toBe("2026-01-01T06:00:00.000Z");
+  });
+
+  it("incluye el último segundo del mes en hora local", () => {
+    const jul = rangoMensual("2026-07");
+    // 31/07/2026 23:59:59 hora del centro = 01/08/2026 05:59:59 UTC.
+    expect(jul.ultimoInstante).toBe("2026-08-01T05:59:59.000Z");
+    expect(periodoDeFecha(jul.ultimoInstante)).toBe("2026-07");
+    expect(periodoDeFecha(jul.hastaExclusivo)).toBe("2026-08");
+  });
+
+  it("caso real: CFDI del 31 de julio entre 18:00 y 23:59 local pertenece a julio", () => {
+    for (const hora of ["18:00:00", "20:30:00", "23:59:00", "23:59:59"]) {
+      expect(periodoDeFecha(`2026-07-31T${hora}-06:00`)).toBe("2026-07");
+    }
+    // El mismo instante expresado en UTC ya cae en agosto del calendario UTC:
+    // si el rango no fuera local, estos comprobantes se perderían.
+    expect(new Date("2026-07-31T23:59:59-06:00").toISOString()).toBe("2026-08-01T05:59:59.000Z");
+  });
+
+  it("rechaza periodos mal formados", () => {
+    expect(() => rangoMensual("2026-13")).toThrow();
+    expect(() => rangoMensual("julio")).toThrow();
+  });
+});
+
+
 describe("corrida sintética completa", () => {
   it("clasifica todo el periodo y no deja excepciones bloqueantes", () => {
     const r = corridaBase();
@@ -139,8 +182,16 @@ describe("corrida sintética completa", () => {
       pagos: [],
     });
     expect(sinPago.contadores.ppdSinComplemento).toBe(1);
-    expect(sinPago.excepciones.find((e) => e.codigo === "PPD_SIN_COMPLEMENTO")?.severidad).toBe("advertencia");
-    expect(sinPago.puedeDeclararse).toBe(true);
+    const exc = sinPago.excepciones.find((e) => e.codigo === "PPD_SIN_COMPLEMENTO")!;
+    expect(exc.severidad).toBe("advertencia");
+    // Advertencia: no es bloqueante, pero mientras siga PENDIENTE impide declarar.
+    expect(sinPago.puedeDeclararse).toBe(false);
+    const aceptado = corridaBase({
+      documentos: [fila(XML.ingresoPpd)],
+      pagos: [],
+      decisiones: [{ codigo: "PPD_SIN_COMPLEMENTO", cfdi_id: exc.cfdi_id, estado: "aceptada" }],
+    });
+    expect(aceptado.puedeDeclararse).toBe(true);
   });
 });
 
@@ -200,25 +251,34 @@ describe("excepciones bloqueantes", () => {
     expect(r.puedeDeclararse).toBe(false);
   });
 
-  it("un CFDI sin XML original se informa pero no bloquea", () => {
-    const r = corridaBase({
-      documentos: [fila(XML.ingresoPue, { detalle_reconstruible: false })],
+  it("un CFDI sin XML original es informativo pero debe decidirse", () => {
+    const documentos = [fila(XML.ingresoPue, { detalle_reconstruible: false })];
+    const r = corridaBase({ documentos, pagos: [] });
+    const exc = r.excepciones.find((e) => e.codigo === "DETALLE_NO_RECONSTRUIBLE")!;
+    expect(exc.severidad).toBe("informativa");
+    expect(r.puedeDeclararse).toBe(false);
+    const aceptado = corridaBase({
+      documentos,
       pagos: [],
+      decisiones: [{ codigo: "DETALLE_NO_RECONSTRUIBLE", cfdi_id: exc.cfdi_id, estado: "aceptada" }],
     });
-    expect(r.excepciones.find((e) => e.codigo === "DETALLE_NO_RECONSTRUIBLE")?.severidad).toBe("informativa");
-    expect(r.puedeDeclararse).toBe(true);
+    expect(aceptado.puedeDeclararse).toBe(true);
   });
 
-  it("estado SAT desconocido se informa una sola vez y no bloquea", () => {
-    const r = corridaBase({
-      documentos: [fila(XML.ingresoPue, { estatus_sat: "desconocido" }), fila(XML.gastoPue, { estatus_sat: "desconocido" })],
-      pagos: [],
-    });
+  it("estado SAT desconocido se agrupa una sola vez y debe decidirse", () => {
+    const documentos = [fila(XML.ingresoPue, { estatus_sat: "desconocido" }), fila(XML.gastoPue, { estatus_sat: "desconocido" })];
+    const r = corridaBase({ documentos, pagos: [] });
     const exc = r.excepciones.filter((e) => e.codigo === "ESTATUS_SAT_DESCONOCIDO");
     expect(exc).toHaveLength(1);
     expect(exc[0]!.detalle).toMatchObject({ comprobantes: 2 });
     expect(r.contadores.estatusDesconocido).toBe(2);
-    expect(r.puedeDeclararse).toBe(true);
+    expect(r.puedeDeclararse).toBe(false);
+    const aceptado = corridaBase({
+      documentos,
+      pagos: [],
+      decisiones: [{ codigo: "ESTATUS_SAT_DESCONOCIDO", cfdi_id: exc[0]!.cfdi_id, estado: "aceptada" }],
+    });
+    expect(aceptado.puedeDeclararse).toBe(true);
   });
 });
 

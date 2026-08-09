@@ -57,8 +57,14 @@ export interface CatalogEntry {
   descripcion: string;
   icon: LucideIcon;
   tipo: NodeType;
+  /**
+   * false = la acción NO está implementada. No se ofrece en el constructor y el
+   * servidor la rechaza (falla cerrado). Nunca devuelve resultados simulados.
+   */
+  implementada?: boolean;
   paramsSchema?: Record<string, { label: string; type: "text" | "number" | "select" | "boolean"; options?: string[]; default?: any }>;
 }
+
 
 export const TRIGGERS: Record<TriggerKind, CatalogEntry> = {
   xml_uploaded: { kind: "xml_uploaded", tipo: "trigger", label: "XML cargado", icon: Upload, descripcion: "Se dispara al subir un CFDI nuevo." },
@@ -81,12 +87,17 @@ export const TRIGGERS: Record<TriggerKind, CatalogEntry> = {
 };
 
 export const ACTIONS: Record<ActionKind, CatalogEntry> = {
-  validar_cfdi: { kind: "validar_cfdi", tipo: "action", label: "Validar CFDI", icon: FileCode2, descripcion: "Verifica estructura y vigencia." },
-  auditor_express: { kind: "auditor_express", tipo: "action", label: "Auditor Express", icon: Sparkles, descripcion: "Corre el auditor sobre el expediente." },
-  conciliacion_bancaria: { kind: "conciliacion_bancaria", tipo: "action", label: "Conciliación bancaria", icon: Banknote, descripcion: "Cruza CFDI vs movimientos." },
-  calcular_isr: { kind: "calcular_isr", tipo: "action", label: "Calcular ISR", icon: Calculator, descripcion: "Estima ISR del periodo." },
-  calcular_iva: { kind: "calcular_iva", tipo: "action", label: "Calcular IVA", icon: Calculator, descripcion: "Estima IVA del periodo." },
-  actualizar_score_riesgo: { kind: "actualizar_score_riesgo", tipo: "action", label: "Actualizar score", icon: ShieldAlert, descripcion: "Recalcula riesgo SAT." },
+  // ── SIN IMPLEMENTACIÓN ──────────────────────────────────────────────────
+  // Estas acciones nunca ejecutaron nada real: devolvían un texto fijo. Se
+  // conservan en el tipo para que los workflows guardados sigan leyéndose,
+  // pero no se ofrecen y el motor las rechaza.
+  validar_cfdi: { kind: "validar_cfdi", tipo: "action", implementada: false, label: "Validar CFDI", icon: FileCode2, descripcion: "Sin implementación automática. Usa el Validador CFDI." },
+  auditor_express: { kind: "auditor_express", tipo: "action", implementada: false, label: "Auditor Express", icon: Sparkles, descripcion: "Sin implementación automática. Ejecútalo desde su herramienta." },
+  conciliacion_bancaria: { kind: "conciliacion_bancaria", tipo: "action", implementada: false, label: "Conciliación bancaria", icon: Banknote, descripcion: "Sin implementación automática. Usa el módulo de Conciliación." },
+  calcular_isr: { kind: "calcular_isr", tipo: "action", implementada: false, label: "Calcular ISR", icon: Calculator, descripcion: "Sin implementación automática. Usa la calculadora ISR/IVA." },
+  calcular_iva: { kind: "calcular_iva", tipo: "action", implementada: false, label: "Calcular IVA", icon: Calculator, descripcion: "Sin implementación automática. Usa la calculadora ISR/IVA." },
+  actualizar_score_riesgo: { kind: "actualizar_score_riesgo", tipo: "action", implementada: false, label: "Actualizar score", icon: ShieldAlert, descripcion: "Sin implementación automática. Recalcula desde Riesgo SAT." },
+
   generar_tarea: {
     kind: "generar_tarea",
     tipo: "action",
@@ -110,7 +121,7 @@ export const ACTIONS: Record<ActionKind, CatalogEntry> = {
       nivel: { label: "Nivel", type: "select", options: ["info", "advertencia", "critico"], default: "advertencia" },
     },
   },
-  generar_reporte: { kind: "generar_reporte", tipo: "action", label: "Generar reporte", icon: FileBarChart, descripcion: "Genera reporte ejecutivo del periodo." },
+  generar_reporte: { kind: "generar_reporte", tipo: "action", implementada: false, label: "Generar reporte", icon: FileBarChart, descripcion: "Sin implementación automática. Genera el reporte desde su módulo." },
   solicitar_documento_cliente: {
     kind: "solicitar_documento_cliente",
     tipo: "action",
@@ -344,3 +355,45 @@ export function catalogEntry(type: NodeType, kind: string): CatalogEntry | null 
   if (type === "condition") return (CONDITIONS as any)[kind] ?? null;
   return null;
 }
+
+/** Acciones realmente ejecutables por el motor. Fuente única. */
+export function accionImplementada(kind: string): boolean {
+  const e = (ACTIONS as any)[kind] as CatalogEntry | undefined;
+  return !!e && e.implementada !== false;
+}
+
+/** Acciones ofrecidas en el constructor: sólo las implementadas. */
+export const ACCIONES_DISPONIBLES: CatalogEntry[] = Object.values(ACTIONS).filter((a) => a.implementada !== false);
+
+/**
+ * Quita de una plantilla los nodos cuya acción no está implementada y vuelve a
+ * unir la cadena, para que las plantillas nunca creen automatizaciones falsas.
+ */
+export function sanitizarPlantilla(tpl: WorkflowTemplate): { nodes: WorkflowNode[]; edges: WorkflowEdge[]; omitidos: string[] } {
+  const omitidos = tpl.nodes.filter((n) => n.type === "action" && !accionImplementada(n.kind)).map((n) => n.id);
+  if (!omitidos.length) return { nodes: tpl.nodes, edges: tpl.edges, omitidos };
+
+  const fuera = new Set(omitidos);
+  const nodes = tpl.nodes.filter((n) => !fuera.has(n.id));
+
+  const salidas = new Map<string, string[]>();
+  for (const e of tpl.edges) salidas.set(e.from, [...(salidas.get(e.from) ?? []), e.to]);
+  const destinosVivos = (id: string, visto = new Set<string>()): string[] => {
+    if (visto.has(id)) return [];
+    visto.add(id);
+    return (salidas.get(id) ?? []).flatMap((to) => (fuera.has(to) ? destinosVivos(to, visto) : [to]));
+  };
+
+  const vistos = new Set<string>();
+  const edges: WorkflowEdge[] = [];
+  for (const n of nodes) {
+    for (const to of destinosVivos(n.id)) {
+      const k = `${n.id}->${to}`;
+      if (vistos.has(k)) continue;
+      vistos.add(k);
+      edges.push({ from: n.id, to });
+    }
+  }
+  return { nodes, edges, omitidos };
+}
+

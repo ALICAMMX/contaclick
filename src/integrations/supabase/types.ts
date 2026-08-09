@@ -5429,6 +5429,10 @@ export type Database = {
     }
     Functions: {
       accept_invitation: { Args: { _token: string }; Returns: string }
+      cfdi_normalizacion_reemplazar: {
+        Args: { _cfdi_id: string; _payload: Json }
+        Returns: Json
+      }
       check_rate_limit: {
         Args: { _bucket: string; _max: number; _window_seconds: number }
         Returns: {
