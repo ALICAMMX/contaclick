@@ -22,7 +22,7 @@ const XML = facturaXml({
   receptor: RFC_TERCERO,
   fecha: "2026-03-10T10:00:00",
   subtotal: 1000,
-  iva: 160,
+
 });
 
 /** Fake que YA contiene el CFDI (carga manual previa) y registra los RPC. */
