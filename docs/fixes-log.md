@@ -1175,3 +1175,9 @@ contra base de datos.
    existentes (`proceso`, `estado_anterior`) y verifica rollback total ante
    fallo intencional de bitácora. Resultado: `QA_RESULTADO=TODAS_PASARON`,
    cero residuos.
+
+## Evidencia SAT: el RPC es el único escritor (bypass de CFDI nuevo)
+- **Problema**: un CFDI nuevo se insertaba con `estatus_sat='vigente'` derivado del objeto de linaje, antes de validar con `cfdi_registrar_evidencia_sat`. Si el RPC rechazaba o fallaba, quedaba un "vigente" sin bitácora.
+- **Corrección**: todo CFDI nuevo nace `desconocido`; sólo el RPC proyecta el estatus tras escribir `cfdi_sat_evidencias`. La reconciliación devuelve resultado explícito y, si había linaje completo sin evidencia, el documento se marca `requiere_revision` con el motivo `EVIDENCIA_SAT_PENDIENTE` (corrida, solicitud y paquete para reintentar).
+- **Base de datos**: el RPC usa `auth.role()`, distingue creada/duplicada/rechazada y repara la proyección en la ruta `ON CONFLICT`.
+- **Pruebas**: `supabase/tests/evidencia_sat.sql` (26 PASA, 0 FALLA, 6 OMITIDO por requerir rol interno; rollback con cero residuos) y 582 casos de vitest.

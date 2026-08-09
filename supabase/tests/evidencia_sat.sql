@@ -21,8 +21,19 @@ DECLARE
   v_da uuid; v_db uuid; v_ca uuid; v_cb uuid; v_rfca uuid; v_rfcb uuid;
   v_cfdi_a uuid; v_cfdi_b uuid; v_run_a uuid; v_run_b uuid;
   v_res jsonb; v_row public.cfdi_xml%ROWTYPE; v_n int;
-  v_ok boolean; v_msg text; v_reporte text := '';
+  v_ok boolean; v_msg text; v_reporte text := ''; v_rol_ok boolean := true;
 BEGIN
+  -- Cambiar de rol requiere un ejecutor interno. Si el rol no está disponible
+  -- para quien corre la prueba, los casos que dependen de él se marcan
+  -- OMITIDO: jamás se dan por PASADOS sin haberse ejecutado.
+  CREATE OR REPLACE FUNCTION pg_temp.qa_rol(_r text) RETURNS boolean
+  LANGUAGE plpgsql AS $f$
+  BEGIN
+    PERFORM set_config('role', _r, true);
+    RETURN true;
+  EXCEPTION WHEN OTHERS THEN
+    RETURN false;
+  END; $f$;
   CREATE TEMP TABLE IF NOT EXISTS qa(nombre text, ok boolean, detalle text) ON COMMIT DROP;
   DELETE FROM qa;
   GRANT ALL ON qa TO authenticated;  -- sólo para poder anotar resultados al simular al usuario
@@ -152,13 +163,21 @@ BEGIN
     UPDATE public.cfdi_sat_evidencias SET proveedor = 'falsificado' WHERE cfdi_id = v_cfdi_a;
     INSERT INTO qa VALUES ('UPDATE bloqueado por trigger', false, 'no lanzó excepción');
   EXCEPTION WHEN OTHERS THEN
-    INSERT INTO qa VALUES ('UPDATE bloqueado por trigger', SQLERRM LIKE '%inmutable%', SQLERRM);
+    -- Si el ejecutor ni siquiera tiene el privilegio, el trigger no llega a
+    -- probarse: se marca OMITIDO en lugar de darlo por aprobado.
+    INSERT INTO qa VALUES ('UPDATE bloqueado por trigger',
+      CASE WHEN SQLERRM LIKE '%permission denied%' THEN NULL
+           ELSE SQLERRM LIKE '%inmutable%' END, SQLERRM);
   END;
   BEGIN
     DELETE FROM public.cfdi_sat_evidencias WHERE cfdi_id = v_cfdi_a;
     INSERT INTO qa VALUES ('DELETE bloqueado por trigger', false, 'no lanzó excepción');
   EXCEPTION WHEN OTHERS THEN
-    INSERT INTO qa VALUES ('DELETE bloqueado por trigger', SQLERRM LIKE '%inmutable%', SQLERRM);
+    -- Si el ejecutor ni siquiera tiene el privilegio, el trigger no llega a
+    -- probarse: se marca OMITIDO en lugar de darlo por aprobado.
+    INSERT INTO qa VALUES ('DELETE bloqueado por trigger',
+      CASE WHEN SQLERRM LIKE '%permission denied%' THEN NULL
+           ELSE SQLERRM LIKE '%inmutable%' END, SQLERRM);
   END;
 
   -- =================== SAT → manual (no degrada) ===================
@@ -168,6 +187,106 @@ BEGIN
   INSERT INTO qa VALUES ('SAT→manual: evidencia intacta y sin duplicar',
     v_n = 1 AND v_row.estatus_sat = 'vigente' AND v_row.estatus_sat_fuente = 'descarga_masiva_sat',
     v_n::text || '/' || v_row.estatus_sat);
+
+  -- =================== CFDI NUEVO: sólo el RPC proyecta ===================
+  -- Documento recién ingestado desde un paquete: nace SIEMPRE 'desconocido'.
+  DECLARE
+    v_cfdi_n uuid; v_cfdi_r uuid; v_cfdi_c uuid;
+  BEGIN
+    v_rol_ok := pg_temp.qa_rol('postgres');
+    PERFORM set_config('request.jwt.claims',
+      json_build_object('sub', v_ua, 'role','authenticated')::text, true);
+    INSERT INTO public.cfdi_xml (despacho_id, cliente_id, rfc_id, uuid, tipo_cfdi,
+      rfc_emisor, rfc_receptor, fecha, archivo_hash, origen, proveedor,
+      sat_run_id, sat_solicitud_id, sat_paquete_id, estatus_sat)
+    VALUES (v_da, v_ca, v_rfca, 'QA000003-0000-4000-8000-000000000003', 'I',
+      'QAA010101AAA','QAB020202BB2', now(), 'qa-hash-3', 'sat_descarga_masiva',
+      'sat_directo', v_run_a, 'SOL-A', 'PKG-A1', 'desconocido')
+    RETURNING id INTO v_cfdi_n;
+
+    SELECT * INTO v_row FROM public.cfdi_xml WHERE id = v_cfdi_n;
+    INSERT INTO qa VALUES ('CFDI nuevo nace desconocido y sin fuente de evidencia',
+      v_row.estatus_sat = 'desconocido' AND v_row.estatus_sat_fuente IS NULL
+      AND v_row.estatus_sat_evidencia_at IS NULL, v_row.estatus_sat);
+
+    -- Linaje INVÁLIDO: el paquete no fue procesado ⇒ rechazo sin proyección.
+    v_res := public.cfdi_registrar_evidencia_sat(v_cfdi_n, v_run_a, 'SOL-SIN-PAQUETE', 'PKG-X1');
+    SELECT * INTO v_row FROM public.cfdi_xml WHERE id = v_cfdi_n;
+    INSERT INTO qa VALUES ('CFDI nuevo con linaje inválido: rechazado y sigue desconocido',
+      coalesce((v_res->>'creada')::boolean,false) = false
+      AND coalesce((v_res->>'rechazada')::boolean,false) = true
+      AND v_row.estatus_sat = 'desconocido' AND v_row.estatus_sat_fuente IS NULL,
+      v_res::text || ' / ' || v_row.estatus_sat);
+    SELECT count(*) INTO v_n FROM public.cfdi_sat_evidencias WHERE cfdi_id = v_cfdi_n;
+    INSERT INTO qa VALUES ('linaje inválido no deja bitácora', v_n = 0, v_n::text);
+
+    -- Linaje VÁLIDO: se crea bitácora y se proyecta vigente.
+    v_res := public.cfdi_registrar_evidencia_sat(v_cfdi_n, v_run_a, 'SOL-A', 'PKG-A1');
+    SELECT * INTO v_row FROM public.cfdi_xml WHERE id = v_cfdi_n;
+    INSERT INTO qa VALUES ('CFDI nuevo con linaje válido: bitácora y proyección vigente',
+      coalesce((v_res->>'creada')::boolean,false)
+      AND v_row.estatus_sat = 'vigente' AND v_row.estatus_sat_fuente = 'descarga_masiva_sat'
+      AND v_row.estatus_sat_evidencia_at IS NOT NULL, v_res::text);
+
+    -- IDEMPOTENCIA REPARADORA: la bitácora ya existe (por ejemplo, la
+    -- proyección se perdió tras un fallo parcial). Repetir el RPC NO crea una
+    -- segunda evidencia y SÍ vuelve a dejar el CFDI proyectado como vigente.
+    INSERT INTO public.cfdi_xml (despacho_id, cliente_id, rfc_id, uuid, tipo_cfdi,
+      rfc_emisor, rfc_receptor, fecha, archivo_hash, origen, estatus_sat)
+    VALUES (v_da, v_ca, v_rfca, 'QA000004-0000-4000-8000-000000000004', 'I',
+      'QAA010101AAA','QAB020202BB2', now(), 'qa-hash-4', 'sat_descarga_masiva', 'desconocido')
+    RETURNING id INTO v_cfdi_r;
+    INSERT INTO public.cfdi_sat_evidencias (despacho_id, cliente_id, cfdi_id, run_id,
+      solicitud_id, paquete_id, estado_comprobante, estatus_derivado, fuente, idempotency_key)
+    VALUES (v_da, v_ca, v_cfdi_r, v_run_a, 'SOL-A','PKG-A1','Vigente','vigente',
+            'descarga_masiva_sat',
+            v_cfdi_r::text||':'||v_run_a::text||':SOL-A:PKG-A1');
+
+    v_res := public.cfdi_registrar_evidencia_sat(v_cfdi_r, v_run_a, 'SOL-A', 'PKG-A1');
+    SELECT * INTO v_row FROM public.cfdi_xml WHERE id = v_cfdi_r;
+    SELECT count(*) INTO v_n FROM public.cfdi_sat_evidencias WHERE cfdi_id = v_cfdi_r;
+    INSERT INTO qa VALUES ('idempotencia reparadora: repara proyección sin duplicar bitácora',
+      coalesce((v_res->>'duplicada')::boolean,false) AND v_n = 1
+      AND v_row.estatus_sat = 'vigente' AND v_row.estatus_sat_fuente = 'descarga_masiva_sat'
+      AND v_row.estatus_sat_evidencia_at IS NOT NULL,
+      v_res::text || ' / evidencias=' || v_n::text || ' / ' || v_row.estatus_sat);
+
+    -- Un CANCELADO jamás se convierte en vigente por registrar evidencia.
+    INSERT INTO public.cfdi_xml (despacho_id, cliente_id, rfc_id, uuid, tipo_cfdi,
+      rfc_emisor, rfc_receptor, fecha, archivo_hash, origen, estatus_sat)
+    VALUES (v_da, v_ca, v_rfca, 'QA000005-0000-4000-8000-000000000005', 'I',
+      'QAA010101AAA','QAB020202BB2', now(), 'qa-hash-5', 'sat_descarga_masiva', 'cancelado')
+    RETURNING id INTO v_cfdi_c;
+    PERFORM public.cfdi_registrar_evidencia_sat(v_cfdi_c, v_run_a, 'SOL-A', 'PKG-A1');
+    SELECT * INTO v_row FROM public.cfdi_xml WHERE id = v_cfdi_c;
+    INSERT INTO qa VALUES ('la proyección nunca revive un cancelado',
+      v_row.estatus_sat = 'cancelado', v_row.estatus_sat);
+
+    -- SERVICE ROLE: proceso interno sin usuario puede registrar evidencia.
+    v_rol_ok := pg_temp.qa_rol('service_role');
+    PERFORM set_config('request.jwt.claims',
+      json_build_object('role','service_role')::text, true);
+    v_res := public.cfdi_registrar_evidencia_sat(v_cfdi_b, v_run_b, 'SOL-B', 'PKG-B1');
+    INSERT INTO qa VALUES ('service_role (sin usuario) sí puede registrar evidencia',
+      coalesce((v_res->>'creada')::boolean,false), v_res::text);
+
+    -- ANON: sin usuario y sin rol interno ⇒ rechazo duro.
+    v_rol_ok := pg_temp.qa_rol('anon');
+    PERFORM set_config('request.jwt.claims', json_build_object('role','anon')::text, true);
+    v_ok := false;
+    BEGIN
+      PERFORM public.cfdi_registrar_evidencia_sat(v_cfdi_n, v_run_a, 'SOL-A', 'PKG-A1');
+      v_msg := 'no lanzó excepción';
+    EXCEPTION WHEN OTHERS THEN
+      v_ok := SQLERRM LIKE '%No autorizado%' OR SQLERRM LIKE '%permission denied%';
+      v_msg := SQLERRM;
+    END;
+    INSERT INTO qa VALUES ('anon no puede registrar evidencia', v_ok, v_msg);
+
+    v_rol_ok := pg_temp.qa_rol('postgres');
+    PERFORM set_config('request.jwt.claims',
+      json_build_object('sub', v_ua, 'role','authenticated')::text, true);
+  END;
 
   -- =================== Permisos declarados ===================
   INSERT INTO qa VALUES ('authenticated NO puede INSERT/UPDATE/DELETE evidencias',
@@ -181,16 +300,18 @@ BEGIN
     NOT has_function_privilege('anon','public.cfdi_registrar_evidencia_sat(uuid,uuid,text,text)','EXECUTE'), '');
 
   -- =================== RLS con dos usuarios ===================
-  PERFORM set_config('role','authenticated', true);
+  v_rol_ok := pg_temp.qa_rol('authenticated');
   PERFORM set_config('request.jwt.claims',
     json_build_object('sub', v_ua, 'role','authenticated')::text, true);
   SELECT count(*) INTO v_n FROM public.cfdi_sat_evidencias WHERE cfdi_id = v_cfdi_a;
-  INSERT INTO qa VALUES ('RLS: usuario A lee la evidencia de su expediente', v_n = 1, v_n::text);
+  INSERT INTO qa VALUES ('RLS: usuario A lee la evidencia de su expediente',
+    CASE WHEN v_rol_ok THEN v_n = 1 END, v_n::text);
 
   PERFORM set_config('request.jwt.claims',
     json_build_object('sub', v_ub, 'role','authenticated')::text, true);
   SELECT count(*) INTO v_n FROM public.cfdi_sat_evidencias WHERE cfdi_id = v_cfdi_a;
-  INSERT INTO qa VALUES ('RLS: usuario B no ve la evidencia de A', v_n = 0, v_n::text);
+  INSERT INTO qa VALUES ('RLS: usuario B no ve la evidencia de A',
+    CASE WHEN v_rol_ok THEN v_n = 0 END, v_n::text);
 
   v_ok := false;
   BEGIN
@@ -199,7 +320,8 @@ BEGIN
   EXCEPTION WHEN OTHERS THEN
     v_ok := SQLERRM LIKE '%No autorizado%'; v_msg := SQLERRM;
   END;
-  INSERT INTO qa VALUES ('RLS: usuario B no puede registrar evidencia en el expediente A', v_ok, v_msg);
+  INSERT INTO qa VALUES ('RLS: usuario B no puede registrar evidencia en el expediente A',
+    CASE WHEN v_rol_ok THEN v_ok END, v_msg);
 
   -- El frontend no puede fabricar evidencia: INSERT directo como authenticated.
   v_ok := false;
@@ -212,13 +334,16 @@ BEGIN
   EXCEPTION WHEN OTHERS THEN
     v_ok := true; v_msg := SQLERRM;
   END;
-  INSERT INTO qa VALUES ('frontend/authenticated no puede insertar evidencia directamente', v_ok, v_msg);
+  INSERT INTO qa VALUES ('frontend/authenticated no puede insertar evidencia directamente',
+    CASE WHEN v_rol_ok THEN v_ok END, v_msg);
 
-  PERFORM set_config('role','postgres', true);
+  v_rol_ok := pg_temp.qa_rol('postgres');
   PERFORM set_config('request.jwt.claims', '', true);
 
   -- =================== Reporte y ROLLBACK forzado ===================
-  SELECT string_agg(format('%s · %s%s', CASE WHEN ok THEN 'PASA' ELSE 'FALLA' END,
+  SELECT string_agg(format('%s · %s%s',
+                           CASE WHEN ok IS NULL THEN 'OMITIDO (rol no disponible)'
+                                WHEN ok THEN 'PASA' ELSE 'FALLA' END,
                            nombre, CASE WHEN ok THEN '' ELSE ' → '||coalesce(detalle,'') END),
                     E'\n' ORDER BY ctid)
     INTO v_reporte FROM qa;
@@ -226,5 +351,8 @@ BEGIN
 
   RAISE EXCEPTION E'\n%\n%\n(rollback intencional: la prueba no deja residuos)',
     v_reporte,
-    CASE WHEN v_ok THEN 'QA_RESULTADO=TODAS_PASARON' ELSE 'QA_RESULTADO=HAY_FALLAS' END;
+    CASE WHEN coalesce(v_ok, true)
+         THEN 'QA_RESULTADO=TODAS_PASARON'||
+              (SELECT ' · omitidos='||count(*) FROM qa WHERE ok IS NULL)
+         ELSE 'QA_RESULTADO=HAY_FALLAS' END;
 END $qa$;
