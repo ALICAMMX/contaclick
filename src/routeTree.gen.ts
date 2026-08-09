@@ -61,6 +61,7 @@ import { Route as AppContabilidadAutoRouteImport } from './routes/app.contabilid
 import { Route as AppConfiguracionRouteImport } from './routes/app.configuracion'
 import { Route as AppConciliacionIntegralRouteImport } from './routes/app.conciliacion-integral'
 import { Route as AppConciliacionRouteImport } from './routes/app.conciliacion'
+import { Route as AppCierreRouteImport } from './routes/app.cierre'
 import { Route as AppCheckoutRouteImport } from './routes/app.checkout'
 import { Route as AppCfdiRouteImport } from './routes/app.cfdi'
 import { Route as AppCalendarioRouteImport } from './routes/app.calendario'
@@ -387,6 +388,11 @@ const AppConciliacionIntegralRoute = AppConciliacionIntegralRouteImport.update({
 const AppConciliacionRoute = AppConciliacionRouteImport.update({
   id: '/conciliacion',
   path: '/conciliacion',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCierreRoute = AppCierreRouteImport.update({
+  id: '/cierre',
+  path: '/cierre',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCheckoutRoute = AppCheckoutRouteImport.update({
@@ -759,6 +765,7 @@ export interface FileRoutesByFullPath {
   '/app/calendario': typeof AppCalendarioRoute
   '/app/cfdi': typeof AppCfdiRouteWithChildren
   '/app/checkout': typeof AppCheckoutRoute
+  '/app/cierre': typeof AppCierreRoute
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
   '/app/conciliacion-integral': typeof AppConciliacionIntegralRoute
   '/app/configuracion': typeof AppConfiguracionRoute
@@ -875,6 +882,7 @@ export interface FileRoutesByTo {
   '/app/buzon': typeof AppBuzonRoute
   '/app/calendario': typeof AppCalendarioRoute
   '/app/checkout': typeof AppCheckoutRoute
+  '/app/cierre': typeof AppCierreRoute
   '/app/conciliacion-integral': typeof AppConciliacionIntegralRoute
   '/app/configuracion': typeof AppConfiguracionRoute
   '/app/contabilidad-auto': typeof AppContabilidadAutoRoute
@@ -992,6 +1000,7 @@ export interface FileRoutesById {
   '/app/calendario': typeof AppCalendarioRoute
   '/app/cfdi': typeof AppCfdiRouteWithChildren
   '/app/checkout': typeof AppCheckoutRoute
+  '/app/cierre': typeof AppCierreRoute
   '/app/conciliacion': typeof AppConciliacionRouteWithChildren
   '/app/conciliacion-integral': typeof AppConciliacionIntegralRoute
   '/app/configuracion': typeof AppConfiguracionRoute
@@ -1115,6 +1124,7 @@ export interface FileRouteTypes {
     | '/app/calendario'
     | '/app/cfdi'
     | '/app/checkout'
+    | '/app/cierre'
     | '/app/conciliacion'
     | '/app/conciliacion-integral'
     | '/app/configuracion'
@@ -1231,6 +1241,7 @@ export interface FileRouteTypes {
     | '/app/buzon'
     | '/app/calendario'
     | '/app/checkout'
+    | '/app/cierre'
     | '/app/conciliacion-integral'
     | '/app/configuracion'
     | '/app/contabilidad-auto'
@@ -1347,6 +1358,7 @@ export interface FileRouteTypes {
     | '/app/calendario'
     | '/app/cfdi'
     | '/app/checkout'
+    | '/app/cierre'
     | '/app/conciliacion'
     | '/app/conciliacion-integral'
     | '/app/configuracion'
@@ -1838,6 +1850,13 @@ declare module '@tanstack/react-router' {
       path: '/conciliacion'
       fullPath: '/app/conciliacion'
       preLoaderRoute: typeof AppConciliacionRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/cierre': {
+      id: '/app/cierre'
+      path: '/cierre'
+      fullPath: '/app/cierre'
+      preLoaderRoute: typeof AppCierreRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/checkout': {
@@ -2450,6 +2469,7 @@ interface AppRouteChildren {
   AppCalendarioRoute: typeof AppCalendarioRoute
   AppCfdiRoute: typeof AppCfdiRouteWithChildren
   AppCheckoutRoute: typeof AppCheckoutRoute
+  AppCierreRoute: typeof AppCierreRoute
   AppConciliacionRoute: typeof AppConciliacionRouteWithChildren
   AppConciliacionIntegralRoute: typeof AppConciliacionIntegralRoute
   AppConfiguracionRoute: typeof AppConfiguracionRoute
@@ -2502,6 +2522,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCalendarioRoute: AppCalendarioRoute,
   AppCfdiRoute: AppCfdiRouteWithChildren,
   AppCheckoutRoute: AppCheckoutRoute,
+  AppCierreRoute: AppCierreRoute,
   AppConciliacionRoute: AppConciliacionRouteWithChildren,
   AppConciliacionIntegralRoute: AppConciliacionIntegralRoute,
   AppConfiguracionRoute: AppConfiguracionRoute,
@@ -2626,13 +2647,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

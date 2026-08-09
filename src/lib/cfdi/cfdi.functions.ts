@@ -235,75 +235,42 @@ export async function ingestOneInternal(
     .single();
   if (error || !ins) throw new Error(`Error al guardar CFDI: ${error?.message}`);
 
-  // Conceptos (best-effort, no bloquea)
-  if (parsed.conceptos.length) {
-    await supabase.from("cfdi_conceptos").insert(
-      parsed.conceptos.slice(0, 200).map((c) => ({
-        cfdi_id: ins.id,
-        clave_prod_serv: c.claveProdServ ?? null,
-        descripcion: c.descripcion ?? null,
-        cantidad: c.cantidad ?? null,
-        valor_unitario: c.valorUnitario ?? null,
-        importe: c.importe ?? null,
-      })),
-    );
-  }
-
-  // CANDADO: validar UUIDs relacionados (Pago 2.0 y CfdiRelacionados)
-  // Si un complemento de pago apunta a un UUID que NO está en el expediente,
-  // o el padre tiene un emisor distinto al receptor del pago, lo registramos
-  // como advertencia para que el contador no concilie pagos huérfanos.
-  if (parsed.relacionados.length) {
-    const uuidsRel = parsed.relacionados.map((r) => r.uuid.toUpperCase());
-    const { data: parents } = await supabase
+  // NORMALIZACIÓN FISCAL: conceptos, impuestos detallados, relaciones y
+  // complemento de pagos 2.0. Fuente única: `src/lib/cierre/persistencia.ts`.
+  // Sólo se normaliza ESTE documento; ningún análisis pesado se dispara aquí.
+  const { normalizarYPersistir, cargarPeriodo, sincronizarExcepciones } = await import("@/lib/cierre/persistencia");
+  let periodoDoc: string | null = null;
+  try {
+    const res = await normalizarYPersistir(supabase, {
+      cfdiId: ins.id as string,
+      despachoId,
+      clienteId,
+      rfcExpediente: rfcCliente ?? rfcDestino,
+      xml,
+    });
+    periodoDoc = res.periodo;
+  } catch (e) {
+    console.warn(`[cfdi ${uuidCanonico}] normalización incompleta:`, (e as any)?.message);
+    await supabase
       .from("cfdi_xml")
-      .select("uuid, rfc_emisor, rfc_receptor, estatus_sat, total")
-      .eq("cliente_id", clienteId)
-      .in("uuid", uuidsRel);
-    const parentByUuid = new Map(
-      (parents ?? []).map((p) => [String(p.uuid).toUpperCase(), p]),
-    );
+      .update({ estado_procesamiento: "requiere_revision", motivos: [{ codigo: "PARSEO_INCOMPLETO", mensaje: String((e as any)?.message ?? "Error de normalización") }] })
+      .eq("id", ins.id);
+  }
 
-    const relRows: Array<{ cfdi_id: string; uuid_relacionado: string; tipo_relacion: string }> = [];
-    const advertencias: string[] = [];
-    for (const r of parsed.relacionados) {
-      const u = r.uuid.toUpperCase();
-      const parent = parentByUuid.get(u);
-      if (!parent) {
-        advertencias.push(`UUID relacionado ${u} no existe en el expediente.`);
-      } else if (parsed.tipoComprobante === "P") {
-        // En un complemento de pago, el emisor del pago debe coincidir con el receptor
-        // de la factura (quien cobra). Si no, hay riesgo de pago mal aplicado.
-        if (parsed.emisor.rfc?.toUpperCase() !== String(parent.rfc_emisor).toUpperCase()) {
-          advertencias.push(
-            `UUID ${u}: el emisor del pago (${parsed.emisor.rfc}) no coincide con el emisor de la factura padre (${parent.rfc_emisor}).`,
-          );
-        }
-        if (parent.estatus_sat === "cancelado") {
-          advertencias.push(`UUID ${u}: la factura padre está cancelada en el SAT.`);
-        }
-      }
-      relRows.push({
-        cfdi_id: ins.id,
-        uuid_relacionado: u,
-        tipo_relacion: r.tipo === "pago" ? "pago" : (r.tipoRelacion ?? "relacion"),
+  // Contadores y excepciones del PERIODO del documento (idempotente y barato).
+  if (periodoDoc && rfcCliente) {
+    try {
+      const { evaluacion } = await cargarPeriodo(supabase, {
+        clienteId,
+        rfcExpediente: rfcCliente,
+        periodo: periodoDoc,
       });
-    }
-    if (relRows.length) {
-      await supabase.from("cfdi_relaciones").insert(relRows);
-    }
-    if (advertencias.length) {
-      console.warn(`[cfdi ${parsed.uuid}] relaciones con advertencias:`, advertencias);
-      // Registrar como alerta para el contador
-      await supabase.from("audit_logs").insert({
-        despacho_id: despachoId,
-        accion: "cfdi.relacion.advertencia",
-        entidad: "cfdi_xml",
-        entidad_id: ins.id,
-        payload: { uuid: parsed.uuid, tipo: parsed.tipoComprobante, advertencias },
-      });
+      await sincronizarExcepciones(supabase, { despachoId, clienteId, periodo: periodoDoc, evaluacion });
+    } catch (e) {
+      console.warn(`[cfdi ${uuidCanonico}] no se pudo actualizar el periodo ${periodoDoc}:`, (e as any)?.message);
     }
   }
+
 
   // Dispara workflows automáticos suscritos a "xml_uploaded" (no bloquea ante error)
   try {

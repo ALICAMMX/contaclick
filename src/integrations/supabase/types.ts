@@ -439,6 +439,7 @@ export type Database = {
           descuento: number | null
           id: string
           importe: number | null
+          numero: number | null
           valor_unitario: number | null
         }
         Insert: {
@@ -449,6 +450,7 @@ export type Database = {
           descuento?: number | null
           id?: string
           importe?: number | null
+          numero?: number | null
           valor_unitario?: number | null
         }
         Update: {
@@ -459,6 +461,7 @@ export type Database = {
           descuento?: number | null
           id?: string
           importe?: number | null
+          numero?: number | null
           valor_unitario?: number | null
         }
         Relationships: [
@@ -467,6 +470,262 @@ export type Database = {
             columns: ["cfdi_id"]
             isOneToOne: false
             referencedRelation: "cfdi_xml"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cfdi_impuestos: {
+        Row: {
+          base: number | null
+          cfdi_id: string
+          concepto_numero: number | null
+          created_at: string
+          id: string
+          importe: number | null
+          impuesto: string
+          impuesto_nombre: string | null
+          nivel: string
+          tasa_cuota: number | null
+          tipo: string
+          tipo_factor: string | null
+        }
+        Insert: {
+          base?: number | null
+          cfdi_id: string
+          concepto_numero?: number | null
+          created_at?: string
+          id?: string
+          importe?: number | null
+          impuesto: string
+          impuesto_nombre?: string | null
+          nivel: string
+          tasa_cuota?: number | null
+          tipo: string
+          tipo_factor?: string | null
+        }
+        Update: {
+          base?: number | null
+          cfdi_id?: string
+          concepto_numero?: number | null
+          created_at?: string
+          id?: string
+          importe?: number | null
+          impuesto?: string
+          impuesto_nombre?: string | null
+          nivel?: string
+          tasa_cuota?: number | null
+          tipo?: string
+          tipo_factor?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cfdi_impuestos_cfdi_id_fkey"
+            columns: ["cfdi_id"]
+            isOneToOne: false
+            referencedRelation: "cfdi_xml"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cfdi_pago_documentos: {
+        Row: {
+          cfdi_id: string
+          cfdi_padre_id: string | null
+          created_at: string
+          equivalencia_dr: number | null
+          folio: string | null
+          id: string
+          id_documento: string
+          imp_pagado: number | null
+          imp_saldo_ant: number | null
+          imp_saldo_insoluto: number | null
+          moneda_dr: string | null
+          num_parcialidad: number | null
+          objeto_imp_dr: string | null
+          pago_id: string
+          serie: string | null
+        }
+        Insert: {
+          cfdi_id: string
+          cfdi_padre_id?: string | null
+          created_at?: string
+          equivalencia_dr?: number | null
+          folio?: string | null
+          id?: string
+          id_documento: string
+          imp_pagado?: number | null
+          imp_saldo_ant?: number | null
+          imp_saldo_insoluto?: number | null
+          moneda_dr?: string | null
+          num_parcialidad?: number | null
+          objeto_imp_dr?: string | null
+          pago_id: string
+          serie?: string | null
+        }
+        Update: {
+          cfdi_id?: string
+          cfdi_padre_id?: string | null
+          created_at?: string
+          equivalencia_dr?: number | null
+          folio?: string | null
+          id?: string
+          id_documento?: string
+          imp_pagado?: number | null
+          imp_saldo_ant?: number | null
+          imp_saldo_insoluto?: number | null
+          moneda_dr?: string | null
+          num_parcialidad?: number | null
+          objeto_imp_dr?: string | null
+          pago_id?: string
+          serie?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cfdi_pago_documentos_cfdi_id_fkey"
+            columns: ["cfdi_id"]
+            isOneToOne: false
+            referencedRelation: "cfdi_xml"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cfdi_pago_documentos_cfdi_padre_id_fkey"
+            columns: ["cfdi_padre_id"]
+            isOneToOne: false
+            referencedRelation: "cfdi_xml"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cfdi_pago_documentos_pago_id_fkey"
+            columns: ["pago_id"]
+            isOneToOne: false
+            referencedRelation: "cfdi_pagos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cfdi_pago_impuestos: {
+        Row: {
+          ambito: string
+          base: number | null
+          created_at: string
+          documento_id: string | null
+          id: string
+          importe: number | null
+          impuesto: string
+          pago_id: string
+          tasa_cuota: number | null
+          tipo: string
+          tipo_factor: string | null
+        }
+        Insert: {
+          ambito: string
+          base?: number | null
+          created_at?: string
+          documento_id?: string | null
+          id?: string
+          importe?: number | null
+          impuesto: string
+          pago_id: string
+          tasa_cuota?: number | null
+          tipo: string
+          tipo_factor?: string | null
+        }
+        Update: {
+          ambito?: string
+          base?: number | null
+          created_at?: string
+          documento_id?: string | null
+          id?: string
+          importe?: number | null
+          impuesto?: string
+          pago_id?: string
+          tasa_cuota?: number | null
+          tipo?: string
+          tipo_factor?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cfdi_pago_impuestos_documento_id_fkey"
+            columns: ["documento_id"]
+            isOneToOne: false
+            referencedRelation: "cfdi_pago_documentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cfdi_pago_impuestos_pago_id_fkey"
+            columns: ["pago_id"]
+            isOneToOne: false
+            referencedRelation: "cfdi_pagos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cfdi_pagos: {
+        Row: {
+          cfdi_id: string
+          cliente_id: string
+          created_at: string
+          despacho_id: string
+          fecha_pago: string | null
+          forma_pago_p: string | null
+          id: string
+          moneda_p: string | null
+          monto: number | null
+          num_operacion: string | null
+          numero_pago: number
+          tipo_cambio_p: number | null
+          updated_at: string
+        }
+        Insert: {
+          cfdi_id: string
+          cliente_id: string
+          created_at?: string
+          despacho_id: string
+          fecha_pago?: string | null
+          forma_pago_p?: string | null
+          id?: string
+          moneda_p?: string | null
+          monto?: number | null
+          num_operacion?: string | null
+          numero_pago: number
+          tipo_cambio_p?: number | null
+          updated_at?: string
+        }
+        Update: {
+          cfdi_id?: string
+          cliente_id?: string
+          created_at?: string
+          despacho_id?: string
+          fecha_pago?: string | null
+          forma_pago_p?: string | null
+          id?: string
+          moneda_p?: string | null
+          monto?: number | null
+          num_operacion?: string | null
+          numero_pago?: number
+          tipo_cambio_p?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cfdi_pagos_cfdi_id_fkey"
+            columns: ["cfdi_id"]
+            isOneToOne: false
+            referencedRelation: "cfdi_xml"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cfdi_pagos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cfdi_pagos_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
             referencedColumns: ["id"]
           },
         ]
@@ -504,9 +763,14 @@ export type Database = {
         Row: {
           archivo_hash: string
           archivo_path: string | null
+          clase_documental: string | null
           cliente_id: string
           descuento: number
           despacho_id: string
+          detalle_reconstruible: boolean
+          direccion: string | null
+          estado_procesamiento: string | null
+          estado_relacion: string | null
           estatus_sat: string | null
           estatus_sat_check_at: string | null
           fecha: string
@@ -520,9 +784,13 @@ export type Database = {
           iva_trasladado: number
           metodo_pago: string | null
           moneda: string | null
+          motivos: Json
           nombre_emisor: string | null
           nombre_receptor: string | null
+          normalizacion_version: string | null
+          normalizado_at: string | null
           origen: string | null
+          periodo: string | null
           proveedor: string | null
           rfc_emisor: string
           rfc_id: string
@@ -538,13 +806,19 @@ export type Database = {
           uuid: string
           validacion: string | null
           version: string
+          xml_raw: string | null
         }
         Insert: {
           archivo_hash: string
           archivo_path?: string | null
+          clase_documental?: string | null
           cliente_id: string
           descuento?: number
           despacho_id: string
+          detalle_reconstruible?: boolean
+          direccion?: string | null
+          estado_procesamiento?: string | null
+          estado_relacion?: string | null
           estatus_sat?: string | null
           estatus_sat_check_at?: string | null
           fecha: string
@@ -558,9 +832,13 @@ export type Database = {
           iva_trasladado?: number
           metodo_pago?: string | null
           moneda?: string | null
+          motivos?: Json
           nombre_emisor?: string | null
           nombre_receptor?: string | null
+          normalizacion_version?: string | null
+          normalizado_at?: string | null
           origen?: string | null
+          periodo?: string | null
           proveedor?: string | null
           rfc_emisor: string
           rfc_id: string
@@ -576,13 +854,19 @@ export type Database = {
           uuid: string
           validacion?: string | null
           version?: string
+          xml_raw?: string | null
         }
         Update: {
           archivo_hash?: string
           archivo_path?: string | null
+          clase_documental?: string | null
           cliente_id?: string
           descuento?: number
           despacho_id?: string
+          detalle_reconstruible?: boolean
+          direccion?: string | null
+          estado_procesamiento?: string | null
+          estado_relacion?: string | null
           estatus_sat?: string | null
           estatus_sat_check_at?: string | null
           fecha?: string
@@ -596,9 +880,13 @@ export type Database = {
           iva_trasladado?: number
           metodo_pago?: string | null
           moneda?: string | null
+          motivos?: Json
           nombre_emisor?: string | null
           nombre_receptor?: string | null
+          normalizacion_version?: string | null
+          normalizado_at?: string | null
           origen?: string | null
+          periodo?: string | null
           proveedor?: string | null
           rfc_emisor?: string
           rfc_id?: string
@@ -614,6 +902,7 @@ export type Database = {
           uuid?: string
           validacion?: string | null
           version?: string
+          xml_raw?: string | null
         }
         Relationships: [
           {
@@ -642,6 +931,190 @@ export type Database = {
             columns: ["sat_run_id"]
             isOneToOne: false
             referencedRelation: "sat_sync_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cierre_excepcion_bitacora: {
+        Row: {
+          accion: string
+          created_at: string
+          excepcion_id: string
+          id: string
+          motivo: string | null
+          user_id: string | null
+        }
+        Insert: {
+          accion: string
+          created_at?: string
+          excepcion_id: string
+          id?: string
+          motivo?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          accion?: string
+          created_at?: string
+          excepcion_id?: string
+          id?: string
+          motivo?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cierre_excepcion_bitacora_excepcion_id_fkey"
+            columns: ["excepcion_id"]
+            isOneToOne: false
+            referencedRelation: "cierre_excepciones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cierre_excepciones: {
+        Row: {
+          cfdi_id: string | null
+          cliente_id: string
+          codigo: string
+          created_at: string
+          despacho_id: string
+          detalle: Json
+          estado: string
+          id: string
+          motivo: string | null
+          periodo: string
+          resuelta_at: string | null
+          resuelta_por: string | null
+          severidad: string
+          tarea_id: string | null
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          cfdi_id?: string | null
+          cliente_id: string
+          codigo: string
+          created_at?: string
+          despacho_id: string
+          detalle?: Json
+          estado?: string
+          id?: string
+          motivo?: string | null
+          periodo: string
+          resuelta_at?: string | null
+          resuelta_por?: string | null
+          severidad?: string
+          tarea_id?: string | null
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          cfdi_id?: string | null
+          cliente_id?: string
+          codigo?: string
+          created_at?: string
+          despacho_id?: string
+          detalle?: Json
+          estado?: string
+          id?: string
+          motivo?: string | null
+          periodo?: string
+          resuelta_at?: string | null
+          resuelta_por?: string | null
+          severidad?: string
+          tarea_id?: string | null
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cierre_excepciones_cfdi_id_fkey"
+            columns: ["cfdi_id"]
+            isOneToOne: false
+            referencedRelation: "cfdi_xml"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cierre_excepciones_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cierre_excepciones_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cierre_excepciones_tarea_id_fkey"
+            columns: ["tarea_id"]
+            isOneToOne: false
+            referencedRelation: "tareas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cierre_periodos: {
+        Row: {
+          cliente_id: string
+          corte_at: string | null
+          created_at: string
+          declarada_at: string | null
+          declarada_por: string | null
+          despacho_id: string
+          direcciones: Json
+          etapa_documental: string
+          id: string
+          notas: string | null
+          periodo: string
+          ultima_revision_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          cliente_id: string
+          corte_at?: string | null
+          created_at?: string
+          declarada_at?: string | null
+          declarada_por?: string | null
+          despacho_id: string
+          direcciones?: Json
+          etapa_documental?: string
+          id?: string
+          notas?: string | null
+          periodo: string
+          ultima_revision_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cliente_id?: string
+          corte_at?: string | null
+          created_at?: string
+          declarada_at?: string | null
+          declarada_por?: string | null
+          despacho_id?: string
+          direcciones?: Json
+          etapa_documental?: string
+          id?: string
+          notas?: string | null
+          periodo?: string
+          ultima_revision_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cierre_periodos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cierre_periodos_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
             referencedColumns: ["id"]
           },
         ]
