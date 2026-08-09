@@ -22,7 +22,6 @@ DECLARE
   v_cfdi_a uuid; v_cfdi_b uuid; v_run_a uuid; v_run_b uuid;
   v_res jsonb; v_row public.cfdi_xml%ROWTYPE; v_n int;
   v_ok boolean; v_msg text; v_reporte text := '';
-  PROCEDURE_NOOP int;
 BEGIN
   CREATE TEMP TABLE IF NOT EXISTS qa(nombre text, ok boolean, detalle text) ON COMMIT DROP;
   DELETE FROM qa;
