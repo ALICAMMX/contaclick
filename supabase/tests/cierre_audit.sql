@@ -22,19 +22,27 @@ END $$;
 
 DO $$
 DECLARE
-  v_desp uuid; v_cli uuid; v_cfdi uuid; v_exc uuid; v_exc2 uuid;
+  v_desp uuid; v_cli uuid; v_rfc uuid; v_cfdi uuid; v_exc uuid; v_exc2 uuid;
   v_ok boolean; v_estatus text; v_fuente text; v_n int;
   v_periodo text := '2026-03';
 BEGIN
   -- ── Expediente sintético ────────────────────────────────────────────
-  INSERT INTO public.despachos (nombre, estado) VALUES ('QA Cierre', 'trial') RETURNING id INTO v_desp;
-  INSERT INTO public.clientes (despacho_id, nombre, rfc)
-  VALUES (v_desp, 'QA Cliente', 'AAA010101AAA') RETURNING id INTO v_cli;
+  INSERT INTO public.despachos (nombre, estado, owner_user_id)
+  SELECT 'QA Cierre', 'trial', id FROM auth.users ORDER BY created_at LIMIT 1
+  RETURNING id INTO v_desp;
 
-  INSERT INTO public.cfdi_xml (despacho_id, cliente_id, uuid, tipo_cfdi, fecha, rfc_emisor, rfc_receptor,
+  INSERT INTO public.clientes (despacho_id, user_id, razon_social, rfc)
+  SELECT v_desp, d.owner_user_id, 'QA Cliente', 'AAA010101AAA'
+    FROM public.despachos d WHERE d.id = v_desp
+  RETURNING id INTO v_cli;
+
+  INSERT INTO public.rfcs (despacho_id, cliente_id, rfc, tipo_persona)
+  VALUES (v_desp, v_cli, 'AAA010101AAA', 'fisica') RETURNING id INTO v_rfc;
+
+  INSERT INTO public.cfdi_xml (despacho_id, cliente_id, rfc_id, archivo_hash, uuid, tipo_cfdi, fecha, rfc_emisor, rfc_receptor,
                                total, estatus_sat, estatus_sat_fuente, estatus_sat_evidencia_at,
                                origen, sat_solicitud_id, sat_paquete_id, periodo)
-  VALUES (v_desp, v_cli, 'AAAAAAAA-BBBB-4CCC-8DDD-EEEEEEEEEEEE', 'I', '2026-03-10',
+  VALUES (v_desp, v_cli, v_rfc, md5('qa-cierre-audit'), 'AAAAAAAA-BBBB-4CCC-8DDD-EEEEEEEEEEEE', 'I', '2026-03-10',
           'BBB020202BB2', 'AAA010101AAA', 1160, 'vigente', 'sat_descarga_masiva', now(),
           'sat_descarga_masiva', 'SOL-1', 'PKG-1', v_periodo)
   RETURNING id INTO v_cfdi;
@@ -80,8 +88,18 @@ BEGIN
   -- ── 4. Excepciones: cierre sin DELETE y reaparición ligada ──────────
   INSERT INTO public.cierre_excepciones (despacho_id, cliente_id, periodo, cfdi_id, codigo, severidad,
                                          titulo, detalle, estado, ocurrencia)
-  VALUES (v_desp, v_cli, v_periodo, v_cfdi, 'cfdi_sin_impuestos', 'warning',
+  VALUES (v_desp, v_cli, v_periodo, v_cfdi, 'cfdi_sin_impuestos', 'advertencia',
           'QA', '{}'::jsonb, 'pendiente', 1) RETURNING id INTO v_exc;
+
+  -- Una SEGUNDA ocurrencia viva debe seguir prohibida por el índice parcial.
+  BEGIN
+    INSERT INTO public.cierre_excepciones (despacho_id, cliente_id, periodo, cfdi_id, codigo, severidad,
+                                           titulo, detalle, estado, ocurrencia)
+    VALUES (v_desp, v_cli, v_periodo, v_cfdi, 'cfdi_sin_impuestos', 'advertencia',
+            'QA', '{}'::jsonb, 'pendiente', 2);
+    PERFORM pg_temp.chk('una_sola_ocurrencia_viva', false, 'Se permitieron dos excepciones vivas iguales');
+  EXCEPTION WHEN unique_violation THEN NULL;
+  END;
 
   UPDATE public.cierre_excepciones
      SET estado = 'resuelta_automatica', cerrada_motivo = 'CAUSA_DESAPARECIO', resuelta_at = now()
@@ -92,7 +110,7 @@ BEGIN
 
   INSERT INTO public.cierre_excepciones (despacho_id, cliente_id, periodo, cfdi_id, codigo, severidad,
                                          titulo, detalle, estado, ocurrencia, excepcion_previa_id, reactivada_at)
-  VALUES (v_desp, v_cli, v_periodo, v_cfdi, 'cfdi_sin_impuestos', 'warning',
+  VALUES (v_desp, v_cli, v_periodo, v_cfdi, 'cfdi_sin_impuestos', 'advertencia',
           'QA', '{}'::jsonb, 'pendiente', 2, v_exc, now()) RETURNING id INTO v_exc2;
 
   SELECT count(*) INTO v_n FROM public.cierre_excepciones

@@ -1129,3 +1129,31 @@ pasó completa (fixtures creados y borrados; residuo verificado en cero):
 
 No se declara cerrado el bloque sólo con typecheck: hay pruebas en memoria (29) y prueba real
 contra base de datos.
+
+## Cierre definitivo — Normalización y Centro de cierre mensual
+
+1. **Evidencia SAT real durante la ingesta.** `src/lib/sat/evidencia.ts` deriva
+   `estatus_sat`/`estatus_sat_fuente`/`estatus_sat_evidencia_at` únicamente cuando el
+   linaje server-side tiene solicitud + paquete y la solicitud declaró
+   `EstadoComprobante=Vigente`. La carga manual queda siempre en `desconocido`.
+   El `EstadoComprobante` viaja desde la solicitud persistida hasta la ingesta
+   (`maquina-estados.ts`, `ciclo-asincrono.ts`, `sat-directo-runner.server.ts`);
+   el cliente no puede fabricarlo. Prueba de cadena completa:
+   `src/lib/sat/evidencia.test.ts`.
+2. **Reapertura con historial inmutable.** `cierre_reaperturas` registra la
+   reapertura dentro de la misma transacción de `cfdi_normalizacion_reemplazar`
+   y un trigger impide UPDATE y DELETE. Verificado en base real.
+3. **Excepciones sin DELETE.** `src/lib/cierre/excepciones.ts` (puro, con
+   pruebas) planifica: cierre automático con motivo `CAUSA_DESAPARECIO`, actor
+   `sistema` y bitácora; la reaparición crea una ocurrencia nueva ligada a la
+   anterior. `periodo.ts` sólo considera la ocurrencia pendiente vigente.
+   **Defecto real encontrado y corregido:** el índice `cierre_excepciones_unico`
+   impedía registrar ocurrencias nuevas; se reindexó por ocurrencia y se agregó
+   un índice parcial que garantiza una sola ocurrencia viva.
+4. **Workflows sin condiciones simuladas.** `personalizada` quedó
+   `implementada: false`, deja de ofrecerse y el motor falla cerrado: una
+   condición sin evaluador o sin dato verificable marca el paso como fallido y
+   detiene el flujo (`src/lib/workflows/condiciones.test.ts`).
+5. **Pruebas permanentes de base de datos.** `supabase/tests/cierre_audit.sql`
+   (transacción con ROLLBACK). Ejecución real: `QA_RESULTADO=TODAS_PASARON`,
+   sin datos residuales.
