@@ -8,7 +8,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 import { resolveActiveDespachoId } from "@/lib/despacho/resolve";
-import { accionImplementada, catalogEntry, nextRunFromFrecuencia, type WorkflowNode, type WorkflowEdge } from "./catalogo";
+import { accionImplementada, condicionImplementada, catalogEntry, nextRunFromFrecuencia, type WorkflowNode, type WorkflowEdge } from "./catalogo";
 
 type WorkflowRow = {
   id: string;
@@ -130,18 +130,40 @@ async function ejecutarAccion(
   }
 }
 
-function evaluarCondicion(kind: string, params: Record<string, any>, payload: any): boolean {
+/**
+ * Evaluación de condiciones con FALLO CERRADO.
+ *
+ * Una condición sin evaluador real, o sin el dato verificable que necesita,
+ * NO devuelve verdadero: queda "no evaluable" y detiene el workflow. Ningún
+ * paso posterior puede ejecutarse por información ausente o simulada.
+ */
+export type ResultadoCondicion =
+  | { evaluable: true; pasa: boolean }
+  | { evaluable: false; motivo: string };
+
+export function evaluarCondicion(
+  kind: string,
+  params: Record<string, any>,
+  payload: any,
+): ResultadoCondicion {
+  if (!condicionImplementada(kind)) {
+    return { evaluable: false, motivo: `La condición "${kind}" no tiene evaluador real: el workflow se detiene.` };
+  }
   switch (kind) {
     case "riesgo_mayor":
-      return typeof payload?.score === "number" ? payload.score > (params.umbral ?? 70) : true;
+      return typeof payload?.score === "number"
+        ? { evaluable: true, pasa: payload.score > (params.umbral ?? 70) }
+        : { evaluable: false, motivo: "No hay un score de riesgo numérico verificable en el contexto." };
     case "monto_mayor":
-      return typeof payload?.monto === "number" ? payload.monto > (params.monto ?? 0) : true;
+      return typeof payload?.monto === "number"
+        ? { evaluable: true, pasa: payload.monto > (params.monto ?? 0) }
+        : { evaluable: false, motivo: "No hay un monto numérico verificable en el contexto." };
     case "tiene_tag":
-      return Array.isArray(payload?.tags) ? payload.tags.includes(params.tag) : false;
-    case "personalizada":
-      return true; // placeholder; IA supervisora evaluará a futuro
+      return Array.isArray(payload?.tags)
+        ? { evaluable: true, pasa: payload.tags.includes(params.tag) }
+        : { evaluable: false, motivo: "El contexto no trae etiquetas verificables." };
     default:
-      return true;
+      return { evaluable: false, motivo: `Condición desconocida: ${kind}.` };
   }
 }
 
@@ -231,10 +253,19 @@ async function runWorkflowInternal(
       }
 
     } else if (node.type === "condition") {
-      const pasa = evaluarCondicion(node.kind, node.params ?? {}, lastOutput);
-      output = { evaluacion: pasa };
-      if (!pasa) stoppedByCondition = true;
-      okCount++;
+      const r = evaluarCondicion(node.kind, node.params ?? {}, lastOutput);
+      if (!r.evaluable) {
+        // Fallo cerrado: no se declara resultado y nada continúa después.
+        output = { evaluacion: null, bloqueada: true, motivo: r.motivo };
+        err = r.motivo;
+        status = "fallido";
+        failCount++;
+        stoppedByCondition = true;
+      } else {
+        output = { evaluacion: r.pasa };
+        if (!r.pasa) stoppedByCondition = true;
+        okCount++;
+      }
     }
 
     const finishedAt = new Date();

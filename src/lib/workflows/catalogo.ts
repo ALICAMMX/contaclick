@@ -172,9 +172,10 @@ export const CONDITIONS: Record<ConditionKind, CatalogEntry> = {
   personalizada: {
     kind: "personalizada",
     tipo: "condition",
+    implementada: false,
     label: "Condición personalizada",
     icon: GitBranch,
-    descripcion: "Texto libre evaluado por la IA supervisora.",
+    descripcion: "Sin evaluador real. No se ofrece y el motor la bloquea: nunca devuelve verdadero por omisión.",
     paramsSchema: { expresion: { label: "Expresión", type: "text", default: "" } },
   },
 };
@@ -361,6 +362,17 @@ export function accionImplementada(kind: string): boolean {
   const e = (ACTIONS as any)[kind] as CatalogEntry | undefined;
   return !!e && e.implementada !== false;
 }
+
+/** Condiciones realmente evaluables por el motor. Fuente única. */
+export function condicionImplementada(kind: string): boolean {
+  const e = (CONDITIONS as any)[kind] as CatalogEntry | undefined;
+  return !!e && e.implementada !== false;
+}
+
+/** Condiciones ofrecidas en el constructor: sólo las evaluables. */
+export const CONDICIONES_DISPONIBLES: CatalogEntry[] = Object.values(CONDITIONS).filter(
+  (c) => c.implementada !== false,
+);
 
 /** Acciones ofrecidas en el constructor: sólo las implementadas. */
 export const ACCIONES_DISPONIBLES: CatalogEntry[] = Object.values(ACTIONS).filter((a) => a.implementada !== false);

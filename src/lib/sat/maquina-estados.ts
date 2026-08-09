@@ -9,6 +9,7 @@
 // =====================================================================
 
 import type { DireccionDescarga, TipoSolicitudSat } from "./providers/contrato";
+import type { EstadoComprobante } from "./solicitud-xml";
 
 export type EstadoCorrida =
   | "preparando"
@@ -45,6 +46,8 @@ export type SolicitudRegistro = {
   desde: string;
   hasta: string;
   tipo: TipoSolicitudSat;
+  /** Atributo EstadoComprobante realmente enviado al SAT en esta solicitud. */
+  estado_comprobante: EstadoComprobante;
   id_solicitud: string;
   codigo: string;
   mensaje: string;
@@ -70,12 +73,14 @@ export function nuevaSolicitud(args: {
   mensaje?: string;
   estado?: EstadoSolicitud;
   error?: string | null;
+  estado_comprobante?: EstadoComprobante;
 }): SolicitudRegistro {
   return {
     direccion: args.direccion,
     desde: args.desde,
     hasta: args.hasta,
     tipo: "CFDI",
+    estado_comprobante: args.estado_comprobante ?? "Vigente",
     id_solicitud: args.id_solicitud,
     codigo: args.codigo ?? "",
     mensaje: args.mensaje ?? "",

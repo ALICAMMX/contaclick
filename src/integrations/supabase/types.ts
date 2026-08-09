@@ -773,6 +773,8 @@ export type Database = {
           estado_relacion: string | null
           estatus_sat: string | null
           estatus_sat_check_at: string | null
+          estatus_sat_evidencia_at: string | null
+          estatus_sat_fuente: string | null
           fecha: string
           fecha_carga: string
           fecha_timbrado: string | null
@@ -821,6 +823,8 @@ export type Database = {
           estado_relacion?: string | null
           estatus_sat?: string | null
           estatus_sat_check_at?: string | null
+          estatus_sat_evidencia_at?: string | null
+          estatus_sat_fuente?: string | null
           fecha: string
           fecha_carga?: string
           fecha_timbrado?: string | null
@@ -869,6 +873,8 @@ export type Database = {
           estado_relacion?: string | null
           estatus_sat?: string | null
           estatus_sat_check_at?: string | null
+          estatus_sat_evidencia_at?: string | null
+          estatus_sat_fuente?: string | null
           fecha?: string
           fecha_carga?: string
           fecha_timbrado?: string | null
@@ -972,6 +978,7 @@ export type Database = {
       }
       cierre_excepciones: {
         Row: {
+          cerrada_motivo: string | null
           cfdi_id: string | null
           cliente_id: string
           codigo: string
@@ -979,9 +986,12 @@ export type Database = {
           despacho_id: string
           detalle: Json
           estado: string
+          excepcion_previa_id: string | null
           id: string
           motivo: string | null
+          ocurrencia: number
           periodo: string
+          reactivada_at: string | null
           resuelta_at: string | null
           resuelta_por: string | null
           severidad: string
@@ -990,6 +1000,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cerrada_motivo?: string | null
           cfdi_id?: string | null
           cliente_id: string
           codigo: string
@@ -997,9 +1008,12 @@ export type Database = {
           despacho_id: string
           detalle?: Json
           estado?: string
+          excepcion_previa_id?: string | null
           id?: string
           motivo?: string | null
+          ocurrencia?: number
           periodo: string
+          reactivada_at?: string | null
           resuelta_at?: string | null
           resuelta_por?: string | null
           severidad?: string
@@ -1008,6 +1022,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cerrada_motivo?: string | null
           cfdi_id?: string | null
           cliente_id?: string
           codigo?: string
@@ -1015,9 +1030,12 @@ export type Database = {
           despacho_id?: string
           detalle?: Json
           estado?: string
+          excepcion_previa_id?: string | null
           id?: string
           motivo?: string | null
+          ocurrencia?: number
           periodo?: string
+          reactivada_at?: string | null
           resuelta_at?: string | null
           resuelta_por?: string | null
           severidad?: string
@@ -1045,6 +1063,13 @@ export type Database = {
             columns: ["despacho_id"]
             isOneToOne: false
             referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cierre_excepciones_excepcion_previa_id_fkey"
+            columns: ["excepcion_previa_id"]
+            isOneToOne: false
+            referencedRelation: "cierre_excepciones"
             referencedColumns: ["id"]
           },
           {
@@ -1112,6 +1137,87 @@ export type Database = {
           },
           {
             foreignKeyName: "cierre_periodos_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cierre_reaperturas: {
+        Row: {
+          cfdi_id: string | null
+          cfdi_uuid: string | null
+          cliente_id: string
+          created_at: string
+          declarada_at_anterior: string | null
+          declarada_por_anterior: string | null
+          despacho_id: string
+          estado_anterior: string | null
+          id: string
+          idempotency_key: string
+          origen_ingesta: string | null
+          periodo: string
+          proceso: string | null
+          proveedor: string | null
+          reabierta_at: string
+          responsable: string | null
+          sat_paquete_id: string | null
+          sat_run_id: string | null
+          sat_solicitud_id: string | null
+        }
+        Insert: {
+          cfdi_id?: string | null
+          cfdi_uuid?: string | null
+          cliente_id: string
+          created_at?: string
+          declarada_at_anterior?: string | null
+          declarada_por_anterior?: string | null
+          despacho_id: string
+          estado_anterior?: string | null
+          id?: string
+          idempotency_key: string
+          origen_ingesta?: string | null
+          periodo: string
+          proceso?: string | null
+          proveedor?: string | null
+          reabierta_at?: string
+          responsable?: string | null
+          sat_paquete_id?: string | null
+          sat_run_id?: string | null
+          sat_solicitud_id?: string | null
+        }
+        Update: {
+          cfdi_id?: string | null
+          cfdi_uuid?: string | null
+          cliente_id?: string
+          created_at?: string
+          declarada_at_anterior?: string | null
+          declarada_por_anterior?: string | null
+          despacho_id?: string
+          estado_anterior?: string | null
+          id?: string
+          idempotency_key?: string
+          origen_ingesta?: string | null
+          periodo?: string
+          proceso?: string | null
+          proveedor?: string | null
+          reabierta_at?: string
+          responsable?: string | null
+          sat_paquete_id?: string | null
+          sat_run_id?: string | null
+          sat_solicitud_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cierre_reaperturas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cierre_reaperturas_despacho_id_fkey"
             columns: ["despacho_id"]
             isOneToOne: false
             referencedRelation: "despachos"

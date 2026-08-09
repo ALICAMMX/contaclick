@@ -339,12 +339,19 @@ export function evaluarPeriodo(args: {
   }
 
   // ── Decisiones humanas previas ───────────────────────────────────────────
+  // Sólo cuentan las ocurrencias ACTUALMENTE pendientes: una ocurrencia
+  // histórica (cerrada automáticamente o ya decidida) no puede tapar una nueva.
   const decision = new Map<string, string>();
-  for (const d of args.decisiones ?? []) decision.set(`${d.codigo}|${d.cfdi_id ?? ""}`, d.estado);
+  for (const d of args.decisiones ?? []) {
+    const k = `${d.codigo}|${d.cfdi_id ?? ""}`;
+    if (decision.get(k) === "pendiente") continue;
+    decision.set(k, d.estado);
+  }
   const pendiente = (e: ExcepcionCalculada) => {
     const estado = decision.get(`${e.codigo}|${e.cfdi_id ?? ""}`) ?? "pendiente";
     return estado === "pendiente";
   };
+
   const bloqueantesPendientes = excepciones.filter((e) => MOTIVOS_EXCEPCION[e.codigo].bloquea && pendiente(e));
   // CRITERIO ÚNICO: ninguna excepción pendiente —sea bloqueante, advertencia o
   // informativa— permite declarar "Documentos listos". Las advertencias e
