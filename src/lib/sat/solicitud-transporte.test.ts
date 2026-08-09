@@ -86,7 +86,7 @@ describe("transporte simulado", () => {
         verificar: async () => ({ estado: 1, codigo: "5000", mensaje: "", paquetes: [], numeroCfdis: 0 }),
         descargar: async () => "",
       } as any,
-      { desde: "2026-08-01", hasta: "2026-08-03", direcciones: ["recibidos"] },
+      { desde: "2026-08-01", hasta: "2026-08-03", direcciones: ["recibidos"], estadoComprobante: "Vigente" as const  },
     );
     expect(ciclo.solicitudes[0]!.estado).toBe("pendiente");
     expect(ciclo.solicitudes[0]!.id_solicitud).toBe("FOLIO-SINTETICO-1");
@@ -140,7 +140,7 @@ describe("transporte simulado", () => {
         verificar: async () => ({ estado: 0, codigo: "", mensaje: "", paquetes: [], numeroCfdis: 0 }),
         descargar: async () => "",
       } as any,
-      { desde: "2026-08-01", hasta: "2026-08-03", direcciones: ["recibidos"] },
+      { desde: "2026-08-01", hasta: "2026-08-03", direcciones: ["recibidos"], estadoComprobante: "Vigente" as const  },
     );
     const s = ciclo.solicitudes[0]!;
     expect(s.estado).toBe("error");

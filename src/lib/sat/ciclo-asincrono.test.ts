@@ -65,7 +65,7 @@ describe("ciclo asíncrono SAT (datos sintéticos)", () => {
     const cliente = crearClienteSimulado({ recibidos: { esperas: 2 } });
     const { solicitudes } = await solicitarCiclo(cliente, {
       ...RANGO,
-      direcciones: ["recibidos"],
+      direcciones: ["recibidos"], estadoComprobante: "Vigente" as const ,
     });
     expect(solicitudes[0]!.estado).toBe("pendiente");
     expect(solicitudes[0]!.xml_nuevos).toBe(0);
@@ -87,7 +87,7 @@ describe("ciclo asíncrono SAT (datos sintéticos)", () => {
     const ingestor = crearIngestor();
     const inicial = await solicitarCiclo(cliente, {
       ...RANGO,
-      direcciones: ["emitidos", "recibidos"],
+      direcciones: ["emitidos", "recibidos"], estadoComprobante: "Vigente" as const ,
     });
 
     // Vuelta 1: el SAT sigue procesando emitidos.
@@ -122,7 +122,7 @@ describe("ciclo asíncrono SAT (datos sintéticos)", () => {
   it("volver a cosechar una corrida terminada no duplica nada", async () => {
     const cliente = crearClienteSimulado({ recibidos: { esperas: 0 } });
     const ingestor = crearIngestor();
-    const inicial = await solicitarCiclo(cliente, { ...RANGO, direcciones: ["recibidos"] });
+    const inicial = await solicitarCiclo(cliente, { ...RANGO, direcciones: ["recibidos"], estadoComprobante: "Vigente" as const  });
     const primera = await cosecharCiclo({
       cliente,
       solicitudes: inicial.solicitudes,
@@ -151,7 +151,7 @@ describe("ciclo asíncrono SAT (datos sintéticos)", () => {
     const ingestor = crearIngestor();
     const inicial = await solicitarCiclo(cliente, {
       ...RANGO,
-      direcciones: ["emitidos", "recibidos"],
+      direcciones: ["emitidos", "recibidos"], estadoComprobante: "Vigente" as const ,
     });
     const r = await cosecharCiclo({
       cliente,
@@ -167,7 +167,7 @@ describe("ciclo asíncrono SAT (datos sintéticos)", () => {
   it("un periodo sin comprobantes queda completado con cero, no en error", async () => {
     const cliente = crearClienteSimulado({ recibidos: { esperas: 0, desenlace: "vacio" } });
     const ingestor = crearIngestor();
-    const inicial = await solicitarCiclo(cliente, { ...RANGO, direcciones: ["recibidos"] });
+    const inicial = await solicitarCiclo(cliente, { ...RANGO, direcciones: ["recibidos"], estadoComprobante: "Vigente" as const  });
     const r = await cosecharCiclo({
       cliente,
       solicitudes: inicial.solicitudes,
@@ -181,7 +181,7 @@ describe("ciclo asíncrono SAT (datos sintéticos)", () => {
   it("una solicitud vencida se marca como tal y pide volver a solicitar", async () => {
     const cliente = crearClienteSimulado({ recibidos: { esperas: 0, desenlace: "vencida" } });
     const ingestor = crearIngestor();
-    const inicial = await solicitarCiclo(cliente, { ...RANGO, direcciones: ["recibidos"] });
+    const inicial = await solicitarCiclo(cliente, { ...RANGO, direcciones: ["recibidos"], estadoComprobante: "Vigente" as const  });
     const r = await cosecharCiclo({
       cliente,
       solicitudes: inicial.solicitudes,
@@ -203,7 +203,7 @@ describe("ciclo asíncrono SAT (datos sintéticos)", () => {
       },
     });
     const ingestor = crearIngestor();
-    const inicial = await solicitarCiclo(cliente, { ...RANGO, direcciones: ["recibidos"] });
+    const inicial = await solicitarCiclo(cliente, { ...RANGO, direcciones: ["recibidos"], estadoComprobante: "Vigente" as const  });
     const r = await cosecharCiclo({
       cliente,
       solicitudes: inicial.solicitudes,
@@ -223,7 +223,7 @@ describe("ciclo asíncrono SAT (datos sintéticos)", () => {
       },
     });
     const ingestor = crearIngestor();
-    const inicial = await solicitarCiclo(cliente, { ...RANGO, direcciones: ["recibidos"] });
+    const inicial = await solicitarCiclo(cliente, { ...RANGO, direcciones: ["recibidos"], estadoComprobante: "Vigente" as const  });
     const r = await cosecharCiclo({
       cliente,
       solicitudes: inicial.solicitudes,
@@ -238,7 +238,7 @@ describe("ciclo asíncrono SAT (datos sintéticos)", () => {
   it("agota los reintentos si el SAT nunca libera la solicitud", async () => {
     const cliente = crearClienteSimulado({ recibidos: { esperas: 999 } });
     const ingestor = crearIngestor();
-    const inicial = await solicitarCiclo(cliente, { ...RANGO, direcciones: ["recibidos"] });
+    const inicial = await solicitarCiclo(cliente, { ...RANGO, direcciones: ["recibidos"], estadoComprobante: "Vigente" as const  });
     const r = await correrHasta(cliente, ingestor, inicial.solicitudes, 12);
     expect(["error", "esperando_sat"]).toContain(r.resumen.estado);
   });
