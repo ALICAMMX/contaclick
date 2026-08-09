@@ -96,6 +96,24 @@ const CONTABLE: Capability[] = [
   cap({ id: "cfdi-verifier", nombre: "Verificador de UUID", ruta: "/app/tools/cfdi-verifier", modulo: "contable", grupo: "2 · Ingesta de CFDI", madurez: "operativa_limitada", descripcion: "Valida el formato del UUID y prepara la consulta al SAT. La verificación en línea depende del webservice del SAT." }),
   cap({ id: "cfdi", nombre: "CFDI del expediente", ruta: "/app/cfdi", modulo: "contable", grupo: "2 · Ingesta de CFDI", madurez: "operativa", descripcion: "Bandeja unificada del cliente activo." }),
   cap({ id: "sat-sync", nombre: "Descarga Masiva SAT", ruta: "/app/sat-sync", modulo: "contable", grupo: "2 · Ingesta de CFDI", madurez: "operativa", dependencias: ["sat", "pac", "almacenamiento"], descripcion: "Sincronización de CFDI con el SAT usando credencial del expediente." }),
+  cap({
+    id: "cierre-mensual",
+    nombre: "Cierre mensual · etapa documental",
+    ruta: "/app/cierre",
+    modulo: "contable",
+    grupo: "2 · Ingesta de CFDI",
+    madurez: "operativa",
+    descripcion:
+      "Normaliza los CFDI del periodo (impuestos y complemento de pagos 2.0), los clasifica y concentra las excepciones hasta declarar listos los documentos. No presenta declaraciones ni cierra la contabilidad.",
+    criteriosTerminacion: [
+      "Todo CFDI del periodo tiene UUID, RFC y tipo legibles.",
+      "Ningún CFDI ajeno al RFC del expediente permanece sin decisión.",
+      "Duplicados y relaciones PPD/Pago resueltos o aceptados con motivo.",
+      "Direcciones descargadas y fecha de corte documentadas.",
+      "Sin excepciones bloqueantes pendientes.",
+    ],
+  }),
+
 
   cap({ id: "express-auditor", nombre: "Auditor express", ruta: "/app/tools/express-auditor", modulo: "contable", grupo: "3 · Auditoría y Conciliación", madurez: "operativa", descripcion: "Duplicados, NC huérfanas, cancelados, PPD sin pago y fuera de periodo." }),
   cap({ id: "conciliacion", nombre: "Conciliador bancario", ruta: "/app/conciliacion", modulo: "contable", grupo: "3 · Auditoría y Conciliación", madurez: "operativa", dependencias: ["banco", "almacenamiento"], descripcion: "Cruza estado de cuenta contra CFDI." }),
