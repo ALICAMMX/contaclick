@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  clasificarAusencia,
   criterioTemporal,
   dentroDelPeriodo,
   explicarInclusion,
   fechaHoraLocalSat,
   fechaLocalSat,
+  notaCriterio,
   periodoEfectivo,
 } from "./periodo";
 import { construirSolicitudDescarga } from "./solicitud-xml";
