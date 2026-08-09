@@ -51,8 +51,9 @@ DECLARE
   v_fuente_canonica text := 'descarga_masiva_sat';
 BEGIN
   -- ── Expediente sintético ────────────────────────────────────────────
+  -- Usuario existente tomado de public.profiles (no se lee el esquema auth).
   INSERT INTO public.despachos (nombre, estado, owner_user_id)
-  SELECT 'QA Cierre', 'trial', id FROM auth.users ORDER BY created_at LIMIT 1
+  SELECT 'QA Cierre', 'trial', p.id FROM public.profiles p ORDER BY p.created_at LIMIT 1
   RETURNING id INTO v_desp;
 
   INSERT INTO public.clientes (despacho_id, user_id, razon_social, rfc)
