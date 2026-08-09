@@ -8,6 +8,8 @@ import { analyzeCfdi, maxLevel } from "@/lib/cfdi/risk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolveActiveDespachoId } from "@/lib/despacho/resolve";
 import { evidenciaEstatusSat, type LinajeIngesta as LinajeSat } from "@/lib/sat/evidencia";
+import { reconciliarEvidenciaSat } from "@/lib/sat/evidencia-reconciliacion";
+
 
 // ---------- helpers (server-side) ----------
 
@@ -172,7 +174,18 @@ export async function ingestOneInternal(
     )
     .limit(1)
     .maybeSingle();
-  if (dup?.id) return { id: dup.id as string, uuid: uuidCanonico, duplicado: true, hash };
+  if (dup?.id) {
+    // MANUAL → SAT: el documento ya existe (carga manual previa o paquete
+    // repetido). No se crea otra fila ni se renormaliza ni se reabre el
+    // periodo, pero ANTES de devolver duplicado se reconcilia la evidencia
+    // SAT de forma idempotente. El RPC revalida todo contra lo persistido;
+    // si el linaje no lo respalda, el CFDI sigue "desconocido".
+    // SAT → MANUAL: una carga manual no trae linaje, así que no intenta nada
+    // y jamás degrada la evidencia ya registrada.
+    await reconciliarEvidenciaSat(supabase, dup.id as string, linaje);
+    return { id: dup.id as string, uuid: uuidCanonico, duplicado: true, hash };
+  }
+
 
   // RFC al que se vincula = el del cliente activo si coincide; si no, usa el emisor
   const { data: cli } = await supabase.from("clientes").select("rfc").eq("id", clienteId).maybeSingle();
@@ -233,6 +246,11 @@ export async function ingestOneInternal(
     .select("id")
     .single();
   if (error || !ins) throw new Error(`Error al guardar CFDI: ${error?.message}`);
+
+  // Bitácora inmutable de evidencia también para el documento NUEVO que llega
+  // dentro del paquete. Idempotente: repetir el paquete no duplica evidencia.
+  await reconciliarEvidenciaSat(supabase, ins.id as string, linaje);
+
 
   // NORMALIZACIÓN FISCAL: conceptos, impuestos detallados, relaciones y
   // complemento de pagos 2.0. Fuente única: `src/lib/cierre/persistencia.ts`.
