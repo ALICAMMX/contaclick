@@ -183,7 +183,7 @@ BEGIN
   -- =================== CFDI NUEVO: sólo el RPC proyecta ===================
   -- Documento recién ingestado desde un paquete: nace SIEMPRE 'desconocido'.
   DECLARE
-    v_cfdi_n uuid;
+    v_cfdi_n uuid; v_cfdi_r uuid; v_cfdi_c uuid;
   BEGIN
     v_rol_ok := pg_temp.qa_rol('postgres');
     PERFORM set_config('request.jwt.claims',
@@ -220,24 +220,38 @@ BEGIN
       AND v_row.estatus_sat = 'vigente' AND v_row.estatus_sat_fuente = 'descarga_masiva_sat'
       AND v_row.estatus_sat_evidencia_at IS NOT NULL, v_res::text);
 
-    -- IDEMPOTENCIA REPARADORA: si la proyección se pierde, repetir el RPC la
-    -- restaura sin crear una segunda evidencia.
-    UPDATE public.cfdi_xml
-       SET estatus_sat='desconocido', estatus_sat_fuente=NULL, estatus_sat_evidencia_at=NULL
-     WHERE id = v_cfdi_n;
-    v_res := public.cfdi_registrar_evidencia_sat(v_cfdi_n, v_run_a, 'SOL-A', 'PKG-A1');
-    SELECT * INTO v_row FROM public.cfdi_xml WHERE id = v_cfdi_n;
-    SELECT count(*) INTO v_n FROM public.cfdi_sat_evidencias WHERE cfdi_id = v_cfdi_n;
+    -- IDEMPOTENCIA REPARADORA: la bitácora ya existe (por ejemplo, la
+    -- proyección se perdió tras un fallo parcial). Repetir el RPC NO crea una
+    -- segunda evidencia y SÍ vuelve a dejar el CFDI proyectado como vigente.
+    INSERT INTO public.cfdi_xml (despacho_id, cliente_id, rfc_id, uuid, tipo_cfdi,
+      rfc_emisor, rfc_receptor, fecha, archivo_hash, origen, estatus_sat)
+    VALUES (v_da, v_ca, v_rfca, 'QA000004-0000-4000-8000-000000000004', 'I',
+      'QAA010101AAA','QAB020202BB2', now(), 'qa-hash-4', 'sat_descarga_masiva', 'desconocido')
+    RETURNING id INTO v_cfdi_r;
+    INSERT INTO public.cfdi_sat_evidencias (despacho_id, cliente_id, cfdi_id, run_id,
+      solicitud_id, paquete_id, estado_comprobante, estatus_derivado, fuente, idempotency_key)
+    VALUES (v_da, v_ca, v_cfdi_r, v_run_a, 'SOL-A','PKG-A1','Vigente','vigente',
+            'descarga_masiva_sat',
+            v_cfdi_r::text||':'||v_run_a::text||':SOL-A:PKG-A1');
+
+    v_res := public.cfdi_registrar_evidencia_sat(v_cfdi_r, v_run_a, 'SOL-A', 'PKG-A1');
+    SELECT * INTO v_row FROM public.cfdi_xml WHERE id = v_cfdi_r;
+    SELECT count(*) INTO v_n FROM public.cfdi_sat_evidencias WHERE cfdi_id = v_cfdi_r;
     INSERT INTO qa VALUES ('idempotencia reparadora: repara proyección sin duplicar bitácora',
       coalesce((v_res->>'duplicada')::boolean,false) AND v_n = 1
-      AND v_row.estatus_sat = 'vigente' AND v_row.estatus_sat_fuente = 'descarga_masiva_sat',
-      v_res::text || ' / evidencias=' || v_n::text);
+      AND v_row.estatus_sat = 'vigente' AND v_row.estatus_sat_fuente = 'descarga_masiva_sat'
+      AND v_row.estatus_sat_evidencia_at IS NOT NULL,
+      v_res::text || ' / evidencias=' || v_n::text || ' / ' || v_row.estatus_sat);
 
-    -- Un CANCELADO jamás se degrada a vigente por reintentar el RPC.
-    UPDATE public.cfdi_xml SET estatus_sat='cancelado' WHERE id = v_cfdi_n;
-    PERFORM public.cfdi_registrar_evidencia_sat(v_cfdi_n, v_run_a, 'SOL-A', 'PKG-A1');
-    SELECT * INTO v_row FROM public.cfdi_xml WHERE id = v_cfdi_n;
-    INSERT INTO qa VALUES ('la reparación nunca revive un cancelado',
+    -- Un CANCELADO jamás se convierte en vigente por registrar evidencia.
+    INSERT INTO public.cfdi_xml (despacho_id, cliente_id, rfc_id, uuid, tipo_cfdi,
+      rfc_emisor, rfc_receptor, fecha, archivo_hash, origen, estatus_sat)
+    VALUES (v_da, v_ca, v_rfca, 'QA000005-0000-4000-8000-000000000005', 'I',
+      'QAA010101AAA','QAB020202BB2', now(), 'qa-hash-5', 'sat_descarga_masiva', 'cancelado')
+    RETURNING id INTO v_cfdi_c;
+    PERFORM public.cfdi_registrar_evidencia_sat(v_cfdi_c, v_run_a, 'SOL-A', 'PKG-A1');
+    SELECT * INTO v_row FROM public.cfdi_xml WHERE id = v_cfdi_c;
+    INSERT INTO qa VALUES ('la proyección nunca revive un cancelado',
       v_row.estatus_sat = 'cancelado', v_row.estatus_sat);
 
     -- SERVICE ROLE: proceso interno sin usuario puede registrar evidencia.
