@@ -346,6 +346,6 @@ BEGIN
     v_reporte,
     CASE WHEN coalesce(v_ok, true)
          THEN 'QA_RESULTADO=TODAS_PASARON'||
-              coalesce((SELECT ' (omitidos: '||count(*)||')' FROM qa WHERE ok IS NULL AND count(*)>0), '')
+              (SELECT ' · omitidos='||count(*) FROM qa WHERE ok IS NULL)
          ELSE 'QA_RESULTADO=HAY_FALLAS' END;
 END $qa$;
