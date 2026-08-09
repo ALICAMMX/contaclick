@@ -1039,3 +1039,28 @@ El comprobante no llegó en la primera solicitud porque en **recibidos** el SAT 
   la vista previa y la confirmación muestran el periodo efectivo con horas y el criterio del SAT.
 - `src/components/sat/CorridaDetalle.tsx`: el detalle muestra el mismo periodo efectivo que se envió.
 - `src/lib/sat/periodo.test.ts`: 11 pruebas (extremos inclusivos, cambio de mes/año, zona horaria y el caso real `BCDD4B19`).
+
+### RECTIFICACIÓN (2026-08-08) — criterio temporal: **No confirmada**
+
+La conclusión anterior ("recibidos se filtra por fecha de certificación") queda **retirada**.
+No existe fuente oficial —WSDL, XSD ni manual vigente del Servicio de Solicitud de Descarga
+Masiva— que documente que `SolicitaDescargaRecibidos` filtre por fecha de certificación.
+La documentación oficial disponible describe, sin distinguir dirección:
+
+- `FechaInicial`: CFDI cuya **fecha de emisión** sea igual o mayor.
+- `FechaFinal`: CFDI cuya **fecha de emisión** sea igual o menor.
+
+Un solo comprobante que no reapareció **no prueba causalidad**. Se reclasifica como
+**comportamiento observado no explicado**.
+
+**Hipótesis abiertas (ninguna verificada, ninguna codificada):** diferencia entre el request
+almacenado y el firmado; zona horaria u offset ausente en el DateTime; paquete parcial;
+diferencias de RFC, estado o tipo de solicitud; no determinismo del servicio del SAT;
+error de atribución del UUID al paquete durante la cosecha.
+
+**Cambios:** `criterioTemporal()` y `notaCriterio()` devuelven el criterio documentado
+(fecha de emisión) en ambas direcciones; `explicarInclusion()` decide siempre por emisión y
+reporta la certificación sólo como dato informativo; nuevo `clasificarAusencia()` marca la
+anomalía sin atribuir causa. Se conserva el cálculo del rango por defecto en hora del centro
+(corrección legítima de UTC), porque las fechas enviadas siguen el contrato oficial.
+Pruebas actualizadas: separan hecho oficial, comportamiento observado e hipótesis.
