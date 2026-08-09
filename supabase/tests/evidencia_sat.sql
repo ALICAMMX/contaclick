@@ -60,7 +60,7 @@ BEGIN
 
   -- ---------- Corridas persistidas ----------
   INSERT INTO public.sat_sync_runs (despacho_id, cliente_id, proveedor, estado, solicitudes)
-  VALUES (v_da, v_ca, 'sat_directo', 'completado', jsonb_build_array(
+  VALUES (v_da, v_ca, 'sat_directo', 'completada', jsonb_build_array(
     jsonb_build_object('id_solicitud','SOL-A','estado_comprobante','Vigente',
                        'paquetes_procesados', jsonb_build_array('PKG-A1')),
     jsonb_build_object('id_solicitud','SOL-SIN-ESTADO',
@@ -73,7 +73,7 @@ BEGIN
   )) RETURNING id INTO v_run_a;
 
   INSERT INTO public.sat_sync_runs (despacho_id, cliente_id, proveedor, estado, solicitudes)
-  VALUES (v_db, v_cb, 'sat_directo', 'completado', jsonb_build_array(
+  VALUES (v_db, v_cb, 'sat_directo', 'completada', jsonb_build_array(
     jsonb_build_object('id_solicitud','SOL-B','estado_comprobante','Vigente',
                        'paquetes_procesados', jsonb_build_array('PKG-B1'))
   )) RETURNING id INTO v_run_b;
