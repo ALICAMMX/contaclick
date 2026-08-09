@@ -1,17 +1,22 @@
 // =====================================================================
 // Periodo efectivo de una solicitud de Descarga Masiva SAT.
 //
-// Módulo puro (sin red, sin base de datos). Existe porque una fecha
-// "AAAA-MM-DD" en la interfaz NO es lo que viaja al SAT: el servicio
-// recibe una fecha-hora local del centro de México, y el filtro que el
-// SAT aplica NO es el mismo para emitidos que para recibidos.
+// Módulo puro (sin red, sin base de datos).
 //
-// Hallazgo real (corrida 4f8c05ce, 2026-07-29 → 2026-08-01):
-// el comprobante BCDD4B19 tiene fecha de emisión 2026-08-01 23:26:04
-// (hora del centro) pero fecha de certificación 2026-08-02 03:15:29.
-// Como recibidos se filtra por certificación, quedó FUERA de esa corrida
-// y apareció en la siguiente (2026-08-01 → 2026-08-03). No hubo pérdida
-// ni error de límites: el límite superior sí fue 23:59:59 inclusivo.
+// HECHO OFICIAL (documentación vigente del Servicio de Solicitud de
+// Descarga Masiva de CFDI):
+//   FechaInicial: CFDI cuya FECHA DE EMISIÓN sea igual o mayor.
+//   FechaFinal:   CFDI cuya FECHA DE EMISIÓN sea igual o menor.
+// El contrato NO distingue entre emitidos y recibidos, y NO menciona la
+// fecha de certificación (timbrado) como criterio de filtrado.
+//
+// COMPORTAMIENTO OBSERVADO, NO EXPLICADO (corrida 4f8c05ce,
+// 2026-07-29 → 2026-08-01): el comprobante BCDD4B19 tiene emisión
+// 2026-08-01 23:26:04 y certificación 2026-08-02 03:15:29 (hora del
+// centro). No apareció en esa corrida y sí en la siguiente
+// (2026-08-01 → 2026-08-03). Un solo caso NO prueba causalidad: se
+// registra como anomalía sin explicación definitiva. Hipótesis abiertas
+// en HIPOTESIS_ANOMALIA (ninguna verificada; no se codifica ninguna).
 // =====================================================================
 
 export type DireccionPeriodo = "emitidos" | "recibidos";
@@ -23,20 +28,27 @@ export const ETIQUETA_ZONA_SAT = "hora del centro de México";
 const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
- * Criterio temporal REAL que aplica el SAT en cada dirección.
- * Se muestra al usuario para que el resultado nunca parezca arbitrario.
+ * Criterio temporal DOCUMENTADO oficialmente. Es el mismo en ambas
+ * direcciones: fecha de emisión del comprobante.
  */
-export function criterioTemporal(direccion: DireccionPeriodo): string {
-  return direccion === "emitidos"
-    ? "fecha de emisión del comprobante"
-    : "fecha de certificación (timbrado), no la fecha de emisión";
+export function criterioTemporal(_direccion?: DireccionPeriodo): string {
+  return "fecha de emisión del comprobante (criterio documentado)";
 }
 
-export function notaCriterio(direccion: DireccionPeriodo): string {
-  return direccion === "emitidos"
-    ? "Emitidos: el SAT filtra por fecha de emisión del comprobante."
-    : "Recibidos: el SAT filtra por fecha de certificación (timbrado). Un comprobante emitido el último día del periodo pero timbrado al día siguiente aparecerá en el periodo siguiente, no en éste.";
+/** Hipótesis abiertas para la ausencia observada. Ninguna confirmada. */
+export const HIPOTESIS_ANOMALIA = [
+  "Diferencia entre el request almacenado y el efectivamente firmado y enviado.",
+  "Zona horaria u offset: DateTime enviado sin offset explícito.",
+  "Paquete parcial o lista de UUID incompleta atribuida al paquete.",
+  "Diferencias de RFC, estado del comprobante o tipo de solicitud entre corridas.",
+  "Resultado no determinista o inconsistencia temporal del servicio del SAT.",
+  "Error de atribución del UUID al paquete durante la cosecha local.",
+] as const;
+
+export function notaCriterio(_direccion?: DireccionPeriodo): string {
+  return "El SAT documenta que FechaInicial y FechaFinal filtran por la fecha de emisión del comprobante, en ambas direcciones. Se ha observado al menos un comprobante emitido dentro del periodo que no llegó en esa corrida y sí en la siguiente; es un comportamiento observado sin explicación confirmada, no una regla del servicio.";
 }
+
 
 /** Fecha AAAA-MM-DD en la zona del SAT (no en UTC ni en la del navegador). */
 export function fechaLocalSat(d: Date = new Date()): string {
