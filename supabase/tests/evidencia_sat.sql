@@ -25,6 +25,7 @@ DECLARE
 BEGIN
   CREATE TEMP TABLE IF NOT EXISTS qa(nombre text, ok boolean, detalle text) ON COMMIT DROP;
   DELETE FROM qa;
+  GRANT ALL ON qa TO authenticated;  -- sólo para poder anotar resultados al simular al usuario
 
   -- ---------- Expedientes sintéticos (dos despachos distintos) ----------
   INSERT INTO public.despachos (nombre, owner_user_id) VALUES ('QA-EVID-A', v_ua) RETURNING id INTO v_da;
