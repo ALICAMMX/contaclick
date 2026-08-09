@@ -12,12 +12,13 @@
 import { describe, expect, it } from "vitest";
 import { construirSolicitudDescarga } from "./solicitud-xml";
 import { cosecharSolicitudCiclo, solicitarCiclo, type ClienteCiclo } from "./ciclo-asincrono";
-import { evidenciaEstatusSat, FUENTE_DESCARGA_MASIVA, ORIGEN_DESCARGA_MASIVA } from "./evidencia";
+import { evidenciaEstatusSat, ORIGEN_DESCARGA_MASIVA } from "./evidencia";
 import { ingestOneInternal } from "@/lib/cfdi/cfdi.functions";
 import { facturaXml, RFC_EXPEDIENTE, RFC_TERCERO } from "@/lib/cierre/fixtures";
 
 const DESPACHO = "11111111-1111-4111-8111-111111111111";
 const CLIENTE = "22222222-2222-4222-8222-222222222222";
+const RUN = "44444444-4444-4444-8444-444444444444";
 
 /** Cliente Supabase falso: registra los INSERT y responde lecturas vacías. */
 function fakeSupabase() {
@@ -50,11 +51,19 @@ function fakeSupabase() {
     };
     return q;
   };
+  const rpcs: Array<{ fn: string; args: any }> = [];
   return {
     insertados,
+    rpcs,
     client: {
       from: (t: string) => api(t),
-      rpc: async () => ({ data: { documentos_relacionados: 0, periodo_reabierto: false }, error: null }),
+      rpc: async (fn: string, args: any) => {
+        rpcs.push({ fn, args });
+        if (fn === "cfdi_registrar_evidencia_sat") {
+          return { data: { creada: true, duplicada: false, rechazada: false, estatus: "vigente" }, error: null };
+        }
+        return { data: { documentos_relacionados: 0, periodo_reabierto: false }, error: null };
+      },
     } as any,
   };
 }
@@ -95,7 +104,7 @@ describe("cadena solicitud vigente → paquete → ingesta → cfdi_xml", () => 
     expect(s.campos["EstadoComprobante"]).toBe("Vigente");
   });
 
-  it("el XML entregado por el paquete queda con estatus vigente y su evidencia", async () => {
+  it("el XML del paquete nace desconocido y sólo el RPC proyecta la evidencia", async () => {
     const cliente = clienteSintetico();
     const { solicitudes } = await solicitarCiclo(cliente, {
       desde: "2026-03-01",
@@ -117,7 +126,7 @@ describe("cadena solicitud vigente → paquete → ingesta → cfdi_xml", () => 
         filaLinaje = {
           origen: ORIGEN_DESCARGA_MASIVA,
           proveedor: "sat_directo",
-          run_id: null,
+          run_id: RUN,
           solicitud_id: ctx.idSolicitud,
           paquete_id: ctx.idPaquete,
           estado_comprobante: ctx.estadoComprobante,
@@ -136,9 +145,14 @@ describe("cadena solicitud vigente → paquete → ingesta → cfdi_xml", () => 
 
     const fila = (fake.insertados["cfdi_xml"] ?? [])[0];
     expect(fila).toBeTruthy();
-    expect(fila.estatus_sat).toBe("vigente");
-    expect(fila.estatus_sat_fuente).toBe(FUENTE_DESCARGA_MASIVA);
-    expect(typeof fila.estatus_sat_evidencia_at).toBe("string");
+    // La fila NUEVA nace desconocida: el código jamás escribe "vigente".
+    expect(fila.estatus_sat).toBe("desconocido");
+    expect(fila.estatus_sat_fuente).toBeNull();
+    expect(fila.estatus_sat_evidencia_at).toBeNull();
+    // La promoción a vigente la hace el RPC, único escritor de evidencia.
+    const evid = fake.rpcs.filter((r) => r.fn === "cfdi_registrar_evidencia_sat");
+    expect(evid).toHaveLength(1);
+    expect(evid[0]!.args).toMatchObject({ _run_id: RUN, _solicitud_id: "SOL-0001", _paquete_id: "PKG-0001" });
     expect(fila.sat_solicitud_id).toBe("SOL-0001");
     expect(fila.sat_paquete_id).toBe("PKG-0001");
     expect(fila.origen).toBe(ORIGEN_DESCARGA_MASIVA);
@@ -185,7 +199,7 @@ describe("cadena solicitud vigente → paquete → ingesta → cfdi_xml", () => 
         const r = await ingestOneInternal(fake.client, DESPACHO, CLIENTE, archivo.nombre, archivo.xml, {
           origen: ORIGEN_DESCARGA_MASIVA,
           proveedor: "sat_directo",
-          run_id: null,
+          run_id: RUN,
           solicitud_id: ctx.idSolicitud,
           paquete_id: ctx.idPaquete,
           estado_comprobante: ctx.estadoComprobante,

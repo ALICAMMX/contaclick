@@ -7,8 +7,14 @@ import { parseCfdi } from "@/lib/tools/cfdi-parser";
 import { analyzeCfdi, maxLevel } from "@/lib/cfdi/risk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolveActiveDespachoId } from "@/lib/despacho/resolve";
-import { evidenciaEstatusSat, type LinajeIngesta as LinajeSat } from "@/lib/sat/evidencia";
-import { reconciliarEvidenciaSat } from "@/lib/sat/evidencia-reconciliacion";
+import { type LinajeIngesta as LinajeSat } from "@/lib/sat/evidencia";
+import {
+  reconciliarEvidenciaSat,
+  evidenciaPendiente,
+  motivoEvidenciaPendiente,
+  type ResultadoEvidencia,
+} from "@/lib/sat/evidencia-reconciliacion";
+
 
 
 // ---------- helpers (server-side) ----------
@@ -17,6 +23,32 @@ async function sha256Hex(text: string): Promise<string> {
   const enc = new TextEncoder().encode(text);
   const buf = await crypto.subtle.digest("SHA-256", enc);
   return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Había linaje completo pero el RPC no respaldó la evidencia (rechazo o fallo
+ * de bitácora): el documento NO puede quedar en silencio. Se marca para
+ * revisión con los datos necesarios para reintentar sin volver a descargar.
+ * Nunca lanza: la ingesta del XML ya ocurrió y no debe perderse.
+ */
+async function marcarEvidenciaPendiente(
+  supabase: SupabaseClient,
+  cfdiId: string,
+  r: ResultadoEvidencia,
+): Promise<void> {
+  if (!evidenciaPendiente(r)) return;
+  try {
+    const { data } = await supabase.from("cfdi_xml").select("motivos").eq("id", cfdiId).maybeSingle();
+    const previos = Array.isArray((data as any)?.motivos) ? ((data as any).motivos as any[]) : [];
+    const motivo = motivoEvidenciaPendiente(r);
+    const motivos = [...previos.filter((m) => m?.codigo !== motivo.codigo), motivo];
+    await supabase
+      .from("cfdi_xml")
+      .update({ estado_procesamiento: "requiere_revision", motivos })
+      .eq("id", cfdiId);
+  } catch (e) {
+    console.warn(`[cfdi ${cfdiId}] no se pudo marcar evidencia pendiente:`, (e as any)?.message);
+  }
 }
 
 async function ensureDespacho(supabase: SupabaseClient, userId: string): Promise<string> {
@@ -158,7 +190,10 @@ export async function ingestOneInternal(
   if (!parsed.emisor.rfc || !parsed.receptor.rfc) throw new Error("CFDI sin RFC emisor o receptor.");
 
   const hash = await sha256Hex(xml);
-  const evidencia = evidenciaEstatusSat(linaje);
+  // NOTA: el estatus SAT NO se calcula aquí. El único escritor de evidencia es
+  // el RPC `cfdi_registrar_evidencia_sat`, que revalida el linaje contra la
+  // corrida, la solicitud y el paquete persistidos.
+
 
   // UUID CANÓNICO: mayúsculas y sin espacios. Sin esto, el mismo comprobante
   // con distinta caja crearía una segunda fila y jamás se contaría duplicado.
@@ -182,7 +217,8 @@ export async function ingestOneInternal(
     // si el linaje no lo respalda, el CFDI sigue "desconocido".
     // SAT → MANUAL: una carga manual no trae linaje, así que no intenta nada
     // y jamás degrada la evidencia ya registrada.
-    await reconciliarEvidenciaSat(supabase, dup.id as string, linaje);
+    const rec = await reconciliarEvidenciaSat(supabase, dup.id as string, linaje);
+    await marcarEvidenciaPendiente(supabase, dup.id as string, rec);
     return { id: dup.id as string, uuid: uuidCanonico, duplicado: true, hash };
   }
 
@@ -227,11 +263,13 @@ export async function ingestOneInternal(
       iva_trasladado: parsed.impuestos.totalTrasladados ?? 0,
       iva_retenido: parsed.impuestos.totalRetenidos ?? 0,
       total: parsed.total ?? 0,
-      // EVIDENCIA SAT: se deriva SÓLO del linaje server-side (solicitud y
-      // paquete persistidos). Una carga manual queda en "desconocido".
-      estatus_sat: evidencia.estatus_sat,
-      estatus_sat_fuente: evidencia.estatus_sat_fuente,
-      estatus_sat_evidencia_at: evidencia.estatus_sat_evidencia_at,
+      // EVIDENCIA SAT: TODO documento nuevo nace "desconocido". Sólo el RPC
+      // puede proyectar "vigente", y únicamente tras escribir la bitácora
+      // inmutable. Así nunca existe un vigente sin evidencia que lo respalde.
+      estatus_sat: "desconocido",
+      estatus_sat_fuente: null,
+      estatus_sat_evidencia_at: null,
+
       archivo_path: filename,
       archivo_hash: hash,
       // Linaje operativo: permite seguir el documento hasta la corrida SAT.
@@ -249,7 +287,7 @@ export async function ingestOneInternal(
 
   // Bitácora inmutable de evidencia también para el documento NUEVO que llega
   // dentro del paquete. Idempotente: repetir el paquete no duplica evidencia.
-  await reconciliarEvidenciaSat(supabase, ins.id as string, linaje);
+  const recNuevo = await reconciliarEvidenciaSat(supabase, ins.id as string, linaje);
 
 
   // NORMALIZACIÓN FISCAL: conceptos, impuestos detallados, relaciones y
@@ -289,6 +327,11 @@ export async function ingestOneInternal(
       console.warn(`[cfdi ${uuidCanonico}] no se pudo actualizar el periodo ${periodoDoc}:`, (e as any)?.message);
     }
   }
+
+  // Evidencia prometida por el paquete pero NO respaldada por el RPC: se marca
+  // al final para que la normalización no sobrescriba el motivo operativo.
+  await marcarEvidenciaPendiente(supabase, ins.id as string, recNuevo);
+
 
 
   // Dispara workflows automáticos suscritos a "xml_uploaded" (no bloquea ante error)

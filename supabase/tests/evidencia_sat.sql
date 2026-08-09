@@ -169,6 +169,92 @@ BEGIN
     v_n = 1 AND v_row.estatus_sat = 'vigente' AND v_row.estatus_sat_fuente = 'descarga_masiva_sat',
     v_n::text || '/' || v_row.estatus_sat);
 
+  -- =================== CFDI NUEVO: sólo el RPC proyecta ===================
+  -- Documento recién ingestado desde un paquete: nace SIEMPRE 'desconocido'.
+  DECLARE
+    v_cfdi_n uuid;
+  BEGIN
+    PERFORM set_config('role','postgres', true);
+    PERFORM set_config('request.jwt.claims',
+      json_build_object('sub', v_ua, 'role','authenticated')::text, true);
+    INSERT INTO public.cfdi_xml (despacho_id, cliente_id, rfc_id, uuid, tipo_cfdi,
+      rfc_emisor, rfc_receptor, fecha, archivo_hash, origen, proveedor,
+      sat_run_id, sat_solicitud_id, sat_paquete_id, estatus_sat)
+    VALUES (v_da, v_ca, v_rfca, 'QA000003-0000-4000-8000-000000000003', 'I',
+      'QAA010101AAA','QAB020202BB2', now(), 'qa-hash-3', 'sat_descarga_masiva',
+      'sat_directo', v_run_a, 'SOL-A', 'PKG-A1', 'desconocido')
+    RETURNING id INTO v_cfdi_n;
+
+    SELECT * INTO v_row FROM public.cfdi_xml WHERE id = v_cfdi_n;
+    INSERT INTO qa VALUES ('CFDI nuevo nace desconocido y sin fuente de evidencia',
+      v_row.estatus_sat = 'desconocido' AND v_row.estatus_sat_fuente IS NULL
+      AND v_row.estatus_sat_evidencia_at IS NULL, v_row.estatus_sat);
+
+    -- Linaje INVÁLIDO: el paquete no fue procesado ⇒ rechazo sin proyección.
+    v_res := public.cfdi_registrar_evidencia_sat(v_cfdi_n, v_run_a, 'SOL-SIN-PAQUETE', 'PKG-X1');
+    SELECT * INTO v_row FROM public.cfdi_xml WHERE id = v_cfdi_n;
+    INSERT INTO qa VALUES ('CFDI nuevo con linaje inválido: rechazado y sigue desconocido',
+      coalesce((v_res->>'creada')::boolean,false) = false
+      AND coalesce((v_res->>'rechazada')::boolean,false) = true
+      AND v_row.estatus_sat = 'desconocido' AND v_row.estatus_sat_fuente IS NULL,
+      v_res::text || ' / ' || v_row.estatus_sat);
+    SELECT count(*) INTO v_n FROM public.cfdi_sat_evidencias WHERE cfdi_id = v_cfdi_n;
+    INSERT INTO qa VALUES ('linaje inválido no deja bitácora', v_n = 0, v_n::text);
+
+    -- Linaje VÁLIDO: se crea bitácora y se proyecta vigente.
+    v_res := public.cfdi_registrar_evidencia_sat(v_cfdi_n, v_run_a, 'SOL-A', 'PKG-A1');
+    SELECT * INTO v_row FROM public.cfdi_xml WHERE id = v_cfdi_n;
+    INSERT INTO qa VALUES ('CFDI nuevo con linaje válido: bitácora y proyección vigente',
+      coalesce((v_res->>'creada')::boolean,false)
+      AND v_row.estatus_sat = 'vigente' AND v_row.estatus_sat_fuente = 'descarga_masiva_sat'
+      AND v_row.estatus_sat_evidencia_at IS NOT NULL, v_res::text);
+
+    -- IDEMPOTENCIA REPARADORA: si la proyección se pierde, repetir el RPC la
+    -- restaura sin crear una segunda evidencia.
+    UPDATE public.cfdi_xml
+       SET estatus_sat='desconocido', estatus_sat_fuente=NULL, estatus_sat_evidencia_at=NULL
+     WHERE id = v_cfdi_n;
+    v_res := public.cfdi_registrar_evidencia_sat(v_cfdi_n, v_run_a, 'SOL-A', 'PKG-A1');
+    SELECT * INTO v_row FROM public.cfdi_xml WHERE id = v_cfdi_n;
+    SELECT count(*) INTO v_n FROM public.cfdi_sat_evidencias WHERE cfdi_id = v_cfdi_n;
+    INSERT INTO qa VALUES ('idempotencia reparadora: repara proyección sin duplicar bitácora',
+      coalesce((v_res->>'duplicada')::boolean,false) AND v_n = 1
+      AND v_row.estatus_sat = 'vigente' AND v_row.estatus_sat_fuente = 'descarga_masiva_sat',
+      v_res::text || ' / evidencias=' || v_n::text);
+
+    -- Un CANCELADO jamás se degrada a vigente por reintentar el RPC.
+    UPDATE public.cfdi_xml SET estatus_sat='cancelado' WHERE id = v_cfdi_n;
+    PERFORM public.cfdi_registrar_evidencia_sat(v_cfdi_n, v_run_a, 'SOL-A', 'PKG-A1');
+    SELECT * INTO v_row FROM public.cfdi_xml WHERE id = v_cfdi_n;
+    INSERT INTO qa VALUES ('la reparación nunca revive un cancelado',
+      v_row.estatus_sat = 'cancelado', v_row.estatus_sat);
+
+    -- SERVICE ROLE: proceso interno sin usuario puede registrar evidencia.
+    PERFORM set_config('role','service_role', true);
+    PERFORM set_config('request.jwt.claims',
+      json_build_object('role','service_role')::text, true);
+    v_res := public.cfdi_registrar_evidencia_sat(v_cfdi_b, v_run_b, 'SOL-B', 'PKG-B1');
+    INSERT INTO qa VALUES ('service_role (sin usuario) sí puede registrar evidencia',
+      coalesce((v_res->>'creada')::boolean,false), v_res::text);
+
+    -- ANON: sin usuario y sin rol interno ⇒ rechazo duro.
+    PERFORM set_config('role','anon', true);
+    PERFORM set_config('request.jwt.claims', json_build_object('role','anon')::text, true);
+    v_ok := false;
+    BEGIN
+      PERFORM public.cfdi_registrar_evidencia_sat(v_cfdi_n, v_run_a, 'SOL-A', 'PKG-A1');
+      v_msg := 'no lanzó excepción';
+    EXCEPTION WHEN OTHERS THEN
+      v_ok := SQLERRM LIKE '%No autorizado%' OR SQLERRM LIKE '%permission denied%';
+      v_msg := SQLERRM;
+    END;
+    INSERT INTO qa VALUES ('anon no puede registrar evidencia', v_ok, v_msg);
+
+    PERFORM set_config('role','postgres', true);
+    PERFORM set_config('request.jwt.claims',
+      json_build_object('sub', v_ua, 'role','authenticated')::text, true);
+  END;
+
   -- =================== Permisos declarados ===================
   INSERT INTO qa VALUES ('authenticated NO puede INSERT/UPDATE/DELETE evidencias',
     NOT has_table_privilege('authenticated','public.cfdi_sat_evidencias','INSERT')
