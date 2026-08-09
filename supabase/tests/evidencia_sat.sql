@@ -75,6 +75,10 @@ BEGIN
                        'paquetes_procesados', jsonb_build_array('PKG-B1'))
   )) RETURNING id INTO v_run_b;
 
+  -- Toda llamada al RPC ocurre con la identidad real del usuario A.
+  PERFORM set_config('request.jwt.claims',
+    json_build_object('sub', v_ua, 'role','authenticated')::text, true);
+
   -- =================== CASOS NEGATIVOS ===================
   v_res := public.cfdi_registrar_evidencia_sat(v_cfdi_a, v_run_a, 'SOL-SIN-ESTADO', 'PKG-S1');
   INSERT INTO qa VALUES ('negativo: solicitud sin EstadoComprobante',
