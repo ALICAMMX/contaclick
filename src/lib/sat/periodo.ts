@@ -138,8 +138,9 @@ export function dentroDelPeriodo(
 }
 
 /**
- * Explica por qué un comprobante concreto entró o no entró en el periodo,
- * distinguiendo emisión de certificación. Sirve para auditoría honesta.
+ * Explica la inclusión de un comprobante SIEMPRE con el criterio oficial
+ * (fecha de emisión). La fecha de certificación se reporta aparte, como
+ * dato informativo, nunca como criterio.
  */
 export function explicarInclusion(args: {
   direccion: DireccionPeriodo;
@@ -147,19 +148,65 @@ export function explicarInclusion(args: {
   hasta: string;
   emision: Date | string;
   certificacion?: Date | string | null;
-}): { incluido: boolean; criterio: string; instante: string; motivo: string } {
-  const usaCertificacion = args.direccion === "recibidos" && !!args.certificacion;
-  const base = usaCertificacion ? args.certificacion! : args.emision;
-  const fecha = base instanceof Date ? base : new Date(base);
-  const instante = Number.isNaN(fecha.getTime()) ? "—" : fechaHoraLocalSat(fecha);
-  const incluido = dentroDelPeriodo(fecha, args.desde, args.hasta);
+}): {
+  incluido: boolean;
+  criterio: string;
+  instante: string;
+  emision: string;
+  certificacion: string | null;
+  motivo: string;
+  anomalia: boolean;
+} {
+  const fe = args.emision instanceof Date ? args.emision : new Date(args.emision);
+  const instante = Number.isNaN(fe.getTime()) ? "—" : fechaHoraLocalSat(fe);
+  const fc = args.certificacion
+    ? args.certificacion instanceof Date
+      ? args.certificacion
+      : new Date(args.certificacion)
+    : null;
+  const certificacion = fc && !Number.isNaN(fc.getTime()) ? fechaHoraLocalSat(fc) : null;
+  const incluido = dentroDelPeriodo(fe, args.desde, args.hasta);
   const criterio = criterioTemporal(args.direccion);
   return {
     incluido,
     criterio,
     instante,
+    emision: instante,
+    certificacion,
     motivo: incluido
       ? `Su ${criterio} (${instante}, ${ETIQUETA_ZONA_SAT}) cae dentro del periodo solicitado.`
-      : `Su ${criterio} (${instante}, ${ETIQUETA_ZONA_SAT}) queda fuera del periodo solicitado. No se perdió: corresponde a otro periodo.`,
+      : `Su ${criterio} (${instante}, ${ETIQUETA_ZONA_SAT}) queda fuera del periodo solicitado.`,
+    anomalia: false,
   };
 }
+
+/**
+ * Un comprobante que, según el criterio oficial, DEBÍA venir en el periodo
+ * y no llegó. No se le atribuye causa: se marca como comportamiento
+ * observado no explicado, con las hipótesis abiertas.
+ */
+export function clasificarAusencia(args: {
+  direccion: DireccionPeriodo;
+  desde: string;
+  hasta: string;
+  emision: Date | string;
+  certificacion?: Date | string | null;
+}): {
+  esperado: boolean;
+  anomalia: boolean;
+  etiqueta: string;
+  hipotesis: readonly string[];
+  detalle: ReturnType<typeof explicarInclusion>;
+} {
+  const detalle = explicarInclusion(args);
+  return {
+    esperado: detalle.incluido,
+    anomalia: detalle.incluido,
+    etiqueta: detalle.incluido
+      ? "Comportamiento observado no explicado"
+      : "Fuera del periodo solicitado según el criterio documentado",
+    hipotesis: detalle.incluido ? HIPOTESIS_ANOMALIA : [],
+    detalle,
+  };
+}
+
