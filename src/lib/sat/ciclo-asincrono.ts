@@ -9,6 +9,7 @@
 // =====================================================================
 
 import type { DireccionDescarga } from "./providers/contrato";
+import type { EstadoComprobante } from "./solicitud-xml";
 import {
   MAX_INTENTOS_SOLICITUD,
   acumularSolicitud,
@@ -53,7 +54,12 @@ export interface ClienteCiclo {
 export type ArchivoPaquete = { nombre: string; xml: string };
 export type AbrirPaquete = (zipB64: string) => Promise<ArchivoPaquete[]>;
 /** Contexto de linaje: de qué solicitud y paquete proviene el archivo. */
-export type ContextoIngesta = { idSolicitud: string; idPaquete: string };
+export type ContextoIngesta = {
+  idSolicitud: string;
+  idPaquete: string;
+  /** EstadoComprobante de la solicitud persistida. Nunca lo elige el cliente. */
+  estadoComprobante: EstadoComprobante;
+};
 export type Ingestar = (
   archivo: ArchivoPaquete,
   ctx: ContextoIngesta,
@@ -65,10 +71,17 @@ export type Ingestar = (
 
 export async function solicitarCiclo(
   cliente: ClienteCiclo,
-  args: { desde: string; hasta: string; direcciones: DireccionDescarga[] },
+  args: {
+    desde: string;
+    hasta: string;
+    direcciones: DireccionDescarga[];
+    /** EstadoComprobante enviado al SAT. Se persiste con la solicitud. */
+    estadoComprobante?: EstadoComprobante;
+  },
 ): Promise<{ solicitudes: SolicitudRegistro[]; errores: string[] }> {
   const solicitudes: SolicitudRegistro[] = [];
   const errores: string[] = [];
+  const estado_comprobante: EstadoComprobante = args.estadoComprobante ?? "Vigente";
 
   for (const direccion of args.direcciones) {
     try {
@@ -83,6 +96,7 @@ export async function solicitarCiclo(
             direccion,
             desde: args.desde,
             hasta: args.hasta,
+            estado_comprobante,
             id_solicitud: "",
             codigo: r.codigo,
             estado: "error",
@@ -97,6 +111,7 @@ export async function solicitarCiclo(
           direccion,
           desde: args.desde,
           hasta: args.hasta,
+          estado_comprobante,
           id_solicitud: r.idSolicitud,
           codigo: r.codigo,
           mensaje: sem.mensaje || r.mensaje,
@@ -114,6 +129,7 @@ export async function solicitarCiclo(
           direccion,
           desde: args.desde,
           hasta: args.hasta,
+          estado_comprobante,
           id_solicitud: "",
           codigo,
           estado: "error",
@@ -212,6 +228,8 @@ export async function cosecharSolicitudCiclo(args: {
         const r = await args.ingestar(archivo, {
           idSolicitud: solicitud.id_solicitud,
           idPaquete,
+          // Evidencia server-side: sale de la solicitud persistida, no del cliente.
+          estadoComprobante: solicitud.estado_comprobante ?? "Vigente",
         });
         if (r.duplicado) duplicados++;
         else nuevos++;

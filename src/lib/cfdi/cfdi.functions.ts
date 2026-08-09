@@ -7,6 +7,7 @@ import { parseCfdi } from "@/lib/tools/cfdi-parser";
 import { analyzeCfdi, maxLevel } from "@/lib/cfdi/risk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolveActiveDespachoId } from "@/lib/despacho/resolve";
+import { evidenciaEstatusSat, type LinajeIngesta as LinajeSat } from "@/lib/sat/evidencia";
 
 // ---------- helpers (server-side) ----------
 
@@ -139,14 +140,7 @@ async function ingestOne(supabase: SupabaseClient, userId: string, clienteId: st
   return ingestOneInternal(supabase, despachoId, clienteId, filename, xml);
 }
 
-/** Linaje operativo del documento: de dónde vino y con qué evidencia. */
-export type LinajeIngesta = {
-  origen: string;
-  proveedor?: string | null;
-  run_id?: string | null;
-  solicitud_id?: string | null;
-  paquete_id?: string | null;
-};
+export type { LinajeIngesta } from "@/lib/sat/evidencia";
 
 export async function ingestOneInternal(
   supabase: SupabaseClient,
@@ -154,7 +148,7 @@ export async function ingestOneInternal(
   clienteId: string,
   filename: string,
   xml: string,
-  linaje?: LinajeIngesta,
+  linaje?: LinajeSat,
 ): Promise<{ id: string; uuid: string | null; duplicado: boolean; hash: string }> {
 
   const parsed = parseCfdi(xml);
@@ -162,6 +156,7 @@ export async function ingestOneInternal(
   if (!parsed.emisor.rfc || !parsed.receptor.rfc) throw new Error("CFDI sin RFC emisor o receptor.");
 
   const hash = await sha256Hex(xml);
+  const evidencia = evidenciaEstatusSat(linaje);
 
   // UUID CANÓNICO: mayúsculas y sin espacios. Sin esto, el mismo comprobante
   // con distinta caja crearía una segunda fila y jamás se contaría duplicado.
@@ -219,7 +214,11 @@ export async function ingestOneInternal(
       iva_trasladado: parsed.impuestos.totalTrasladados ?? 0,
       iva_retenido: parsed.impuestos.totalRetenidos ?? 0,
       total: parsed.total ?? 0,
-      estatus_sat: "desconocido",
+      // EVIDENCIA SAT: se deriva SÓLO del linaje server-side (solicitud y
+      // paquete persistidos). Una carga manual queda en "desconocido".
+      estatus_sat: evidencia.estatus_sat,
+      estatus_sat_fuente: evidencia.estatus_sat_fuente,
+      estatus_sat_evidencia_at: evidencia.estatus_sat_evidencia_at,
       archivo_path: filename,
       archivo_hash: hash,
       // Linaje operativo: permite seguir el documento hasta la corrida SAT.

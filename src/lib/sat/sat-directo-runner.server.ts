@@ -22,6 +22,7 @@ import {
 } from "./providers/sat-directo.server";
 import { ingestOneInternal } from "@/lib/cfdi/cfdi.functions";
 import { requiereRecalculo } from "./linaje";
+import { ORIGEN_DESCARGA_MASIVA } from "./evidencia";
 import type { DireccionDescarga } from "./providers/contrato";
 import {
   MAX_XML_POR_PAQUETE,
@@ -123,11 +124,13 @@ function ingestorDe(
 ): Ingestar {
   return async ({ nombre, xml }, ctx) => {
     const linaje = {
-      origen: "sat_descarga_masiva",
+      origen: ORIGEN_DESCARGA_MASIVA,
       proveedor: "sat_directo",
       run_id: runId ?? null,
       solicitud_id: ctx?.idSolicitud ?? null,
       paquete_id: ctx?.idPaquete ?? null,
+      // Sale de la solicitud persistida; el frontend no puede fabricarla.
+      estado_comprobante: ctx?.estadoComprobante ?? null,
     };
     const evento = async (tipo: string, payload: Record<string, unknown>, uuid?: string | null, monto?: number | null, mensaje?: string) => {
       if (!runId) return;
@@ -198,6 +201,8 @@ export async function solicitarDescargas(args: {
     desde: args.desde,
     hasta: args.hasta,
     direcciones: args.direcciones,
+    // Mismo valor que envía `clienteSat.solicitar` al SAT.
+    estadoComprobante: "Vigente",
   });
 }
 
