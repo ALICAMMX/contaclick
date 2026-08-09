@@ -64,16 +64,17 @@ describe("fechas en la zona del SAT", () => {
   });
 });
 
-describe("caso real BCDD4B19 — recibidos se filtra por certificación", () => {
+describe("caso real BCDD4B19 — comportamiento observado no explicado", () => {
+  // HECHO OFICIAL: FechaInicial/FechaFinal filtran por fecha de emisión,
+  // en ambas direcciones. No hay fuente oficial que documente certificación.
   const emision = "2026-08-02T05:26:04Z"; // 2026-08-01 23:26:04 centro
   const certificacion = "2026-08-02T09:15:29Z"; // 2026-08-02 03:15:29 centro
 
-  it("la emisión sí cae en el periodo 07-29 → 08-01", () => {
+  it("según el criterio documentado, la emisión SÍ cae en 07-29 → 08-01", () => {
     expect(dentroDelPeriodo(emision, "2026-07-29", "2026-08-01")).toBe(true);
   });
 
-  it("la certificación NO cae en ese periodo, por eso no llegó", () => {
-    expect(dentroDelPeriodo(certificacion, "2026-07-29", "2026-08-01")).toBe(false);
+  it("la explicación usa emisión, nunca certificación, como criterio", () => {
     const e = explicarInclusion({
       direccion: "recibidos",
       desde: "2026-07-29",
@@ -81,31 +82,42 @@ describe("caso real BCDD4B19 — recibidos se filtra por certificación", () => 
       emision,
       certificacion,
     });
-    expect(e.incluido).toBe(false);
-    expect(e.instante).toBe("2026-08-02T03:15:29");
-    expect(e.motivo).toMatch(/otro periodo/);
-  });
-
-  it("sí cae en el periodo siguiente 08-01 → 08-03", () => {
-    const e = explicarInclusion({
-      direccion: "recibidos",
-      desde: "2026-08-01",
-      hasta: "2026-08-03",
-      emision,
-      certificacion,
-    });
     expect(e.incluido).toBe(true);
-  });
-
-  it("emitidos se explica con la fecha de emisión", () => {
-    const e = explicarInclusion({
-      direccion: "emitidos",
-      desde: "2026-07-29",
-      hasta: "2026-08-01",
-      emision,
-      certificacion,
-    });
-    expect(e.incluido).toBe(true);
+    expect(e.instante).toBe("2026-08-01T23:26:04");
+    expect(e.criterio).toBe(criterioTemporal("recibidos"));
     expect(e.criterio).toBe(criterioTemporal("emitidos"));
+    expect(e.criterio).toMatch(/emisión/);
+    expect(e.criterio).not.toMatch(/certificaci/i);
+  });
+
+  it("la certificación se reporta aparte, sólo como dato informativo", () => {
+    const e = explicarInclusion({
+      direccion: "recibidos",
+      desde: "2026-07-29",
+      hasta: "2026-08-01",
+      emision,
+      certificacion,
+    });
+    expect(e.certificacion).toBe("2026-08-02T03:15:29");
+  });
+
+  it("la ausencia se clasifica como anomalía sin causa atribuida", () => {
+    const c = clasificarAusencia({
+      direccion: "recibidos",
+      desde: "2026-07-29",
+      hasta: "2026-08-01",
+      emision,
+      certificacion,
+    });
+    expect(c.esperado).toBe(true);
+    expect(c.anomalia).toBe(true);
+    expect(c.etiqueta).toMatch(/no explicado/);
+    expect(c.hipotesis.length).toBeGreaterThan(3);
+  });
+
+  it("ninguna nota del producto afirma que recibidos usen certificación", () => {
+    expect(notaCriterio("recibidos")).toMatch(/fecha de emisión/);
+    expect(notaCriterio("recibidos")).not.toMatch(/el SAT filtra por fecha de certificación/i);
   });
 });
+
