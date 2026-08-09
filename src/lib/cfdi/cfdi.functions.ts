@@ -8,6 +8,8 @@ import { analyzeCfdi, maxLevel } from "@/lib/cfdi/risk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolveActiveDespachoId } from "@/lib/despacho/resolve";
 import { evidenciaEstatusSat, type LinajeIngesta as LinajeSat } from "@/lib/sat/evidencia";
+import { reconciliarEvidenciaSat } from "@/lib/sat/evidencia-reconciliacion";
+
 
 // ---------- helpers (server-side) ----------
 
