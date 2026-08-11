@@ -80,6 +80,10 @@ export function ImpuestosPreliminares({ clienteId, periodo }: { clienteId: strin
   const res = preliminar.resultado;
   const esPm = preliminar.regimen === "PM_GENERAL";
   const esResico = preliminar.regimen === "PF_RESICO";
+  // Sin comprobantes reconocidos no se muestran importes: cero significaría
+  // afirmar una base gravable que la evidencia no sostiene.
+  const sinEvidencia = (entradas.documentos_periodo ?? 0) <= 0;
+  const bloqueado = !preliminar.evaluable;
 
   return (
     <section className="rounded-xl border border-border bg-card p-5 space-y-4">
