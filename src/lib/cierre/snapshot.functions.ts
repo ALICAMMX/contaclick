@@ -146,7 +146,7 @@ export const sellarCierre = createServerFn({ method: "POST" })
       _cliente_id: scope.cliente_id,
       _periodo: data.periodo,
       _motivo: data.motivo,
-      _idempotency_key: data.idempotency_key ?? null,
+      _idempotency_key: data.idempotency_key ?? undefined,
     });
     if (error) throw new Error(error.message);
     return { ok: true, sello };
