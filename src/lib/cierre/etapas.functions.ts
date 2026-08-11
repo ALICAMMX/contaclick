@@ -15,6 +15,7 @@ import {
   ETAPAS,
   ORDEN_ETAPAS,
   EVALUADOR_VERSION,
+  aplicarFallaCerrada,
   dependenciasSatisfechas,
   siguienteAccion,
   type EstadoEtapa,
@@ -35,27 +36,42 @@ const DISPARADOR_POR_ETAPA: Record<EtapaId, "cfdi" | "clasificacion" | "banco" |
 };
 
 /** Etapas cuyo estado lo produce un evaluador determinista sobre la evidencia. */
-const EVALUADORES = [
-  "cierre_evaluar_clasificacion",
-  "cierre_evaluar_bancos",
-  "cierre_evaluar_polizas",
-  "cierre_evaluar_impuestos",
-] as const;
+const EVALUADORES: { fn: string; etapa: EtapaId }[] = [
+  { fn: "cierre_evaluar_clasificacion", etapa: "clasificacion" },
+  { fn: "cierre_evaluar_bancos", etapa: "bancos" },
+  { fn: "cierre_evaluar_polizas", etapa: "polizas" },
+  { fn: "cierre_evaluar_impuestos", etapa: "impuestos" },
+];
+
+export type FalloEvaluacion = { evaluador: string; etapa: EtapaId; error: string };
 
 /**
  * Reevalúa las etapas evaluables desde la evidencia persistida. Es idempotente:
  * misma evidencia ⇒ mismo `input_hash` ⇒ ninguna transición nueva. Se ejecuta
  * antes de leer, para que la pantalla nunca muestre un estado más viejo que los
  * documentos que ya están en la base.
+ *
+ * FALLA CERRADA: si un evaluador no corre —error de red, permiso o excepción no
+ * capturada dentro del RPC— se intenta persistir `no_comprobada` para su etapa y
+ * el fallo se devuelve para que la proyección de lectura lo imponga igual aunque
+ * la persistencia también falle.
  */
 async function reevaluar(supabase: any, clienteId: string, periodo: string) {
-  const fallos: { evaluador: string; error: string }[] = [];
-  for (const fn of EVALUADORES) {
+  const fallos: FalloEvaluacion[] = [];
+  for (const { fn, etapa } of EVALUADORES) {
     const { error } = await supabase.rpc(fn, { _cliente_id: clienteId, _periodo: periodo });
-    if (error) fallos.push({ evaluador: fn, error: error.message });
+    if (!error) continue;
+    fallos.push({ evaluador: fn, etapa, error: error.message });
+    await supabase.rpc("cierre_marcar_no_comprobada", {
+      _cliente_id: clienteId,
+      _periodo: periodo,
+      _etapa: etapa,
+      _detalle: `El evaluador ${fn} no pudo ejecutarse: ${error.message}`,
+    });
   }
   return fallos;
 }
+
 
 /** Reevaluación explícita, para el botón “Reevaluar” de la pantalla de cierre. */
 export const evaluarEtapas = createServerFn({ method: "POST" })
@@ -83,9 +99,9 @@ export const getFlujoMensual = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const scope = await assertClienteScope(supabase, userId, data.cliente_id);
 
-    // Falla ABIERTA a propósito: si un evaluador no corre, se informa y las
-    // etapas afectadas se quedan como estén; nunca se pintan como listas.
+    // FALLA CERRADA: un evaluador que no corre deja su etapa en “no comprobada”.
     const fallosEvaluacion = await reevaluar(supabase, scope.cliente_id, data.periodo);
+    const etapasFallidas = fallosEvaluacion.map((f) => f.etapa);
 
     const { data: filas, error } = await supabase
       .from("cierre_etapas")
@@ -94,30 +110,36 @@ export const getFlujoMensual = createServerFn({ method: "POST" })
       .eq("periodo", data.periodo);
     if (error) throw new Error(error.message);
 
-
     const porEtapa = new Map((filas ?? []).map((f: any) => [f.etapa as EtapaId, f]));
-    const estados: Partial<Record<EtapaId, EstadoEtapa>> = {};
-    for (const id of ORDEN_ETAPAS) estados[id] = (porEtapa.get(id)?.estado as EstadoEtapa) ?? "no_iniciada";
+    const guardados: Partial<Record<EtapaId, EstadoEtapa>> = {};
+    for (const id of ORDEN_ETAPAS) guardados[id] = (porEtapa.get(id)?.estado as EstadoEtapa) ?? "no_iniciada";
+    const estados = aplicarFallaCerrada(guardados, etapasFallidas);
 
     const etapas = ETAPAS.map((e) => {
       const fila = porEtapa.get(e.id);
       const dep = dependenciasSatisfechas(e.id, estados);
+      const fallo = fallosEvaluacion.find((f) => f.etapa === e.id);
       return {
         ...e,
         estado: estados[e.id]!,
-        cobertura: fila?.cobertura != null ? Number(fila.cobertura) : null,
-        criteriosCumplidos: (fila?.criterios_cumplidos as { codigo: string; detalle: string }[]) ?? [],
-        criteriosPendientes: (fila?.criterios_pendientes as { codigo: string; detalle: string }[]) ?? [],
-        motivo: fila?.motivo ?? null,
+        cobertura: fallo ? null : fila?.cobertura != null ? Number(fila.cobertura) : null,
+        criteriosCumplidos: fallo
+          ? []
+          : ((fila?.criterios_cumplidos as { codigo: string; detalle: string }[]) ?? []),
+        criteriosPendientes: fallo
+          ? [{ codigo: "diagnostico_fallido", detalle: fallo.error }]
+          : ((fila?.criterios_pendientes as { codigo: string; detalle: string }[]) ?? []),
+        motivo: fallo ? "El diagnóstico de esta etapa no pudo ejecutarse." : (fila?.motivo ?? null),
         version: fila?.version ?? 1,
         lista_at: fila?.lista_at ?? null,
         aprobada_at: fila?.aprobada_at ?? null,
         evaluadorVersion: fila?.evaluador_version ?? null,
-        resultado: fila?.resultado ?? null,
+        resultado: fallo ? null : (fila?.resultado ?? null),
         habilitada: dep.ok,
         dependenciasFaltantes: dep.faltantes,
       };
     });
+
 
     const { data: eventos } = await supabase
       .from("cierre_eventos")

@@ -28,6 +28,8 @@ import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { FlujoEtapas } from "@/components/cierre/FlujoEtapas";
 import { ClasificacionFiscal } from "@/components/cierre/ClasificacionFiscal";
 import { SelloCierre } from "@/components/cierre/SelloCierre";
+import { PolizasPeriodo } from "@/components/cierre/PolizasPeriodo";
+import { ImpuestosPreliminares } from "@/components/cierre/ImpuestosPreliminares";
 
 export const Route = createFileRoute("/app/cierre")({
   component: CierrePage,
@@ -192,6 +194,10 @@ function CierrePage() {
       <FlujoEtapas clienteId={cliente.id} periodo={periodo} />
 
       <ClasificacionFiscal clienteId={cliente.id} periodo={periodo} />
+
+      <PolizasPeriodo clienteId={cliente.id} periodo={periodo} />
+
+      <ImpuestosPreliminares clienteId={cliente.id} periodo={periodo} />
 
       <SelloCierre clienteId={cliente.id} periodo={periodo} />
 

@@ -22,6 +22,9 @@ import {
 } from "@/lib/fiscal/normativa/motor";
 import type { Regimen } from "@/lib/fiscal/normativa/catalogo";
 
+/** Valor serializable JSON (los resultados viajan por RPC y se sellan). */
+export type JsonValue = string | number | boolean | null | JsonValue[] | { [k: string]: JsonValue };
+
 export const MOTOR_IMPUESTOS_VERSION = "impuestos-preliminar@1";
 
 /** Régimen fiscal soportado por los motores del cierre mensual. */
@@ -94,8 +97,8 @@ export type ResultadoPreliminar = {
   resultado: {
     naturaleza: "estimacion_interna";
     advertencia: string;
-    isr: Record<string, unknown> | null;
-    iva: Record<string, unknown> | null;
+    isr: Record<string, JsonValue> | null;
+    iva: Record<string, JsonValue> | null;
     isr_a_cargo_centavos: number | null;
     iva_a_cargo_centavos: number | null;
     iva_a_favor_centavos: number | null;
@@ -166,7 +169,7 @@ export function calcularPreliminar(
   };
   if (motivos.length > 0 || !regimen) return vacio;
 
-  let isr: Record<string, unknown> | null = null;
+  let isr: Record<string, JsonValue> | null = null;
   let selloIsr: SelloNormativo | null = null;
   let isrACargo = 0;
   const fundamentos: string[] = [];
@@ -180,7 +183,7 @@ export function calcularPreliminar(
         retenciones: pesos(entradas.isr_retenido_centavos),
         pagosProvisionalesAnteriores: pesos(parametros.pagos_provisionales_anteriores_centavos ?? 0),
       });
-      isr = r as unknown as Record<string, unknown>;
+      isr = r as unknown as Record<string, JsonValue>;
       selloIsr = r.normativa;
       isrACargo = centavos(r.isrACargo);
       fundamentos.push("LISR art. 106 — pago provisional de personas físicas con actividad empresarial y profesional.");
@@ -194,7 +197,7 @@ export function calcularPreliminar(
           ? { retencionPersonaMoral: true }
           : { retencionesEfectuadas: pesos(entradas.isr_retenido_centavos) }),
       });
-      isr = r as unknown as Record<string, unknown>;
+      isr = r as unknown as Record<string, JsonValue>;
       selloIsr = r.normativa;
       isrACargo = centavos(r.isrACargo);
       fundamentos.push("LISR art. 113-E — Régimen Simplificado de Confianza de personas físicas.");
@@ -217,7 +220,7 @@ export function calcularPreliminar(
         pagosProvisionalesAnteriores: pesos(parametros.pagos_provisionales_anteriores_centavos ?? 0),
         retenciones: pesos(entradas.isr_retenido_centavos),
       });
-      isr = r as unknown as Record<string, unknown>;
+      isr = r as unknown as Record<string, JsonValue>;
       selloIsr = r.normativa;
       isrACargo = centavos(r.isrACargo);
       fundamentos.push("LISR art. 14 — pago provisional de personas morales con coeficiente de utilidad.");
@@ -249,7 +252,7 @@ export function calcularPreliminar(
         naturaleza: "estimacion_interna",
         advertencia: ADVERTENCIA,
         isr,
-        iva: iva as unknown as Record<string, unknown>,
+        iva: iva as unknown as Record<string, JsonValue>,
         isr_a_cargo_centavos: isrACargo,
         iva_a_cargo_centavos: ivaACargo,
         iva_a_favor_centavos: ivaAFavor,

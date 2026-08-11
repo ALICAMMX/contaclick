@@ -1203,3 +1203,32 @@ Ejecutada contra la base real con la sesión del usuario `b8d2ecb7…` (dueño d
 | `INSERT` directo a `cierre_etapas` como usuario autenticado | 403 · 42501 (sin privilegio de escritura) |
 
 Nota: la prueba `supabase/tests/cierre_aislamiento.sql` no puede correr por `psql` porque el rol de consulta no tiene EXECUTE sobre las funciones del cierre; la verificación equivalente se hizo por la Data API con token real, que es el camino que usa la aplicación.
+
+## Cierre de bloque — Flujo contable mensual (etapas 4 y 5 operativas)
+
+- **Pólizas (etapa 4)**: nuevas funciones servidoras `src/lib/cierre/polizas.functions.ts`
+  con generación idempotente (`idempotency_key = cierre:<cfdi_id>`), paginación
+  exhaustiva del periodo, verificación de partida doble al centavo antes de
+  llamar al RPC, y aprobación/rechazo humano con motivo obligatorio.
+  Los CFDI sin evidencia SAT vigente se reportan como omitidos con motivo; no
+  se contabilizan en silencio.
+- **Impuestos (etapa 5)**: `src/lib/cierre/impuestos.puente.ts` es la única ruta
+  por la que un resultado preliminar llega a la base. Ejecuta los motores
+  versionados reales (ISR PF, ISR PM, RESICO, IVA) y registra con el
+  `input_hash` de la evidencia. Si no es evaluable no registra nada.
+- **Sellado**: `sellarCierre` recalcula el preliminar con el puente antes de
+  invocar `cierre_sellar_manifiesto`, de modo que no puede sellarse un periodo
+  con un cálculo anterior a la evidencia.
+- **Falla cerrada**: `no_comprobada` integrado en tipos, etiquetas y tono; si un
+  evaluador no corre, la etapa se pinta como no comprobada, nunca como lista.
+- **Prueba SQL inválida retirada**: `supabase/tests/cierre_aislamiento.sql` se
+  ejecutaba como superusuario, saltándose RLS y los RPC SECURITY DEFINER, por lo
+  que pasaba aun con el aislamiento roto. Sustituida por
+  `scripts/regresion-aislamiento.mjs`, que ejerce la API pública con una sesión
+  real y exige rechazo del expediente ajeno y bloqueo de la escritura directa.
+  Las credenciales se leen del entorno y no se persisten.
+- **snapshot.test.ts reemplazada** por `src/lib/cierre/impuestos.puente.test.ts`:
+  la antigua sólo validaba la forma del manifiesto; la nueva compara el
+  resultado registrado contra los motores normativos ejecutados de forma
+  independiente.
+- Suite completa: 608 pruebas en verde, typecheck limpio.
