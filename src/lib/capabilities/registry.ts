@@ -98,21 +98,24 @@ const CONTABLE: Capability[] = [
   cap({ id: "sat-sync", nombre: "Descarga Masiva SAT", ruta: "/app/sat-sync", modulo: "contable", grupo: "2 · Ingesta de CFDI", madurez: "operativa", dependencias: ["sat", "pac", "almacenamiento"], descripcion: "Sincronización de CFDI con el SAT usando credencial del expediente." }),
   cap({
     id: "cierre-mensual",
-    nombre: "Cierre mensual · etapa documental",
+    nombre: "Centro de cierre mensual (documental + seguimiento de flujo)",
     ruta: "/app/cierre",
     modulo: "contable",
     grupo: "2 · Ingesta de CFDI",
-    madurez: "operativa",
+    madurez: "operativa_limitada",
     descripcion:
-      "Normaliza los CFDI del periodo (impuestos y complemento de pagos 2.0), los clasifica y concentra las excepciones hasta declarar listos los documentos. No presenta declaraciones ni cierra la contabilidad.",
+      "Orquesta el flujo contable mensual en seis etapas (documentos, clasificación, bancos, pólizas, impuestos preliminares y cierre) con estados, dependencias, reapertura en cascada y bitácora inmutable. Sólo la etapa documental está automatizada de extremo a extremo; las demás se declaran manualmente desde su módulo especializado. No presenta declaraciones ni cierra contabilidad de forma automática.",
     criteriosTerminacion: [
       "Todo CFDI del periodo tiene UUID, RFC y tipo legibles.",
       "Ningún CFDI ajeno al RFC del expediente permanece sin decisión.",
       "Duplicados y relaciones PPD/Pago resueltos o aceptados con motivo.",
       "Direcciones descargadas y fecha de corte documentadas.",
       "Sin excepciones bloqueantes pendientes.",
+      "Las etapas posteriores dependen de la anterior y sólo las declara una persona.",
+      "Pendiente: evaluación automática de clasificación, bancos, pólizas e impuestos, y snapshot inmutable de cierre.",
     ],
   }),
+
 
 
   cap({ id: "express-auditor", nombre: "Auditor express", ruta: "/app/tools/express-auditor", modulo: "contable", grupo: "3 · Auditoría y Conciliación", madurez: "operativa", descripcion: "Duplicados, NC huérfanas, cancelados, PPD sin pago y fuera de periodo." }),
