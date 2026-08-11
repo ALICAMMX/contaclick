@@ -116,6 +116,8 @@ export const runDeducibilityCheck = createServerFn({ method: "POST" })
         estatus_sat_fuente: (c.estatus_sat_fuente as string) ?? null,
         detalle_reconstruible: c.detalle_reconstruible as boolean | null,
         normalizacion_version: (c.normalizacion_version as string) ?? null,
+        original_estado: (c as any).original_estado as string | null,
+
       });
       if (ev.suficiente) {
         list.push(c);
