@@ -26,6 +26,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { FlujoEtapas } from "@/components/cierre/FlujoEtapas";
+import { ClasificacionFiscal } from "@/components/cierre/ClasificacionFiscal";
+import { SelloCierre } from "@/components/cierre/SelloCierre";
 
 export const Route = createFileRoute("/app/cierre")({
   component: CierrePage,
@@ -188,6 +190,10 @@ function CierrePage() {
       </header>
 
       <FlujoEtapas clienteId={cliente.id} periodo={periodo} />
+
+      <ClasificacionFiscal clienteId={cliente.id} periodo={periodo} />
+
+      <SelloCierre clienteId={cliente.id} periodo={periodo} />
 
       {q.isLoading ? (
         <div className="flex items-center gap-3 text-muted-foreground p-8"><Loader2 className="h-4 w-4 animate-spin" /> Evaluando el periodo…</div>

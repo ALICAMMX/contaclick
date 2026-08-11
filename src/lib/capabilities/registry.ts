@@ -98,21 +98,22 @@ const CONTABLE: Capability[] = [
   cap({ id: "sat-sync", nombre: "Descarga Masiva SAT", ruta: "/app/sat-sync", modulo: "contable", grupo: "2 · Ingesta de CFDI", madurez: "operativa", dependencias: ["sat", "pac", "almacenamiento"], descripcion: "Sincronización de CFDI con el SAT usando credencial del expediente." }),
   cap({
     id: "cierre-mensual",
-    nombre: "Centro de cierre mensual (documental + seguimiento de flujo)",
+    nombre: "Centro de cierre mensual (flujo contable de seis etapas)",
     ruta: "/app/cierre",
     modulo: "contable",
     grupo: "2 · Ingesta de CFDI",
     madurez: "operativa_limitada",
     descripcion:
-      "Orquesta el flujo contable mensual en seis etapas (documentos, clasificación, bancos, pólizas, impuestos preliminares y cierre) con estados, dependencias, reapertura en cascada y bitácora inmutable. Sólo la etapa documental está automatizada de extremo a extremo; las demás se declaran manualmente desde su módulo especializado. No presenta declaraciones ni cierra contabilidad de forma automática.",
+      "Orquesta el flujo contable mensual en seis etapas (documentos, clasificación, bancos, pólizas, impuestos preliminares y cierre) con estados, dependencias, reapertura en cascada, bitácora inmutable, decisiones fiscales por comprobante y sello inmutable de cierre. Las etapas de bancos, pólizas e impuestos aún se declaran manualmente desde su módulo especializado. No presenta declaraciones ni cierra contabilidad ante el SAT.",
     criteriosTerminacion: [
       "Todo CFDI del periodo tiene UUID, RFC y tipo legibles.",
       "Ningún CFDI ajeno al RFC del expediente permanece sin decisión.",
       "Duplicados y relaciones PPD/Pago resueltos o aceptados con motivo.",
       "Direcciones descargadas y fecha de corte documentadas.",
       "Sin excepciones bloqueantes pendientes.",
-      "Las etapas posteriores dependen de la anterior y sólo las declara una persona.",
-      "Pendiente: evaluación automática de clasificación, bancos, pólizas e impuestos, y snapshot inmutable de cierre.",
+      "Cada CFDI recibido tiene una decisión fiscal humana con fundamento o motivo.",
+      "El sello sólo se emite sin bloqueos y queda inmutable con huella verificable.",
+      "Pendiente: evaluación automática de bancos, pólizas e impuestos preliminares.",
     ],
   }),
 

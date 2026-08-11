@@ -74,9 +74,9 @@ export const ETAPAS: Etapa[] = [
     acciones: ["Revisar deducibilidad", "Registrar decisión humana"],
     limitaciones: [
       "El validador de deducibilidad usa IA: sus salidas son sugerencias, nunca decisiones.",
-      "La persistencia estructurada de decisiones fiscales aún no está implementada (etapa manual).",
+      "Sin evidencia SAT vigente el comprobante sólo puede quedar “por revisar” o no deducible.",
     ],
-    madurez: "beta",
+    madurez: "operativa",
     permiteNoAplica: false,
   },
   {
@@ -151,12 +151,12 @@ export const ETAPAS: Etapa[] = [
       "Sin pólizas bloqueadas y sin excepciones pendientes",
       "Confirmación humana con motivo y huella de las fuentes",
     ],
-    acciones: ["Revisar resumen", "Cerrar periodo", "Reabrir con motivo"],
+    acciones: ["Revisar resumen", "Sellar periodo", "Reabrir con motivo"],
     limitaciones: [
       "El cierre es documental y contable interno: no envía nada al SAT.",
-      "El snapshot inmutable del cierre aún no está implementado.",
+      "El sello es inmutable: corregir el periodo obliga a emitir una nueva versión.",
     ],
-    madurez: "en_construccion",
+    madurez: "operativa",
     permiteNoAplica: false,
   },
 ];
