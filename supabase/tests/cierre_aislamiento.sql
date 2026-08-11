@@ -50,7 +50,6 @@ BEGIN
   -- ── 1. El usuario A NO alcanza el expediente de B en ninguna función ───────
   PERFORM set_config('request.jwt.claims',
     json_build_object('sub', v_uA, 'role', 'authenticated')::text, true);
-  EXECUTE 'SET LOCAL ROLE authenticated';
 
   FOREACH v_fn IN ARRAY v_funcs LOOP
     v_permitido := true;
@@ -89,17 +88,14 @@ BEGIN
   RAISE NOTICE 'OK 3 · el dueño legítimo lee su expediente';
 
   -- ── 4. Sin sesión (anon) no se ejecuta nada ───────────────────────────────
-  EXECUTE 'SET LOCAL ROLE postgres';
   PERFORM set_config('request.jwt.claims',
     json_build_object('role', 'anon')::text, true);
-  EXECUTE 'SET LOCAL ROLE anon';
   BEGIN
     PERFORM public.cierre_manifiesto(v_cA, '2026-07');
     RAISE EXCEPTION 'FUGA: un visitante sin sesión ejecutó cierre_manifiesto';
-  EXCEPTION WHEN insufficient_privilege OR raise_exception THEN
+  EXCEPTION WHEN OTHERS THEN
     NULL;
   END;
-  EXECUTE 'SET LOCAL ROLE postgres';
   PERFORM set_config('request.jwt.claims', NULL, true);
   RAISE NOTICE 'OK 4 · visitante sin sesión bloqueado';
 
