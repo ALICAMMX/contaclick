@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, Trash2, Sparkles, Loader2, AlertTriangle, CheckCircle2, FileText } from "lucide-react";
+import { ArrowLeft, Trash2, Sparkles, Loader2, AlertTriangle, CheckCircle2, FileText, Download } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 
@@ -9,10 +9,17 @@ import { Button } from "@/components/ui/button";
 import { RichMarkdown } from "@/components/RichMarkdown";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { getCfdi, deleteCfdi, analyzeCfdiAI } from "@/lib/cfdi/cfdi.functions";
+import { descargarOriginalCfdi } from "@/lib/cfdi/original.functions";
+import {
+  ETIQUETA_ESTADO_ORIGINAL,
+  originalVerificado,
+  type EstadoOriginal,
+} from "@/lib/cfdi/original";
 import { analyzeCfdi as runRiskAnalysis, maxLevel } from "@/lib/cfdi/risk";
 import { parseCfdi } from "@/lib/tools/cfdi-parser";
 import { FindingExplain, LegalFooter } from "@/components/FindingExplain";
 import { metaForCfdi } from "@/lib/legal/referencias";
+
 
 export const Route = createFileRoute("/app/cfdi/$id")({
   component: CfdiDetail,
