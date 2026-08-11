@@ -34,6 +34,45 @@ const DISPARADOR_POR_ETAPA: Record<EtapaId, "cfdi" | "clasificacion" | "banco" |
   cierre: "parametro_fiscal",
 };
 
+/** Etapas cuyo estado lo produce un evaluador determinista sobre la evidencia. */
+const EVALUADORES = [
+  "cierre_evaluar_clasificacion",
+  "cierre_evaluar_bancos",
+  "cierre_evaluar_polizas",
+  "cierre_evaluar_impuestos",
+] as const;
+
+/**
+ * Reevalúa las etapas evaluables desde la evidencia persistida. Es idempotente:
+ * misma evidencia ⇒ mismo `input_hash` ⇒ ninguna transición nueva. Se ejecuta
+ * antes de leer, para que la pantalla nunca muestre un estado más viejo que los
+ * documentos que ya están en la base.
+ */
+async function reevaluar(supabase: any, clienteId: string, periodo: string) {
+  const fallos: { evaluador: string; error: string }[] = [];
+  for (const fn of EVALUADORES) {
+    const { error } = await supabase.rpc(fn, { _cliente_id: clienteId, _periodo: periodo });
+    if (error) fallos.push({ evaluador: fn, error: error.message });
+  }
+  return fallos;
+}
+
+/** Reevaluación explícita, para el botón “Reevaluar” de la pantalla de cierre. */
+export const evaluarEtapas = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ cliente_id: z.string().uuid(), periodo: periodoSchema }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const scope = await assertClienteScope(supabase, userId, data.cliente_id);
+    const fallos = await reevaluar(supabase, scope.cliente_id, data.periodo);
+    if (fallos.length > 0) {
+      throw new Error(`No se pudo evaluar: ${fallos.map((f) => f.error).join(" · ")}`);
+    }
+    return { ok: true };
+  });
+
 /** Estado completo de las seis etapas del periodo + siguiente acción. */
 export const getFlujoMensual = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
@@ -44,12 +83,17 @@ export const getFlujoMensual = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const scope = await assertClienteScope(supabase, userId, data.cliente_id);
 
+    // Falla ABIERTA a propósito: si un evaluador no corre, se informa y las
+    // etapas afectadas se quedan como estén; nunca se pintan como listas.
+    const fallosEvaluacion = await reevaluar(supabase, scope.cliente_id, data.periodo);
+
     const { data: filas, error } = await supabase
       .from("cierre_etapas")
-      .select("etapa, estado, cobertura, criterios_cumplidos, criterios_pendientes, motivo, version, lista_at, aprobada_at, aprobada_por, updated_at")
+      .select("etapa, estado, cobertura, criterios_cumplidos, criterios_pendientes, motivo, version, lista_at, aprobada_at, aprobada_por, updated_at, evaluador_version, resultado")
       .eq("cliente_id", scope.cliente_id)
       .eq("periodo", data.periodo);
     if (error) throw new Error(error.message);
+
 
     const porEtapa = new Map((filas ?? []).map((f: any) => [f.etapa as EtapaId, f]));
     const estados: Partial<Record<EtapaId, EstadoEtapa>> = {};
@@ -62,12 +106,14 @@ export const getFlujoMensual = createServerFn({ method: "POST" })
         ...e,
         estado: estados[e.id]!,
         cobertura: fila?.cobertura != null ? Number(fila.cobertura) : null,
-        criteriosCumplidos: (fila?.criterios_cumplidos as string[]) ?? [],
-        criteriosPendientes: (fila?.criterios_pendientes as string[]) ?? [],
+        criteriosCumplidos: (fila?.criterios_cumplidos as { codigo: string; detalle: string }[]) ?? [],
+        criteriosPendientes: (fila?.criterios_pendientes as { codigo: string; detalle: string }[]) ?? [],
         motivo: fila?.motivo ?? null,
         version: fila?.version ?? 1,
         lista_at: fila?.lista_at ?? null,
         aprobada_at: fila?.aprobada_at ?? null,
+        evaluadorVersion: fila?.evaluador_version ?? null,
+        resultado: fila?.resultado ?? null,
         habilitada: dep.ok,
         dependenciasFaltantes: dep.faltantes,
       };
@@ -87,8 +133,10 @@ export const getFlujoMensual = createServerFn({ method: "POST" })
       evaluador: EVALUADOR_VERSION,
       etapas,
       eventos: eventos ?? [],
+      fallosEvaluacion,
       siguiente: sig ? { id: sig.id, nombre: sig.nombre, ruta: sig.ruta, acciones: sig.acciones } : null,
     };
+
   });
 
 /**

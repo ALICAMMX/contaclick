@@ -1181,3 +1181,10 @@ contra base de datos.
 - **Corrección**: todo CFDI nuevo nace `desconocido`; sólo el RPC proyecta el estatus tras escribir `cfdi_sat_evidencias`. La reconciliación devuelve resultado explícito y, si había linaje completo sin evidencia, el documento se marca `requiere_revision` con el motivo `EVIDENCIA_SAT_PENDIENTE` (corrida, solicitud y paquete para reintentar).
 - **Base de datos**: el RPC usa `auth.role()`, distingue creada/duplicada/rechazada y repara la proyección en la ruta `ON CONFLICT`.
 - **Pruebas**: `supabase/tests/evidencia_sat.sql` (26 PASA, 0 FALLA, 6 OMITIDO por requerir rol interno; rollback con cero residuos) y 582 casos de vitest.
+
+## Cierre mensual — aislamiento y verdad del sello (2026-08-11)
+
+- **Fuga potencial cerrada**: `cierre_manifiesto` y `cierre_bloqueos` eran `SECURITY DEFINER` sin comprobación de autorización. Se creó `cierre_autorizar_expediente`, contrato único que resuelve el despacho del expediente y exige membresía + acceso al cliente. Lo aplican ahora manifiesto, bloqueos, estado y los tres evaluadores nuevos. `anon` no tiene EXECUTE en ninguna función del cierre (verificado en `pg_proc`).
+- **Sello vigente real**: `cierre_estado` compara la huella del último sello contra la huella actual del manifiesto. Si no coinciden devuelve `sello_obsoleto` con las secciones que cambiaron; la UI deja de decir "Periodo sellado" cuando la evidencia se movió.
+- **Segunda verdad eliminada**: se borraron `reunirEvidencia`, `huellaCierre` y `bloqueosDeCierre` del lado aplicación. Resumen, bloqueos y huella vienen sólo de la base, en centavos enteros.
+- **Etapas 3-5 evaluadas**: `cierre_evaluar_bancos`, `cierre_evaluar_polizas` y `cierre_evaluar_impuestos`. Nueva tabla `poliza_renglones` con partida doble y trigger que impide aprobar una póliza descuadrada, sin renglones o con cuenta por identificar. Impuestos entrega estimación interna marcada como no presentable.

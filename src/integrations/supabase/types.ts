@@ -3772,6 +3772,82 @@ export type Database = {
         }
         Relationships: []
       }
+      poliza_renglones: {
+        Row: {
+          abono_centavos: number
+          cargo_centavos: number
+          cfdi_id: string | null
+          cliente_id: string
+          concepto: string | null
+          created_at: string
+          cuenta: string
+          cuenta_nombre: string | null
+          despacho_id: string
+          id: string
+          movimiento_bancario_id: string | null
+          numero: number
+          origen: string
+          poliza_id: string
+          updated_at: string
+        }
+        Insert: {
+          abono_centavos?: number
+          cargo_centavos?: number
+          cfdi_id?: string | null
+          cliente_id: string
+          concepto?: string | null
+          created_at?: string
+          cuenta: string
+          cuenta_nombre?: string | null
+          despacho_id: string
+          id?: string
+          movimiento_bancario_id?: string | null
+          numero: number
+          origen?: string
+          poliza_id: string
+          updated_at?: string
+        }
+        Update: {
+          abono_centavos?: number
+          cargo_centavos?: number
+          cfdi_id?: string | null
+          cliente_id?: string
+          concepto?: string | null
+          created_at?: string
+          cuenta?: string
+          cuenta_nombre?: string | null
+          despacho_id?: string
+          id?: string
+          movimiento_bancario_id?: string | null
+          numero?: number
+          origen?: string
+          poliza_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poliza_renglones_cfdi_id_fkey"
+            columns: ["cfdi_id"]
+            isOneToOne: false
+            referencedRelation: "cfdi_xml"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poliza_renglones_movimiento_bancario_id_fkey"
+            columns: ["movimiento_bancario_id"]
+            isOneToOne: false
+            referencedRelation: "movimientos_bancarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poliza_renglones_poliza_id_fkey"
+            columns: ["poliza_id"]
+            isOneToOne: false
+            referencedRelation: "polizas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       polizas: {
         Row: {
           cfdi_id: string | null
@@ -6015,7 +6091,16 @@ export type Database = {
           reset_at: string
         }[]
       }
+      cierre_autorizar_expediente: {
+        Args: { _cliente_id: string }
+        Returns: string
+      }
       cierre_bloqueos: {
+        Args: { _cliente_id: string; _periodo: string }
+        Returns: Json
+      }
+      cierre_canonizar: { Args: { _v: Json }; Returns: string }
+      cierre_estado: {
         Args: { _cliente_id: string; _periodo: string }
         Returns: Json
       }
@@ -6065,7 +6150,19 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      cierre_evaluar_bancos: {
+        Args: { _cliente_id: string; _periodo: string }
+        Returns: Json
+      }
       cierre_evaluar_clasificacion: {
+        Args: { _cliente_id: string; _periodo: string }
+        Returns: Json
+      }
+      cierre_evaluar_impuestos: {
+        Args: { _cliente_id: string; _periodo: string }
+        Returns: Json
+      }
+      cierre_evaluar_polizas: {
         Args: { _cliente_id: string; _periodo: string }
         Returns: Json
       }
@@ -6091,6 +6188,7 @@ export type Database = {
         }
         Returns: string
       }
+      cierre_huella: { Args: { _man: Json }; Returns: string }
       cierre_manifiesto: {
         Args: { _cliente_id: string; _periodo: string }
         Returns: Json
@@ -6147,6 +6245,7 @@ export type Database = {
         }
         Returns: Json
       }
+      cierre_resumen: { Args: { _man: Json }; Returns: Json }
       cierre_sellar_manifiesto: {
         Args: {
           _cliente_id: string
