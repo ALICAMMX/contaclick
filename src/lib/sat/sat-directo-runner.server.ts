@@ -101,14 +101,28 @@ function clienteSat(creds: ContextoEFirma, token: string, rfc: string): ClienteC
   };
 }
 
-/** Abre un paquete real del SAT (ZIP en base64) y devuelve sus XML. */
+/**
+ * Abre un paquete real del SAT (ZIP en base64) y devuelve sus XML junto con
+ * los BYTES ORIGINALES sin transformar. Se rechazan las entradas con rutas
+ * peligrosas (escapes de directorio, rutas absolutas) antes de leerlas.
+ */
 const abrirPaqueteZip: AbrirPaquete = async (zipB64) => {
+  const { entradaZipSegura, textoDeBytes } = await import("@/lib/cfdi/original");
   const zip = await JSZip.loadAsync(zipB64, { base64: true });
-  const entries = Object.values(zip.files).filter((f) => !f.dir && /\.xml$/i.test(f.name));
-  const out: { nombre: string; xml: string }[] = [];
-  for (const entry of entries) out.push({ nombre: entry.name, xml: await entry.async("string") });
+  const entries = Object.values(zip.files).filter((f) => !f.dir);
+  const out: { nombre: string; xml: string; bytes: Uint8Array }[] = [];
+  for (const entry of entries) {
+    const seguro = entradaZipSegura(entry.name);
+    if (!seguro.ok) {
+      console.warn(`[sat paquete] entrada descartada (${entry.name}): ${seguro.motivo}`);
+      continue;
+    }
+    const bytes = new Uint8Array(await entry.async("uint8array"));
+    out.push({ nombre: entry.name, xml: textoDeBytes(bytes), bytes });
+  }
   return out;
 };
+
 
 /**
  * Ingesta con LINAJE: cada XML deja constancia de la corrida, la solicitud y
@@ -122,7 +136,7 @@ function ingestorDe(
   clienteId: string,
   runId?: string | null,
 ): Ingestar {
-  return async ({ nombre, xml }, ctx) => {
+  return async ({ nombre, xml, bytes }, ctx) => {
     const linaje = {
       origen: ORIGEN_DESCARGA_MASIVA,
       proveedor: "sat_directo",
@@ -151,7 +165,15 @@ function ingestorDe(
     };
 
     try {
-      const r = await ingestOneInternal(supabase, despachoId, clienteId, nombre, xml, linaje);
+      const r = await ingestOneInternal(
+        supabase,
+        despachoId,
+        clienteId,
+        nombre,
+        xml,
+        linaje,
+        bytes ?? null,
+      );
       if (r.duplicado) {
         await evento(
           "duplicado",
@@ -172,8 +194,18 @@ function ingestorDe(
       return { duplicado: !!r.duplicado };
     } catch (e: any) {
       const mensaje = String(e?.message ?? e).slice(0, 250);
-      await evento("rechazado", { validacion: "rechazado", motivo: mensaje }, null, null, mensaje);
+      const almacenamiento = /No se conservó el XML original/i.test(mensaje);
+      await evento(
+        "rechazado",
+        { validacion: "rechazado", motivo: mensaje, almacenamiento },
+        null,
+        null,
+        mensaje,
+      );
+      // Marca reintentable: el paquete no se dará por procesado.
+      if (almacenamiento) (e as any).almacenamiento = true;
       throw e;
+
     }
   };
 }

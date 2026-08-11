@@ -51,8 +51,14 @@ export interface ClienteCiclo {
   descargar(idPaquete: string): Promise<string>;
 }
 
-export type ArchivoPaquete = { nombre: string; xml: string };
+/**
+ * Un archivo del paquete. `bytes` son los BYTES ORIGINALES tal como llegaron
+ * dentro del ZIP: se conservan sin transformar y son la fuente de la huella
+ * SHA-256. `xml` es sólo la lectura de trabajo.
+ */
+export type ArchivoPaquete = { nombre: string; xml: string; bytes?: Uint8Array };
 export type AbrirPaquete = (zipB64: string) => Promise<ArchivoPaquete[]>;
+
 /** Contexto de linaje: de qué solicitud y paquete proviene el archivo. */
 export type ContextoIngesta = {
   idSolicitud: string;
@@ -219,6 +225,11 @@ export async function cosecharSolicitudCiclo(args: {
   const procesados = new Set(acumulada.paquetes_procesados ?? []);
   const limite = args.maxXmlPorPaquete ?? MAX_XML_POR_PAQUETE;
 
+  // Paquetes cuyo XML no pudo conservarse en el archivero: NO se marcan como
+  // procesados, para que el siguiente ciclo vuelva a intentarlo. Un paquete
+  // "procesado" significa que todos sus comprobantes tienen original durable.
+  let sinOriginal = 0;
+
   for (const idPaquete of v.paquetes) {
     if (procesados.has(idPaquete)) continue;
     const zipB64 = await cliente.descargar(idPaquete);
@@ -227,6 +238,7 @@ export async function cosecharSolicitudCiclo(args: {
     let nuevos = 0;
     let duplicados = 0;
     let rechazados = 0;
+    let fallosAlmacen = 0;
     for (const archivo of archivos) {
       try {
         const r = await args.ingestar(archivo, {
@@ -239,20 +251,39 @@ export async function cosecharSolicitudCiclo(args: {
         });
         if (r.duplicado) duplicados++;
         else nuevos++;
-      } catch {
+      } catch (e: any) {
         // XML ilegible o rechazado por el validador: se cuenta, no se pierde en silencio.
         rechazados++;
+        // Fallo de infraestructura al conservar el original: es reintentable.
+        if (e?.almacenamiento === true) fallosAlmacen++;
       }
     }
     acumulada = acumularSolicitud(acumulada, {
-      paquetes_procesados: [idPaquete],
+      paquetes_procesados: fallosAlmacen > 0 ? [] : [idPaquete],
       xml_encontrados: archivos.length,
       xml_nuevos: nuevos,
       duplicados,
       rechazados,
     });
-    procesados.add(idPaquete);
+    if (fallosAlmacen > 0) sinOriginal += fallosAlmacen;
+    else procesados.add(idPaquete);
   }
+
+  if (sinOriginal > 0) {
+    const intentos = (acumulada.intentos ?? 0) + 1;
+    const agotado = intentos >= MAX_INTENTOS_SOLICITUD;
+    return {
+      ...acumulada,
+      estado: agotado ? "error" : "pendiente",
+      intentos,
+      siguiente_intento_at: agotado ? null : siguienteIntento(intentos, ahoraMs),
+      ultima_consulta_at: ahora,
+      codigo: v.codigo || acumulada.codigo,
+      mensaje: `No se pudo conservar el XML original de ${sinOriginal} comprobante(s); el paquete se reintentará.`,
+      error: agotado ? "No se conservaron los XML originales del paquete." : null,
+    };
+  }
+
 
   return {
     ...acumulada,

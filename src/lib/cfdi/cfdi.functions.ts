@@ -183,6 +183,12 @@ export async function ingestOneInternal(
   filename: string,
   xml: string,
   linaje?: LinajeSat,
+  /**
+   * Bytes ORIGINALES tal como los entregó el SAT. Cuando se reciben, el XML
+   * se conserva en el archivero privado ANTES de crear el registro: si no se
+   * puede almacenar y verificar, el documento no entra al expediente.
+   */
+  bytesOriginales?: Uint8Array | null,
 ): Promise<{ id: string; uuid: string | null; duplicado: boolean; hash: string }> {
 
   const parsed = parseCfdi(xml);
@@ -202,13 +208,65 @@ export async function ingestOneInternal(
   // dedupe por uuid (en cualquier caja) o por hash
   const { data: dup } = await supabase
     .from("cfdi_xml")
-    .select("id, uuid")
+    .select("id, uuid, original_path, original_sha256, original_estado")
     .eq("despacho_id", despachoId)
     .or(
       `uuid.eq.${uuidCanonico},uuid.eq.${uuidCanonico.toLowerCase()},archivo_hash.eq.${hash}`,
     )
     .limit(1)
     .maybeSingle();
+
+  // ── ARCHIVO ORIGINAL ───────────────────────────────────────────────────────
+  // Se resuelve antes de tocar la fila: Storage y base no comparten
+  // transacción, así que el objeto se sube y se RELEE primero; sólo un
+  // original verificado habilita el registro o el enriquecimiento.
+  let meta: {
+    original_bucket: string;
+    original_path: string;
+    original_sha256: string;
+    original_bytes: number;
+    original_estado: string;
+    original_almacenado_at: string;
+    original_error: null;
+  } | null = null;
+
+  if (bytesOriginales && bytesOriginales.byteLength > 0) {
+    const { conservarOriginal, almacenDeServicio } = await import("./original.server");
+    const { MOTIVO_CONFLICTO_INTEGRIDAD } = await import("./original");
+    const res = await conservarOriginal(await almacenDeServicio(), {
+      despachoId,
+      clienteId,
+      uuid: uuidCanonico,
+      fecha: parsed.fecha ?? null,
+      bytes: bytesOriginales,
+      existente: dup ? (dup as any) : null,
+    });
+    if (!res.ok) {
+      if (res.estado === "conflicto_integridad" && dup?.id) {
+        // NUNCA se sobrescribe el original ya almacenado: se marca incidencia.
+        await supabase
+          .from("cfdi_xml")
+          .update({
+            original_estado: "conflicto_integridad",
+            original_error: res.error.slice(0, 300),
+            estado_procesamiento: "requiere_revision",
+            motivos: [MOTIVO_CONFLICTO_INTEGRIDAD] as any,
+          })
+          .eq("id", dup.id);
+      }
+      throw new Error(`No se conservó el XML original: ${res.error}`);
+    }
+    meta = {
+      original_bucket: res.bucket,
+      original_path: res.path,
+      original_sha256: res.sha256,
+      original_bytes: res.bytes,
+      original_estado: res.estado,
+      original_almacenado_at: new Date().toISOString(),
+      original_error: null,
+    };
+  }
+
   if (dup?.id) {
     // MANUAL → SAT: el documento ya existe (carga manual previa o paquete
     // repetido). No se crea otra fila ni se renormaliza ni se reabre el
@@ -217,10 +275,29 @@ export async function ingestOneInternal(
     // si el linaje no lo respalda, el CFDI sigue "desconocido".
     // SAT → MANUAL: una carga manual no trae linaje, así que no intenta nada
     // y jamás degrada la evidencia ya registrada.
+    // Si la fila venía sin original (histórico o carga manual), se enriquece
+    // con el archivo auténtico recién verificado, sin duplicar el documento.
+    if (meta) {
+      await supabase.from("cfdi_xml").update(meta).eq("id", dup.id);
+      try {
+        const { normalizarYPersistir } = await import("@/lib/cierre/persistencia");
+        await normalizarYPersistir(supabase, {
+          cfdiId: dup.id as string,
+          despachoId,
+          clienteId,
+          rfcExpediente: parsed.receptor.rfc!.toUpperCase(),
+          xml,
+          reabrirPeriodo: false,
+        });
+      } catch (e) {
+        console.warn(`[cfdi ${uuidCanonico}] renormalización con original:`, (e as any)?.message);
+      }
+    }
     const rec = await reconciliarEvidenciaSat(supabase, dup.id as string, linaje);
     await marcarEvidenciaPendiente(supabase, dup.id as string, rec);
     return { id: dup.id as string, uuid: uuidCanonico, duplicado: true, hash };
   }
+
 
 
   // RFC al que se vincula = el del cliente activo si coincide; si no, usa el emisor
@@ -272,6 +349,8 @@ export async function ingestOneInternal(
 
       archivo_path: filename,
       archivo_hash: hash,
+      // Original auténtico ya verificado en el archivero privado (si lo hay).
+      ...(meta ?? {}),
       // Linaje operativo: permite seguir el documento hasta la corrida SAT.
       origen: linaje?.origen ?? "carga_manual",
       proveedor: linaje?.proveedor ?? null,
@@ -283,7 +362,19 @@ export async function ingestOneInternal(
 
     .select("id")
     .single();
-  if (error || !ins) throw new Error(`Error al guardar CFDI: ${error?.message}`);
+  if (error || !ins) {
+    // El objeto quedó huérfano: se retira sólo si ninguna fila lo reclama.
+    if (meta) {
+      try {
+        const { limpiarHuerfano, almacenDeServicio } = await import("./original.server");
+        await limpiarHuerfano(supabase, await almacenDeServicio(), meta.original_path);
+      } catch (e) {
+        console.warn("[cfdi] no se pudo limpiar el original huérfano:", (e as any)?.message);
+      }
+    }
+    throw new Error(`Error al guardar CFDI: ${error?.message}`);
+  }
+
 
   // Bitácora inmutable de evidencia también para el documento NUEVO que llega
   // dentro del paquete. Idempotente: repetir el paquete no duplica evidencia.

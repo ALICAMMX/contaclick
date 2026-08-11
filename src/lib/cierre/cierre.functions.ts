@@ -228,7 +228,7 @@ export const reprocesarPeriodo = createServerFn({ method: "POST" })
     const scope = await assertClienteScope(supabase, userId, data.cliente_id);
 
     const rango = rangoMensual(data.periodo);
-    const seleccion = `xml_raw, ${COLUMNAS_CANONICAS}`;
+    const seleccion = `xml_raw, original_bucket, original_path, original_sha256, original_estado, ${COLUMNAS_CANONICAS}`;
 
     const [{ data: enRango, error: errDocs }, { data: huerfanos, error: errHuerf }] = await Promise.all([
       supabase
@@ -256,14 +256,37 @@ export const reprocesarPeriodo = createServerFn({ method: "POST" })
     let sinXml = 0;
     let reparados = 0;
     let omitidos = 0;
+    let desdeArchivero = 0;
     const porPeriodo: Record<string, number> = {};
     const cuenta = (p: string | null) => {
       const clave = p ?? "sin_fecha";
       porPeriodo[clave] = (porPeriodo[clave] ?? 0) + 1;
     };
 
+    // Archivero privado: cuando la base no conserva el XML pero sí existe el
+    // ORIGINAL almacenado y verificado, el reproceso lo relee de ahí. Así el
+    // detalle fiscal se reconstruye del archivo auténtico, no del encabezado.
+    const { leerOriginalVerificado, almacenDeServicio } = await import("@/lib/cfdi/original.server");
+    const { originalVerificado } = await import("@/lib/cfdi/original");
+    const almacen = await almacenDeServicio();
+
     for (const d of docs) {
-      if (!d.xml_raw) {
+      let xml: string | null = (d.xml_raw as string | null) ?? null;
+
+      if (!xml && originalVerificado(d.original_estado)) {
+        const leido = await leerOriginalVerificado(almacen, d as any);
+        if (leido.ok) {
+          xml = leido.xml;
+          desdeArchivero += 1;
+        } else {
+          await supabase
+            .from("cfdi_xml")
+            .update({ original_estado: "fallido", original_error: leido.error.slice(0, 300) })
+            .eq("id", d.id);
+        }
+      }
+
+      if (!xml) {
         // Sin XML el detalle no se puede reconstruir, pero el ENCABEZADO
         // canónico sí permite recuperar periodo, dirección y clase: de otro
         // modo el documento existe y el cierre no lo ve.
@@ -279,12 +302,13 @@ export const reprocesarPeriodo = createServerFn({ method: "POST" })
         despachoId: scope.despacho_id,
         clienteId: scope.cliente_id,
         rfcExpediente: scope.rfc,
-        xml: d.xml_raw as string,
+        xml,
       });
       reprocesados += 1;
       cuenta(r.periodo);
       if (!r.periodo) omitidos += 1;
     }
+
 
     const { evaluacion } = await cargarPeriodo(supabase, {
       clienteId: scope.cliente_id,
@@ -309,11 +333,13 @@ export const reprocesarPeriodo = createServerFn({ method: "POST" })
       revisados: docs.length,
       reprocesados,
       reparados,
+      recuperados_del_archivero: desdeArchivero,
       sin_xml_original: sinXml,
       omitidos,
       por_periodo: porPeriodo,
       excepciones: sync,
     };
+
   });
 
 
