@@ -175,9 +175,23 @@ export function ClasificacionFiscal({ clienteId, periodo }: { clienteId: string;
                       size="sm"
                       variant="ghost"
                       onClick={() => {
-                        setEdit({ id: c.id, uuid: c.uuid, emisor: c.nombre_emisor ?? c.rfc_emisor });
-                        setDecision((c.decision?.decision as Decision) ?? "deducible");
+                        setEdit({
+                          id: c.id,
+                          uuid: c.uuid,
+                          emisor: c.nombre_emisor ?? c.rfc_emisor,
+                          permitidas: c.permitidas,
+                          evidencia: c.evidencia,
+                        });
+                        const previa = (c.decision?.decision as Decision) ?? null;
+                        setDecision(
+                          previa && c.permitidas?.[previa]?.permitida
+                            ? previa
+                            : c.evidencia?.suficiente
+                              ? "deducible"
+                              : "por_revisar",
+                        );
                         setPorcentaje(String(c.decision?.porcentaje_deducible ?? 100));
+                        setPorcentajeIva("100");
                         setFundamento(c.decision?.fundamento ?? "");
                         setMotivo(c.decision?.motivo ?? "");
                       }}
