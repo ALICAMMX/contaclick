@@ -1232,3 +1232,16 @@ Nota: la prueba `supabase/tests/cierre_aislamiento.sql` no puede correr por `psq
   resultado registrado contra los motores normativos ejecutados de forma
   independiente.
 - Suite completa: 608 pruebas en verde, typecheck limpio.
+
+## 2026-08-11 — Auditoría correctiva: Pólizas → Impuestos preliminares → Sellado
+
+- **Bypass del resultado fiscal cerrado.** `cierre_registrar_resultado_fiscal` (EXECUTE para `authenticated`) permitía a cualquier usuario con acceso al expediente registrar cifras arbitrarias usando el `input_hash` correcto. Se eliminó y se sustituyó por `cierre_registrar_resultado_fiscal_srv`, con EXECUTE sólo para `service_role`, que rechaza cualquier llamada con sesión de usuario, revalida el `input_hash` recalculándolo, exige SHA-256 normativo con formato válido y deja bitácora en `cierre_eventos`. Se revocó INSERT/UPDATE/DELETE de `cierre_resultado_fiscal` a `anon` y `authenticated` (queda sólo SELECT).
+- **Bases de ISR con IVA.** Las entradas usaban `total`; ahora la base es `subtotal - descuento`. Los complementos separan base e IVA del importe pagado.
+- **PM general con flujo de PF.** Se agregó `ingresos_nominales_acumulados_centavos` (art. 14 LISR) y el motor de PM ya no recibe el flujo de efectivo de persona física; sin nominales o sin coeficiente el periodo es no evaluable.
+- **PPD sin complemento tratada como error.** Deja de bloquear; sólo bloquea `ppd_pagado_sin_complemento` (cobro/pago bancario conciliado y confirmado sin complemento).
+- **IVA prorrateado con el % de ISR.** Nueva columna `porcentaje_acreditable_iva` con regla propia; la deducibilidad parcial sin regla de IVA deja el periodo no evaluable.
+- **Cancelados, egresos, moneda extranjera y complementos duplicados.** Los cancelados salen de las bases y se informan; los egresos restan; sin tipo de cambio verificable o con complementos repetidos el periodo es no evaluable.
+- **`estatus_sat` comparado en minúsculas** (los datos reales traían `Vigente`/`Cancelado`), lo que antes vaciaba silenciosamente todas las bases.
+- **Sello normativo real.** Se sustituyó la concatenación `hashISR:hashIVA` por un objeto canónico de conjuntos aplicados con SHA-256 recalculable (`src/lib/cierre/sello-normativo.ts`).
+- **Falla cerrada en parámetros.** `leerParametrosPrevios` y la lectura de entradas lanzan `FiscalNoComprobadoError` en vez de devolver `{}`; el sellado queda bloqueado.
+- **Regresión obligatoria.** `scripts/regresion-aislamiento.mjs` termina con código 2 si falta configuración (antes salía 0 con "Omitida") y `predeploy` la ejecuta.
