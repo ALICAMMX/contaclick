@@ -32,6 +32,12 @@ import { PolizasPeriodo } from "@/components/cierre/PolizasPeriodo";
 import { ImpuestosPreliminares } from "@/components/cierre/ImpuestosPreliminares";
 
 export const Route = createFileRoute("/app/cierre")({
+  // El periodo viaja en la URL para poder regresar al mes correcto desde las
+  // herramientas abiertas desde el flujo (p. ej. el validador de deducibilidad).
+  validateSearch: (search: Record<string, unknown>): { periodo?: string } =>
+    typeof search.periodo === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(search.periodo)
+      ? { periodo: search.periodo }
+      : {},
   component: CierrePage,
   head: () => ({
     meta: [
@@ -66,7 +72,8 @@ const fmtFecha = (v: string | null | undefined) =>
 function CierrePage() {
   const { cliente } = useActiveCliente();
   const qc = useQueryClient();
-  const [periodo, setPeriodo] = useState(() => desplazar(periodoActual(), -1));
+  const { periodo: periodoUrl } = Route.useSearch();
+  const [periodo, setPeriodo] = useState(() => periodoUrl ?? desplazar(periodoActual(), -1));
   const [decision, setDecision] = useState<{ id: string; titulo: string; accion: "resuelta" | "aceptada" } | null>(null);
   const [motivo, setMotivo] = useState("");
   const [motivoReapertura, setMotivoReapertura] = useState("");
