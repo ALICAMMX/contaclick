@@ -2,12 +2,17 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
+import { resolverAlcance, PERIODO_RE, type Alcance } from "./alcance";
+import { evaluarEvidencia, estadoAnalisis, type EstadoAnalisis } from "@/lib/cierre/evidencia";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const Schema = z.object({
   cliente_id: z.string().min(1),
   year: z.number().int().min(2018).max(2100).optional(),
+  /** Alcance mensual del cierre (AAAA-MM). Cuando viene, manda sobre el año. */
+  periodo: z.string().regex(PERIODO_RE).optional(),
+  origen: z.enum(["cierre", "directo"]).optional(),
 });
 
 export type DeducFinding = {
@@ -23,6 +28,19 @@ export type DeducFinding = {
   detalle: string;
 };
 
+export type DeducNoEvaluable = {
+  cfdi_id: string;
+  uuid: string;
+  fecha: string | null;
+  rfc_emisor: string;
+  nombre_emisor: string | null;
+  total: number;
+  estatus_sat: string;
+  xml_original_disponible: boolean;
+  limitaciones: string[];
+};
+
+
 const RFC_EXTRANJERO = "XEXX010101000";
 const RFC_PUBLICO_GENERAL = "XAXX010101000";
 
@@ -35,10 +53,22 @@ export const runDeducibilityCheck = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) => Schema.parse(d))
   .handler(async ({ data, context }) => {
-    const year = data.year ?? new Date().getFullYear();
+    const alcance: Alcance = resolverAlcance({ periodo: data.periodo, year: data.year });
+    const year = alcance.modo === "anual" ? alcance.year : Number(alcance.periodo.slice(0, 4));
     const empty = {
       findings: [] as DeducFinding[],
-      stats: { total_cfdi: 0, hallazgos: 0, monto_riesgo: 0, no_deducibles: 0, revisar: 0 },
+      no_evaluables: [] as DeducNoEvaluable[],
+      stats: {
+        total_cfdi: 0,
+        evaluables: 0,
+        no_evaluables: 0,
+        hallazgos: 0,
+        monto_riesgo: 0,
+        no_deducibles: 0,
+        revisar: 0,
+      },
+      estado: "no_analizado" as EstadoAnalisis,
+      alcance,
       year,
     };
     if (!UUID_RE.test(data.cliente_id)) return empty;
@@ -48,27 +78,69 @@ export const runDeducibilityCheck = createServerFn({ method: "POST" })
     const rfcCli = ((cli?.rfc as string) ?? "").toUpperCase();
     if (!rfcCli) return empty;
 
-    const yStart = `${year}-01-01T00:00:00Z`;
-    const yEnd = `${year + 1}-01-01T00:00:00Z`;
+    const CAMPOS =
+      "id, uuid, fecha, rfc_emisor, nombre_emisor, total, subtotal, iva_trasladado, iva_retenido, metodo_pago, forma_pago, uso_cfdi, estatus_sat, estatus_sat_fuente, tipo_cfdi, detalle_reconstruible, normalizacion_version";
 
-    // CFDIs donde el cliente es RECEPTOR (gastos) tipo Ingreso (factura recibida)
-    const { data: cfdis } = await supabase
-      .from("cfdi_xml")
-      .select("id, uuid, fecha, rfc_emisor, nombre_emisor, total, subtotal, iva_trasladado, iva_retenido, metodo_pago, forma_pago, uso_cfdi, estatus_sat, tipo_cfdi")
-      .eq("cliente_id", data.cliente_id)
-      .eq("tipo_cfdi", "I")
-      .eq("rfc_receptor", rfcCli)
-      .gte("fecha", yStart)
-      .lt("fecha", yEnd);
+    // Alcance mensual: exactamente el mismo universo del Centro de cierre
+    // (comprobantes recibidos del periodo). Alcance anual: gastos del ejercicio.
+    const consulta =
+      alcance.modo === "mensual"
+        ? supabase
+            .from("cfdi_xml")
+            .select(CAMPOS)
+            .eq("cliente_id", data.cliente_id)
+            .eq("periodo", alcance.periodo)
+            .eq("direccion", "recibido")
+        : supabase
+            .from("cfdi_xml")
+            .select(CAMPOS)
+            .eq("cliente_id", data.cliente_id)
+            .eq("tipo_cfdi", "I")
+            .eq("rfc_receptor", rfcCli)
+            .gte("fecha", alcance.desde)
+            .lt("fecha", alcance.hasta);
 
-    const list = cfdis ?? [];
-    if (list.length === 0) return { ...empty, stats: { ...empty.stats, total_cfdi: 0 } };
+    const { data: cfdis } = await consulta;
+
+    const universo = cfdis ?? [];
+    if (universo.length === 0) return empty;
+
+    // Un comprobante sin estatus SAT confirmado o sin XML original NO se
+    // analiza: se declara "no evaluable" con su motivo. Nunca se presenta como
+    // correcto por ausencia de hallazgos.
+    const list: typeof universo = [];
+    const noEvaluables: DeducNoEvaluable[] = [];
+    for (const c of universo) {
+      const ev = evaluarEvidencia({
+        estatus_sat: (c.estatus_sat as string) ?? null,
+        estatus_sat_fuente: (c.estatus_sat_fuente as string) ?? null,
+        detalle_reconstruible: c.detalle_reconstruible as boolean | null,
+        normalizacion_version: (c.normalizacion_version as string) ?? null,
+      });
+      if (ev.suficiente) {
+        list.push(c);
+        continue;
+      }
+      noEvaluables.push({
+        cfdi_id: c.id as string,
+        uuid: c.uuid as string,
+        fecha: c.fecha as string | null,
+        rfc_emisor: c.rfc_emisor as string,
+        nombre_emisor: c.nombre_emisor as string | null,
+        total: Number(c.total ?? 0),
+        estatus_sat: ev.estatus_sat,
+        xml_original_disponible: ev.xml_original_disponible,
+        limitaciones: ev.limitaciones,
+      });
+    }
 
     const ids = list.map((c) => c.id as string);
-    const { data: conceptos } = await supabase
-      .from("cfdi_conceptos")
-      .select("cfdi_id, clave_prod_serv, descripcion, importe")
-      .in("cfdi_id", ids);
+    const { data: conceptos } = ids.length
+      ? await supabase
+          .from("cfdi_conceptos")
+          .select("cfdi_id, clave_prod_serv, descripcion, importe")
+          .in("cfdi_id", ids)
+      : { data: [] as { cfdi_id: string; clave_prod_serv: string | null; descripcion: string | null; importe: number }[] };
 
     const concByCfdi = new Map<string, Array<{ clave: string | null; desc: string | null; importe: number }>>();
     (conceptos ?? []).forEach((c) => {
@@ -84,6 +156,7 @@ export const runDeducibilityCheck = createServerFn({ method: "POST" })
     const findings: DeducFinding[] = [];
 
     for (const c of list) {
+
       const total = Number(c.total ?? 0);
       const conc = concByCfdi.get(c.id as string) ?? [];
       const claves = conc.map((x) => x.clave ?? "").filter(Boolean);
@@ -239,13 +312,24 @@ export const runDeducibilityCheck = createServerFn({ method: "POST" })
 
     return {
       findings,
+      no_evaluables: noEvaluables,
       stats: {
-        total_cfdi: list.length,
+        total_cfdi: universo.length,
+        evaluables: list.length,
+        no_evaluables: noEvaluables.length,
         hallazgos: findings.length,
         monto_riesgo: montoRiesgo,
         no_deducibles: noDeducibles,
         revisar,
       },
+      estado: estadoAnalisis({
+        analizado: true,
+        total: universo.length,
+        evaluables: list.length,
+        hallazgos: findings.length,
+      }),
+      alcance,
       year,
     };
   });
+

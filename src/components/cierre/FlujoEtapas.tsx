@@ -40,6 +40,11 @@ export function FlujoEtapas({ clienteId, periodo }: { clienteId: string; periodo
     onError,
   });
 
+  // Las herramientas abiertas desde el cierre reciben el periodo y su origen,
+  // para acotar el análisis al mes y poder regresar al expediente correcto.
+  const busquedaCierre = (ruta: string) =>
+    ruta.startsWith("/app/tools/") ? { periodo, origen: "cierre" } : {};
+
   const etapas = q.data?.etapas ?? [];
   const progreso = useMemo(() => {
     const cerradas = etapas.filter((e: any) => ["lista", "aprobada", "no_aplica"].includes(e.estado)).length;
@@ -62,7 +67,11 @@ export function FlujoEtapas({ clienteId, periodo }: { clienteId: string; periodo
         {q.data?.siguiente && (
           <div className="text-xs text-muted-foreground">
             Siguiente acción recomendada:{" "}
-            <Link to={q.data.siguiente.ruta} className="text-primary underline underline-offset-2">
+            <Link
+              to={q.data.siguiente.ruta}
+              search={busquedaCierre(q.data.siguiente.ruta) as never}
+              className="text-primary underline underline-offset-2"
+            >
               {q.data.siguiente.nombre}
             </Link>
           </div>
@@ -120,7 +129,7 @@ export function FlujoEtapas({ clienteId, periodo }: { clienteId: string; periodo
 
               <div className="flex items-center gap-2 flex-wrap pt-1">
                 <Button asChild size="sm" variant="glass">
-                  <Link to={e.ruta}>Abrir módulo <ArrowUpRight className="h-3.5 w-3.5 ml-1" /></Link>
+                  <Link to={e.ruta} search={busquedaCierre(e.ruta) as never}>Abrir módulo <ArrowUpRight className="h-3.5 w-3.5 ml-1" /></Link>
                 </Button>
                 {["lista", "aprobada", "no_aplica"].includes(e.estado) ? (
                   <Button

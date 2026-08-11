@@ -24,6 +24,10 @@ export type CfdiClasificable = {
   nombre_emisor: string | null;
   clase_documental: string | null;
   estatus_sat: string | null;
+  estatus_sat_fuente?: string | null;
+  /** false cuando el XML original no está disponible (recuperado del encabezado). */
+  detalle_reconstruible?: boolean | null;
+  normalizacion_version?: string | null;
 };
 
 export type DecisionRegistrada = {

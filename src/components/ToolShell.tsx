@@ -12,6 +12,9 @@ export function ToolShell({
   children,
   requireCliente = true,
   helpSlug,
+  backTo,
+  backLabel,
+  backSearch,
 }: {
   title: string;
   description?: string;
@@ -20,6 +23,10 @@ export function ToolShell({
   requireCliente?: boolean;
   /** Slug en src/lib/help/registry.ts. Si se pasa, muestra el botón "Ayuda" en la cabecera. */
   helpSlug?: string;
+  /** Destino alterno del enlace de regreso (p. ej. el Centro de cierre). */
+  backTo?: string;
+  backLabel?: string;
+  backSearch?: Record<string, string>;
 }) {
   const { cliente } = useActiveCliente();
   const navigate = useNavigate();
@@ -27,9 +34,14 @@ export function ToolShell({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <Link to="/app/contable" className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5">
-          <ArrowLeft className="h-3.5 w-3.5" /> Volver a Contable y Fiscal
+        <Link
+          to={(backTo ?? "/app/contable") as "/app/contable"}
+          search={(backSearch ?? {}) as never}
+          className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> {backLabel ?? "Volver a Contable y Fiscal"}
         </Link>
+
         <div className="flex items-center gap-2">
           {helpSlug && <HerramientaHelp slug={helpSlug} />}
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-card/50 border border-border text-xs">

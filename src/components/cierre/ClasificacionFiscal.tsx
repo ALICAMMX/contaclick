@@ -10,7 +10,7 @@ import {
   registrarDecisionFiscal,
   evaluarEtapaClasificacion,
 } from "@/lib/cierre/decisiones.functions";
-import { DECISIONES, type Decision } from "@/lib/cierre/decisiones";
+import { DECISIONES, validarDecision, type Decision } from "@/lib/cierre/decisiones";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -31,9 +31,16 @@ export function ClasificacionFiscal({ clienteId, periodo }: { clienteId: string;
   const registrar = useServerFn(registrarDecisionFiscal);
   const evaluar = useServerFn(evaluarEtapaClasificacion);
 
-  const [edit, setEdit] = useState<{ id: string; uuid: string; emisor: string } | null>(null);
-  const [decision, setDecision] = useState<Decision>("deducible");
+  const [edit, setEdit] = useState<{
+    id: string;
+    uuid: string;
+    emisor: string;
+    permitidas: Record<Decision, { permitida: boolean; motivo: string | null; exige: string[] }>;
+    evidencia: { limitaciones: string[]; suficiente: boolean };
+  } | null>(null);
+  const [decision, setDecision] = useState<Decision>("por_revisar");
   const [porcentaje, setPorcentaje] = useState("100");
+  const [porcentajeIva, setPorcentajeIva] = useState("100");
   const [fundamento, setFundamento] = useState("");
   const [motivo, setMotivo] = useState("");
 
@@ -49,6 +56,17 @@ export function ClasificacionFiscal({ clienteId, periodo }: { clienteId: string;
   };
   const onError = (e: unknown) => toast.error((e as Error)?.message ?? "No se pudo guardar la decisión");
 
+  const validacion = validarDecision({
+    decision,
+    porcentaje_deducible: Number(porcentaje) || 0,
+    fundamento,
+    motivo,
+  });
+  const ivaValido =
+    decision !== "parcial" || (Number(porcentajeIva) >= 0 && Number(porcentajeIva) <= 100 && porcentajeIva !== "");
+  const puedeGuardar =
+    !!edit && edit.permitidas[decision]?.permitida && validacion.ok && ivaValido;
+
   const mGuardar = useMutation({
     mutationFn: () =>
       registrar({
@@ -56,7 +74,8 @@ export function ClasificacionFiscal({ clienteId, periodo }: { clienteId: string;
           cliente_id: clienteId,
           cfdi_id: edit!.id,
           decision,
-          porcentaje_deducible: Number(porcentaje) || 0,
+          porcentaje_deducible: validacion.porcentaje,
+          ...(decision === "parcial" ? { porcentaje_iva: Number(porcentajeIva) } : {}),
           fundamento: fundamento || undefined,
           motivo: motivo || undefined,
         },
@@ -64,6 +83,7 @@ export function ClasificacionFiscal({ clienteId, periodo }: { clienteId: string;
     onSuccess: () => { toast.success("Decisión registrada"); setEdit(null); refrescar(); },
     onError,
   });
+
 
   const mEvaluar = useMutation({
     mutationFn: () => evaluar({ data: { cliente_id: clienteId, periodo } }),
@@ -155,9 +175,23 @@ export function ClasificacionFiscal({ clienteId, periodo }: { clienteId: string;
                       size="sm"
                       variant="ghost"
                       onClick={() => {
-                        setEdit({ id: c.id, uuid: c.uuid, emisor: c.nombre_emisor ?? c.rfc_emisor });
-                        setDecision((c.decision?.decision as Decision) ?? "deducible");
+                        setEdit({
+                          id: c.id,
+                          uuid: c.uuid,
+                          emisor: c.nombre_emisor ?? c.rfc_emisor,
+                          permitidas: c.permitidas,
+                          evidencia: c.evidencia,
+                        });
+                        const previa = (c.decision?.decision as Decision) ?? null;
+                        setDecision(
+                          previa && c.permitidas?.[previa]?.permitida
+                            ? previa
+                            : c.evidencia?.suficiente
+                              ? "deducible"
+                              : "por_revisar",
+                        );
                         setPorcentaje(String(c.decision?.porcentaje_deducible ?? 100));
+                        setPorcentajeIva("100");
                         setFundamento(c.decision?.fundamento ?? "");
                         setMotivo(c.decision?.motivo ?? "");
                       }}
@@ -193,20 +227,46 @@ export function ClasificacionFiscal({ clienteId, periodo }: { clienteId: string;
             <DialogDescription>{edit?.emisor} · {edit?.uuid}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
+            {edit && !edit.evidencia.suficiente && (
+              <div className="rounded-lg border border-warning/40 bg-warning/5 p-3 text-xs space-y-1">
+                <div className="font-medium">Evidencia insuficiente para deducir</div>
+                {edit.evidencia.limitaciones.map((l) => <div key={l} className="text-muted-foreground">· {l}</div>)}
+                <div className="text-muted-foreground">
+                  Sólo puedes dejarlo “por revisar” o marcarlo no deducible con motivo.
+                </div>
+              </div>
+            )}
             <Select value={decision} onValueChange={(v) => setDecision(v as Decision)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {DECISIONES.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>{d.etiqueta} — {d.descripcion}</SelectItem>
-                ))}
+                {DECISIONES.map((d) => {
+                  const permiso = edit?.permitidas?.[d.id];
+                  const bloqueada = permiso ? !permiso.permitida : false;
+                  return (
+                    <SelectItem key={d.id} value={d.id} disabled={bloqueada}>
+                      {d.etiqueta} — {bloqueada ? "no disponible sin evidencia SAT y XML" : d.descripcion}
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
             {decision === "parcial" && (
-              <Input
-                type="number" min={1} max={99} value={porcentaje}
-                onChange={(e) => setPorcentaje(e.target.value)}
-                placeholder="Porcentaje deducible"
-              />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-muted-foreground">% deducible ISR (1-99)</label>
+                  <Input
+                    type="number" min={1} max={99} value={porcentaje}
+                    onChange={(e) => setPorcentaje(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">% acreditable IVA (0-100)</label>
+                  <Input
+                    type="number" min={0} max={100} value={porcentajeIva}
+                    onChange={(e) => setPorcentajeIva(e.target.value)}
+                  />
+                </div>
+              </div>
             )}
             {decision === "deducible" && (
               <Textarea
@@ -220,13 +280,24 @@ export function ClasificacionFiscal({ clienteId, periodo }: { clienteId: string;
                 placeholder="Motivo (mínimo 10 caracteres)"
               />
             )}
+            {validacion.errores.length > 0 && (
+              <ul className="text-xs text-destructive space-y-1">
+                {validacion.errores.map((e) => <li key={e}>· {e}</li>)}
+              </ul>
+            )}
+            {decision === "parcial" && !ivaValido && (
+              <p className="text-xs text-destructive">
+                · Una deducción parcial exige su propio porcentaje de acreditamiento de IVA (0 a 100).
+              </p>
+            )}
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setEdit(null)}>Cancelar</Button>
-            <Button onClick={() => mGuardar.mutate()} disabled={mGuardar.isPending}>
+            <Button onClick={() => mGuardar.mutate()} disabled={mGuardar.isPending || !puedeGuardar}>
               {mGuardar.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Guardar decisión
             </Button>
           </DialogFooter>
+
         </DialogContent>
       </Dialog>
     </section>

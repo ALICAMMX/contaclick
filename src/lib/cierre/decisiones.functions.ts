@@ -19,14 +19,16 @@ import {
   type CfdiClasificable,
   type DecisionRegistrada,
 } from "./decisiones";
+import { decisionesPermitidas, evaluarEvidencia } from "./evidencia";
 
 const periodoSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Periodo con formato AAAA-MM");
 
 const CAMPOS_CFDI =
-  "id, uuid, fecha, total, rfc_emisor, nombre_emisor, clase_documental, estatus_sat";
+  "id, uuid, fecha, total, rfc_emisor, nombre_emisor, clase_documental, estatus_sat, estatus_sat_fuente, detalle_reconstruible, normalizacion_version";
 
 /** Tamaño de página de la lectura exhaustiva. NO es un tope del universo. */
 const PAGINA = 1000;
+
 
 /**
  * Lectura exhaustiva y paginada del universo del periodo. Nunca trunca: la
@@ -86,7 +88,12 @@ export const getClasificacionFiscal = createServerFn({ method: "POST" })
       periodo: data.periodo,
       evaluador: "evaluador-clasificacion@2",
       cobertura: coberturaClasificacion(cfdis, decisiones),
-      comprobantes: cfdis.map((c) => ({ ...c, decision: porCfdi.get(c.id) ?? null })),
+      comprobantes: cfdis.map((c) => ({
+        ...c,
+        decision: porCfdi.get(c.id) ?? null,
+        evidencia: evaluarEvidencia(c),
+        permitidas: decisionesPermitidas(c),
+      })),
     };
   });
 
@@ -125,6 +132,7 @@ export const registrarDecisionFiscal = createServerFn({ method: "POST" })
         cfdi_id: z.string().uuid(),
         decision: z.enum(["deducible", "no_deducible", "parcial", "por_revisar"]),
         porcentaje_deducible: z.number().min(0).max(100).optional(),
+        porcentaje_iva: z.number().min(0).max(100).optional(),
         motivo: z.string().max(1000).optional(),
         fundamento: z.string().max(1000).optional(),
         sugerencia_ia: z.record(z.string(), z.unknown()).optional(),
@@ -149,6 +157,7 @@ export const registrarDecisionFiscal = createServerFn({ method: "POST" })
       _origen: data.origen,
       _regla_id: data.regla_id ?? undefined,
       _regla_version: data.regla_version ?? undefined,
+      _porcentaje_iva: data.porcentaje_iva ?? undefined,
     });
     if (error) throw new Error(error.message);
     return resultado as unknown as {
