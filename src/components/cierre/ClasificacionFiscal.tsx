@@ -1,4 +1,4 @@
-// Etapa 4 del flujo mensual: decisión fiscal humana por comprobante recibido.
+// Etapa 2 del flujo mensual: decisión fiscal humana por comprobante recibido.
 // La IA no aparece aquí como decisor: sólo se registran decisiones de personas.
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -54,7 +54,6 @@ export function ClasificacionFiscal({ clienteId, periodo }: { clienteId: string;
       registrar({
         data: {
           cliente_id: clienteId,
-          periodo,
           cfdi_id: edit!.id,
           decision,
           porcentaje_deducible: Number(porcentaje) || 0,
@@ -67,7 +66,7 @@ export function ClasificacionFiscal({ clienteId, periodo }: { clienteId: string;
   });
 
   const mEvaluar = useMutation({
-    mutationFn: (declarar: boolean) => evaluar({ data: { cliente_id: clienteId, periodo, declarar } }),
+    mutationFn: () => evaluar({ data: { cliente_id: clienteId, periodo } }),
     onSuccess: (r: any) => { toast.success(`Etapa clasificación: ${r.estado}`); refrescar(); },
     onError,
   });
