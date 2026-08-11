@@ -122,11 +122,21 @@ function CierrePage() {
   const mReprocesar = useMutation({
     mutationFn: () => reprocesarFn({ data: { cliente_id: cliente!.id, periodo } }),
     onSuccess: (r: any) => {
-      toast.success(`Reprocesados ${r.reprocesados} comprobantes${r.sin_xml_original ? ` · ${r.sin_xml_original} sin XML original` : ""}`);
+      const detalle = Object.entries(r.por_periodo ?? {})
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([p, n]) => `${n} → ${p}`)
+        .join(" · ");
+      toast.success(
+        `${r.revisados ?? r.reprocesados} comprobantes revisados` +
+          (detalle ? ` · ${detalle}` : "") +
+          ` · ${r.omitidos ?? 0} omitidos` +
+          (r.sin_xml_original ? ` · ${r.sin_xml_original} recuperados desde encabezado (sin XML original)` : ""),
+      );
       refrescar();
     },
     onError: conError,
   });
+
 
   const mDeclarar = useMutation({
     mutationFn: () => declararFn({ data: { cliente_id: cliente!.id, periodo } }),
