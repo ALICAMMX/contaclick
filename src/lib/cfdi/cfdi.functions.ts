@@ -314,6 +314,27 @@ export async function ingestOneInternal(
       .eq("id", ins.id);
   }
 
+  // RED DE SEGURIDAD: si la normalización no dejó periodo, los datos derivados
+  // se reconstruyen del ENCABEZADO canónico ya guardado. Así un documento
+  // ingresado nunca queda invisible para el cierre y no hace falta pulsar
+  // "Reprocesar XML". No toca XML, UUID, estatus SAT ni linaje.
+  if (!periodoDoc) {
+    try {
+      const { repararDerivadosCfdi, COLUMNAS_CANONICAS } = await import("@/lib/cierre/reparacion");
+      const { data: fila } = await supabase
+        .from("cfdi_xml")
+        .select(COLUMNAS_CANONICAS)
+        .eq("id", ins.id)
+        .maybeSingle();
+      if (fila) {
+        const r = await repararDerivadosCfdi(supabase, fila as any, rfcCliente ?? rfcDestino);
+        periodoDoc = r.derivados.periodo;
+      }
+    } catch (e) {
+      console.warn(`[cfdi ${uuidCanonico}] no se pudieron derivar los datos del encabezado:`, (e as any)?.message);
+    }
+  }
+
   // Contadores y excepciones del PERIODO del documento (idempotente y barato).
   if (periodoDoc && rfcCliente) {
     try {
