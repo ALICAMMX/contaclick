@@ -13,8 +13,8 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 
-const moneda = (n: number) =>
-  new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(n || 0);
+const moneda = (centavos: number) =>
+  new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format((centavos || 0) / 100);
 
 export function SelloCierre({ clienteId, periodo }: { clienteId: string; periodo: string }) {
   const qc = useQueryClient();
