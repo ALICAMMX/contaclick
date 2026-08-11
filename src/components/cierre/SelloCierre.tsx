@@ -97,9 +97,10 @@ export function SelloCierre({ clienteId, periodo }: { clienteId: string; periodo
         <Button size="sm" onClick={() => setAbierto(true)} disabled={!d.puedeSellar}>
           {sellado ? "Volver a sellar (nueva versión)" : "Sellar periodo"}
         </Button>
-        {sellado && (
+        {d.selloVigente && (
           <span className="text-xs text-muted-foreground">
-            Sello v{d.selloVigente.version} · {new Date(d.selloVigente.created_at).toLocaleString("es-MX")}
+            Sello v{(d.selloVigente as any).version} ·{" "}
+            {new Date((d.selloVigente as any).created_at).toLocaleString("es-MX")}
           </span>
         )}
       </div>
