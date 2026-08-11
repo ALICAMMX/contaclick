@@ -1,0 +1,160 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// ETAPA 6 — funciones servidoras del sellado de cierre.
+// El sello es inmutable y sólo se emite cuando NO hay bloqueos reales.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
+import { assertClienteScope } from "@/lib/despacho/scope";
+import { EVALUADOR_VERSION, ORDEN_ETAPAS, type EstadoEtapa, type EtapaId } from "./flujo";
+import { bloqueosDeCierre, huellaCierre, type EtapaSnapshot, type ResumenCierre } from "./snapshot";
+
+const periodoSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Periodo con formato AAAA-MM");
+
+async function reunirEvidencia(supabase: any, clienteId: string, periodo: string) {
+  const [{ data: etapasFilas }, { data: cfdis }, { count: excepciones }, { data: polizas }] =
+    await Promise.all([
+      supabase
+        .from("cierre_etapas")
+        .select("etapa, estado, cobertura, version, motivo")
+        .eq("cliente_id", clienteId)
+        .eq("periodo", periodo),
+      supabase
+        .from("cfdi_xml")
+        .select("direccion, clase_documental, total, iva_trasladado")
+        .eq("cliente_id", clienteId)
+        .eq("periodo", periodo)
+        .limit(20000),
+      supabase
+        .from("cierre_excepciones")
+        .select("id", { count: "exact", head: true })
+        .eq("cliente_id", clienteId)
+        .eq("periodo", periodo)
+        .eq("estado", "pendiente"),
+      supabase
+        .from("polizas")
+        .select("id, estado, cuenta")
+        .eq("cliente_id", clienteId)
+        .gte("fecha", `${periodo}-01`)
+        .lte("fecha", `${periodo}-31`)
+        .limit(20000),
+    ]);
+
+  const etapas: EtapaSnapshot[] = ORDEN_ETAPAS.map((id) => {
+    const f = (etapasFilas ?? []).find((x: any) => x.etapa === id);
+    return {
+      id: id as EtapaId,
+      estado: (f?.estado as EstadoEtapa) ?? "no_iniciada",
+      cobertura: f?.cobertura != null ? Number(f.cobertura) : null,
+      version: f?.version ?? 1,
+      motivo: f?.motivo ?? null,
+    };
+  });
+
+  const filas = (cfdis ?? []) as any[];
+  const emitidos = filas.filter((c) => c.direccion === "emitido");
+  const recibidos = filas.filter((c) => c.direccion === "recibido");
+  const suma = (xs: any[], campo: string) =>
+    Math.round(xs.reduce((a, x) => a + (Number(x[campo]) || 0), 0) * 100) / 100;
+
+  const bloqueadas = (polizas ?? []).filter(
+    (p: any) => p.estado === "bloqueada" || !p.cuenta || /por identificar/i.test(String(p.cuenta)),
+  ).length;
+
+  const resumen: ResumenCierre = {
+    cfdi_total: filas.length,
+    cfdi_emitidos: emitidos.length,
+    cfdi_recibidos: recibidos.length,
+    ingresos: suma(emitidos, "total"),
+    egresos: suma(recibidos, "total"),
+    iva_trasladado: suma(emitidos, "iva_trasladado"),
+    iva_acreditable: suma(recibidos, "iva_trasladado"),
+    excepciones_pendientes: excepciones ?? 0,
+    polizas_bloqueadas: bloqueadas,
+  };
+
+  return { etapas, resumen };
+}
+
+/** Estado de terminación: bloqueos reales, huella prevista y sellos previos. */
+export const getEstadoCierre = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ cliente_id: z.string().uuid(), periodo: periodoSchema }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const scope = await assertClienteScope(supabase, userId, data.cliente_id);
+    const { etapas, resumen } = await reunirEvidencia(supabase, scope.cliente_id, data.periodo);
+    const bloqueos = bloqueosDeCierre({ etapas, resumen });
+    const huella = huellaCierre({
+      clienteId: scope.cliente_id,
+      periodo: data.periodo,
+      etapas,
+      resumen,
+      evaluador: EVALUADOR_VERSION,
+    });
+
+    const { data: sellos } = await supabase
+      .from("cierre_snapshots")
+      .select("id, version, motivo, huella, resumen, etapas, created_at, sellado_por")
+      .eq("cliente_id", scope.cliente_id)
+      .eq("periodo", data.periodo)
+      .order("version", { ascending: false });
+
+    const vigente = (sellos ?? []).find((s: any) => s.huella === huella) ?? null;
+    return {
+      periodo: data.periodo,
+      evaluador: EVALUADOR_VERSION,
+      etapas,
+      resumen,
+      bloqueos,
+      puedeSellar: bloqueos.length === 0,
+      huella,
+      selloVigente: vigente,
+      sellos: sellos ?? [],
+    };
+  });
+
+/** Sella el periodo: snapshot inmutable + aprobación de la etapa, en una transacción. */
+export const sellarCierre = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        cliente_id: z.string().uuid(),
+        periodo: periodoSchema,
+        motivo: z.string().min(10).max(1000),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const scope = await assertClienteScope(supabase, userId, data.cliente_id);
+    const { etapas, resumen } = await reunirEvidencia(supabase, scope.cliente_id, data.periodo);
+    const bloqueos = bloqueosDeCierre({ etapas, resumen });
+    if (bloqueos.length > 0) {
+      throw new Error(`No se puede sellar el periodo: ${bloqueos.map((b) => b.detalle).join(" ")}`);
+    }
+    const huella = huellaCierre({
+      clienteId: scope.cliente_id,
+      periodo: data.periodo,
+      etapas,
+      resumen,
+      evaluador: EVALUADOR_VERSION,
+    });
+
+    const { data: sello, error } = await supabase.rpc("cierre_sellar", {
+      _cliente_id: scope.cliente_id,
+      _periodo: data.periodo,
+      _motivo: data.motivo,
+      _resumen: resumen as never,
+      _etapas: etapas as never,
+      _huella: huella,
+      _evaluador_version: EVALUADOR_VERSION,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true, sello };
+  });
