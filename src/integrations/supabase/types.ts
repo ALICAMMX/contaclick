@@ -6015,7 +6015,16 @@ export type Database = {
           reset_at: string
         }[]
       }
+      cierre_autorizar_expediente: {
+        Args: { _cliente_id: string }
+        Returns: string
+      }
       cierre_bloqueos: {
+        Args: { _cliente_id: string; _periodo: string }
+        Returns: Json
+      }
+      cierre_canonizar: { Args: { _v: Json }; Returns: string }
+      cierre_estado: {
         Args: { _cliente_id: string; _periodo: string }
         Returns: Json
       }
@@ -6091,6 +6100,7 @@ export type Database = {
         }
         Returns: string
       }
+      cierre_huella: { Args: { _man: Json }; Returns: string }
       cierre_manifiesto: {
         Args: { _cliente_id: string; _periodo: string }
         Returns: Json
@@ -6147,6 +6157,7 @@ export type Database = {
         }
         Returns: Json
       }
+      cierre_resumen: { Args: { _man: Json }; Returns: Json }
       cierre_sellar_manifiesto: {
         Args: {
           _cliente_id: string
