@@ -88,7 +88,12 @@ export const getClasificacionFiscal = createServerFn({ method: "POST" })
       periodo: data.periodo,
       evaluador: "evaluador-clasificacion@2",
       cobertura: coberturaClasificacion(cfdis, decisiones),
-      comprobantes: cfdis.map((c) => ({ ...c, decision: porCfdi.get(c.id) ?? null })),
+      comprobantes: cfdis.map((c) => ({
+        ...c,
+        decision: porCfdi.get(c.id) ?? null,
+        evidencia: evaluarEvidencia(c),
+        permitidas: decisionesPermitidas(c),
+      })),
     };
   });
 
