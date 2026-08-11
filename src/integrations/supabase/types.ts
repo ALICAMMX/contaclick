@@ -1169,6 +1169,51 @@ export type Database = {
           },
         ]
       }
+      cierre_config_bancos: {
+        Row: {
+          actualizado_por: string | null
+          cliente_id: string
+          created_at: string
+          despacho_id: string
+          motivo: string | null
+          tolerancia_centavos: number
+          updated_at: string
+        }
+        Insert: {
+          actualizado_por?: string | null
+          cliente_id: string
+          created_at?: string
+          despacho_id: string
+          motivo?: string | null
+          tolerancia_centavos?: number
+          updated_at?: string
+        }
+        Update: {
+          actualizado_por?: string | null
+          cliente_id?: string
+          created_at?: string
+          despacho_id?: string
+          motivo?: string | null
+          tolerancia_centavos?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cierre_config_bancos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: true
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cierre_config_bancos_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cierre_etapas: {
         Row: {
           aprobada_at: string | null
@@ -1611,6 +1656,75 @@ export type Database = {
           },
           {
             foreignKeyName: "cierre_reaperturas_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cierre_resultado_fiscal: {
+        Row: {
+          calculado_por: string | null
+          cliente_id: string
+          created_at: string
+          despacho_id: string
+          entradas: Json
+          fuentes: Json
+          fundamentos: Json
+          id: string
+          input_hash: string
+          motor_version: string
+          normativa: Json
+          normativa_sha256: string
+          periodo: string
+          regimen: string
+          resultado: Json
+        }
+        Insert: {
+          calculado_por?: string | null
+          cliente_id: string
+          created_at?: string
+          despacho_id: string
+          entradas?: Json
+          fuentes?: Json
+          fundamentos?: Json
+          id?: string
+          input_hash: string
+          motor_version: string
+          normativa?: Json
+          normativa_sha256: string
+          periodo: string
+          regimen: string
+          resultado?: Json
+        }
+        Update: {
+          calculado_por?: string | null
+          cliente_id?: string
+          created_at?: string
+          despacho_id?: string
+          entradas?: Json
+          fuentes?: Json
+          fundamentos?: Json
+          id?: string
+          input_hash?: string
+          motor_version?: string
+          normativa?: Json
+          normativa_sha256?: string
+          periodo?: string
+          regimen?: string
+          resultado?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cierre_resultado_fiscal_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cierre_resultado_fiscal_despacho_id_fkey"
             columns: ["despacho_id"]
             isOneToOne: false
             referencedRelation: "despachos"
@@ -3850,6 +3964,8 @@ export type Database = {
       }
       polizas: {
         Row: {
+          aprobada_at: string | null
+          aprobada_por: string | null
           cfdi_id: string | null
           cliente_id: string
           concepto: string | null
@@ -3860,16 +3976,25 @@ export type Database = {
           estado: string
           fecha: string
           id: string
+          idempotency_key: string | null
+          input_hash: string | null
           metadata: Json
           monto: number
           movimiento_bancario_id: string | null
           origen: string
+          periodo: string | null
+          rechazada_at: string | null
+          rechazada_por: string | null
+          rechazo_motivo: string | null
           referencia: string | null
           tipo: string
           updated_at: string
           uuid_cfdi: string | null
+          version: number
         }
         Insert: {
+          aprobada_at?: string | null
+          aprobada_por?: string | null
           cfdi_id?: string | null
           cliente_id: string
           concepto?: string | null
@@ -3880,16 +4005,25 @@ export type Database = {
           estado?: string
           fecha: string
           id?: string
+          idempotency_key?: string | null
+          input_hash?: string | null
           metadata?: Json
           monto?: number
           movimiento_bancario_id?: string | null
           origen?: string
+          periodo?: string | null
+          rechazada_at?: string | null
+          rechazada_por?: string | null
+          rechazo_motivo?: string | null
           referencia?: string | null
           tipo: string
           updated_at?: string
           uuid_cfdi?: string | null
+          version?: number
         }
         Update: {
+          aprobada_at?: string | null
+          aprobada_por?: string | null
           cfdi_id?: string | null
           cliente_id?: string
           concepto?: string | null
@@ -3900,14 +4034,21 @@ export type Database = {
           estado?: string
           fecha?: string
           id?: string
+          idempotency_key?: string | null
+          input_hash?: string | null
           metadata?: Json
           monto?: number
           movimiento_bancario_id?: string | null
           origen?: string
+          periodo?: string | null
+          rechazada_at?: string | null
+          rechazada_por?: string | null
+          rechazo_motivo?: string | null
           referencia?: string | null
           tipo?: string
           updated_at?: string
           uuid_cfdi?: string | null
+          version?: number
         }
         Relationships: [
           {
@@ -6100,6 +6241,26 @@ export type Database = {
         Returns: Json
       }
       cierre_canonizar: { Args: { _v: Json }; Returns: string }
+      cierre_diag_bancos: {
+        Args: { _cliente_id: string; _periodo: string }
+        Returns: Json
+      }
+      cierre_diag_clasificacion: {
+        Args: { _cliente_id: string; _periodo: string }
+        Returns: Json
+      }
+      cierre_diag_impuestos: {
+        Args: { _cliente_id: string; _periodo: string }
+        Returns: Json
+      }
+      cierre_diag_polizas: {
+        Args: { _cliente_id: string; _periodo: string }
+        Returns: Json
+      }
+      cierre_entradas_fiscales: {
+        Args: { _cliente_id: string; _periodo: string }
+        Returns: Json
+      }
       cierre_estado: {
         Args: { _cliente_id: string; _periodo: string }
         Returns: Json
@@ -6188,6 +6349,7 @@ export type Database = {
         }
         Returns: string
       }
+      cierre_hash_jsonb: { Args: { _v: Json }; Returns: string }
       cierre_huella: { Args: { _man: Json }; Returns: string }
       cierre_manifiesto: {
         Args: { _cliente_id: string; _periodo: string }
@@ -6198,6 +6360,15 @@ export type Database = {
           _cliente_id: string
           _etapa: string
           _motivo: string
+          _periodo: string
+        }
+        Returns: Json
+      }
+      cierre_marcar_no_comprobada: {
+        Args: {
+          _cliente_id: string
+          _detalle: string
+          _etapa: string
           _periodo: string
         }
         Returns: Json
@@ -6230,6 +6401,7 @@ export type Database = {
           version: number
         }[]
       }
+      cierre_regimen_desde_sat: { Args: { _regimen: string }; Returns: string }
       cierre_registrar_decision_fiscal: {
         Args: {
           _cfdi_id: string
@@ -6242,6 +6414,22 @@ export type Database = {
           _regla_id?: string
           _regla_version?: string
           _sugerencia_ia?: Json
+        }
+        Returns: Json
+      }
+      cierre_registrar_resultado_fiscal: {
+        Args: {
+          _cliente_id: string
+          _entradas: Json
+          _fuentes: Json
+          _fundamentos: Json
+          _input_hash: string
+          _motor_version: string
+          _normativa: Json
+          _normativa_sha256: string
+          _periodo: string
+          _regimen: string
+          _resultado: Json
         }
         Returns: Json
       }
@@ -6275,6 +6463,14 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      cierre_set_tolerancia_bancos: {
+        Args: {
+          _cliente_id: string
+          _motivo: string
+          _tolerancia_centavos: number
+        }
+        Returns: Json
       }
       delete_email: {
         Args: { message_id: number; queue_name: string }
@@ -6495,6 +6691,27 @@ export type Database = {
           run_id: string
           solicitudes: number
         }[]
+      }
+      poliza_aprobar: {
+        Args: { _motivo: string; _poliza_id: string }
+        Returns: Json
+      }
+      poliza_generar_borrador: {
+        Args: {
+          _cliente_id: string
+          _concepto: string
+          _fecha: string
+          _idempotency_key: string
+          _origen: string
+          _periodo: string
+          _renglones: Json
+          _tipo: string
+        }
+        Returns: Json
+      }
+      poliza_rechazar: {
+        Args: { _motivo: string; _poliza_id: string }
+        Returns: Json
       }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
