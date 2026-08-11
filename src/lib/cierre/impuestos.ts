@@ -54,9 +54,12 @@ export type EntradasFiscales = {
   regimen_sat: string | null;
   regimen: RegimenCierre | null;
   criterio: string;
+  /** Flujo de efectivo (PF/RESICO): PUE del periodo + complementos de pago. */
   ingresos_cobrados_centavos: number;
   ingresos_pue_centavos: number;
   ingresos_ppd_centavos: number;
+  /** Base nominal acumulada del ejercicio (art. 14 LISR, personas morales). */
+  ingresos_nominales_acumulados_centavos?: number;
   iva_trasladado_cobrado_centavos: number;
   deducciones_pagadas_centavos: number;
   deducciones_pue_centavos: number;
@@ -67,11 +70,18 @@ export type EntradasFiscales = {
   faltantes: {
     comprobantes_sin_estatus_sat: number;
     recibidos_sin_decision: number;
+    /** Informativo: una PPD sin complemento NO es un error por sí misma. */
     ppd_sin_complemento: number;
+    cancelados?: number;
+    recibidos_sin_regla_iva?: number;
+    ppd_pagado_sin_complemento?: number;
+    sin_tipo_cambio?: number;
+    complementos_duplicados?: number;
   };
   evaluable: boolean;
   input_hash: string;
 };
+
 
 /** Parámetros humanos que la evidencia no puede deducir. */
 export type ParametrosFiscales = {
