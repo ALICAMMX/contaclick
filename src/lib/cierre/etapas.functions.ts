@@ -23,9 +23,16 @@ import {
 
 const periodoSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Periodo con formato AAAA-MM");
 const etapaSchema = z.enum(["documentos", "clasificacion", "bancos", "polizas", "impuestos", "cierre"]);
-const estadoSchema = z.enum([
-  "no_iniciada", "en_proceso", "bloqueada", "lista", "aprobada", "reabierta", "no_aplica",
-]);
+
+/** Disparador de cascada que corresponde a reabrir manualmente cada etapa. */
+const DISPARADOR_POR_ETAPA: Record<EtapaId, "cfdi" | "clasificacion" | "banco" | "poliza" | "parametro_fiscal"> = {
+  documentos: "cfdi",
+  clasificacion: "clasificacion",
+  bancos: "banco",
+  polizas: "poliza",
+  impuestos: "parametro_fiscal",
+  cierre: "parametro_fiscal",
+};
 
 /** Estado completo de las seis etapas del periodo + siguiente acción. */
 export const getFlujoMensual = createServerFn({ method: "POST" })
