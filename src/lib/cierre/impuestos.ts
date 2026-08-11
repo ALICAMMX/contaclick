@@ -152,19 +152,50 @@ export function calcularPreliminar(
       detalle: `${f.recibidos_sin_decision} comprobantes recibidos sin decisión de deducibilidad.`,
     });
   }
-  if (f.ppd_sin_complemento > 0) {
+  // Una PPD sin complemento NO bloquea: puede seguir legítimamente pendiente de
+  // cobro. Bloquea sólo cuando ya existe un movimiento bancario CONCILIADO y
+  // confirmado sin su complemento, porque entonces falta evidencia obligatoria.
+  if ((f.ppd_pagado_sin_complemento ?? 0) > 0) {
     motivos.push({
-      codigo: "ppd_sin_complemento",
-      detalle: `${f.ppd_sin_complemento} comprobantes en parcialidades (PPD) sin complemento de pago: el ingreso cobrado no puede determinarse.`,
+      codigo: "ppd_pagado_sin_complemento",
+      detalle: `${f.ppd_pagado_sin_complemento} comprobantes en parcialidades con cobro o pago bancario confirmado y sin complemento de pago: falta evidencia obligatoria.`,
     });
   }
-  if (regimen === "PM_GENERAL" && (parametros.coeficiente_utilidad ?? null) == null) {
+  if ((f.recibidos_sin_regla_iva ?? 0) > 0) {
     motivos.push({
-      codigo: "coeficiente_utilidad_ausente",
-      detalle:
-        "El pago provisional de persona moral exige el coeficiente de utilidad del ejercicio anterior (art. 14 LISR). Captúrelo para poder calcular.",
+      codigo: "iva_sin_regla_propia",
+      detalle: `${f.recibidos_sin_regla_iva} comprobantes con deducibilidad parcial y sin regla propia de acreditamiento de IVA. El porcentaje de ISR no se aplica automáticamente al IVA.`,
     });
   }
+  if ((f.sin_tipo_cambio ?? 0) > 0) {
+    motivos.push({
+      codigo: "tipo_cambio_ausente",
+      detalle: `${f.sin_tipo_cambio} comprobantes en moneda extranjera sin tipo de cambio verificable.`,
+    });
+  }
+  if ((f.complementos_duplicados ?? 0) > 0) {
+    motivos.push({
+      codigo: "complementos_duplicados",
+      detalle: `${f.complementos_duplicados} documentos pagados con complementos repetidos en la misma parcialidad.`,
+    });
+  }
+  if (regimen === "PM_GENERAL") {
+    if ((parametros.coeficiente_utilidad ?? null) == null) {
+      motivos.push({
+        codigo: "coeficiente_utilidad_ausente",
+        detalle:
+          "El pago provisional de persona moral exige el coeficiente de utilidad del ejercicio anterior (art. 14 LISR). Captúrelo para poder calcular.",
+      });
+    }
+    if (entradas.ingresos_nominales_acumulados_centavos == null) {
+      motivos.push({
+        codigo: "ingresos_nominales_ausentes",
+        detalle:
+          "El pago provisional de persona moral se determina sobre ingresos nominales acumulados del ejercicio; la evidencia no los entrega. No se asume el flujo de efectivo de persona física.",
+      });
+    }
+  }
+
 
   const vacio: ResultadoPreliminar = {
     evaluable: false,
