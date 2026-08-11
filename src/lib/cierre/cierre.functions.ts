@@ -211,8 +211,14 @@ export const crearTareaExcepcion = createServerFn({ method: "POST" })
   });
 
 /**
- * Re-normaliza los documentos del periodo desde su XML original.
- * Los CFDI sin XML almacenado NO se tocan: se informan como no reconstruibles.
+ * Re-normaliza los documentos del periodo desde su XML original y, cuando el
+ * original NO está disponible, recupera los datos derivados desde el
+ * encabezado canónico ya almacenado (ruta obligatoria, no opcional).
+ *
+ * Además de los comprobantes fechados en el periodo consultado, se revisan los
+ * que siguen SIN periodo asignado en todo el expediente: si no se hiciera, un
+ * documento de otro mes quedaría invisible para siempre. Cada uno recibe el
+ * periodo que le corresponde por su propia fecha; ninguno se omite en silencio.
  */
 export const reprocesarPeriodo = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
@@ -222,21 +228,41 @@ export const reprocesarPeriodo = createServerFn({ method: "POST" })
     const scope = await assertClienteScope(supabase, userId, data.cliente_id);
 
     const rango = rangoMensual(data.periodo);
+    const seleccion = `xml_raw, ${COLUMNAS_CANONICAS}`;
 
-    const { data: docs, error: errDocs } = await supabase
-      .from("cfdi_xml")
-      .select(`xml_raw, ${COLUMNAS_CANONICAS}`)
-      .eq("cliente_id", scope.cliente_id)
-      .gte("fecha", rango.desde)
-      .lt("fecha", rango.hastaExclusivo)
-      .limit(2000);
+    const [{ data: enRango, error: errDocs }, { data: huerfanos, error: errHuerf }] = await Promise.all([
+      supabase
+        .from("cfdi_xml")
+        .select(seleccion)
+        .eq("cliente_id", scope.cliente_id)
+        .gte("fecha", rango.desde)
+        .lt("fecha", rango.hastaExclusivo)
+        .limit(2000),
+      supabase
+        .from("cfdi_xml")
+        .select(seleccion)
+        .eq("cliente_id", scope.cliente_id)
+        .is("periodo", null)
+        .limit(2000),
+    ]);
     if (errDocs) throw new Error(errDocs.message);
+    if (errHuerf) throw new Error(errHuerf.message);
 
+    const porId = new Map<string, any>();
+    for (const d of [...((enRango ?? []) as any[]), ...((huerfanos ?? []) as any[])]) porId.set(d.id, d);
+    const docs = [...porId.values()];
 
     let reprocesados = 0;
     let sinXml = 0;
     let reparados = 0;
-    for (const d of (docs ?? []) as any[]) {
+    let omitidos = 0;
+    const porPeriodo: Record<string, number> = {};
+    const cuenta = (p: string | null) => {
+      const clave = p ?? "sin_fecha";
+      porPeriodo[clave] = (porPeriodo[clave] ?? 0) + 1;
+    };
+
+    for (const d of docs) {
       if (!d.xml_raw) {
         // Sin XML el detalle no se puede reconstruir, pero el ENCABEZADO
         // canónico sí permite recuperar periodo, dirección y clase: de otro
@@ -244,9 +270,11 @@ export const reprocesarPeriodo = createServerFn({ method: "POST" })
         sinXml += 1;
         const r = await repararDerivadosCfdi(supabase, d as FilaCanonica, scope.rfc);
         if (r.cambiado) reparados += 1;
+        cuenta(r.derivados.periodo);
+        if (!r.derivados.periodo) omitidos += 1;
         continue;
       }
-      await normalizarYPersistir(supabase, {
+      const r = await normalizarYPersistir(supabase, {
         cfdiId: d.id as string,
         despachoId: scope.despacho_id,
         clienteId: scope.cliente_id,
@@ -254,6 +282,8 @@ export const reprocesarPeriodo = createServerFn({ method: "POST" })
         xml: d.xml_raw as string,
       });
       reprocesados += 1;
+      cuenta(r.periodo);
+      if (!r.periodo) omitidos += 1;
     }
 
     const { evaluacion } = await cargarPeriodo(supabase, {
@@ -267,8 +297,26 @@ export const reprocesarPeriodo = createServerFn({ method: "POST" })
       periodo: data.periodo,
       evaluacion,
     });
-    return { reprocesados, reparados, sin_xml_original: sinXml, excepciones: sync };
+
+    // La etapa de clasificación se deriva en SQL: si no se reevalúa, sigue
+    // mostrando "0/0" aunque los documentos ya estén asignados al periodo.
+    await supabase.rpc("cierre_evaluar_clasificacion", {
+      _cliente_id: scope.cliente_id,
+      _periodo: data.periodo,
+    });
+
+    return {
+      revisados: docs.length,
+      reprocesados,
+      reparados,
+      sin_xml_original: sinXml,
+      omitidos,
+      por_periodo: porPeriodo,
+      excepciones: sync,
+    };
   });
+
+
 
 /**
  * Declara la ETAPA DOCUMENTAL lista. No cierra el mes: sólo certifica que los
