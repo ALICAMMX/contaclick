@@ -484,7 +484,9 @@ export type Database = {
           decision: string
           despacho_id: string
           fundamento: string | null
+          historial_id: string | null
           id: string
+          input_hash: string | null
           motivo: string | null
           origen: string
           periodo: string
@@ -502,7 +504,9 @@ export type Database = {
           decision: string
           despacho_id: string
           fundamento?: string | null
+          historial_id?: string | null
           id?: string
+          input_hash?: string | null
           motivo?: string | null
           origen?: string
           periodo: string
@@ -520,7 +524,9 @@ export type Database = {
           decision?: string
           despacho_id?: string
           fundamento?: string | null
+          historial_id?: string | null
           id?: string
+          input_hash?: string | null
           motivo?: string | null
           origen?: string
           periodo?: string
@@ -552,6 +558,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      cfdi_decisiones_historial: {
+        Row: {
+          cfdi_id: string
+          cliente_id: string
+          created_at: string
+          decidida_at: string
+          decidida_por: string | null
+          decision: string
+          despacho_id: string
+          fundamento: string | null
+          id: string
+          input_hash: string
+          motivo: string | null
+          origen: string
+          periodo: string
+          porcentaje_deducible: number
+          regla_id: string | null
+          regla_version: string | null
+          sugerencia_ia: Json | null
+          version: number
+        }
+        Insert: {
+          cfdi_id: string
+          cliente_id: string
+          created_at?: string
+          decidida_at?: string
+          decidida_por?: string | null
+          decision: string
+          despacho_id: string
+          fundamento?: string | null
+          id?: string
+          input_hash: string
+          motivo?: string | null
+          origen?: string
+          periodo: string
+          porcentaje_deducible?: number
+          regla_id?: string | null
+          regla_version?: string | null
+          sugerencia_ia?: Json | null
+          version: number
+        }
+        Update: {
+          cfdi_id?: string
+          cliente_id?: string
+          created_at?: string
+          decidida_at?: string
+          decidida_por?: string | null
+          decision?: string
+          despacho_id?: string
+          fundamento?: string | null
+          id?: string
+          input_hash?: string
+          motivo?: string | null
+          origen?: string
+          periodo?: string
+          porcentaje_deducible?: number
+          regla_id?: string | null
+          regla_version?: string | null
+          sugerencia_ia?: Json | null
+          version?: number
+        }
+        Relationships: []
       }
       cfdi_impuestos: {
         Row: {
@@ -5986,6 +6055,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      cierre_evaluar_clasificacion: {
+        Args: { _cliente_id: string; _periodo: string }
+        Returns: Json
+      }
       cierre_excepcion_cerrar_automatica: {
         Args: { _actor?: string; _ids: string[]; _motivo?: string }
         Returns: {
@@ -6008,6 +6081,27 @@ export type Database = {
         }
         Returns: string
       }
+      cierre_marcar_no_aplica: {
+        Args: {
+          _cliente_id: string
+          _etapa: string
+          _motivo: string
+          _periodo: string
+        }
+        Returns: Json
+      }
+      cierre_reabrir: {
+        Args: {
+          _cliente_id: string
+          _disparador: string
+          _idempotency_key?: string
+          _motivo: string
+          _periodo: string
+          _referencia_id?: string
+          _referencia_tipo?: string
+        }
+        Returns: Json
+      }
       cierre_reabrir_cascada: {
         Args: {
           _cliente_id: string
@@ -6023,6 +6117,21 @@ export type Database = {
           etapa: string
           version: number
         }[]
+      }
+      cierre_registrar_decision_fiscal: {
+        Args: {
+          _cfdi_id: string
+          _cliente_id: string
+          _decision: string
+          _fundamento?: string
+          _motivo?: string
+          _origen?: string
+          _porcentaje?: number
+          _regla_id?: string
+          _regla_version?: string
+          _sugerencia_ia?: Json
+        }
+        Returns: Json
       }
       cierre_sellar: {
         Args: {
