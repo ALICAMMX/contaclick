@@ -1620,6 +1620,7 @@ export type Database = {
       }
       cierre_snapshots: {
         Row: {
+          bloqueos: Json | null
           cliente_id: string
           created_at: string
           despacho_id: string
@@ -1627,6 +1628,7 @@ export type Database = {
           evaluador_version: string | null
           huella: string
           id: string
+          manifiesto: Json | null
           motivo: string
           periodo: string
           resumen: Json
@@ -1634,6 +1636,7 @@ export type Database = {
           version: number
         }
         Insert: {
+          bloqueos?: Json | null
           cliente_id: string
           created_at?: string
           despacho_id: string
@@ -1641,6 +1644,7 @@ export type Database = {
           evaluador_version?: string | null
           huella: string
           id?: string
+          manifiesto?: Json | null
           motivo: string
           periodo: string
           resumen?: Json
@@ -1648,6 +1652,7 @@ export type Database = {
           version?: number
         }
         Update: {
+          bloqueos?: Json | null
           cliente_id?: string
           created_at?: string
           despacho_id?: string
@@ -1655,6 +1660,7 @@ export type Database = {
           evaluador_version?: string | null
           huella?: string
           id?: string
+          manifiesto?: Json | null
           motivo?: string
           periodo?: string
           resumen?: Json
@@ -6009,6 +6015,10 @@ export type Database = {
           reset_at: string
         }[]
       }
+      cierre_bloqueos: {
+        Args: { _cliente_id: string; _periodo: string }
+        Returns: Json
+      }
       cierre_etapa_transicion: {
         Args: {
           _cliente_id: string
@@ -6081,6 +6091,10 @@ export type Database = {
         }
         Returns: string
       }
+      cierre_manifiesto: {
+        Args: { _cliente_id: string; _periodo: string }
+        Returns: Json
+      }
       cierre_marcar_no_aplica: {
         Args: {
           _cliente_id: string
@@ -6133,17 +6147,15 @@ export type Database = {
         }
         Returns: Json
       }
-      cierre_sellar: {
+      cierre_sellar_manifiesto: {
         Args: {
           _cliente_id: string
-          _etapas: Json
-          _evaluador_version: string
-          _huella: string
+          _idempotency_key?: string
           _motivo: string
           _periodo: string
-          _resumen: Json
         }
         Returns: {
+          bloqueos: Json | null
           cliente_id: string
           created_at: string
           despacho_id: string
@@ -6151,6 +6163,7 @@ export type Database = {
           evaluador_version: string | null
           huella: string
           id: string
+          manifiesto: Json | null
           motivo: string
           periodo: string
           resumen: Json
