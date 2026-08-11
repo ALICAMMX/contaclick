@@ -106,12 +106,14 @@ export const getFlujoMensual = createServerFn({ method: "POST" })
         ...e,
         estado: estados[e.id]!,
         cobertura: fila?.cobertura != null ? Number(fila.cobertura) : null,
-        criteriosCumplidos: (fila?.criterios_cumplidos as string[]) ?? [],
-        criteriosPendientes: (fila?.criterios_pendientes as string[]) ?? [],
+        criteriosCumplidos: (fila?.criterios_cumplidos as { codigo: string; detalle: string }[]) ?? [],
+        criteriosPendientes: (fila?.criterios_pendientes as { codigo: string; detalle: string }[]) ?? [],
         motivo: fila?.motivo ?? null,
         version: fila?.version ?? 1,
         lista_at: fila?.lista_at ?? null,
         aprobada_at: fila?.aprobada_at ?? null,
+        evaluadorVersion: fila?.evaluador_version ?? null,
+        resultado: fila?.resultado ?? null,
         habilitada: dep.ok,
         dependenciasFaltantes: dep.faltantes,
       };
@@ -131,8 +133,10 @@ export const getFlujoMensual = createServerFn({ method: "POST" })
       evaluador: EVALUADOR_VERSION,
       etapas,
       eventos: eventos ?? [],
+      fallosEvaluacion,
       siguiente: sig ? { id: sig.id, nombre: sig.nombre, ruta: sig.ruta, acciones: sig.acciones } : null,
     };
+
   });
 
 /**
