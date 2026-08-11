@@ -171,10 +171,16 @@ export function ImpuestosPreliminares({ clienteId, periodo }: { clienteId: strin
       )}
 
       <div className="flex items-center gap-3 flex-wrap">
-        <Button size="sm" onClick={() => m.mutate()} disabled={m.isPending}>
+        <Button size="sm" onClick={() => m.mutate()} disabled={m.isPending || bloqueado}>
           {m.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Calculator className="h-4 w-4 mr-2" />}
           Calcular y registrar preliminar
         </Button>
+        {bloqueado && (
+          <span className="text-[11px] text-warning">
+            No evaluable: resuelva primero los pendientes listados arriba. El servidor también rechaza el
+            registro mientras la evidencia esté incompleta.
+          </span>
+        )}
         <p className="text-[11px] text-muted-foreground italic">
           Estimación interna de apoyo. No es una declaración ni sustituye el cálculo oficial ante el SAT.
         </p>
