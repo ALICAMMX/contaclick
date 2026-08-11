@@ -120,25 +120,15 @@ export function FlujoEtapas({ clienteId, periodo }: { clienteId: string; periodo
                     <RotateCcw className="h-3.5 w-3.5 mr-1" /> Reabrir
                   </Button>
                 ) : (
-                  <>
+                  e.permiteNoAplica && (
                     <Button
                       size="sm"
-                      variant="hero"
-                      disabled={!e.habilitada || mDeclarar.isPending}
-                      onClick={() => mDeclarar.mutate({ etapa: e.id, estado: "lista" })}
+                      variant="outline"
+                      onClick={() => { setNoAplica({ etapa: e.id, nombre: `No aplica · ${e.nombre}` }); setMotivo(""); }}
                     >
-                      Marcar lista
+                      No aplica
                     </Button>
-                    {e.permiteNoAplica && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => { setNoAplica({ etapa: e.id, nombre: `No aplica · ${e.nombre}` }); setMotivo(""); }}
-                      >
-                        No aplica
-                      </Button>
-                    )}
-                  </>
+                  )
                 )}
               </div>
             </div>
