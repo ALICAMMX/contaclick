@@ -84,6 +84,18 @@ export function derivarDesdeEncabezado(
 }
 
 /**
+ * Marca honesta: el documento NO se normalizó desde su XML original, sólo se
+ * recuperaron sus datos derivados desde el encabezado ya almacenado.
+ */
+export const VERSION_RECUPERACION_ENCABEZADO = "recuperado_desde_encabezado@1";
+
+export const MOTIVO_RECUPERADO_ENCABEZADO = {
+  codigo: "RECUPERADO_DESDE_ENCABEZADO",
+  mensaje:
+    "El XML original no está disponible: periodo, dirección y clase se recuperaron del encabezado almacenado. No es una normalización desde el comprobante original.",
+};
+
+/**
  * Aplica la reparación a un documento concreto. Idempotente: si los valores ya
  * coinciden, no escribe. Devuelve `true` cuando hubo cambio real.
  */
@@ -99,13 +111,20 @@ export async function repararDerivadosCfdi(
     (fila.direccion ?? null) !== d.direccion ||
     (fila.clase_documental ?? null) !== d.clase_documental;
 
+  const motivos = [
+    MOTIVO_RECUPERADO_ENCABEZADO,
+    ...d.motivos.filter((m) => m.codigo !== MOTIVO_RECUPERADO_ENCABEZADO.codigo),
+  ];
+
   const patch: Record<string, unknown> = {
     periodo: d.periodo,
     direccion: d.direccion,
     clase_documental: d.clase_documental,
     estado_procesamiento: d.estado_procesamiento,
     detalle_reconstruible: false,
-    motivos: d.motivos,
+    // Nunca se declara "normalizado": el original no estuvo disponible.
+    normalizacion_version: VERSION_RECUPERACION_ENCABEZADO,
+    motivos,
   };
   if (d.estado_relacion !== null) patch.estado_relacion = d.estado_relacion;
 
@@ -117,3 +136,4 @@ export async function repararDerivadosCfdi(
 
 export const COLUMNAS_CANONICAS =
   "id, uuid, tipo_cfdi, rfc_emisor, rfc_receptor, metodo_pago, estatus_sat, fecha, periodo, direccion, clase_documental, estado_relacion";
+
