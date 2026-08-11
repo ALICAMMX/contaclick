@@ -190,6 +190,11 @@ function CfdiDetail() {
           <Field label="Fecha timbrado" value={fmtDate(c.fecha_timbrado)} />
           <Field label="Moneda" value={c.moneda ?? "MXN"} />
           <Field label="Estatus SAT" value={c.estatus_sat ?? "desconocido"} />
+          <Field
+            label="XML original"
+            value={ETIQUETA_ESTADO_ORIGINAL[(estadoOriginal ?? "pendiente") as EstadoOriginal] ?? "Sin información"}
+          />
+
         </Card>
         <Card title="Pago">
           <Field label="Método" value={c.metodo_pago ?? "—"} />
