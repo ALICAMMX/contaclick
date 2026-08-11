@@ -267,7 +267,7 @@ export const reprocesarPeriodo = createServerFn({ method: "POST" })
       periodo: data.periodo,
       evaluacion,
     });
-    return { reprocesados, sin_xml_original: sinXml, excepciones: sync };
+    return { reprocesados, reparados, sin_xml_original: sinXml, excepciones: sync };
   });
 
 /**
