@@ -24,12 +24,12 @@ export function etiquetaPeriodoMes(periodo: string): string {
 export function resolverAlcance(input: { periodo?: string | null; year?: number | null }): Alcance {
   const periodo = (input.periodo ?? "").trim();
   if (PERIODO_RE.test(periodo)) {
-    const r = rangoUtcDePeriodo(periodo);
+    const r = rangoMensual(periodo);
     return {
       modo: "mensual",
       periodo,
       desde: r.desde,
-      hasta: r.hasta,
+      hasta: r.hastaExclusivo,
       etiqueta: `Cierre mensual · ${etiquetaPeriodoMes(periodo)}`,
     };
   }
