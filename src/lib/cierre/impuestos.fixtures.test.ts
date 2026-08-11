@@ -58,8 +58,8 @@ describe("bases fiscales por forma de pago", () => {
     const r = calcularPreliminar(e);
     expect(r.evaluable).toBe(true);
     const isr = r.resultado!.isr as any;
-    expect(isr.ingresos).toBe(100);
-    expect(isr.ingresos).not.toBe(116);
+    expect(isr.base).toBe(100);
+    expect(isr.base).not.toBe(116);
     expect((r.resultado!.iva as any).ivaTrasladado).toBe(16);
   });
 
@@ -68,7 +68,7 @@ describe("bases fiscales por forma de pago", () => {
     const r = calcularPreliminar(e);
     expect(motivos(e)).not.toContain("ppd_sin_complemento");
     expect(r.evaluable).toBe(true);
-    expect((r.resultado!.isr as any).ingresos).toBe(0);
+    expect((r.resultado!.isr as any).base).toBe(0);
   });
 
   it("PPD con pago parcial de $58 sobre factura de $116: base cobrada $50 e IVA $8", () => {
@@ -79,11 +79,11 @@ describe("bases fiscales por forma de pago", () => {
       iva_trasladado_cobrado_centavos: 8_00,
     });
     const r = calcularPreliminar(e);
-    expect((r.resultado!.isr as any).ingresos).toBe(50);
+    expect((r.resultado!.isr as any).base).toBe(50);
     expect((r.resultado!.iva as any).ivaTrasladado).toBe(8);
     // Ni la factura completa ni la suma factura+complemento.
-    expect((r.resultado!.isr as any).ingresos).not.toBe(100);
-    expect((r.resultado!.isr as any).ingresos).not.toBe(116);
+    expect((r.resultado!.isr as any).base).not.toBe(100);
+    expect((r.resultado!.isr as any).base).not.toBe(116);
   });
 
   it("pago bancario confirmado sin complemento: excepción bloqueante", () => {
@@ -126,7 +126,7 @@ describe("bloqueos de evidencia", () => {
     });
     const r = calcularPreliminar(e);
     expect(r.evaluable).toBe(true);
-    expect((r.resultado!.isr as any).ingresos).toBe(100);
+    expect((r.resultado!.isr as any).base).toBe(100);
     expect(e.faltantes.cancelados).toBe(2);
   });
 
@@ -134,7 +134,7 @@ describe("bloqueos de evidencia", () => {
     // Ingreso $1,000 con nota de crédito de $200 ⇒ base entregada $800.
     const e = con({ ingresos_cobrados_centavos: 800_00, iva_trasladado_cobrado_centavos: 128_00 });
     const r = calcularPreliminar(e);
-    expect((r.resultado!.isr as any).ingresos).toBe(800);
+    expect((r.resultado!.isr as any).base).toBe(800);
     expect((r.resultado!.iva as any).ivaTrasladado).toBe(128);
   });
 });
@@ -150,9 +150,10 @@ describe("criterio por régimen", () => {
     const r = calcularPreliminar(e, { coeficiente_utilidad: 0.2 });
     expect(r.evaluable).toBe(true);
     const isr = r.resultado!.isr as any;
-    expect(isr.ingresosNominales).toBe(300_000);
-    // Utilidad fiscal estimada = 300,000 × 0.20 = 60,000.
-    expect(isr.utilidadFiscalEstimada ?? isr.utilidadEstimada ?? isr.baseGravable).toBe(60_000);
+    // Utilidad fiscal = 300,000 × 0.20 = 60,000 (no 100,000 × 0.20 = 20,000).
+    expect(isr.utilidadFiscal).toBe(60_000);
+    expect(isr.base).toBe(60_000);
+    expect(isr.utilidadFiscal).not.toBe(20_000);
   });
 
   it("PM general sin coeficiente comprobado: no evaluable, no cero", () => {
@@ -178,7 +179,7 @@ describe("criterio por régimen", () => {
     });
     const r = calcularPreliminar(e);
     const isr = r.resultado!.isr as any;
-    expect(isr.ingresos - isr.deducciones).toBe(30_000);
+    expect(isr.base).toBe(30_000);
     // IVA a cargo = 8,000 − 3,200 = 4,800.
     expect(r.resultado!.iva_a_cargo_centavos).toBe(4_800_00);
   });
@@ -194,8 +195,8 @@ describe("criterio por régimen", () => {
     const r = calcularPreliminar(e, { resico_acumulado_previo_centavos: 0 });
     expect(r.evaluable).toBe(true);
     const isr = r.resultado!.isr as any;
-    expect(isr.ingresosCobrados ?? isr.ingresos).toBe(40_000);
-    expect(JSON.stringify(isr)).not.toContain('"deducciones":20000');
+    expect(isr.ingresos).toBe(40_000);
+    expect(JSON.stringify(isr)).not.toContain('"deducciones"');
   });
 
   it("régimen no soportado: no evaluable", () => {
@@ -215,8 +216,8 @@ describe("determinismo y obsolescencia", () => {
     const a = con({ ingresos_cobrados_centavos: 10_000_00, input_hash: "h1" });
     const b = con({ ingresos_cobrados_centavos: 11_000_00, input_hash: "h2" });
     expect(a.input_hash).not.toBe(b.input_hash);
-    expect((calcularPreliminar(a).resultado!.isr as any).ingresos).not.toBe(
-      (calcularPreliminar(b).resultado!.isr as any).ingresos,
+    expect((calcularPreliminar(a).resultado!.isr as any).base).not.toBe(
+      (calcularPreliminar(b).resultado!.isr as any).base,
     );
   });
 });
