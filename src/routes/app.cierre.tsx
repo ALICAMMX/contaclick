@@ -187,6 +187,8 @@ function CierrePage() {
         </div>
       </header>
 
+      <FlujoEtapas clienteId={cliente.id} periodo={periodo} />
+
       {q.isLoading ? (
         <div className="flex items-center gap-3 text-muted-foreground p-8"><Loader2 className="h-4 w-4 animate-spin" /> Evaluando el periodo…</div>
       ) : q.error ? (
