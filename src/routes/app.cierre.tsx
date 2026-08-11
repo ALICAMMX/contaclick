@@ -25,6 +25,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { HerramientaHelp } from "@/components/HerramientaHelp";
+import { FlujoEtapas } from "@/components/cierre/FlujoEtapas";
 
 export const Route = createFileRoute("/app/cierre")({
   component: CierrePage,
