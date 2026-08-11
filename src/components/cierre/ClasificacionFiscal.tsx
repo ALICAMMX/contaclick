@@ -173,12 +173,12 @@ export function ClasificacionFiscal({ clienteId, periodo }: { clienteId: string;
       )}
 
       <div className="flex items-center gap-2 flex-wrap pt-1">
-        <Button size="sm" variant="glass" onClick={() => mEvaluar.mutate(false)} disabled={mEvaluar.isPending}>
-          Recalcular cobertura
+        <Button size="sm" variant="glass" onClick={() => mEvaluar.mutate()} disabled={mEvaluar.isPending}>
+          Evaluar etapa con la evidencia guardada
         </Button>
-        <Button size="sm" onClick={() => mEvaluar.mutate(true)} disabled={mEvaluar.isPending || !cob.listo}>
-          Declarar clasificación lista
-        </Button>
+        <span className="text-xs text-muted-foreground">
+          El estado “lista” lo produce el evaluador de la base; no puede declararse a mano.
+        </span>
         {!cob.listo && (
           <span className="text-xs text-muted-foreground">
             Falta decidir {cob.total - cob.decididos} comprobante(s).
