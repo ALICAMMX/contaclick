@@ -132,6 +132,7 @@ export const registrarDecisionFiscal = createServerFn({ method: "POST" })
         cfdi_id: z.string().uuid(),
         decision: z.enum(["deducible", "no_deducible", "parcial", "por_revisar"]),
         porcentaje_deducible: z.number().min(0).max(100).optional(),
+        porcentaje_iva: z.number().min(0).max(100).optional(),
         motivo: z.string().max(1000).optional(),
         fundamento: z.string().max(1000).optional(),
         sugerencia_ia: z.record(z.string(), z.unknown()).optional(),
@@ -156,6 +157,7 @@ export const registrarDecisionFiscal = createServerFn({ method: "POST" })
       _origen: data.origen,
       _regla_id: data.regla_id ?? undefined,
       _regla_version: data.regla_version ?? undefined,
+      _porcentaje_iva: data.porcentaje_iva ?? undefined,
     });
     if (error) throw new Error(error.message);
     return resultado as unknown as {
