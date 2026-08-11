@@ -142,21 +142,21 @@ export const registrarDecisionFiscal = createServerFn({ method: "POST" })
       _cliente_id: scope.cliente_id,
       _cfdi_id: data.cfdi_id,
       _decision: data.decision,
-      _porcentaje: data.porcentaje_deducible ?? null,
-      _motivo: data.motivo ?? null,
-      _fundamento: data.fundamento ?? null,
+      _porcentaje: data.porcentaje_deducible ?? undefined,
+      _motivo: data.motivo ?? undefined,
+      _fundamento: data.fundamento ?? undefined,
       _sugerencia_ia: (data.sugerencia_ia ?? null) as never,
       _origen: data.origen,
-      _regla_id: data.regla_id ?? null,
-      _regla_version: data.regla_version ?? null,
+      _regla_id: data.regla_id ?? undefined,
+      _regla_version: data.regla_version ?? undefined,
     });
     if (error) throw new Error(error.message);
-    return resultado as {
+    return resultado as unknown as {
       ok: boolean;
       idempotente: boolean;
-      decision: Record<string, unknown>;
-      historial: Record<string, unknown>;
-      reabiertas: unknown[];
+      decision: Record<string, string | number | boolean | null>;
+      historial: Record<string, string | number | boolean | null>;
+      reabiertas: { etapa: string; estado_anterior: string; version: number }[];
     };
   });
 
