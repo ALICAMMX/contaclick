@@ -52,7 +52,9 @@ export function SelloCierre({ clienteId, periodo }: { clienteId: string; periodo
   }
 
   const d = q.data!;
-  const sellado = !!d.selloVigente;
+  const vigente = d.sello_vigente;
+  const obsoleto = d.sello_obsoleto;
+  const sellado = !!vigente;
 
   return (
     <section className={`rounded-xl border p-5 space-y-4 ${sellado ? "border-success/40 bg-success/5" : "border-border bg-card"}`}>
@@ -61,7 +63,7 @@ export function SelloCierre({ clienteId, periodo }: { clienteId: string; periodo
           {sellado ? <ShieldCheck className="h-5 w-5 text-success mt-0.5" /> : <Lock className="h-5 w-5 text-muted-foreground mt-0.5" />}
           <div>
             <h2 className="font-medium">
-              {sellado ? "Periodo sellado" : "Revisión y cierre del periodo"}
+              {sellado ? "Periodo sellado" : obsoleto ? "Sello desactualizado" : "Revisión y cierre del periodo"}
             </h2>
             <p className="text-sm text-muted-foreground max-w-2xl mt-1">
               El sello es una constancia interna e inmutable de la evidencia con la que se cerró el mes.
@@ -70,21 +72,35 @@ export function SelloCierre({ clienteId, periodo }: { clienteId: string; periodo
             </p>
           </div>
         </div>
-        <Badge variant="outline" className="font-mono text-[10px]">huella {d.huella.slice(0, 12)}…</Badge>
+        <Badge variant="outline" className="font-mono text-[10px]">huella {d.huella_actual.slice(0, 12)}…</Badge>
       </header>
+
+      {obsoleto && (
+        <div className="rounded-lg border border-warning/40 bg-warning/5 p-3 space-y-1">
+          <div className="text-sm font-medium">
+            El último sello (v{obsoleto.version}) ya no corresponde a la evidencia actual
+          </div>
+          <p className="text-xs text-muted-foreground">{obsoleto.causa}</p>
+          {obsoleto.diferencias.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              Cambió: {obsoleto.diferencias.join(", ")}. El periodo se considera abierto hasta volver a sellar.
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
         <Dato etiqueta="CFDI del periodo" valor={`${d.resumen.cfdi_total}`} />
-        <Dato etiqueta="Ingresos" valor={moneda(d.resumen.ingresos)} />
-        <Dato etiqueta="Egresos" valor={moneda(d.resumen.egresos)} />
-        <Dato etiqueta="IVA trasladado" valor={moneda(d.resumen.iva_trasladado)} />
+        <Dato etiqueta="Ingresos" valor={moneda(d.resumen.ingresos_centavos)} />
+        <Dato etiqueta="Egresos" valor={moneda(d.resumen.egresos_centavos)} />
+        <Dato etiqueta="IVA trasladado" valor={moneda(d.resumen.iva_trasladado_centavos)} />
       </div>
 
       {d.bloqueos.length > 0 ? (
         <div className="rounded-lg border border-warning/40 bg-warning/5 p-3 space-y-1">
           <div className="text-sm font-medium">No se puede sellar todavía</div>
           <ul className="text-xs text-muted-foreground space-y-1">
-            {d.bloqueos.map((b: any) => <li key={b.codigo}>· {b.detalle}</li>)}
+            {d.bloqueos.map((b) => <li key={b.codigo}>· {b.detalle}</li>)}
           </ul>
         </div>
       ) : (
@@ -97,13 +113,13 @@ export function SelloCierre({ clienteId, periodo }: { clienteId: string; periodo
         <Button size="sm" onClick={() => setAbierto(true)} disabled={!d.puedeSellar}>
           {sellado ? "Volver a sellar (nueva versión)" : "Sellar periodo"}
         </Button>
-        {d.selloVigente && (
+        {vigente && (
           <span className="text-xs text-muted-foreground">
-            Sello v{(d.selloVigente as any).version} ·{" "}
-            {new Date((d.selloVigente as any).created_at).toLocaleString("es-MX")}
+            Sello v{vigente.version} · {new Date(vigente.created_at).toLocaleString("es-MX")}
           </span>
         )}
       </div>
+
 
       {d.sellos.length > 0 && (
         <div className="pt-2 border-t border-border/60">
