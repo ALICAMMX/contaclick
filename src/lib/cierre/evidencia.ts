@@ -18,13 +18,21 @@ export type EvidenciaFila = {
   estatus_sat_fuente?: string | null;
   detalle_reconstruible?: boolean | null;
   normalizacion_version?: string | null;
+  /** Estado del archivo original en el archivero privado. */
+  original_estado?: string | null;
 };
 
-/** El XML original está disponible sólo si el detalle es reconstruible desde él. */
+/**
+ * El XML original está disponible cuando existe el archivo auténtico guardado
+ * y verificado en el archivero, o cuando el detalle sí se reconstruyó desde el
+ * XML. Un documento recuperado sólo desde su encabezado NO cuenta.
+ */
 export function xmlOriginalDisponible(c: EvidenciaFila): boolean {
+  if (c.original_estado === "verificado") return true;
   if (c.detalle_reconstruible !== true) return false;
   return (c.normalizacion_version ?? "") !== VERSION_RECUPERACION_ENCABEZADO;
 }
+
 
 /** La evidencia SAT sólo cuenta cuando el comprobante está confirmado vigente. */
 export function estatusSatConfirmado(c: EvidenciaFila): boolean {
