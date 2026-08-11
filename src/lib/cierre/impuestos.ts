@@ -55,6 +55,10 @@ export type EntradasFiscales = {
   regimen_sat: string | null;
   regimen: RegimenCierre | null;
   criterio: string;
+  /** Comprobantes RECONOCIDOS en el periodo (con periodo derivado). */
+  documentos_periodo?: number;
+  documentos_emitidos?: number;
+  documentos_recibidos?: number;
   /** Flujo de efectivo (PF/RESICO): PUE del periodo + complementos de pago. */
   ingresos_cobrados_centavos: number;
   ingresos_pue_centavos: number;
