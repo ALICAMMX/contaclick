@@ -34,7 +34,7 @@ export function FlujoEtapas({ clienteId, periodo }: { clienteId: string; periodo
   const onError = (e: unknown) => toast.error((e as Error)?.message ?? "No se pudo actualizar la etapa");
 
   const mDeclarar = useMutation({
-    mutationFn: (v: { etapa: EtapaId; estado: EstadoEtapa; motivo?: string }) =>
+    mutationFn: (v: { etapa: EtapaId; estado: "no_aplica" | "reabierta"; motivo: string }) =>
       declarar({ data: { cliente_id: clienteId, periodo, etapa: v.etapa, estado: v.estado, motivo: v.motivo } }),
     onSuccess: () => { toast.success("Etapa actualizada"); setNoAplica(null); setMotivo(""); refrescar(); },
     onError,
@@ -120,25 +120,15 @@ export function FlujoEtapas({ clienteId, periodo }: { clienteId: string; periodo
                     <RotateCcw className="h-3.5 w-3.5 mr-1" /> Reabrir
                   </Button>
                 ) : (
-                  <>
+                  e.permiteNoAplica && (
                     <Button
                       size="sm"
-                      variant="hero"
-                      disabled={!e.habilitada || mDeclarar.isPending}
-                      onClick={() => mDeclarar.mutate({ etapa: e.id, estado: "lista" })}
+                      variant="outline"
+                      onClick={() => { setNoAplica({ etapa: e.id, nombre: `No aplica · ${e.nombre}` }); setMotivo(""); }}
                     >
-                      Marcar lista
+                      No aplica
                     </Button>
-                    {e.permiteNoAplica && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => { setNoAplica({ etapa: e.id, nombre: `No aplica · ${e.nombre}` }); setMotivo(""); }}
-                      >
-                        No aplica
-                      </Button>
-                    )}
-                  </>
+                  )
                 )}
               </div>
             </div>
