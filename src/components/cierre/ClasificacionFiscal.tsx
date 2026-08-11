@@ -31,9 +31,16 @@ export function ClasificacionFiscal({ clienteId, periodo }: { clienteId: string;
   const registrar = useServerFn(registrarDecisionFiscal);
   const evaluar = useServerFn(evaluarEtapaClasificacion);
 
-  const [edit, setEdit] = useState<{ id: string; uuid: string; emisor: string } | null>(null);
-  const [decision, setDecision] = useState<Decision>("deducible");
+  const [edit, setEdit] = useState<{
+    id: string;
+    uuid: string;
+    emisor: string;
+    permitidas: Record<Decision, { permitida: boolean; motivo: string | null; exige: string[] }>;
+    evidencia: { limitaciones: string[]; suficiente: boolean };
+  } | null>(null);
+  const [decision, setDecision] = useState<Decision>("por_revisar");
   const [porcentaje, setPorcentaje] = useState("100");
+  const [porcentajeIva, setPorcentajeIva] = useState("100");
   const [fundamento, setFundamento] = useState("");
   const [motivo, setMotivo] = useState("");
 
@@ -49,6 +56,17 @@ export function ClasificacionFiscal({ clienteId, periodo }: { clienteId: string;
   };
   const onError = (e: unknown) => toast.error((e as Error)?.message ?? "No se pudo guardar la decisión");
 
+  const validacion = validarDecision({
+    decision,
+    porcentaje_deducible: Number(porcentaje) || 0,
+    fundamento,
+    motivo,
+  });
+  const ivaValido =
+    decision !== "parcial" || (Number(porcentajeIva) >= 0 && Number(porcentajeIva) <= 100 && porcentajeIva !== "");
+  const puedeGuardar =
+    !!edit && edit.permitidas[decision]?.permitida && validacion.ok && ivaValido;
+
   const mGuardar = useMutation({
     mutationFn: () =>
       registrar({
@@ -56,7 +74,8 @@ export function ClasificacionFiscal({ clienteId, periodo }: { clienteId: string;
           cliente_id: clienteId,
           cfdi_id: edit!.id,
           decision,
-          porcentaje_deducible: Number(porcentaje) || 0,
+          porcentaje_deducible: validacion.porcentaje,
+          ...(decision === "parcial" ? { porcentaje_iva: Number(porcentajeIva) } : {}),
           fundamento: fundamento || undefined,
           motivo: motivo || undefined,
         },
@@ -64,6 +83,7 @@ export function ClasificacionFiscal({ clienteId, periodo }: { clienteId: string;
     onSuccess: () => { toast.success("Decisión registrada"); setEdit(null); refrescar(); },
     onError,
   });
+
 
   const mEvaluar = useMutation({
     mutationFn: () => evaluar({ data: { cliente_id: clienteId, periodo } }),
