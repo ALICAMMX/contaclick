@@ -78,7 +78,11 @@ async function reunirEvidencia(supabase: any, clienteId: string, periodo: string
   return { etapas, resumen };
 }
 
-/** Estado de terminación: bloqueos reales, huella prevista y sellos previos. */
+/**
+ * Estado de terminación. Los bloqueos NO se calculan aquí: se piden a la base
+ * (`cierre_bloqueos`), que es la misma comprobación que corre dentro del sellado.
+ * El resumen local es sólo presentación.
+ */
 export const getEstadoCierre = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) =>
@@ -88,14 +92,13 @@ export const getEstadoCierre = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const scope = await assertClienteScope(supabase, userId, data.cliente_id);
     const { etapas, resumen } = await reunirEvidencia(supabase, scope.cliente_id, data.periodo);
-    const bloqueos = bloqueosDeCierre({ etapas, resumen });
-    const huella = huellaCierre({
-      clienteId: scope.cliente_id,
-      periodo: data.periodo,
-      etapas,
-      resumen,
-      evaluador: EVALUADOR_VERSION,
+
+    const { data: bloqueosRpc, error: errBloqueos } = await supabase.rpc("cierre_bloqueos", {
+      _cliente_id: scope.cliente_id,
+      _periodo: data.periodo,
     });
+    if (errBloqueos) throw new Error(errBloqueos.message);
+    const bloqueos = (bloqueosRpc ?? []) as { codigo: string; detalle: string }[];
 
     const { data: sellos } = await supabase
       .from("cierre_snapshots")
@@ -104,21 +107,25 @@ export const getEstadoCierre = createServerFn({ method: "POST" })
       .eq("periodo", data.periodo)
       .order("version", { ascending: false });
 
-    const vigente = (sellos ?? []).find((s: any) => s.huella === huella) ?? null;
     return {
       periodo: data.periodo,
-      evaluador: EVALUADOR_VERSION,
+      evaluador: "manifiesto@1",
       etapas,
       resumen,
       bloqueos,
       puedeSellar: bloqueos.length === 0,
-      huella,
-      selloVigente: vigente,
+      // La huella la calcula la base al sellar, sobre el manifiesto real.
+      huella: (sellos ?? [])[0]?.huella ?? null,
+      selloVigente: (sellos ?? [])[0] ?? null,
       sellos: sellos ?? [],
     };
   });
 
-/** Sella el periodo: snapshot inmutable + aprobación de la etapa, en una transacción. */
+/**
+ * Sella el periodo. El navegador sólo aporta expediente, periodo y motivo: la
+ * base reconstruye el manifiesto desde las fuentes, recomprueba los bloqueos
+ * dentro del candado y calcula la huella. Repetirlo es idempotente.
+ */
 export const sellarCierre = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) =>
@@ -127,34 +134,37 @@ export const sellarCierre = createServerFn({ method: "POST" })
         cliente_id: z.string().uuid(),
         periodo: periodoSchema,
         motivo: z.string().min(10).max(1000),
+        idempotency_key: z.string().min(8).max(120).optional(),
       })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const scope = await assertClienteScope(supabase, userId, data.cliente_id);
-    const { etapas, resumen } = await reunirEvidencia(supabase, scope.cliente_id, data.periodo);
-    const bloqueos = bloqueosDeCierre({ etapas, resumen });
-    if (bloqueos.length > 0) {
-      throw new Error(`No se puede sellar el periodo: ${bloqueos.map((b) => b.detalle).join(" ")}`);
-    }
-    const huella = huellaCierre({
-      clienteId: scope.cliente_id,
-      periodo: data.periodo,
-      etapas,
-      resumen,
-      evaluador: EVALUADOR_VERSION,
-    });
 
-    const { data: sello, error } = await supabase.rpc("cierre_sellar", {
+    const { data: sello, error } = await supabase.rpc("cierre_sellar_manifiesto", {
       _cliente_id: scope.cliente_id,
       _periodo: data.periodo,
       _motivo: data.motivo,
-      _resumen: resumen as never,
-      _etapas: etapas as never,
-      _huella: huella,
-      _evaluador_version: EVALUADOR_VERSION,
+      _idempotency_key: data.idempotency_key ?? null,
     });
     if (error) throw new Error(error.message);
     return { ok: true, sello };
+  });
+
+/** Manifiesto verificable del periodo, tal como lo reconstruye la base. */
+export const getManifiestoCierre = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ cliente_id: z.string().uuid(), periodo: periodoSchema }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const scope = await assertClienteScope(supabase, userId, data.cliente_id);
+    const { data: manifiesto, error } = await supabase.rpc("cierre_manifiesto", {
+      _cliente_id: scope.cliente_id,
+      _periodo: data.periodo,
+    });
+    if (error) throw new Error(error.message);
+    return manifiesto;
   });
