@@ -138,7 +138,7 @@ export const declararEtapa = createServerFn({ method: "POST" })
       _periodo: data.periodo,
       _etapa: data.etapa,
       _estado: data.estado,
-      _motivo: data.motivo ?? null,
+      _motivo: data.motivo ?? undefined,
       _evaluador_version: EVALUADOR_VERSION,
       _idempotency_key: data.idempotency_key ?? `${data.etapa}:${data.estado}:${data.periodo}`,
       _fuente: "ui",
@@ -171,9 +171,9 @@ export const reabrirCascada = createServerFn({ method: "POST" })
       _periodo: data.periodo,
       _disparador: data.disparador,
       _motivo: data.motivo,
-      _referencia_tipo: data.referencia_tipo ?? null,
-      _referencia_id: data.referencia_id ?? null,
-      _idempotency_key: data.idempotency_key ?? null,
+      _referencia_tipo: data.referencia_tipo ?? undefined,
+      _referencia_id: data.referencia_id ?? undefined,
+      _idempotency_key: data.idempotency_key ?? undefined,
     });
     if (error) throw new Error(error.message);
     return { reabiertas: reabiertas ?? [] };
