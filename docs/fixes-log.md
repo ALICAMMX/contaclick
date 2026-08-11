@@ -1188,3 +1188,18 @@ contra base de datos.
 - **Sello vigente real**: `cierre_estado` compara la huella del último sello contra la huella actual del manifiesto. Si no coinciden devuelve `sello_obsoleto` con las secciones que cambiaron; la UI deja de decir "Periodo sellado" cuando la evidencia se movió.
 - **Segunda verdad eliminada**: se borraron `reunirEvidencia`, `huellaCierre` y `bloqueosDeCierre` del lado aplicación. Resumen, bloqueos y huella vienen sólo de la base, en centavos enteros.
 - **Etapas 3-5 evaluadas**: `cierre_evaluar_bancos`, `cierre_evaluar_polizas` y `cierre_evaluar_impuestos`. Nueva tabla `poliza_renglones` con partida doble y trigger que impide aprobar una póliza descuadrada, sin renglones o con cuenta por identificar. Impuestos entrega estimación interna marcada como no presentable.
+
+### Verificación en vivo del aislamiento (2026-08-11, sesión real de vista previa)
+
+Ejecutada contra la base real con la sesión del usuario `b8d2ecb7…` (dueño de "Grupo ALICAM"), sin escribir datos:
+
+| Prueba | Resultado |
+| --- | --- |
+| 7 funciones del cierre sobre expediente ajeno (`00f1b421…`) | 400 · "Sin acceso al expediente." (7/7) |
+| Mutaciones ajenas: `cierre_marcar_no_aplica`, `cierre_reabrir`, `cierre_sellar_manifiesto` | 400 · "Sin acceso al expediente." (3/3) |
+| Expediente inexistente | 400 · "Expediente inexistente." (no filtra existencia ajena) |
+| Sin sesión (sólo llave pública) | 401 · permission denied for function |
+| Expediente propio (`ce2f1ebc…`), 7 funciones | 200 en todas |
+| `INSERT` directo a `cierre_etapas` como usuario autenticado | 403 · 42501 (sin privilegio de escritura) |
+
+Nota: la prueba `supabase/tests/cierre_aislamiento.sql` no puede correr por `psql` porque el rol de consulta no tiene EXECUTE sobre las funciones del cierre; la verificación equivalente se hizo por la Data API con token real, que es el camino que usa la aplicación.
