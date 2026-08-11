@@ -13,6 +13,7 @@ import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middlewa
 import { assertClienteScope, assertRecordScope } from "@/lib/despacho/scope";
 import { cargarPeriodo, normalizarYPersistir, sincronizarExcepciones } from "./persistencia";
 import { rangoMensual } from "./periodo";
+import { COLUMNAS_CANONICAS, repararDerivadosCfdi, type FilaCanonica } from "./reparacion";
 import { MOTIVOS_EXCEPCION, type CodigoExcepcion } from "./motivos";
 
 const PERIODO_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
