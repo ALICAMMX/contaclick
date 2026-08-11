@@ -6385,6 +6385,7 @@ export type Database = {
         }
         Returns: Json
       }
+      cierre_normativa_canonica: { Args: { _n: Json }; Returns: string }
       cierre_reabrir: {
         Args: {
           _cliente_id: string
@@ -6423,6 +6424,7 @@ export type Database = {
           _motivo?: string
           _origen?: string
           _porcentaje?: number
+          _porcentaje_iva?: number
           _regla_id?: string
           _regla_version?: string
           _sugerencia_ia?: Json
@@ -6523,6 +6525,7 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      es_despacho_sandbox: { Args: { _despacho: string }; Returns: boolean }
       excepcion_vigente: {
         Args: { _despacho: string; _tipo: string }
         Returns: {
