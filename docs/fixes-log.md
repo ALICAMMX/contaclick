@@ -1245,3 +1245,29 @@ Nota: la prueba `supabase/tests/cierre_aislamiento.sql` no puede correr por `psq
 - **Sello normativo real.** Se sustituyó la concatenación `hashISR:hashIVA` por un objeto canónico de conjuntos aplicados con SHA-256 recalculable (`src/lib/cierre/sello-normativo.ts`).
 - **Falla cerrada en parámetros.** `leerParametrosPrevios` y la lectura de entradas lanzan `FiscalNoComprobadoError` en vez de devolver `{}`; el sellado queda bloqueado.
 - **Regresión obligatoria.** `scripts/regresion-aislamiento.mjs` termina con código 2 si falta configuración (antes salía 0 con "Omitida") y `predeploy` la ejecuta.
+
+## Aceptación sintética del bloque fiscal (fixtures propios)
+
+Al construir la regresión totalmente sintética (`scripts/aceptacion/fixtures.mjs`:
+usuarios, despacho sandbox, expediente, CFDI, bancos y pólizas creados y purgados
+por API) aparecieron cuatro defectos reales que ninguna prueba anterior detectaba:
+
+1. `cierre_reabrir_cascada` fallaba con "column reference etapa is ambiguous",
+   lo que impedía registrar CUALQUIER decisión de deducibilidad. Corregido
+   calificando todas las columnas frente a los parámetros de salida.
+2. `cierre_diag_bancos` era STABLE pero ejecutaba `CREATE TEMP TABLE`, por lo que
+   siempre devolvía error: la etapa de bancos nunca era evaluable. Instrucción
+   residual eliminada (`bancos@3`).
+3. `polizas.estado` no admitía el valor 'aprobada' que el diagnóstico exigía: la
+   etapa de pólizas jamás podía darse por lista. Se amplió la restricción y ahora
+   toda póliza sin aprobación humana explícita cuenta como pendiente (`polizas@3`).
+4. `cierre_registrar_decision_fiscal` no permitía capturar
+   `porcentaje_acreditable_iva`, de modo que una deducción parcial dejaba el
+   cálculo fiscal permanentemente no evaluable. Ahora es obligatorio en decisiones
+   parciales (el porcentaje de ISR no se hereda al IVA).
+5. `cierre_diag_clasificacion` contaba los CFDI cancelados como "sin estatus SAT
+   confirmado"; ahora sólo cuenta los realmente desconocidos.
+
+Las bitácoras inmutables aceptan borrado únicamente cuando el despacho está
+marcado como sandbox, lo que permite residuo cero en la purga sin debilitar la
+inmutabilidad de los expedientes reales (verificado: residuo 0).
