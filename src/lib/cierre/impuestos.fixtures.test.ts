@@ -10,7 +10,10 @@ import { calcularPreliminar, type EntradasFiscales } from "./impuestos";
 
 const BASE: EntradasFiscales = {
   periodo: "2026-01",
-  entradas_version: "entradas@2",
+  entradas_version: "entradas@3",
+  documentos_periodo: 3,
+  documentos_emitidos: 2,
+  documentos_recibidos: 1,
   regimen_sat: "612",
   regimen: "PF_GENERAL_MENSUAL",
   criterio: "flujo_de_efectivo",
