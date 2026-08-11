@@ -254,9 +254,11 @@ export function calcularPreliminar(
         };
       }
     } else {
+      // Persona moral: art. 14 LISR sobre ingresos NOMINALES ACUMULADOS del
+      // ejercicio, nunca sobre el flujo de efectivo de persona física.
       const r = calcularIsrPm({
         periodo: entradas.periodo,
-        ingresosNominales: pesos(entradas.ingresos_cobrados_centavos),
+        ingresosNominales: pesos(entradas.ingresos_nominales_acumulados_centavos!),
         coeficienteUtilidad: parametros.coeficiente_utilidad!,
         pagosProvisionalesAnteriores: pesos(parametros.pagos_provisionales_anteriores_centavos ?? 0),
         retenciones: pesos(entradas.isr_retenido_centavos),
@@ -264,7 +266,7 @@ export function calcularPreliminar(
       isr = r as unknown as Record<string, JsonValue>;
       selloIsr = r.normativa;
       isrACargo = centavos(r.isrACargo);
-      fundamentos.push("LISR art. 14 — pago provisional de personas morales con coeficiente de utilidad.");
+      fundamentos.push("LISR art. 14 — pago provisional de personas morales sobre ingresos nominales acumulados y coeficiente de utilidad.");
     }
 
     const iva = calcularIva({
@@ -274,21 +276,27 @@ export function calcularPreliminar(
       ivaRetenido: pesos(entradas.iva_retenido_centavos),
       saldoAFavorAnterior: pesos(parametros.saldo_iva_a_favor_anterior_centavos ?? 0),
     });
-    fundamentos.push("LIVA arts. 1, 1-A y 5-D — IVA del periodo determinado por flujo de efectivo.");
+    fundamentos.push("LIVA arts. 1, 1-A y 5-D — IVA del periodo determinado por flujo de efectivo, con regla propia de acreditamiento.");
 
     const ivaACargo = centavos(iva.ivaACargo);
     const ivaAFavor = centavos(iva.ivaAFavor);
-    const sha = `${selloIsr!.hash}:${iva.normativa.hash}`;
+    // Sello normativo real: objeto canónico de los conjuntos aplicados + SHA-256
+    // recalculable. No es la concatenación de dos huellas.
+    const selloCanonico = construirSelloNormativo([
+      { proposito: "isr", sello: selloIsr! },
+      { proposito: "iva", sello: iva.normativa },
+    ]);
 
     return {
       evaluable: true,
       motivos: [],
       regimen,
       motor_version: MOTOR_IMPUESTOS_VERSION,
-      normativa: { isr: selloIsr, iva: iva.normativa },
-      normativa_sha256: sha,
+      normativa: selloCanonico,
+      normativa_sha256: selloCanonico.sha256,
       fundamentos,
       fuentes: [selloIsr!.url, iva.normativa.url].filter(Boolean),
+
       resultado: {
         naturaleza: "estimacion_interna",
         advertencia: ADVERTENCIA,
