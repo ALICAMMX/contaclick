@@ -85,10 +85,13 @@ export const getFlujoMensual = createServerFn({ method: "POST" })
   });
 
 /**
- * Cambia el estado de una etapa. Falla cerrada:
- * - no permite declarar `lista`/`aprobada` con dependencias sin satisfacer;
- * - `no_aplica` exige motivo y sólo en etapas que lo admiten;
- * - la transición y su evento se escriben dentro del RPC transaccional.
+ * Declaración MANUAL de etapa. Ya no puede producir `lista` ni `aprobada`: esos
+ * estados sólo los emite el evaluador correspondiente a partir de evidencia
+ * persistida. Aquí sólo caben dos gestos humanos:
+ *  - `no_aplica`, en las etapas autorizadas por `flujo.ts` y con motivo;
+ *  - `reabierta`, que se enruta a la reapertura en cascada.
+ * Ambos pasan por RPC de negocio SECURITY DEFINER; `authenticated` no conserva
+ * escritura directa sobre `cierre_etapas` ni `cierre_eventos`.
  */
 export const declararEtapa = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
@@ -98,50 +101,37 @@ export const declararEtapa = createServerFn({ method: "POST" })
         cliente_id: z.string().uuid(),
         periodo: periodoSchema,
         etapa: etapaSchema,
-        estado: estadoSchema,
-        motivo: z.string().max(1000).optional(),
-        idempotency_key: z.string().max(120).optional(),
-      })
-      .refine((v) => !["no_aplica", "reabierta"].includes(v.estado) || (v.motivo?.trim().length ?? 0) >= 10, {
-        message: "Este cambio exige un motivo de al menos 10 caracteres.",
-        path: ["motivo"],
+        estado: z.enum(["no_aplica", "reabierta"]),
+        motivo: z.string().min(10, "Este cambio exige un motivo de al menos 10 caracteres.").max(1000),
       })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const scope = await assertClienteScope(supabase, userId, data.cliente_id);
-
     const definicion = ETAPAS.find((e) => e.id === data.etapa)!;
-    if (data.estado === "no_aplica" && !definicion.permiteNoAplica) {
+
+    if (data.estado === "reabierta") {
+      const { data: reabiertas, error } = await supabase.rpc("cierre_reabrir", {
+        _cliente_id: scope.cliente_id,
+        _periodo: data.periodo,
+        _disparador: DISPARADOR_POR_ETAPA[data.etapa],
+        _motivo: data.motivo,
+        _referencia_tipo: "manual",
+        _referencia_id: data.etapa,
+      });
+      if (error) throw new Error(error.message);
+      return { ok: true, reabiertas: reabiertas ?? [] };
+    }
+
+    if (!definicion.permiteNoAplica) {
       throw new Error(`La etapa “${definicion.nombre}” no admite “no aplica”.`);
     }
-
-    const { data: filas } = await supabase
-      .from("cierre_etapas")
-      .select("etapa, estado")
-      .eq("cliente_id", scope.cliente_id)
-      .eq("periodo", data.periodo);
-    const estados: Partial<Record<EtapaId, EstadoEtapa>> = {};
-    for (const f of filas ?? []) estados[f.etapa as EtapaId] = f.estado as EstadoEtapa;
-
-    if (["lista", "aprobada"].includes(data.estado)) {
-      const dep = dependenciasSatisfechas(data.etapa, estados);
-      if (!dep.ok) {
-        const nombres = dep.faltantes.map((id) => ETAPAS.find((e) => e.id === id)!.nombre).join(", ");
-        throw new Error(`No puedes declarar “${definicion.nombre}”: falta cerrar ${nombres}.`);
-      }
-    }
-
-    const { data: fila, error } = await supabase.rpc("cierre_etapa_transicion", {
+    const { data: fila, error } = await supabase.rpc("cierre_marcar_no_aplica", {
       _cliente_id: scope.cliente_id,
       _periodo: data.periodo,
       _etapa: data.etapa,
-      _estado: data.estado,
-      _motivo: data.motivo ?? undefined,
-      _evaluador_version: EVALUADOR_VERSION,
-      _idempotency_key: data.idempotency_key ?? `${data.etapa}:${data.estado}:${data.periodo}`,
-      _fuente: "ui",
+      _motivo: data.motivo,
     });
     if (error) throw new Error(error.message);
     return { ok: true, etapa: fila };
@@ -166,7 +156,7 @@ export const reabrirCascada = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const scope = await assertClienteScope(supabase, userId, data.cliente_id);
-    const { data: reabiertas, error } = await supabase.rpc("cierre_reabrir_cascada", {
+    const { data: reabiertas, error } = await supabase.rpc("cierre_reabrir", {
       _cliente_id: scope.cliente_id,
       _periodo: data.periodo,
       _disparador: data.disparador,
@@ -176,7 +166,7 @@ export const reabrirCascada = createServerFn({ method: "POST" })
       _idempotency_key: data.idempotency_key ?? undefined,
     });
     if (error) throw new Error(error.message);
-    return { reabiertas: reabiertas ?? [] };
+    return { reabiertas: (reabiertas ?? []) as unknown as { etapa: string; version: number }[] };
   });
 
 /** Bitácora completa del periodo (inmutable). */
