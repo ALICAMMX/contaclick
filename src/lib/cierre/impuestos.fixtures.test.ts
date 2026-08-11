@@ -224,3 +224,18 @@ describe("determinismo y obsolescencia", () => {
     );
   });
 });
+
+describe("periodo sin evidencia documental", () => {
+  it("un periodo sin comprobantes NO es evaluable: ausencia de datos no es “impuestos en cero”", () => {
+    const e = con({ documentos_periodo: 0, documentos_emitidos: 0, documentos_recibidos: 0 });
+    const r = calcularPreliminar(e);
+    expect(r.evaluable).toBe(false);
+    expect(r.resultado).toBeNull();
+    expect(motivos(e)).toContain("sin_documentos");
+  });
+
+  it("con al menos un comprobante reconocido vuelve a ser evaluable", () => {
+    const r = calcularPreliminar(con({ documentos_periodo: 1, documentos_recibidos: 1 }));
+    expect(r.evaluable).toBe(true);
+  });
+});
