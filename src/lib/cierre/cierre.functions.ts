@@ -13,6 +13,7 @@ import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middlewa
 import { assertClienteScope, assertRecordScope } from "@/lib/despacho/scope";
 import { cargarPeriodo, normalizarYPersistir, sincronizarExcepciones } from "./persistencia";
 import { rangoMensual } from "./periodo";
+import { COLUMNAS_CANONICAS, repararDerivadosCfdi, type FilaCanonica } from "./reparacion";
 import { MOTIVOS_EXCEPCION, type CodigoExcepcion } from "./motivos";
 
 const PERIODO_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -222,21 +223,27 @@ export const reprocesarPeriodo = createServerFn({ method: "POST" })
 
     const rango = rangoMensual(data.periodo);
 
-    const { data: docs } = await supabase
+    const { data: docs, error: errDocs } = await supabase
       .from("cfdi_xml")
-      .select("id, xml_raw")
+      .select(`xml_raw, ${COLUMNAS_CANONICAS}`)
       .eq("cliente_id", scope.cliente_id)
       .gte("fecha", rango.desde)
       .lt("fecha", rango.hastaExclusivo)
       .limit(2000);
+    if (errDocs) throw new Error(errDocs.message);
 
 
     let reprocesados = 0;
     let sinXml = 0;
-    for (const d of docs ?? []) {
+    let reparados = 0;
+    for (const d of (docs ?? []) as any[]) {
       if (!d.xml_raw) {
+        // Sin XML el detalle no se puede reconstruir, pero el ENCABEZADO
+        // canónico sí permite recuperar periodo, dirección y clase: de otro
+        // modo el documento existe y el cierre no lo ve.
         sinXml += 1;
-        await supabase.from("cfdi_xml").update({ detalle_reconstruible: false }).eq("id", d.id);
+        const r = await repararDerivadosCfdi(supabase, d as FilaCanonica, scope.rfc);
+        if (r.cambiado) reparados += 1;
         continue;
       }
       await normalizarYPersistir(supabase, {
@@ -260,7 +267,7 @@ export const reprocesarPeriodo = createServerFn({ method: "POST" })
       periodo: data.periodo,
       evaluacion,
     });
-    return { reprocesados, sin_xml_original: sinXml, excepciones: sync };
+    return { reprocesados, reparados, sin_xml_original: sinXml, excepciones: sync };
   });
 
 /**

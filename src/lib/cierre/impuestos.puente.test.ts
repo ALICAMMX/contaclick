@@ -12,7 +12,10 @@ import { verificarSelloNormativo } from "./sello-normativo";
 
 const ENTRADAS: EntradasFiscales = {
   periodo: "2026-01",
-  entradas_version: "entradas@2",
+  entradas_version: "entradas@3",
+  documentos_periodo: 4,
+  documentos_emitidos: 2,
+  documentos_recibidos: 2,
   regimen_sat: "612",
   regimen: "PF_GENERAL_MENSUAL",
   criterio: "flujo_efectivo",

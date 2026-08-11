@@ -10,7 +10,10 @@ import { calcularPreliminar, type EntradasFiscales } from "./impuestos";
 
 const BASE: EntradasFiscales = {
   periodo: "2026-01",
-  entradas_version: "entradas@2",
+  entradas_version: "entradas@3",
+  documentos_periodo: 3,
+  documentos_emitidos: 2,
+  documentos_recibidos: 1,
   regimen_sat: "612",
   regimen: "PF_GENERAL_MENSUAL",
   criterio: "flujo_de_efectivo",
@@ -219,5 +222,20 @@ describe("determinismo y obsolescencia", () => {
     expect((calcularPreliminar(a).resultado!.isr as any).base).not.toBe(
       (calcularPreliminar(b).resultado!.isr as any).base,
     );
+  });
+});
+
+describe("periodo sin evidencia documental", () => {
+  it("un periodo sin comprobantes NO es evaluable: ausencia de datos no es “impuestos en cero”", () => {
+    const e = con({ documentos_periodo: 0, documentos_emitidos: 0, documentos_recibidos: 0 });
+    const r = calcularPreliminar(e);
+    expect(r.evaluable).toBe(false);
+    expect(r.resultado).toBeNull();
+    expect(motivos(e)).toContain("sin_documentos");
+  });
+
+  it("con al menos un comprobante reconocido vuelve a ser evaluable", () => {
+    const r = calcularPreliminar(con({ documentos_periodo: 1, documentos_recibidos: 1 }));
+    expect(r.evaluable).toBe(true);
   });
 });

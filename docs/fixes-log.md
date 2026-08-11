@@ -1271,3 +1271,23 @@ por API) aparecieron cuatro defectos reales que ninguna prueba anterior detectab
 Las bitácoras inmutables aceptan borrado únicamente cuando el despacho está
 marcado como sandbox, lo que permite residuo cero en la purga sin debilitar la
 inmutabilidad de los expedientes reales (verificado: residuo 0).
+
+## Cierre 2026-07 — documentos invisibles, pólizas y "impuestos en cero"
+
+1. **Documentos sin XML quedaban fuera del cierre.** Los CFDI entregados por el
+   SAT se guardan con encabezado canónico pero sin `xml_raw`, y el reproceso los
+   saltaba dejando `periodo` en NULL (7 de 7 comprobantes del RFC GORJ781201BK3
+   en 2026-07). Nuevo `src/lib/cierre/reparacion.ts`: deriva periodo, dirección y
+   clase documental desde el encabezado ya almacenado, marcando el detalle como
+   NO reconstruible. Se aplica en `reprocesarPeriodo` y como red de seguridad al
+   ingerir.
+2. **Pólizas: "column orden does not exist".** `getPolizasPeriodo` y la UI
+   consultaban `poliza_renglones.orden` y `polizas.folio`; el esquema real usa
+   `numero` y `referencia`.
+3. **Impuestos en cero marcados como evaluables.** `cierre_entradas_fiscales@3`
+   expone `documentos_periodo/emitidos/recibidos` y el motor falla CERRADA con
+   el motivo `sin_documentos`: la ausencia de evidencia ya no se presenta como
+   impuesto de $0. Botón de registro bloqueado y trigger en base que rechaza
+   resultados sin documentos.
+4. **Huella vs sello.** El manifiesto distingue "huella provisional" de
+   "sello vigente" con explicación visible.

@@ -40,7 +40,9 @@ export const getPolizasPeriodo = createServerFn({ method: "POST" })
 
     const { data: polizas, error } = await supabase
       .from("polizas")
-      .select("id, folio, tipo, fecha, concepto, estado, version, origen, input_hash, idempotency_key, rechazo_motivo, aprobada_at, created_at, poliza_renglones(id, orden, cuenta, cuenta_nombre, concepto, cargo_centavos, abono_centavos)")
+      // Columnas CANÓNICAS reales: la póliza usa `referencia` (no "folio") y el
+      // renglón se ordena por `numero` (no "orden").
+      .select("id, referencia, tipo, fecha, concepto, estado, version, origen, input_hash, idempotency_key, rechazo_motivo, aprobada_at, created_at, poliza_renglones(id, numero, cuenta, cuenta_nombre, concepto, cargo_centavos, abono_centavos)")
       .eq("cliente_id", scope.cliente_id)
       .eq("periodo", data.periodo)
       .order("fecha", { ascending: true })

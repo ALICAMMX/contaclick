@@ -80,6 +80,10 @@ export function ImpuestosPreliminares({ clienteId, periodo }: { clienteId: strin
   const res = preliminar.resultado;
   const esPm = preliminar.regimen === "PM_GENERAL";
   const esResico = preliminar.regimen === "PF_RESICO";
+  // Sin comprobantes reconocidos no se muestran importes: cero significaría
+  // afirmar una base gravable que la evidencia no sostiene.
+  const sinEvidencia = (entradas.documentos_periodo ?? 0) <= 0;
+  const bloqueado = !preliminar.evaluable;
 
   return (
     <section className="rounded-xl border border-border bg-card p-5 space-y-4">
@@ -99,11 +103,15 @@ export function ImpuestosPreliminares({ clienteId, periodo }: { clienteId: strin
         </Badge>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-xs">
-        <Dato titulo="Ingresos cobrados" valor={moneda(entradas.ingresos_cobrados_centavos)} />
-        <Dato titulo="Deducciones pagadas" valor={moneda(entradas.deducciones_pagadas_centavos)} />
-        <Dato titulo="IVA trasladado cobrado" valor={moneda(entradas.iva_trasladado_cobrado_centavos)} />
-        <Dato titulo="IVA acreditable pagado" valor={moneda(entradas.iva_acreditable_pagado_centavos)} />
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 text-xs">
+        <Dato
+          titulo="Comprobantes reconocidos"
+          valor={`${entradas.documentos_periodo ?? 0} (${entradas.documentos_emitidos ?? 0} emitidos · ${entradas.documentos_recibidos ?? 0} recibidos)`}
+        />
+        <Dato titulo="Ingresos cobrados" valor={sinEvidencia ? "—" : moneda(entradas.ingresos_cobrados_centavos)} />
+        <Dato titulo="Deducciones pagadas" valor={sinEvidencia ? "—" : moneda(entradas.deducciones_pagadas_centavos)} />
+        <Dato titulo="IVA trasladado cobrado" valor={sinEvidencia ? "—" : moneda(entradas.iva_trasladado_cobrado_centavos)} />
+        <Dato titulo="IVA acreditable pagado" valor={sinEvidencia ? "—" : moneda(entradas.iva_acreditable_pagado_centavos)} />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -163,10 +171,16 @@ export function ImpuestosPreliminares({ clienteId, periodo }: { clienteId: strin
       )}
 
       <div className="flex items-center gap-3 flex-wrap">
-        <Button size="sm" onClick={() => m.mutate()} disabled={m.isPending}>
+        <Button size="sm" onClick={() => m.mutate()} disabled={m.isPending || bloqueado}>
           {m.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Calculator className="h-4 w-4 mr-2" />}
           Calcular y registrar preliminar
         </Button>
+        {bloqueado && (
+          <span className="text-[11px] text-warning">
+            No evaluable: resuelva primero los pendientes listados arriba. El servidor también rechaza el
+            registro mientras la evidencia esté incompleta.
+          </span>
+        )}
         <p className="text-[11px] text-muted-foreground italic">
           Estimación interna de apoyo. No es una declaración ni sustituye el cálculo oficial ante el SAT.
         </p>

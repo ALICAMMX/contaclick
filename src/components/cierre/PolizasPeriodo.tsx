@@ -107,7 +107,9 @@ export function PolizasPeriodo({ clienteId, periodo }: { clienteId: string; peri
       ) : (
         <ul className="space-y-2">
           {polizas.map((p) => {
-            const renglones = (p.poliza_renglones ?? []) as any[];
+            const renglones = ((p.poliza_renglones ?? []) as any[])
+              .slice()
+              .sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0));
             const cargos = renglones.reduce((s, r) => s + (r.cargo_centavos ?? 0), 0);
             return (
               <li key={p.id} className="rounded-lg border border-border p-3 space-y-2">

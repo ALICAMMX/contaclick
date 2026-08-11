@@ -55,6 +55,10 @@ export type EntradasFiscales = {
   regimen_sat: string | null;
   regimen: RegimenCierre | null;
   criterio: string;
+  /** Comprobantes RECONOCIDOS en el periodo (con periodo derivado). */
+  documentos_periodo?: number;
+  documentos_emitidos?: number;
+  documentos_recibidos?: number;
   /** Flujo de efectivo (PF/RESICO): PUE del periodo + complementos de pago. */
   ingresos_cobrados_centavos: number;
   ingresos_pue_centavos: number;
@@ -134,6 +138,17 @@ export function calcularPreliminar(
 ): ResultadoPreliminar {
   const motivos: MotivoNoEvaluable[] = [];
   const regimen = entradas.regimen ?? regimenDesdeSat(entradas.regimen_sat);
+
+  // FALLA CERRADA: un periodo sin comprobantes reconocidos no es "cero
+  // impuestos"; es ausencia de evidencia. Nunca se convierte en importe.
+  const documentos = entradas.documentos_periodo ?? 0;
+  if (documentos <= 0) {
+    motivos.push({
+      codigo: "sin_documentos",
+      detalle:
+        "El periodo no tiene comprobantes reconocidos. Sin evidencia documental no hay base gravable que calcular: la ausencia de datos no equivale a impuestos en cero.",
+    });
+  }
 
   if (!regimen) {
     motivos.push({
