@@ -21,6 +21,7 @@ import {
   type SelloNormativo,
 } from "@/lib/fiscal/normativa/motor";
 import type { Regimen } from "@/lib/fiscal/normativa/catalogo";
+import { construirSelloNormativo, type SelloNormativoCanonico } from "./sello-normativo";
 
 /** Valor serializable JSON (los resultados viajan por RPC y se sellan). */
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [k: string]: JsonValue };
@@ -100,7 +101,8 @@ export type ResultadoPreliminar = {
   motivos: MotivoNoEvaluable[];
   regimen: RegimenCierre | null;
   motor_version: string;
-  normativa: { isr: SelloNormativo | null; iva: SelloNormativo | null };
+  /** Objeto canónico de conjuntos normativos aplicados (con su SHA-256 real). */
+  normativa: SelloNormativoCanonico;
   normativa_sha256: string;
   fundamentos: string[];
   fuentes: string[];
@@ -202,7 +204,7 @@ export function calcularPreliminar(
     motivos,
     regimen,
     motor_version: MOTOR_IMPUESTOS_VERSION,
-    normativa: { isr: null, iva: null },
+    normativa: { sello_version: "sello-normativo@1", conjuntos: [], sha256: "" },
     normativa_sha256: "",
     fundamentos: [],
     fuentes: [],
