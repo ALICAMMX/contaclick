@@ -1681,11 +1681,14 @@ export type Database = {
           motor_version: string
           normativa: Json
           normativa_sha256: string
+          obsoleto_at: string | null
+          obsoleto_motivo: string | null
           periodo: string
           regimen: string
           resultado: Json
           solicitado_en: string
           solicitado_por: string | null
+          vigente: boolean
         }
         Insert: {
           calculado_por?: string | null
@@ -1701,11 +1704,14 @@ export type Database = {
           motor_version: string
           normativa?: Json
           normativa_sha256: string
+          obsoleto_at?: string | null
+          obsoleto_motivo?: string | null
           periodo: string
           regimen: string
           resultado?: Json
           solicitado_en?: string
           solicitado_por?: string | null
+          vigente?: boolean
         }
         Update: {
           calculado_por?: string | null
@@ -1721,11 +1727,14 @@ export type Database = {
           motor_version?: string
           normativa?: Json
           normativa_sha256?: string
+          obsoleto_at?: string | null
+          obsoleto_motivo?: string | null
           periodo?: string
           regimen?: string
           resultado?: Json
           solicitado_en?: string
           solicitado_por?: string | null
+          vigente?: boolean
         }
         Relationships: [
           {
@@ -6270,6 +6279,10 @@ export type Database = {
         Returns: Json
       }
       cierre_entradas_fiscales: {
+        Args: { _cliente_id: string; _periodo: string }
+        Returns: Json
+      }
+      cierre_entradas_fiscales_base: {
         Args: { _cliente_id: string; _periodo: string }
         Returns: Json
       }
