@@ -7,7 +7,7 @@
 import { describe, expect, it } from "vitest";
 import { calcularYRegistrar, leerParametrosPrevios } from "./impuestos.puente";
 import { calcularPreliminar, type EntradasFiscales } from "./impuestos";
-import { calcularIsrPfMensual, calcularIva } from "@/lib/fiscal/normativa/motor";
+import { calcularIsrPf, calcularIva } from "@/lib/fiscal/normativa/motor";
 
 const ENTRADAS: EntradasFiscales = {
   periodo: "2026-01",
@@ -67,19 +67,26 @@ describe("puente fiscal del cierre", () => {
     expect(sb.registros).toHaveLength(1);
 
     // Cálculo independiente con los motores reales.
-    const isr = calcularIsrPfMensual(
-      { ingresos_centavos: 15_000_00, deducciones_centavos: 5_000_00, retenciones_centavos: 0 },
-      "2026-01",
-    );
-    const iva = calcularIva(
-      { trasladado_centavos: 2_400_00, acreditable_centavos: 800_00, retenido_centavos: 0 },
-      "2026-01",
-    );
+    const isr = calcularIsrPf({
+      periodo: "2026-01",
+      ingresos: 15_000,
+      deducciones: 5_000,
+      retenciones: 0,
+      pagosProvisionalesAnteriores: 0,
+    });
+    const iva = calcularIva({
+      periodo: "2026-01",
+      ivaTrasladado: 2_400,
+      ivaAcreditable: 800,
+      ivaRetenido: 0,
+      saldoAFavorAnterior: 0,
+    });
+    const cent = (n: number) => Math.round(n * 100);
 
     const registrado = sb.registros[0]._resultado;
-    expect(registrado.isr_a_cargo_centavos).toBe(isr.isr_a_cargo_centavos);
-    expect(registrado.iva_a_cargo_centavos).toBe(iva.iva_a_cargo_centavos);
-    expect(registrado.iva_a_favor_centavos).toBe(iva.iva_a_favor_centavos);
+    expect(registrado.isr_a_cargo_centavos).toBe(cent(isr.isrACargo));
+    expect(registrado.iva_a_cargo_centavos).toBe(cent(iva.ivaACargo));
+    expect(registrado.iva_a_favor_centavos).toBe(cent(iva.ivaAFavor));
     // Un impuesto real, no un cero de relleno.
     expect(registrado.isr_a_cargo_centavos).toBeGreaterThan(0);
   });
