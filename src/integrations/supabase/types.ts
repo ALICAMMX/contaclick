@@ -6262,6 +6262,10 @@ export type Database = {
         Returns: Json
       }
       cierre_canonizar: { Args: { _v: Json }; Returns: string }
+      cierre_decision_evidencia_suficiente: {
+        Args: { _cfdi_id: string }
+        Returns: boolean
+      }
       cierre_diag_bancos: {
         Args: { _cliente_id: string; _periodo: string }
         Returns: Json
