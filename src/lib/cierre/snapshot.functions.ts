@@ -12,6 +12,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 import { assertClienteScope } from "@/lib/despacho/scope";
+import { calcularYRegistrar, leerParametrosPrevios } from "./impuestos.puente";
 import type { EstadoCierre } from "./snapshot";
 
 const periodoSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Periodo con formato AAAA-MM");
@@ -62,6 +63,17 @@ export const sellarCierre = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const scope = await assertClienteScope(supabase, userId, data.cliente_id);
 
+    // El preliminar fiscal se recalcula con los MOTORES REALES antes de sellar:
+    // así el sello no puede quedarse con un cálculo anterior a la evidencia. Si
+    // no es evaluable no se registra nada y el propio RPC bloquea el sellado.
+    const parametros = await leerParametrosPrevios(supabase, scope.cliente_id, data.periodo);
+    const puenteFiscal = await calcularYRegistrar(
+      supabase,
+      scope.cliente_id,
+      data.periodo,
+      parametros,
+    );
+
     const { data: sello, error } = await supabase.rpc("cierre_sellar_manifiesto", {
       _cliente_id: scope.cliente_id,
       _periodo: data.periodo,
@@ -69,7 +81,16 @@ export const sellarCierre = createServerFn({ method: "POST" })
       _idempotency_key: data.idempotency_key ?? undefined,
     });
     if (error) throw new Error(error.message);
-    return { ok: true, sello };
+    return {
+      ok: true,
+      sello,
+      fiscal: {
+        recalculado: puenteFiscal.registrado,
+        motivo: puenteFiscal.motivo ?? null,
+        motor_version: puenteFiscal.preliminar.motor_version,
+        normativa_sha256: puenteFiscal.preliminar.normativa_sha256,
+      },
+    };
   });
 
 /** Manifiesto verificable del periodo, tal como lo reconstruye la base. */

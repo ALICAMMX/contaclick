@@ -23,7 +23,9 @@ export type EstadoEtapa =
   | "lista"
   | "aprobada"
   | "reabierta"
-  | "no_aplica";
+  | "no_aplica"
+  /** El diagnóstico no pudo ejecutarse: falla CERRADA, nunca se pinta como listo. */
+  | "no_comprobada";
 
 export type Madurez = "operativa" | "beta" | "en_construccion";
 
@@ -216,6 +218,7 @@ export function tonoEstado(estado: EstadoEtapa): "exito" | "advertencia" | "peli
     case "lista":
       return "exito";
     case "bloqueada":
+    case "no_comprobada":
       return "peligro";
     case "reabierta":
     case "en_proceso":
@@ -235,4 +238,37 @@ export const ETIQUETA_ESTADO: Record<EstadoEtapa, string> = {
   aprobada: "Aprobada",
   reabierta: "Reabierta",
   no_aplica: "No aplica",
+  no_comprobada: "No comprobada",
 };
+
+/** Explicación honesta de cada estado (tooltips y ayuda contextual). */
+export const DESCRIPCION_ESTADO: Record<EstadoEtapa, string> = {
+  no_iniciada: "Todavía no hay evidencia evaluada para esta etapa.",
+  en_proceso: "Hay evidencia, pero faltan criterios por cumplir.",
+  bloqueada: "Un criterio duro impide avanzar hasta corregirlo.",
+  lista: "El evaluador determinista confirmó los criterios con la evidencia actual.",
+  aprobada: "Confirmada por una persona además del evaluador.",
+  reabierta: "Cambió la evidencia después de declararse: debe reevaluarse.",
+  no_aplica: "Excluida del periodo con motivo documentado.",
+  no_comprobada:
+    "El diagnóstico no pudo ejecutarse. No se afirma nada sobre esta etapa y el periodo no puede sellarse.",
+};
+
+/** Estados que impiden sellar el periodo mientras persistan. */
+export const ESTADOS_BLOQUEAN_SELLO: EstadoEtapa[] = ["bloqueada", "no_comprobada"];
+
+/**
+ * FALLA CERRADA. Si el diagnóstico de una etapa no pudo ejecutarse, esa etapa se
+ * proyecta como `no_comprobada` aunque en la base siga guardado un estado
+ * anterior más favorable: nunca se afirma un resultado que no se pudo comprobar.
+ * Pura y determinista para poder probarse sin base de datos.
+ */
+export function aplicarFallaCerrada(
+  estados: Partial<Record<EtapaId, EstadoEtapa>>,
+  etapasFallidas: EtapaId[],
+): Partial<Record<EtapaId, EstadoEtapa>> {
+  if (etapasFallidas.length === 0) return { ...estados };
+  const salida = { ...estados };
+  for (const id of etapasFallidas) salida[id] = "no_comprobada";
+  return salida;
+}
