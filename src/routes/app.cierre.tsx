@@ -73,7 +73,7 @@ function CierrePage() {
   const { cliente } = useActiveCliente();
   const qc = useQueryClient();
   const { periodo: periodoUrl } = Route.useSearch();
-  const [periodo, setPeriodo] = useState(() => periodoUrl ?? desplazar(periodoActual(), -1));
+  const [periodo, setPeriodo] = useState<string>(() => periodoUrl ?? desplazar(periodoActual(), -1));
   const [decision, setDecision] = useState<{ id: string; titulo: string; accion: "resuelta" | "aceptada" } | null>(null);
   const [motivo, setMotivo] = useState("");
   const [motivoReapertura, setMotivoReapertura] = useState("");
