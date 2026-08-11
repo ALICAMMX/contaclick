@@ -474,6 +474,85 @@ export type Database = {
           },
         ]
       }
+      cfdi_decisiones_fiscales: {
+        Row: {
+          cfdi_id: string
+          cliente_id: string
+          created_at: string
+          decidida_at: string
+          decidida_por: string | null
+          decision: string
+          despacho_id: string
+          fundamento: string | null
+          id: string
+          motivo: string | null
+          origen: string
+          periodo: string
+          porcentaje_deducible: number
+          sugerencia_ia: Json | null
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          cfdi_id: string
+          cliente_id: string
+          created_at?: string
+          decidida_at?: string
+          decidida_por?: string | null
+          decision: string
+          despacho_id: string
+          fundamento?: string | null
+          id?: string
+          motivo?: string | null
+          origen?: string
+          periodo: string
+          porcentaje_deducible?: number
+          sugerencia_ia?: Json | null
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          cfdi_id?: string
+          cliente_id?: string
+          created_at?: string
+          decidida_at?: string
+          decidida_por?: string | null
+          decision?: string
+          despacho_id?: string
+          fundamento?: string | null
+          id?: string
+          motivo?: string | null
+          origen?: string
+          periodo?: string
+          porcentaje_deducible?: number
+          sugerencia_ia?: Json | null
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cfdi_decisiones_fiscales_cfdi_id_fkey"
+            columns: ["cfdi_id"]
+            isOneToOne: true
+            referencedRelation: "cfdi_xml"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cfdi_decisiones_fiscales_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cfdi_decisiones_fiscales_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cfdi_impuestos: {
         Row: {
           base: number | null
@@ -1463,6 +1542,66 @@ export type Database = {
           },
           {
             foreignKeyName: "cierre_reaperturas_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cierre_snapshots: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          despacho_id: string
+          etapas: Json
+          evaluador_version: string | null
+          huella: string
+          id: string
+          motivo: string
+          periodo: string
+          resumen: Json
+          sellado_por: string | null
+          version: number
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          despacho_id: string
+          etapas?: Json
+          evaluador_version?: string | null
+          huella: string
+          id?: string
+          motivo: string
+          periodo: string
+          resumen?: Json
+          sellado_por?: string | null
+          version?: number
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          despacho_id?: string
+          etapas?: Json
+          evaluador_version?: string | null
+          huella?: string
+          id?: string
+          motivo?: string
+          periodo?: string
+          resumen?: Json
+          sellado_por?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cierre_snapshots_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cierre_snapshots_despacho_id_fkey"
             columns: ["despacho_id"]
             isOneToOne: false
             referencedRelation: "despachos"
@@ -5884,6 +6023,37 @@ export type Database = {
           etapa: string
           version: number
         }[]
+      }
+      cierre_sellar: {
+        Args: {
+          _cliente_id: string
+          _etapas: Json
+          _evaluador_version: string
+          _huella: string
+          _motivo: string
+          _periodo: string
+          _resumen: Json
+        }
+        Returns: {
+          cliente_id: string
+          created_at: string
+          despacho_id: string
+          etapas: Json
+          evaluador_version: string | null
+          huella: string
+          id: string
+          motivo: string
+          periodo: string
+          resumen: Json
+          sellado_por: string | null
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "cierre_snapshots"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       delete_email: {
         Args: { message_id: number; queue_name: string }
