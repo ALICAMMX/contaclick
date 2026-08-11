@@ -74,9 +74,9 @@ export const ETAPAS: Etapa[] = [
     acciones: ["Revisar deducibilidad", "Registrar decisión humana"],
     limitaciones: [
       "El validador de deducibilidad usa IA: sus salidas son sugerencias, nunca decisiones.",
-      "La persistencia estructurada de decisiones fiscales aún no está implementada (etapa manual).",
+      "Sin evidencia SAT vigente el comprobante sólo puede quedar “por revisar” o no deducible.",
     ],
-    madurez: "beta",
+    madurez: "operativa",
     permiteNoAplica: false,
   },
   {
