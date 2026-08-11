@@ -1023,6 +1023,13 @@ export type Database = {
           normalizacion_version: string | null
           normalizado_at: string | null
           origen: string | null
+          original_almacenado_at: string | null
+          original_bucket: string | null
+          original_bytes: number | null
+          original_error: string | null
+          original_estado: string
+          original_path: string | null
+          original_sha256: string | null
           periodo: string | null
           proveedor: string | null
           rfc_emisor: string
@@ -1073,6 +1080,13 @@ export type Database = {
           normalizacion_version?: string | null
           normalizado_at?: string | null
           origen?: string | null
+          original_almacenado_at?: string | null
+          original_bucket?: string | null
+          original_bytes?: number | null
+          original_error?: string | null
+          original_estado?: string
+          original_path?: string | null
+          original_sha256?: string | null
           periodo?: string | null
           proveedor?: string | null
           rfc_emisor: string
@@ -1123,6 +1137,13 @@ export type Database = {
           normalizacion_version?: string | null
           normalizado_at?: string | null
           origen?: string | null
+          original_almacenado_at?: string | null
+          original_bucket?: string | null
+          original_bytes?: number | null
+          original_error?: string | null
+          original_estado?: string
+          original_path?: string | null
+          original_sha256?: string | null
           periodo?: string | null
           proveedor?: string | null
           rfc_emisor?: string

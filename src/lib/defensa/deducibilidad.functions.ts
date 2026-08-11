@@ -79,7 +79,7 @@ export const runDeducibilityCheck = createServerFn({ method: "POST" })
     if (!rfcCli) return empty;
 
     const CAMPOS =
-      "id, uuid, fecha, rfc_emisor, nombre_emisor, total, subtotal, iva_trasladado, iva_retenido, metodo_pago, forma_pago, uso_cfdi, estatus_sat, estatus_sat_fuente, tipo_cfdi, detalle_reconstruible, normalizacion_version";
+      "id, uuid, fecha, rfc_emisor, nombre_emisor, total, subtotal, iva_trasladado, iva_retenido, metodo_pago, forma_pago, uso_cfdi, estatus_sat, estatus_sat_fuente, tipo_cfdi, detalle_reconstruible, normalizacion_version, original_estado";
 
     // Alcance mensual: exactamente el mismo universo del Centro de cierre
     // (comprobantes recibidos del periodo). Alcance anual: gastos del ejercicio.
@@ -116,6 +116,8 @@ export const runDeducibilityCheck = createServerFn({ method: "POST" })
         estatus_sat_fuente: (c.estatus_sat_fuente as string) ?? null,
         detalle_reconstruible: c.detalle_reconstruible as boolean | null,
         normalizacion_version: (c.normalizacion_version as string) ?? null,
+        original_estado: (c as any).original_estado as string | null,
+
       });
       if (ev.suficiente) {
         list.push(c);

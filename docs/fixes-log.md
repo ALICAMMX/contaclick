@@ -1291,3 +1291,41 @@ inmutabilidad de los expedientes reales (verificado: residuo 0).
    resultados sin documentos.
 4. **Huella vs sello.** El manifiesto distingue "huella provisional" de
    "sello vigente" con explicación visible.
+
+## Almacenamiento durable del XML original (Descarga Masiva SAT)
+
+1. **Causa raíz de los XML perdidos.** El paquete del SAT se abría, se leía el
+   XML a texto y ese texto sólo llegaba a `cfdi_xml.xml_raw` si la
+   normalización terminaba bien; cualquier fallo lo descartaba en silencio y el
+   ZIP nunca se conservaba. Resultado real: **26,870 comprobantes sin XML
+   original** y ninguno con `xml_raw`. Esos documentos NO son recuperables: se
+   marcaron con honestidad como `historico_no_disponible` (nunca como
+   disponibles) y el cierre los sigue tratando como "recuperados desde
+   encabezado".
+2. **Archivero privado.** Nuevo bucket `cfdi-originales`, sin políticas de
+   lectura/escritura para `anon` ni `authenticated`: no hay URL pública, no se
+   puede listar ni inferir la existencia de un objeto. Ruta basada sólo en
+   identificadores internos: `despacho_id/cliente_id/AAAA/MM/UUID.xml`.
+3. **Metadatos canónicos.** `cfdi_xml` guarda archivero, ruta, SHA-256, tamaño,
+   fecha y estado (`pendiente | almacenado | verificado | fallido |
+   conflicto_integridad | historico_no_disponible`).
+4. **Validación antes de guardar.** Se rechazan archivos vacíos, no XML,
+   mayores a 4 MB, con `DOCTYPE`/`ENTITY` (XXE) y entradas de ZIP con escapes de
+   directorio o rutas absolutas.
+5. **Orden y atomicidad.** Storage y base no comparten transacción: primero se
+   sube, se RELEE y se compara la huella; sólo entonces se crea el registro. Si
+   la inserción falla, el objeto huérfano se retira. Un paquete no se marca
+   procesado si algún XML no pudo conservarse: la solicitud vuelve a
+   `pendiente` y el ciclo lo reintenta.
+6. **Idempotencia e integridad.** Mismo UUID y misma huella = se reutiliza el
+   objeto. Mismo UUID con contenido distinto = **no se sobrescribe**, se marca
+   `conflicto_integridad` y el documento queda en revisión.
+7. **Reproceso y cierre.** `reprocesarPeriodo` relee el original del archivero
+   cuando la base no conserva el XML, y la evidencia de deducibilidad acepta
+   como "XML original disponible" únicamente el estado `verificado`.
+8. **Descarga controlada.** `descargarOriginalCfdi` exige sesión y pertenencia
+   al expediente, emite enlace firmado de 60 s y registra la descarga en
+   `audit_logs`.
+9. **Pruebas.** `src/lib/cfdi/original.test.ts` (21 casos, sintéticos, sin red):
+   ruta sin datos personales, validaciones, caída de Storage, reintento
+   idempotente, conflicto de integridad y relectura verificada.

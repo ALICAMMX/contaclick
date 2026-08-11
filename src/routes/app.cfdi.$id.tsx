@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, Trash2, Sparkles, Loader2, AlertTriangle, CheckCircle2, FileText } from "lucide-react";
+import { ArrowLeft, Trash2, Sparkles, Loader2, AlertTriangle, CheckCircle2, FileText, Download } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 
@@ -9,10 +9,17 @@ import { Button } from "@/components/ui/button";
 import { RichMarkdown } from "@/components/RichMarkdown";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { getCfdi, deleteCfdi, analyzeCfdiAI } from "@/lib/cfdi/cfdi.functions";
+import { descargarOriginalCfdi } from "@/lib/cfdi/original.functions";
+import {
+  ETIQUETA_ESTADO_ORIGINAL,
+  originalVerificado,
+  type EstadoOriginal,
+} from "@/lib/cfdi/original";
 import { analyzeCfdi as runRiskAnalysis, maxLevel } from "@/lib/cfdi/risk";
 import { parseCfdi } from "@/lib/tools/cfdi-parser";
 import { FindingExplain, LegalFooter } from "@/components/FindingExplain";
 import { metaForCfdi } from "@/lib/legal/referencias";
+
 
 export const Route = createFileRoute("/app/cfdi/$id")({
   component: CfdiDetail,
@@ -55,6 +62,21 @@ function CfdiDetail() {
     },
   });
 
+  // Descarga controlada del original: el servidor valida expediente, firma un
+  // enlace de vida corta y registra la descarga en la bitácora.
+  const descarga = useServerFn(descargarOriginalCfdi);
+  const descargaM = useMutation({
+    mutationFn: async () => {
+      const cliente = (data?.cfdi as { cliente_id?: string } | undefined)?.cliente_id;
+      if (!cliente) throw new Error("Expediente no identificado.");
+      return descarga({ data: { cliente_id: cliente, cfdi_id: id } });
+    },
+    onSuccess: (r) => {
+      window.location.href = r.url;
+    },
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "No se pudo descargar el original"),
+  });
+
   if (isLoading) return <div className="py-20 text-center text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline mr-2" />Cargando…</div>;
   if (!data) return null;
 
@@ -66,6 +88,8 @@ function CfdiDetail() {
     uso_cfdi: string | null; moneda: string | null; estatus_sat: string | null;
     archivo_path: string | null;
   };
+  const estadoOriginal = (c as { original_estado?: string | null }).original_estado ?? null;
+
 
   // Reconstruimos un objeto compatible con el motor de riesgo a partir de los datos guardados
   const findings = runRiskAnalysis({
@@ -100,10 +124,28 @@ function CfdiDetail() {
         <Link to="/app/cfdi" className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
           <ArrowLeft className="h-4 w-4" /> Volver
         </Link>
-        <Button variant="ghost" size="sm" onClick={() => setConfirmOpen(true)} disabled={delM.isPending}>
-          <Trash2 className="h-4 w-4 mr-1" /> Eliminar
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Descarga controlada: enlace firmado de vida corta, nunca público. */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => descargaM.mutate()}
+            disabled={!originalVerificado(estadoOriginal) || descargaM.isPending}
+            title={
+              originalVerificado(estadoOriginal)
+                ? "Descarga el XML tal como lo entregó el SAT"
+                : ETIQUETA_ESTADO_ORIGINAL[(estadoOriginal ?? "pendiente") as EstadoOriginal] ??
+                  "Sin original disponible"
+            }
+          >
+            <Download className="h-4 w-4 mr-1" /> XML original
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setConfirmOpen(true)} disabled={delM.isPending}>
+            <Trash2 className="h-4 w-4 mr-1" /> Eliminar
+          </Button>
+        </div>
       </div>
+
 
       <ConfirmDeleteDialog
         open={confirmOpen}
@@ -148,6 +190,11 @@ function CfdiDetail() {
           <Field label="Fecha timbrado" value={fmtDate(c.fecha_timbrado)} />
           <Field label="Moneda" value={c.moneda ?? "MXN"} />
           <Field label="Estatus SAT" value={c.estatus_sat ?? "desconocido"} />
+          <Field
+            label="XML original"
+            value={ETIQUETA_ESTADO_ORIGINAL[(estadoOriginal ?? "pendiente") as EstadoOriginal] ?? "Sin información"}
+          />
+
         </Card>
         <Card title="Pago">
           <Field label="Método" value={c.metodo_pago ?? "—"} />
