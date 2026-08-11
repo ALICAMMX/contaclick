@@ -100,10 +100,28 @@ function CfdiDetail() {
         <Link to="/app/cfdi" className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
           <ArrowLeft className="h-4 w-4" /> Volver
         </Link>
-        <Button variant="ghost" size="sm" onClick={() => setConfirmOpen(true)} disabled={delM.isPending}>
-          <Trash2 className="h-4 w-4 mr-1" /> Eliminar
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Descarga controlada: enlace firmado de vida corta, nunca público. */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => descargaM.mutate()}
+            disabled={!originalVerificado(estadoOriginal) || descargaM.isPending}
+            title={
+              originalVerificado(estadoOriginal)
+                ? "Descarga el XML tal como lo entregó el SAT"
+                : ETIQUETA_ESTADO_ORIGINAL[(estadoOriginal ?? "pendiente") as EstadoOriginal] ??
+                  "Sin original disponible"
+            }
+          >
+            <Download className="h-4 w-4 mr-1" /> XML original
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setConfirmOpen(true)} disabled={delM.isPending}>
+            <Trash2 className="h-4 w-4 mr-1" /> Eliminar
+          </Button>
+        </div>
       </div>
+
 
       <ConfirmDeleteDialog
         open={confirmOpen}
