@@ -72,7 +72,16 @@ export function SelloCierre({ clienteId, periodo }: { clienteId: string; periodo
             </p>
           </div>
         </div>
-        <Badge variant="outline" className="font-mono text-[10px]">huella {d.huella_actual.slice(0, 12)}…</Badge>
+        <div className="text-right space-y-1">
+          <Badge variant="outline" className="font-mono text-[10px]">
+            {sellado ? "sello vigente" : "huella provisional"} {d.huella_actual.slice(0, 12)}…
+          </Badge>
+          <p className="text-[10px] text-muted-foreground max-w-[16rem]">
+            {sellado
+              ? "Coincide con el último sello registrado del periodo."
+              : "Huella provisional del manifiesto: refleja la evidencia actual y NO significa que el periodo esté sellado."}
+          </p>
+        </div>
       </header>
 
       {obsoleto && (
