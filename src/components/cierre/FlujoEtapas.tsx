@@ -100,9 +100,20 @@ export function FlujoEtapas({ clienteId, periodo }: { clienteId: string; periodo
                 </p>
               )}
               {e.motivo && <p className="text-xs"><span className="text-muted-foreground">Motivo: </span>{e.motivo}</p>}
-              <ul className="text-xs text-muted-foreground space-y-1">
-                {e.criterios.slice(0, 3).map((c: string) => <li key={c}>· {c}</li>)}
-              </ul>
+              {e.criteriosPendientes.length > 0 ? (
+                <ul className="text-xs text-warning space-y-1">
+                  {e.criteriosPendientes.map((c) => <li key={c.codigo}>· Falta: {c.detalle}</li>)}
+                </ul>
+              ) : e.criteriosCumplidos.length > 0 ? (
+                <ul className="text-xs text-muted-foreground space-y-1">
+                  {e.criteriosCumplidos.map((c) => <li key={c.codigo}>· {c.detalle}</li>)}
+                </ul>
+              ) : (
+                <ul className="text-xs text-muted-foreground space-y-1">
+                  {e.criterios.slice(0, 3).map((c: string) => <li key={c}>· {c}</li>)}
+                </ul>
+              )}
+
               {e.limitaciones?.length > 0 && (
                 <p className="text-[11px] text-muted-foreground italic">{e.limitaciones[0]}</p>
               )}
