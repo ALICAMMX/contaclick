@@ -62,6 +62,21 @@ function CfdiDetail() {
     },
   });
 
+  // Descarga controlada del original: el servidor valida expediente, firma un
+  // enlace de vida corta y registra la descarga en la bitácora.
+  const descarga = useServerFn(descargarOriginalCfdi);
+  const descargaM = useMutation({
+    mutationFn: async () => {
+      const cliente = (data?.cfdi as { cliente_id?: string } | undefined)?.cliente_id;
+      if (!cliente) throw new Error("Expediente no identificado.");
+      return descarga({ data: { cliente_id: cliente, cfdi_id: id } });
+    },
+    onSuccess: (r) => {
+      window.location.href = r.url;
+    },
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "No se pudo descargar el original"),
+  });
+
   if (isLoading) return <div className="py-20 text-center text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline mr-2" />Cargando…</div>;
   if (!data) return null;
 
@@ -73,6 +88,8 @@ function CfdiDetail() {
     uso_cfdi: string | null; moneda: string | null; estatus_sat: string | null;
     archivo_path: string | null;
   };
+  const estadoOriginal = (c as { original_estado?: string | null }).original_estado ?? null;
+
 
   // Reconstruimos un objeto compatible con el motor de riesgo a partir de los datos guardados
   const findings = runRiskAnalysis({
