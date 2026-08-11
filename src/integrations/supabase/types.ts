@@ -1021,6 +1021,171 @@ export type Database = {
           },
         ]
       }
+      cierre_etapas: {
+        Row: {
+          aprobada_at: string | null
+          aprobada_por: string | null
+          cliente_id: string
+          cobertura: number | null
+          created_at: string
+          criterios_cumplidos: Json
+          criterios_pendientes: Json
+          despacho_id: string
+          estado: string
+          etapa: string
+          evaluador_version: string | null
+          id: string
+          idempotency_key: string | null
+          iniciada_at: string | null
+          input_hash: string | null
+          lista_at: string | null
+          motivo: string | null
+          periodo: string
+          resultado: Json
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          aprobada_at?: string | null
+          aprobada_por?: string | null
+          cliente_id: string
+          cobertura?: number | null
+          created_at?: string
+          criterios_cumplidos?: Json
+          criterios_pendientes?: Json
+          despacho_id: string
+          estado?: string
+          etapa: string
+          evaluador_version?: string | null
+          id?: string
+          idempotency_key?: string | null
+          iniciada_at?: string | null
+          input_hash?: string | null
+          lista_at?: string | null
+          motivo?: string | null
+          periodo: string
+          resultado?: Json
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          aprobada_at?: string | null
+          aprobada_por?: string | null
+          cliente_id?: string
+          cobertura?: number | null
+          created_at?: string
+          criterios_cumplidos?: Json
+          criterios_pendientes?: Json
+          despacho_id?: string
+          estado?: string
+          etapa?: string
+          evaluador_version?: string | null
+          id?: string
+          idempotency_key?: string | null
+          iniciada_at?: string | null
+          input_hash?: string | null
+          lista_at?: string | null
+          motivo?: string | null
+          periodo?: string
+          resultado?: Json
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cierre_etapas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cierre_etapas_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cierre_eventos: {
+        Row: {
+          actor_user_id: string | null
+          cliente_id: string
+          created_at: string
+          despacho_id: string
+          estado_anterior: string | null
+          estado_nuevo: string | null
+          etapa: string
+          evento: string
+          fuente: string | null
+          id: string
+          idempotency_key: string | null
+          input_hash: string | null
+          motivo: string | null
+          periodo: string
+          proceso: string | null
+          referencia_id: string | null
+          referencia_tipo: string | null
+          version: number | null
+        }
+        Insert: {
+          actor_user_id?: string | null
+          cliente_id: string
+          created_at?: string
+          despacho_id: string
+          estado_anterior?: string | null
+          estado_nuevo?: string | null
+          etapa: string
+          evento: string
+          fuente?: string | null
+          id?: string
+          idempotency_key?: string | null
+          input_hash?: string | null
+          motivo?: string | null
+          periodo: string
+          proceso?: string | null
+          referencia_id?: string | null
+          referencia_tipo?: string | null
+          version?: number | null
+        }
+        Update: {
+          actor_user_id?: string | null
+          cliente_id?: string
+          created_at?: string
+          despacho_id?: string
+          estado_anterior?: string | null
+          estado_nuevo?: string | null
+          etapa?: string
+          evento?: string
+          fuente?: string | null
+          id?: string
+          idempotency_key?: string | null
+          input_hash?: string | null
+          motivo?: string | null
+          periodo?: string
+          proceso?: string | null
+          referencia_id?: string | null
+          referencia_tipo?: string | null
+          version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cierre_eventos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cierre_eventos_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cierre_excepcion_bitacora: {
         Row: {
           accion: string
@@ -5636,6 +5801,52 @@ export type Database = {
           reset_at: string
         }[]
       }
+      cierre_etapa_transicion: {
+        Args: {
+          _cliente_id: string
+          _cobertura?: number
+          _criterios_cumplidos?: Json
+          _criterios_pendientes?: Json
+          _estado: string
+          _etapa: string
+          _evaluador_version?: string
+          _fuente?: string
+          _idempotency_key?: string
+          _input_hash?: string
+          _motivo?: string
+          _periodo: string
+          _resultado?: Json
+        }
+        Returns: {
+          aprobada_at: string | null
+          aprobada_por: string | null
+          cliente_id: string
+          cobertura: number | null
+          created_at: string
+          criterios_cumplidos: Json
+          criterios_pendientes: Json
+          despacho_id: string
+          estado: string
+          etapa: string
+          evaluador_version: string | null
+          id: string
+          idempotency_key: string | null
+          iniciada_at: string | null
+          input_hash: string | null
+          lista_at: string | null
+          motivo: string | null
+          periodo: string
+          resultado: Json
+          updated_at: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "cierre_etapas"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       cierre_excepcion_cerrar_automatica: {
         Args: { _actor?: string; _ids: string[]; _motivo?: string }
         Returns: {
@@ -5657,6 +5868,22 @@ export type Database = {
           _titulo: string
         }
         Returns: string
+      }
+      cierre_reabrir_cascada: {
+        Args: {
+          _cliente_id: string
+          _disparador: string
+          _idempotency_key?: string
+          _motivo: string
+          _periodo: string
+          _referencia_id?: string
+          _referencia_tipo?: string
+        }
+        Returns: {
+          estado_anterior: string
+          etapa: string
+          version: number
+        }[]
       }
       delete_email: {
         Args: { message_id: number; queue_name: string }
