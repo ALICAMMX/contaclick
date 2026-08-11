@@ -99,11 +99,15 @@ export function ImpuestosPreliminares({ clienteId, periodo }: { clienteId: strin
         </Badge>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-xs">
-        <Dato titulo="Ingresos cobrados" valor={moneda(entradas.ingresos_cobrados_centavos)} />
-        <Dato titulo="Deducciones pagadas" valor={moneda(entradas.deducciones_pagadas_centavos)} />
-        <Dato titulo="IVA trasladado cobrado" valor={moneda(entradas.iva_trasladado_cobrado_centavos)} />
-        <Dato titulo="IVA acreditable pagado" valor={moneda(entradas.iva_acreditable_pagado_centavos)} />
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 text-xs">
+        <Dato
+          titulo="Comprobantes reconocidos"
+          valor={`${entradas.documentos_periodo ?? 0} (${entradas.documentos_emitidos ?? 0} emitidos · ${entradas.documentos_recibidos ?? 0} recibidos)`}
+        />
+        <Dato titulo="Ingresos cobrados" valor={sinEvidencia ? "—" : moneda(entradas.ingresos_cobrados_centavos)} />
+        <Dato titulo="Deducciones pagadas" valor={sinEvidencia ? "—" : moneda(entradas.deducciones_pagadas_centavos)} />
+        <Dato titulo="IVA trasladado cobrado" valor={sinEvidencia ? "—" : moneda(entradas.iva_trasladado_cobrado_centavos)} />
+        <Dato titulo="IVA acreditable pagado" valor={sinEvidencia ? "—" : moneda(entradas.iva_acreditable_pagado_centavos)} />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
