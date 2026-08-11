@@ -26,6 +26,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { FlujoEtapas } from "@/components/cierre/FlujoEtapas";
+import { ClasificacionFiscal } from "@/components/cierre/ClasificacionFiscal";
+import { SelloCierre } from "@/components/cierre/SelloCierre";
 
 export const Route = createFileRoute("/app/cierre")({
   component: CierrePage,
