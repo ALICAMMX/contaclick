@@ -8,8 +8,8 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 import { assertClienteScope } from "@/lib/despacho/scope";
-import { EVALUADOR_VERSION, ORDEN_ETAPAS, type EstadoEtapa, type EtapaId } from "./flujo";
-import { bloqueosDeCierre, huellaCierre, type EtapaSnapshot, type ResumenCierre } from "./snapshot";
+import { ORDEN_ETAPAS, type EstadoEtapa, type EtapaId } from "./flujo";
+import type { EtapaSnapshot, ResumenCierre } from "./snapshot";
 
 const periodoSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Periodo con formato AAAA-MM");
 
