@@ -2,12 +2,17 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
+import { resolverAlcance, PERIODO_RE, type Alcance } from "./alcance";
+import { evaluarEvidencia, estadoAnalisis, type EstadoAnalisis } from "@/lib/cierre/evidencia";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const Schema = z.object({
   cliente_id: z.string().min(1),
   year: z.number().int().min(2018).max(2100).optional(),
+  /** Alcance mensual del cierre (AAAA-MM). Cuando viene, manda sobre el año. */
+  periodo: z.string().regex(PERIODO_RE).optional(),
+  origen: z.enum(["cierre", "directo"]).optional(),
 });
 
 export type DeducFinding = {
@@ -22,6 +27,19 @@ export type DeducFinding = {
   severidad: "alta" | "media" | "baja";
   detalle: string;
 };
+
+export type DeducNoEvaluable = {
+  cfdi_id: string;
+  uuid: string;
+  fecha: string | null;
+  rfc_emisor: string;
+  nombre_emisor: string | null;
+  total: number;
+  estatus_sat: string;
+  xml_original_disponible: boolean;
+  limitaciones: string[];
+};
+
 
 const RFC_EXTRANJERO = "XEXX010101000";
 const RFC_PUBLICO_GENERAL = "XAXX010101000";
