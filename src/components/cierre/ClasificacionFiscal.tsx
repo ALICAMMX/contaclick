@@ -10,7 +10,7 @@ import {
   registrarDecisionFiscal,
   evaluarEtapaClasificacion,
 } from "@/lib/cierre/decisiones.functions";
-import { DECISIONES, type Decision } from "@/lib/cierre/decisiones";
+import { DECISIONES, validarDecision, type Decision } from "@/lib/cierre/decisiones";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
