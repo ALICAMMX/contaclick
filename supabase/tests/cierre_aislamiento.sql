@@ -42,9 +42,10 @@ BEGIN
   INSERT INTO public.clientes (id, despacho_id, user_id, razon_social, rfc) VALUES
     (v_cA, v_dA, v_uA, '__aisl_cliente_A__', 'AAA010101AAA'),
     (v_cB, v_dB, v_uB, '__aisl_cliente_B__', 'BBB020202BBB');
-  INSERT INTO public.user_memberships (user_id, despacho_id, activo) VALUES
-    (v_uA, v_dA, true), (v_uB, v_dB, true)
+  INSERT INTO public.user_memberships (user_id, despacho_id, estado) VALUES
+    (v_uA, v_dA, 'activo'), (v_uB, v_dB, 'activo')
     ON CONFLICT DO NOTHING;
+
 
   -- ── 1. El usuario A NO alcanza el expediente de B en ninguna función ───────
   PERFORM set_config('request.jwt.claims',
