@@ -490,6 +490,7 @@ export type Database = {
           motivo: string | null
           origen: string
           periodo: string
+          porcentaje_acreditable_iva: number | null
           porcentaje_deducible: number
           sugerencia_ia: Json | null
           updated_at: string
@@ -510,6 +511,7 @@ export type Database = {
           motivo?: string | null
           origen?: string
           periodo: string
+          porcentaje_acreditable_iva?: number | null
           porcentaje_deducible?: number
           sugerencia_ia?: Json | null
           updated_at?: string
@@ -530,6 +532,7 @@ export type Database = {
           motivo?: string | null
           origen?: string
           periodo?: string
+          porcentaje_acreditable_iva?: number | null
           porcentaje_deducible?: number
           sugerencia_ia?: Json | null
           updated_at?: string
@@ -1670,6 +1673,7 @@ export type Database = {
           created_at: string
           despacho_id: string
           entradas: Json
+          escritor: string
           fuentes: Json
           fundamentos: Json
           id: string
@@ -1680,6 +1684,8 @@ export type Database = {
           periodo: string
           regimen: string
           resultado: Json
+          solicitado_en: string
+          solicitado_por: string | null
         }
         Insert: {
           calculado_por?: string | null
@@ -1687,6 +1693,7 @@ export type Database = {
           created_at?: string
           despacho_id: string
           entradas?: Json
+          escritor?: string
           fuentes?: Json
           fundamentos?: Json
           id?: string
@@ -1697,6 +1704,8 @@ export type Database = {
           periodo: string
           regimen: string
           resultado?: Json
+          solicitado_en?: string
+          solicitado_por?: string | null
         }
         Update: {
           calculado_por?: string | null
@@ -1704,6 +1713,7 @@ export type Database = {
           created_at?: string
           despacho_id?: string
           entradas?: Json
+          escritor?: string
           fuentes?: Json
           fundamentos?: Json
           id?: string
@@ -1714,6 +1724,8 @@ export type Database = {
           periodo?: string
           regimen?: string
           resultado?: Json
+          solicitado_en?: string
+          solicitado_por?: string | null
         }
         Relationships: [
           {
@@ -6417,7 +6429,7 @@ export type Database = {
         }
         Returns: Json
       }
-      cierre_registrar_resultado_fiscal: {
+      cierre_registrar_resultado_fiscal_srv: {
         Args: {
           _cliente_id: string
           _entradas: Json
@@ -6430,6 +6442,7 @@ export type Database = {
           _periodo: string
           _regimen: string
           _resultado: Json
+          _solicitado_por: string
         }
         Returns: Json
       }
