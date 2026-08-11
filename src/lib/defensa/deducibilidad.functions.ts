@@ -83,7 +83,7 @@ export const runDeducibilityCheck = createServerFn({ method: "POST" })
 
     // Alcance mensual: exactamente el mismo universo del Centro de cierre
     // (comprobantes recibidos del periodo). Alcance anual: gastos del ejercicio.
-    const base =
+    const consulta =
       alcance.modo === "mensual"
         ? supabase
             .from("cfdi_xml")
@@ -100,7 +100,7 @@ export const runDeducibilityCheck = createServerFn({ method: "POST" })
             .gte("fecha", alcance.desde)
             .lt("fecha", alcance.hasta);
 
-    const { data: cfdis } = await base;
+    const { data: cfdis } = await consulta;
 
     const universo = cfdis ?? [];
     if (universo.length === 0) return empty;
