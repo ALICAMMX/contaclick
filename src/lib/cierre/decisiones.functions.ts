@@ -19,14 +19,16 @@ import {
   type CfdiClasificable,
   type DecisionRegistrada,
 } from "./decisiones";
+import { decisionesPermitidas, evaluarEvidencia } from "./evidencia";
 
 const periodoSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Periodo con formato AAAA-MM");
 
 const CAMPOS_CFDI =
-  "id, uuid, fecha, total, rfc_emisor, nombre_emisor, clase_documental, estatus_sat";
+  "id, uuid, fecha, total, rfc_emisor, nombre_emisor, clase_documental, estatus_sat, estatus_sat_fuente, detalle_reconstruible, normalizacion_version";
 
 /** Tamaño de página de la lectura exhaustiva. NO es un tope del universo. */
 const PAGINA = 1000;
+
 
 /**
  * Lectura exhaustiva y paginada del universo del periodo. Nunca trunca: la
