@@ -312,13 +312,24 @@ export const runDeducibilityCheck = createServerFn({ method: "POST" })
 
     return {
       findings,
+      no_evaluables: noEvaluables,
       stats: {
-        total_cfdi: list.length,
+        total_cfdi: universo.length,
+        evaluables: list.length,
+        no_evaluables: noEvaluables.length,
         hallazgos: findings.length,
         monto_riesgo: montoRiesgo,
         no_deducibles: noDeducibles,
         revisar,
       },
+      estado: estadoAnalisis({
+        analizado: true,
+        total: universo.length,
+        evaluables: list.length,
+        hallazgos: findings.length,
+      }),
+      alcance,
       year,
     };
   });
+
