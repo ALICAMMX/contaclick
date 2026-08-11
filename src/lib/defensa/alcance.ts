@@ -2,7 +2,7 @@
 // anual (acceso directo a la herramienta). El alcance define el rango de fechas
 // exigido en la consulta; no es un filtro visual.
 
-import { rangoUtcDePeriodo } from "@/lib/cierre/periodo";
+import { rangoMensual } from "@/lib/cierre/periodo";
 
 export type Alcance =
   | { modo: "mensual"; periodo: string; desde: string; hasta: string; etiqueta: string }
