@@ -66,12 +66,16 @@ export const sellarCierre = createServerFn({ method: "POST" })
     // El preliminar fiscal se recalcula con los MOTORES REALES antes de sellar:
     // así el sello no puede quedarse con un cálculo anterior a la evidencia. Si
     // no es evaluable no se registra nada y el propio RPC bloquea el sellado.
+    // Lectura con la sesión del usuario, escritura con el proceso confiable.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const parametros = await leerParametrosPrevios(supabase, scope.cliente_id, data.periodo);
     const puenteFiscal = await calcularYRegistrar(
       supabase,
+      supabaseAdmin,
       scope.cliente_id,
       data.periodo,
       parametros,
+      userId,
     );
 
     const { data: sello, error } = await supabase.rpc("cierre_sellar_manifiesto", {

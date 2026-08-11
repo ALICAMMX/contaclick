@@ -21,6 +21,7 @@ import {
   type SelloNormativo,
 } from "@/lib/fiscal/normativa/motor";
 import type { Regimen } from "@/lib/fiscal/normativa/catalogo";
+import { construirSelloNormativo, type SelloNormativoCanonico } from "./sello-normativo";
 
 /** Valor serializable JSON (los resultados viajan por RPC y se sellan). */
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [k: string]: JsonValue };
@@ -54,9 +55,12 @@ export type EntradasFiscales = {
   regimen_sat: string | null;
   regimen: RegimenCierre | null;
   criterio: string;
+  /** Flujo de efectivo (PF/RESICO): PUE del periodo + complementos de pago. */
   ingresos_cobrados_centavos: number;
   ingresos_pue_centavos: number;
   ingresos_ppd_centavos: number;
+  /** Base nominal acumulada del ejercicio (art. 14 LISR, personas morales). */
+  ingresos_nominales_acumulados_centavos?: number;
   iva_trasladado_cobrado_centavos: number;
   deducciones_pagadas_centavos: number;
   deducciones_pue_centavos: number;
@@ -67,11 +71,18 @@ export type EntradasFiscales = {
   faltantes: {
     comprobantes_sin_estatus_sat: number;
     recibidos_sin_decision: number;
+    /** Informativo: una PPD sin complemento NO es un error por sí misma. */
     ppd_sin_complemento: number;
+    cancelados?: number;
+    recibidos_sin_regla_iva?: number;
+    ppd_pagado_sin_complemento?: number;
+    sin_tipo_cambio?: number;
+    complementos_duplicados?: number;
   };
   evaluable: boolean;
   input_hash: string;
 };
+
 
 /** Parámetros humanos que la evidencia no puede deducir. */
 export type ParametrosFiscales = {
@@ -90,7 +101,8 @@ export type ResultadoPreliminar = {
   motivos: MotivoNoEvaluable[];
   regimen: RegimenCierre | null;
   motor_version: string;
-  normativa: { isr: SelloNormativo | null; iva: SelloNormativo | null };
+  /** Objeto canónico de conjuntos normativos aplicados (con su SHA-256 real). */
+  normativa: SelloNormativoCanonico;
   normativa_sha256: string;
   fundamentos: string[];
   fuentes: string[];
@@ -142,26 +154,57 @@ export function calcularPreliminar(
       detalle: `${f.recibidos_sin_decision} comprobantes recibidos sin decisión de deducibilidad.`,
     });
   }
-  if (f.ppd_sin_complemento > 0) {
+  // Una PPD sin complemento NO bloquea: puede seguir legítimamente pendiente de
+  // cobro. Bloquea sólo cuando ya existe un movimiento bancario CONCILIADO y
+  // confirmado sin su complemento, porque entonces falta evidencia obligatoria.
+  if ((f.ppd_pagado_sin_complemento ?? 0) > 0) {
     motivos.push({
-      codigo: "ppd_sin_complemento",
-      detalle: `${f.ppd_sin_complemento} comprobantes en parcialidades (PPD) sin complemento de pago: el ingreso cobrado no puede determinarse.`,
+      codigo: "ppd_pagado_sin_complemento",
+      detalle: `${f.ppd_pagado_sin_complemento} comprobantes en parcialidades con cobro o pago bancario confirmado y sin complemento de pago: falta evidencia obligatoria.`,
     });
   }
-  if (regimen === "PM_GENERAL" && (parametros.coeficiente_utilidad ?? null) == null) {
+  if ((f.recibidos_sin_regla_iva ?? 0) > 0) {
     motivos.push({
-      codigo: "coeficiente_utilidad_ausente",
-      detalle:
-        "El pago provisional de persona moral exige el coeficiente de utilidad del ejercicio anterior (art. 14 LISR). Captúrelo para poder calcular.",
+      codigo: "iva_sin_regla_propia",
+      detalle: `${f.recibidos_sin_regla_iva} comprobantes con deducibilidad parcial y sin regla propia de acreditamiento de IVA. El porcentaje de ISR no se aplica automáticamente al IVA.`,
     });
   }
+  if ((f.sin_tipo_cambio ?? 0) > 0) {
+    motivos.push({
+      codigo: "tipo_cambio_ausente",
+      detalle: `${f.sin_tipo_cambio} comprobantes en moneda extranjera sin tipo de cambio verificable.`,
+    });
+  }
+  if ((f.complementos_duplicados ?? 0) > 0) {
+    motivos.push({
+      codigo: "complementos_duplicados",
+      detalle: `${f.complementos_duplicados} documentos pagados con complementos repetidos en la misma parcialidad.`,
+    });
+  }
+  if (regimen === "PM_GENERAL") {
+    if ((parametros.coeficiente_utilidad ?? null) == null) {
+      motivos.push({
+        codigo: "coeficiente_utilidad_ausente",
+        detalle:
+          "El pago provisional de persona moral exige el coeficiente de utilidad del ejercicio anterior (art. 14 LISR). Captúrelo para poder calcular.",
+      });
+    }
+    if (entradas.ingresos_nominales_acumulados_centavos == null) {
+      motivos.push({
+        codigo: "ingresos_nominales_ausentes",
+        detalle:
+          "El pago provisional de persona moral se determina sobre ingresos nominales acumulados del ejercicio; la evidencia no los entrega. No se asume el flujo de efectivo de persona física.",
+      });
+    }
+  }
+
 
   const vacio: ResultadoPreliminar = {
     evaluable: false,
     motivos,
     regimen,
     motor_version: MOTOR_IMPUESTOS_VERSION,
-    normativa: { isr: null, iva: null },
+    normativa: { sello_version: "sello-normativo@1", conjuntos: [], sha256: "" },
     normativa_sha256: "",
     fundamentos: [],
     fuentes: [],
@@ -213,9 +256,11 @@ export function calcularPreliminar(
         };
       }
     } else {
+      // Persona moral: art. 14 LISR sobre ingresos NOMINALES ACUMULADOS del
+      // ejercicio, nunca sobre el flujo de efectivo de persona física.
       const r = calcularIsrPm({
         periodo: entradas.periodo,
-        ingresosNominales: pesos(entradas.ingresos_cobrados_centavos),
+        ingresosNominales: pesos(entradas.ingresos_nominales_acumulados_centavos!),
         coeficienteUtilidad: parametros.coeficiente_utilidad!,
         pagosProvisionalesAnteriores: pesos(parametros.pagos_provisionales_anteriores_centavos ?? 0),
         retenciones: pesos(entradas.isr_retenido_centavos),
@@ -223,7 +268,7 @@ export function calcularPreliminar(
       isr = r as unknown as Record<string, JsonValue>;
       selloIsr = r.normativa;
       isrACargo = centavos(r.isrACargo);
-      fundamentos.push("LISR art. 14 — pago provisional de personas morales con coeficiente de utilidad.");
+      fundamentos.push("LISR art. 14 — pago provisional de personas morales sobre ingresos nominales acumulados y coeficiente de utilidad.");
     }
 
     const iva = calcularIva({
@@ -233,21 +278,27 @@ export function calcularPreliminar(
       ivaRetenido: pesos(entradas.iva_retenido_centavos),
       saldoAFavorAnterior: pesos(parametros.saldo_iva_a_favor_anterior_centavos ?? 0),
     });
-    fundamentos.push("LIVA arts. 1, 1-A y 5-D — IVA del periodo determinado por flujo de efectivo.");
+    fundamentos.push("LIVA arts. 1, 1-A y 5-D — IVA del periodo determinado por flujo de efectivo, con regla propia de acreditamiento.");
 
     const ivaACargo = centavos(iva.ivaACargo);
     const ivaAFavor = centavos(iva.ivaAFavor);
-    const sha = `${selloIsr!.hash}:${iva.normativa.hash}`;
+    // Sello normativo real: objeto canónico de los conjuntos aplicados + SHA-256
+    // recalculable. No es la concatenación de dos huellas.
+    const selloCanonico = construirSelloNormativo([
+      { proposito: "isr", sello: selloIsr! },
+      { proposito: "iva", sello: iva.normativa },
+    ]);
 
     return {
       evaluable: true,
       motivos: [],
       regimen,
       motor_version: MOTOR_IMPUESTOS_VERSION,
-      normativa: { isr: selloIsr, iva: iva.normativa },
-      normativa_sha256: sha,
+      normativa: selloCanonico,
+      normativa_sha256: selloCanonico.sha256,
       fundamentos,
       fuentes: [selloIsr!.url, iva.normativa.url].filter(Boolean),
+
       resultado: {
         naturaleza: "estimacion_interna",
         advertencia: ADVERTENCIA,

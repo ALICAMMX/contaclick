@@ -13,7 +13,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:pac-sql": "PAC_SQL_TESTS=1 vitest run src/lib/sat/pac-regression.test.ts",
-    "predeploy": "vitest run"
+    "test:aislamiento": "node scripts/regresion-aislamiento.mjs",
+    "test:aislamiento:local": "node scripts/regresion-aislamiento.mjs --local",
+    "predeploy": "vitest run && node scripts/regresion-aislamiento.mjs"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.25.5",

@@ -80,7 +80,17 @@ export const calcularImpuestosPreliminar = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const scope = await assertClienteScope(supabase, userId, data.cliente_id);
     const parametros = (data.parametros ?? {}) as ParametrosFiscales;
-    const puente = await calcularYRegistrar(supabase, scope.cliente_id, data.periodo, parametros);
+    // Alcance verificado con la sesión del usuario; la escritura la hace el
+    // proceso interno de confianza, nunca el navegador.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const puente = await calcularYRegistrar(
+      supabase,
+      supabaseAdmin,
+      scope.cliente_id,
+      data.periodo,
+      parametros,
+      userId,
+    );
     if (!puente.registrado) {
       return {
         registrado: false as const,
