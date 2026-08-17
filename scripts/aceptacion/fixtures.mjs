@@ -356,6 +356,12 @@ export async function crearEscenario({ periodo = "2026-01", regimen = "612" } = 
 }
 
 const TABLAS_PURGA = [
+  "conciliacion_bitacora",
+  "conciliacion_score_historico",
+  "conciliacion_incidencias",
+  "conciliacion_grupos",
+  "conciliacion_corridas",
+  "conciliacion_importaciones",
   "cierre_eventos",
   "cierre_snapshots",
   "cierre_reaperturas",

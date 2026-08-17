@@ -135,10 +135,14 @@ async function main() {
     const totMov = await api.contar("movimientos_bancarios", `cliente_id=eq.${a.clienteId}`);
     const dupResp = await api.rest(
       "GET",
-      `movimientos_bancarios?cliente_id=eq.${a.clienteId}&select=id,fecha,descripcion,cargo,abono,hash`,
+      `movimientos_bancarios?cliente_id=eq.${a.clienteId}&select=id,fecha,descripcion,cargo,abono`,
     );
     const porHash = new Map();
-    for (const m of dupResp.cuerpo ?? []) porHash.set(m.hash, (porHash.get(m.hash) ?? 0) + 1);
+    // Operación idéntica = misma fecha, concepto e importe (la referencia bancaria difiere).
+    for (const m of dupResp.cuerpo ?? []) {
+      const k = `${m.fecha}|${m.descripcion}|${m.cargo}|${m.abono}`;
+      porHash.set(k, (porHash.get(k) ?? 0) + 1);
+    }
     const gemelos = [...porHash.values()].filter((n) => n === 2).length;
     paso(3, "97 movimientos y las dos operaciones idénticas conservadas", totMov === 97 && gemelos === 1,
       "97 movimientos y 1 par idéntico conservado (2 filas)", `movimientos=${totMov}, pares idénticos=${gemelos}`,
