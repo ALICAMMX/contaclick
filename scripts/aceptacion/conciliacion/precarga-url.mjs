@@ -5,11 +5,7 @@ import { plugin } from "bun";
 plugin({
   name: "vite-url-imports",
   setup(build) {
-    build.onResolve({ filter: /\?url$/ }, (args) => ({
-      path: args.path,
-      namespace: "vite-url",
-    }));
-    build.onLoad({ filter: /.*/, namespace: "vite-url" }, (args) => ({
+    build.onLoad({ filter: /\?url$/ }, (args) => ({
       contents: `export default ${JSON.stringify(args.path.replace(/\?url$/, ""))};`,
       loader: "js",
     }));
