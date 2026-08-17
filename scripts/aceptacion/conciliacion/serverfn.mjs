@@ -47,7 +47,16 @@ export async function llamar(archivo, exportado, data, token) {
   }
 
   const json = JSON.parse(texto);
-  const valor = r.headers.get("x-tss-serialized") ? fromCrossJSON(json, { plugins: [] }) : json;
+  let valor = json;
+  if (r.headers.get("x-tss-serialized")) {
+    try {
+      valor = fromCrossJSON(json, { plugins: [] });
+    } catch {
+      // Respuesta de error del servidor: extraemos el mensaje sin deserializar.
+      const msg = JSON.stringify(json).match(/"s":"((?:[^"\\]|\\.)*)"/g) ?? [];
+      throw new Error(`[${r.status}] ${msg.join(" | ").slice(0, 600)}`);
+    }
+  }
   if (valor instanceof Error) throw valor;
   if (valor && typeof valor === "object" && valor.message && !r.ok) {
     throw new Error(String(valor.message));
