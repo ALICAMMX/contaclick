@@ -218,7 +218,7 @@ export const Route = createFileRoute("/api/public/hooks/sat-programaciones")({
             }
 
             lanzadas++;
-            const { ejecutarCorridaSat } = await import("@/lib/sat/sat-sync.functions");
+            const { ejecutarCorridaSat } = await import("@/lib/sat/corrida.server");
             const salida = await ejecutarCorridaSat({
               supabase,
               userId: actor,
