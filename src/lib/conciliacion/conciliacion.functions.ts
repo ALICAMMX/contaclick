@@ -343,17 +343,24 @@ export const runReconciliation = createServerFn({ method: "POST" })
     const inputHash = huellaEntrada(entrada, data.periodo);
     const idempotencyKey = `${ALGORITMO_VERSION}:${data.periodo}:${inputHash}`;
 
-    const { data: rpc, error: rpcErr } = await (supabase as any).rpc("conciliacion_ejecutar_corrida", {
+    // El escritor de corridas está revocado para el navegador: sólo el servidor
+    // interno (llave de servicio) puede invocarlo, y siempre con el actor real.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rpc, error: rpcErr } = await (supabaseAdmin as any).rpc("conciliacion_ejecutar_corrida", {
       _cliente_id: clienteId,
       _periodo: data.periodo,
+      _actor: context.userId,
       _idempotency_key: idempotencyKey,
       _input_hash: inputHash,
       _algoritmo_version: ALGORITMO_VERSION,
       _parametros: resultado.parametros,
+      _dias_ventana: resultado.parametros.dias_ventana,
       _grupos: resultado.grupos.map((g) => ({
+        tipo: g.tipo,
         movimiento_id: g.movimiento_id,
         cfdi_id: g.cfdi_id,
         estado: g.estado,
+        nivel_propuesta: g.nivel_propuesta,
         probabilidad_bp: g.probabilidad_bp,
         importe_banco_centavos: g.importe_banco_centavos,
         importe_cfdi_centavos: g.importe_cfdi_centavos,
@@ -364,6 +371,7 @@ export const runReconciliation = createServerFn({ method: "POST" })
       })),
     });
     if (rpcErr) throw new Error(rpcErr.message);
+
 
     return {
       periodo: data.periodo,
