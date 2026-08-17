@@ -467,15 +467,25 @@ export const getReconciliationStats = createServerFn({ method: "POST" })
       .from("conciliaciones")
       .select("movimiento_id, cfdi_id, estado_grupo, periodo")
       .eq("cliente_id", data.cliente_id);
+    let gruposQ = supabase
+      .from("conciliacion_grupos")
+      .select("id, estado, nivel_propuesta, confirmado_por, periodo")
+      .eq("cliente_id", data.cliente_id);
 
     if (data.periodo) {
       const { desde, hastaExclusivo } = rangoFechas(data.periodo);
       movQ = movQ.gte("fecha", desde).lt("fecha", hastaExclusivo);
       cfdiQ = cfdiQ.eq("periodo", data.periodo);
       miembroQ = miembroQ.eq("periodo", data.periodo);
+      gruposQ = gruposQ.eq("periodo", data.periodo);
     }
 
-    const [{ data: movs }, { data: cfdis }, { data: miembros }] = await Promise.all([movQ, cfdiQ, miembroQ]);
+    const [{ data: movs }, { data: cfdis }, { data: miembros }, { data: grupos }] = await Promise.all([
+      movQ,
+      cfdiQ,
+      miembroQ,
+      gruposQ,
+    ]);
 
     const evaluables = (movs ?? []).filter((m) => !m.no_fiscal && !m.ignorado_at);
     const ingresos = evaluables.reduce((a, m) => a + aCentavos(m.abono as number), 0);
@@ -484,14 +494,21 @@ export const getReconciliationStats = createServerFn({ method: "POST" })
     const porEstado = (estado: EstadoConciliacion) =>
       (miembros ?? []).filter((k) => String(k.estado_grupo) === estado);
 
+    // Sólo cuenta como conciliado lo confirmado por una persona identificada.
+    const gruposHumanos = new Set(
+      (grupos ?? []).filter((g) => g.estado === "confirmado" && g.confirmado_por).map((g) => g.id as string),
+    );
     const confirmados = porEstado("confirmado");
     const propuestos = porEstado("propuesto");
+    const altaConfianza = (grupos ?? []).filter(
+      (g) => g.estado === "propuesto" && g.nivel_propuesta === "automatica_alta_confianza",
+    ).length;
     const movConfirmados = new Set(confirmados.map((k) => k.movimiento_id).filter(Boolean));
     const cfdiConfirmados = new Set(confirmados.map((k) => k.cfdi_id).filter(Boolean));
 
     const sinCfdi = evaluables.filter((m) => !movConfirmados.has(m.id)).length;
     const cfdiSinPago = (cfdis ?? []).filter((c) => !cfdiConfirmados.has(c.id)).length;
-    // Cobertura operativa: movimientos confirmados / movimientos evaluables.
+    // Cobertura operativa: movimientos confirmados por persona / movimientos evaluables.
     const cobertura = evaluables.length ? Math.round((movConfirmados.size / evaluables.length) * 100) : 0;
 
     return {
@@ -502,8 +519,11 @@ export const getReconciliationStats = createServerFn({ method: "POST" })
       ingresos: ingresos / 100,
       egresos: egresos / 100,
       matched: movConfirmados.size,
+      /** Confirmaciones humanas: la única medida que el cierre reconoce. */
       confirmados: confirmados.length,
+      confirmaciones_humanas: gruposHumanos.size,
       propuestos: propuestos.length,
+      propuestas_alta_confianza: altaConfianza,
       rechazados: porEstado("rechazado").length,
       ignorados: porEstado("ignorado").length,
       sinCfdi,
@@ -516,6 +536,7 @@ export const getReconciliationStats = createServerFn({ method: "POST" })
       cobertura,
     };
   });
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Lectura de IA: sólo redacta un resumen; NUNCA decide coincidencias
