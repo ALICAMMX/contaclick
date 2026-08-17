@@ -523,11 +523,27 @@ async function main() {
       "pg_advisory_xact_lock / poliza_generar_borrador");
 
     // ── 30 · Reapertura pólizas → impuestos → cierre ────────────────────────
+    // Precondición: las etapas deben estar “listas” para poder reabrirse. Se
+    // siembran con el rol de servicio (fixture), no por el camino de usuario.
+    for (const etapa of ["polizas", "impuestos", "cierre"]) {
+      const upd = await api.rest("PATCH",
+        `cierre_etapas?cliente_id=eq.${a.clienteId}&periodo=eq.${PERIODO}&etapa=eq.${etapa}`,
+        { cuerpo: { estado: "lista" }, representar: true });
+      if (!(upd.cuerpo ?? []).length) {
+        await api.insertar("cierre_etapas", {
+          despacho_id: a.despachoId, cliente_id: a.clienteId, periodo: PERIODO, etapa,
+          estado: "lista", criterios_cumplidos: [], criterios_pendientes: [], resultado: {}, version: 1,
+        });
+      }
+    }
+    // Disparo real: rechazar la póliza aprobada reabre la cadena contable.
+    await llamar(POLIZAS, "rechazarPoliza",
+      { cliente_id: a.clienteId, poliza_id: aprobable.id, motivo: MOTIVO }, a.token);
     const etapas = (await api.rest("GET",
       `cierre_etapas?cliente_id=eq.${a.clienteId}&periodo=eq.${PERIODO}&select=etapa,estado`)).cuerpo ?? [];
     const eventos = (await api.rest("GET",
-      `cierre_eventos?cliente_id=eq.${a.clienteId}&periodo=eq.${PERIODO}&evento=eq.reapertura&select=etapa,disparador`)).cuerpo ?? [];
-    const alcanzadas = new Set(eventos.map((e) => e.etapa));
+      `cierre_eventos?cliente_id=eq.${a.clienteId}&periodo=eq.${PERIODO}&evento=eq.reapertura&select=etapa,fuente`)).cuerpo ?? [];
+    const alcanzadas = new Set((eventos ?? []).map((e) => e.etapa));
     const cerradas = etapas.filter((e) => ["polizas", "impuestos", "cierre"].includes(e.etapa) && e.estado === "aprobada");
     const ok30 = ["polizas", "impuestos", "cierre"].every((e) => alcanzadas.has(e)) && cerradas.length === 0;
     paso(30, "Cambiar evidencia o regla reabre pólizas, impuestos y cierre", ok30,

@@ -1419,3 +1419,10 @@ Estado: 21/30 casos verificados en verde (1–21). **Bloque 2 NO aceptado**:
 el caso 22 falla porque `aprobarPoliza` rechaza la póliza solicitada citando el
 identificador de OTRA póliza con cuenta por identificar (validación cruzada de
 borradores). Pendiente corregir y reanudar desde el caso 22.
+
+## 2026-08-17 · Bloque 2 · Aprobación de pólizas aislada por póliza objetivo
+- `poliza_exigir_cuadre` validaba la columna legada `polizas.cuenta` (siempre nula en el modelo canónico), bloqueando pólizas válidas. Ahora valida sólo los renglones de `NEW.id`.
+- `poliza_aprobar` cita el ID de la póliza solicitada en todos sus mensajes de bloqueo.
+- Políticas de `polizas`: UPDATE/DELETE directos quedan prohibidos cuando `estado = 'aprobada'`.
+- Nueva regresión: `scripts/aceptacion/polizas/regresion-aprobacion.mjs` (A válida + B con cuenta por identificar, en ambos órdenes de inserción).
+- E2E de pólizas: casos 1–30 en verde (`E2E_POLIZAS_RESULTADO=TODAS_PASARON`).
