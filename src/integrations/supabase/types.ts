@@ -376,39 +376,66 @@ export type Database = {
       catalogo_cuentas: {
         Row: {
           activa: boolean
+          actualizada_at: string | null
+          actualizada_por: string | null
           cliente_id: string
           codigo: string
+          codigo_normalizado: string | null
+          codigo_padre: string | null
           created_at: string
           created_by: string | null
           despacho_id: string
+          external_id: string | null
+          fuente: string
           id: string
+          import_hash: string | null
+          moneda: string
           naturaleza: string
+          nivel: number | null
           nombre: string
           tipo_sat: string | null
           updated_at: string
         }
         Insert: {
           activa?: boolean
+          actualizada_at?: string | null
+          actualizada_por?: string | null
           cliente_id: string
           codigo: string
+          codigo_normalizado?: string | null
+          codigo_padre?: string | null
           created_at?: string
           created_by?: string | null
           despacho_id: string
+          external_id?: string | null
+          fuente?: string
           id?: string
+          import_hash?: string | null
+          moneda?: string
           naturaleza: string
+          nivel?: number | null
           nombre: string
           tipo_sat?: string | null
           updated_at?: string
         }
         Update: {
           activa?: boolean
+          actualizada_at?: string | null
+          actualizada_por?: string | null
           cliente_id?: string
           codigo?: string
+          codigo_normalizado?: string | null
+          codigo_padre?: string | null
           created_at?: string
           created_by?: string | null
           despacho_id?: string
+          external_id?: string | null
+          fuente?: string
           id?: string
+          import_hash?: string | null
+          moneda?: string
           naturaleza?: string
+          nivel?: number | null
           nombre?: string
           tipo_sat?: string | null
           updated_at?: string
@@ -423,6 +450,69 @@ export type Database = {
           },
           {
             foreignKeyName: "catalogo_cuentas_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      catalogo_importaciones: {
+        Row: {
+          actor: string | null
+          actualizadas: number
+          altas: number
+          cliente_id: string
+          created_at: string
+          despacho_id: string
+          errores: number
+          filas: number
+          huella: string
+          id: string
+          modo: string
+          omitidas: number
+          reporte: Json
+        }
+        Insert: {
+          actor?: string | null
+          actualizadas?: number
+          altas?: number
+          cliente_id: string
+          created_at?: string
+          despacho_id: string
+          errores?: number
+          filas?: number
+          huella: string
+          id?: string
+          modo: string
+          omitidas?: number
+          reporte?: Json
+        }
+        Update: {
+          actor?: string | null
+          actualizadas?: number
+          altas?: number
+          cliente_id?: string
+          created_at?: string
+          despacho_id?: string
+          errores?: number
+          filas?: number
+          huella?: string
+          id?: string
+          modo?: string
+          omitidas?: number
+          reporte?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalogo_importaciones_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalogo_importaciones_despacho_id_fkey"
             columns: ["despacho_id"]
             isOneToOne: false
             referencedRelation: "despachos"
@@ -4702,6 +4792,120 @@ export type Database = {
           },
         ]
       }
+      reglas_concepto: {
+        Row: {
+          activa: boolean
+          actor: string | null
+          clave_prod_serv: string
+          cliente_id: string
+          created_at: string
+          cuenta: string
+          despacho_id: string
+          id: string
+          motivo: string | null
+          origen: string
+          patron_descripcion: string | null
+          rfc_contraparte: string | null
+          tipo_operacion: string
+          tratamiento_iva: string
+          updated_at: string
+          version: number
+          vigencia_desde: string
+          vigencia_hasta: string | null
+        }
+        Insert: {
+          activa?: boolean
+          actor?: string | null
+          clave_prod_serv: string
+          cliente_id: string
+          created_at?: string
+          cuenta: string
+          despacho_id: string
+          id?: string
+          motivo?: string | null
+          origen: string
+          patron_descripcion?: string | null
+          rfc_contraparte?: string | null
+          tipo_operacion: string
+          tratamiento_iva: string
+          updated_at?: string
+          version?: number
+          vigencia_desde: string
+          vigencia_hasta?: string | null
+        }
+        Update: {
+          activa?: boolean
+          actor?: string | null
+          clave_prod_serv?: string
+          cliente_id?: string
+          created_at?: string
+          cuenta?: string
+          despacho_id?: string
+          id?: string
+          motivo?: string | null
+          origen?: string
+          patron_descripcion?: string | null
+          rfc_contraparte?: string | null
+          tipo_operacion?: string
+          tratamiento_iva?: string
+          updated_at?: string
+          version?: number
+          vigencia_desde?: string
+          vigencia_hasta?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reglas_concepto_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reglas_concepto_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reglas_concepto_historial: {
+        Row: {
+          accion: string
+          actor: string | null
+          cliente_id: string
+          created_at: string
+          id: string
+          motivo: string | null
+          regla_id: string
+          snapshot: Json
+          version: number
+        }
+        Insert: {
+          accion: string
+          actor?: string | null
+          cliente_id: string
+          created_at?: string
+          id?: string
+          motivo?: string | null
+          regla_id: string
+          snapshot: Json
+          version: number
+        }
+        Update: {
+          accion?: string
+          actor?: string | null
+          cliente_id?: string
+          created_at?: string
+          id?: string
+          motivo?: string | null
+          regla_id?: string
+          snapshot?: Json
+          version?: number
+        }
+        Relationships: []
+      }
       reglas_contables: {
         Row: {
           activa: boolean
@@ -6627,6 +6831,33 @@ export type Database = {
     }
     Functions: {
       accept_invitation: { Args: { _token: string }; Returns: string }
+      catalogo_cuenta_desactivar: {
+        Args: { _cliente_id: string; _codigo: string }
+        Returns: Json
+      }
+      catalogo_cuenta_guardar: {
+        Args: {
+          _activa?: boolean
+          _agrupador_sat?: string
+          _cliente_id: string
+          _codigo: string
+          _codigo_padre?: string
+          _moneda?: string
+          _naturaleza: string
+          _nombre: string
+        }
+        Returns: Json
+      }
+      catalogo_importar_lote: {
+        Args: {
+          _cliente_id: string
+          _cuentas: Json
+          _huella: string
+          _modo: string
+        }
+        Returns: Json
+      }
+      cc_normalizar_codigo: { Args: { _c: string }; Returns: string }
       cfdi_normalizacion_reemplazar: {
         Args: { _cfdi_id: string; _payload: Json }
         Returns: Json
@@ -7200,6 +7431,36 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      regla_concepto_desactivar: {
+        Args: { _motivo: string; _regla_id: string }
+        Returns: Json
+      }
+      regla_concepto_guardar: {
+        Args: {
+          _clave_prod_serv: string
+          _cliente_id: string
+          _cuenta: string
+          _motivo: string
+          _origen?: string
+          _patron_descripcion?: string
+          _rfc_contraparte?: string
+          _tipo_operacion: string
+          _tratamiento_iva: string
+          _vigencia_desde: string
+          _vigencia_hasta?: string
+        }
+        Returns: Json
+      }
+      regla_concepto_resolver: {
+        Args: {
+          _clave_prod_serv: string
+          _cliente_id: string
+          _descripcion: string
+          _fecha: string
+          _rfc_contraparte: string
+        }
+        Returns: Json
       }
       validar_cupon: {
         Args: {
