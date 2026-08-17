@@ -119,7 +119,7 @@ export function resolverRango(
   return { desde: fmt(ini), hasta: fmt(hoy) };
 }
 
-function calcularProxima(frec: Frecuencia, base = new Date()): string | null {
+export function calcularProxima(frec: Frecuencia, base = new Date()): string | null {
   if (frec === "manual") return null;
   const d = new Date(base);
   if (frec === "diaria") d.setDate(d.getDate() + 1);

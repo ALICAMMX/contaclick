@@ -32,7 +32,7 @@ import {
   type Frecuencia,
 } from "@/lib/sat/sat-sync.functions";
 
-export export function fallo(e: FalloSatSync["error"]): FalloSatSync {
+export function fallo(e: FalloSatSync["error"]): FalloSatSync {
   return { ok: false, error: e };
 }
 
