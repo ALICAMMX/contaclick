@@ -277,7 +277,7 @@ export function escribir() {
 
   for (const c of cfdi) writeFileSync(join(SALIDA, "cfdi", `${c.id}.xml`), c.xml, "utf8");
   writeFileSync(join(SALIDA, "estado_cuenta.csv"), csvBancario(movimientos), "utf8");
-  xlsxBancario(movimientos.slice(0, 20), join(SALIDA, "estado_cuenta_secundario.xlsx"));
+  xlsxBancario(movimientos, join(SALIDA, "estado_cuenta.xlsx"));
 
   const sinXml = cfdi.map(({ xml, ...resto }) => resto);
   writeFileSync(join(SALIDA, "cfdi.json"), JSON.stringify(sinXml, null, 2));
