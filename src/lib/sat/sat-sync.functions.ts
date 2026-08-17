@@ -885,14 +885,34 @@ function fallo(e: FalloSatSync["error"]): FalloSatSync {
   return { ok: false, error: e };
 }
 
-export const runSyncNow = createServerFn({ method: "POST" })
-  .middleware([attachSupabaseAuth, requireSupabaseAuth])
-  .inputValidator((d: unknown) => RunSchema.parse(d))
-  .handler(async ({ data, context }): Promise<any> => {
-    const { supabase, userId } = context;
+/**
+ * NÚCLEO ÚNICO DE EJECUCIÓN DE CORRIDAS SAT.
+ *
+ * `runSyncNow` (manual) y el despachador de programaciones usan EXACTAMENTE
+ * esta función: mismo preflight, misma e.firma, mismo alcance, mismas cuotas,
+ * mismo candado de idempotencia, mismo proveedor, mismos estados y misma
+ * bitácora. No existe un segundo runner SAT.
+ */
+export async function ejecutarCorridaSat(args: {
+  supabase: any;
+  userId: string;
+  cliente_id: string;
+  origen: "manual" | "expediente" | "cron";
+  cascade?: boolean;
+  /** Ventana forzada por una programación; si falta se usa la del expediente. */
+  rangoOverride?: { desde: string; hasta: string } | null;
+}): Promise<any> {
+  {
+    const { supabase, userId } = args;
+    const data = {
+      cliente_id: args.cliente_id,
+      origen: args.origen,
+      cascade: args.cascade ?? true,
+    };
     const inicio = Date.now();
 
     const scope = await assertClienteScope(supabase as any, userId, data.cliente_id);
+
     const { data: cli } = await supabase
       .from("clientes")
       .select("id, rfc, razon_social, despacho_id")
@@ -935,7 +955,13 @@ export const runSyncNow = createServerFn({ method: "POST" })
 
     const proveedor = estado.proveedor;
     const meta = PROVEEDORES[proveedor];
-    const { desde, hasta } = estado.rango;
+    // La programación puede forzar la ventana; el resto del preflight (cuota,
+    // e.firma, candado, proveedor) es idéntico al de la ejecución manual.
+    const ventana =
+      args.rangoOverride && rangoValido(args.rangoOverride.desde, args.rangoOverride.hasta)
+        ? args.rangoOverride
+        : estado.rango;
+    const { desde, hasta } = ventana;
     const direcciones = estado.direcciones;
 
     // 2) Idempotencia: una sola corrida activa por proveedor+expediente+ventana.
@@ -1239,7 +1265,22 @@ export const runSyncNow = createServerFn({ method: "POST" })
         : "Solicitud enviada al SAT. La descarga continúa en segundo plano; puedes cerrar esta pantalla.",
       errores,
     };
-  });
+  }
+}
+
+export const runSyncNow = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) => RunSchema.parse(d))
+  .handler(async ({ data, context }): Promise<any> =>
+    ejecutarCorridaSat({
+      supabase: context.supabase,
+      userId: context.userId,
+      cliente_id: data.cliente_id,
+      origen: data.origen,
+      cascade: data.cascade,
+    }),
+  );
+
 
 /**
  * Recálculos posteriores a una descarga.

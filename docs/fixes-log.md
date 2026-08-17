@@ -1426,3 +1426,8 @@ borradores). Pendiente corregir y reanudar desde el caso 22.
 - Políticas de `polizas`: UPDATE/DELETE directos quedan prohibidos cuando `estado = 'aprobada'`.
 - Nueva regresión: `scripts/aceptacion/polizas/regresion-aprobacion.mjs` (A válida + B con cuenta por identificar, en ambos órdenes de inserción).
 - E2E de pólizas: casos 1–30 en verde (`E2E_POLIZAS_RESULTADO=TODAS_PASARON`).
+
+## Programación nocturna de Descargas SAT
+- Núcleo único `ejecutarCorridaSat`: el botón manual y el calendario usan el mismo preflight, e.firma, cuotas y bitácora.
+- Despachador global `/api/public/hooks/sat-programaciones` (pg_cron cada minuto), reclamo con `FOR UPDATE SKIP LOCKED`, tope de 3 corridas por tick y una sola ocurrencia recuperada.
+- Corregida la decisión de retraso: la tolerancia es el margen aceptado; la política `omitir` sólo aplica al superarla.
