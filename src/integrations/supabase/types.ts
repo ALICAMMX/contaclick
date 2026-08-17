@@ -6873,6 +6873,18 @@ export type Database = {
         Args: { _grupo_id: string; _motivo?: string }
         Returns: Json
       }
+      conciliacion_ejecutar_corrida: {
+        Args: {
+          _algoritmo_version: string
+          _cliente_id: string
+          _grupos: Json
+          _idempotency_key: string
+          _input_hash: string
+          _parametros: Json
+          _periodo: string
+        }
+        Returns: Json
+      }
       conciliacion_ignorar_movimiento: {
         Args: { _motivo: string; _movimiento_id: string; _no_fiscal?: boolean }
         Returns: Json
