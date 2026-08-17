@@ -204,8 +204,9 @@ async function main() {
     const intentoEdicion = await api.rest("PATCH", `conciliacion_bitacora?id=eq.${evento?.id}`, { cuerpo: { motivo: "alteración" } });
     const intentoBorrado = await api.rest("DELETE", `conciliacion_bitacora?id=eq.${evento?.id}`);
     const diagDespues = await api.rpc("cierre_diag_bancos", { _cliente_id: a.clienteId, _periodo: PERIODO });
-    const covAntes = diagAntes.cuerpo?.conciliados ?? diagAntes.cuerpo?.movimientos_conciliados ?? 0;
-    const covDespues = diagDespues.cuerpo?.conciliados ?? diagDespues.cuerpo?.movimientos_conciliados ?? 0;
+    // cierre_diag_bancos@5 publica la cobertura humana en resultado.movimientos_confirmados_por_persona.
+    const covAntes = diagAntes.cuerpo?.resultado?.movimientos_confirmados_por_persona ?? 0;
+    const covDespues = diagDespues.cuerpo?.resultado?.movimientos_confirmados_por_persona ?? 0;
     const ok9 = !!evento && evento.actor === a.userId && !intentoEdicion.ok && !intentoBorrado.ok && covDespues === covAntes + 1;
     paso(9, "Evento inmutable y cobertura bancaria actualizada", ok9,
       "evento con actor real, edición y borrado rechazados, conciliados +1",
