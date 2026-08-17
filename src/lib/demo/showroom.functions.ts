@@ -85,7 +85,6 @@ async function seedOneCliente(supabase: SupabaseClient, despacho_id: string, use
   // 5) CFDIs emitidos
   const cfdisRows: any[] = [];
   const conceptosRows: any[] = [];
-  const polizasRows: any[] = [];
   const cfdiByIndex: Array<{ id?: string; uuid: string; total: number; tipo: "I" | "E"; fecha: Date; emisor: string }> = [];
 
   for (let i = 0; i < perfil.cfdi_emitidos; i++) {
