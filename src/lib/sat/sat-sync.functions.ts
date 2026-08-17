@@ -885,14 +885,34 @@ function fallo(e: FalloSatSync["error"]): FalloSatSync {
   return { ok: false, error: e };
 }
 
-export const runSyncNow = createServerFn({ method: "POST" })
-  .middleware([attachSupabaseAuth, requireSupabaseAuth])
-  .inputValidator((d: unknown) => RunSchema.parse(d))
-  .handler(async ({ data, context }): Promise<any> => {
-    const { supabase, userId } = context;
+/**
+ * NÚCLEO ÚNICO DE EJECUCIÓN DE CORRIDAS SAT.
+ *
+ * `runSyncNow` (manual) y el despachador de programaciones usan EXACTAMENTE
+ * esta función: mismo preflight, misma e.firma, mismo alcance, mismas cuotas,
+ * mismo candado de idempotencia, mismo proveedor, mismos estados y misma
+ * bitácora. No existe un segundo runner SAT.
+ */
+export async function ejecutarCorridaSat(args: {
+  supabase: any;
+  userId: string;
+  cliente_id: string;
+  origen: "manual" | "expediente" | "cron";
+  cascade?: boolean;
+  /** Ventana forzada por una programación; si falta se usa la del expediente. */
+  rangoOverride?: { desde: string; hasta: string } | null;
+}): Promise<any> {
+  {
+    const { supabase, userId } = args;
+    const data = {
+      cliente_id: args.cliente_id,
+      origen: args.origen,
+      cascade: args.cascade ?? true,
+    };
     const inicio = Date.now();
 
     const scope = await assertClienteScope(supabase as any, userId, data.cliente_id);
+
     const { data: cli } = await supabase
       .from("clientes")
       .select("id, rfc, razon_social, despacho_id")
