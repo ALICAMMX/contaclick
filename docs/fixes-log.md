@@ -1329,3 +1329,22 @@ inmutabilidad de los expedientes reales (verificado: residuo 0).
 9. **Pruebas.** `src/lib/cfdi/original.test.ts` (21 casos, sintéticos, sin red):
    ruta sin datos personales, validaciones, caída de Storage, reintento
    idempotente, conflicto de integridad y relectura verificada.
+
+## Conciliación bancaria — Bloque 1: laboratorio sintético y pruebas SQL
+
+- Nuevo laboratorio reproducible en `scripts/aceptacion/conciliacion/`:
+  `generador.mjs` (semilla fija 20260817) produce 97 movimientos y 112 comprobantes
+  sintéticos (45 inequívocos, 20 con fecha desplazada 1–3 días, 10 con mismo importe
+  y distinta contraparte, 10 ambiguos, 10 movimientos sin comprobante, 2 operaciones
+  idénticas legítimas, 5 comprobantes sin movimiento), estado de cuenta CSV y XLSX,
+  y la verdad esperada en archivo separado que el motor nunca lee.
+- `laboratorio.mjs` ejecuta el motor real (`conciliacion-1a1@2`) leyendo el CSV y el
+  XLSX generados. Resultado: exactitud 102/102 (100%), precisión de propuestas de
+  alta confianza 100% (66 propuestas), 0 falsos positivos en casos ambiguos,
+  0 grupos confirmados por el motor y resultado idéntico al invertir el orden de lectura.
+- Documentos del laboratorio marcados `sintetico_no_verificado`: nunca se presentan
+  como vigentes ante el SAT.
+- Nuevas pruebas SQL en `supabase/tests/conciliacion_bloque1.sql` (BEGIN…ROLLBACK):
+  ataques de tenant cruzado, importe y periodo falsificados, estado `confirmado`
+  falsificado, idempotencia, bitácora inmutable, `confirmado` sin persona,
+  permisos del escritor y verificación de `bancos@5`.
