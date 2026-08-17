@@ -1398,3 +1398,24 @@ en esa tabla.
 - **Corrección de pólizas.** Editar un borrador ya no sobreescribe metadata:
   produce una nueva versión auditada con motivo.
 - Pruebas: 710 aprobadas (19 del bloque de pólizas y evidencia).
+
+## Bloque 2 · E2E sintético de pólizas (aceptación en curso)
+
+Arnés nuevo: `scripts/aceptacion/polizas/e2e.mjs` + `fixtures.mjs`, por el mismo
+camino de producción (funciones servidoras reales, dos despachos sandbox).
+
+Defectos mecánicos encontrados y corregidos:
+1. `polizas.functions.ts` leía `conciliaciones.estado` / `movimiento_bancario_id`;
+   las columnas reales son `estatus` / `estado_grupo` y `movimiento_id`. La
+   conciliación confirmada nunca elevaba la evidencia.
+2. `catalogo_importar_lote` no encontraba `digest()` (search_path sin `extensions`):
+   toda importación de catálogo fallaba.
+3. `poliza_marcar_evidencia` sólo reconocía membresías explícitas y rechazaba al
+   titular del despacho; el error se ignoraba en silencio y las pólizas se
+   publicaban como `sin_evidencia`. Ahora usa `cierre_autorizar_expediente` y el
+   error se propaga.
+
+Estado: 21/30 casos verificados en verde (1–21). **Bloque 2 NO aceptado**:
+el caso 22 falla porque `aprobarPoliza` rechaza la póliza solicitada citando el
+identificador de OTRA póliza con cuenta por identificar (validación cruzada de
+borradores). Pendiente corregir y reanudar desde el caso 22.

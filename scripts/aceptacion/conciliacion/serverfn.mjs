@@ -19,10 +19,18 @@ function idDe(archivo, exportado) {
  * @param archivo ruta del módulo, p. ej. "/src/lib/conciliacion/conciliacion.functions.ts"
  */
 let calentado = null;
+const RUTAS = new Set(["/app/conciliacion"]);
+
+/** Registra una ruta adicional cuyas funciones servidoras deben quedar cargadas. */
+export function precalentarRuta(ruta) {
+  RUTAS.add(ruta);
+}
 
 /** El servidor de desarrollo registra las funciones al cargar la ruta que las usa. */
 async function calentar() {
-  if (!calentado) calentado = fetch(`${BASE}/app/conciliacion`).then(() => true).catch(() => false);
+  if (!calentado) {
+    calentado = Promise.all([...RUTAS].map((r) => fetch(`${BASE}${r}`).catch(() => null))).then(() => true);
+  }
   return calentado;
 }
 
@@ -72,3 +80,7 @@ export async function llamar(archivo, exportado, data, token) {
 }
 
 export const CONCILIACION = "/src/lib/conciliacion/conciliacion.functions.ts";
+export const POLIZAS = "/src/lib/polizas/polizas.functions.ts";
+export const CATALOGO = "/src/lib/catalogo/catalogo.functions.ts";
+export const REGLAS = "/src/lib/reglas/reglas.functions.ts";
+export const EXPORTES = "/src/lib/contabilidad-auto/export.functions.ts";
