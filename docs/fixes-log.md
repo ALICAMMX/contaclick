@@ -1355,3 +1355,23 @@ inmutabilidad de los expedientes reales (verificado: residuo 0).
 - **Corrección:** migración correctiva con `CREATE OR REPLACE FUNCTION`. La creación automática se registra como `accion='propuesta'`, `estado_nuevo='propuesto'`, `actor` = persona que solicitó la corrida. El carácter automático se conserva en `conciliacion_grupos.origen='motor'` y en `detalle` (`origen`, `algoritmo_version`, `corrida_id`, `nivel_propuesta`, `probabilidad_bp`, `evidencia`). No se amplió la restricción ni se tocó la inmutabilidad.
 - **Escritores fuera de catálogo:** revisados los seis escritores desplegados de `conciliacion_bitacora`; ninguno usa acciones no canónicas. El `normalizacion_semantica` de la migración `20260817073347` fue una operación única ya aplicada (la bitácora no conserva filas con ese valor); si vuelve a requerirse, deberá registrarse con acción canónica y `normalizacion_semantica` dentro de `detalle`.
 - **Regresión:** `supabase/tests/conciliacion_bitacora_regresion.sql` (corrida legítima → grupo `propuesto`, bitácora `propuesta`, origen `motor`, cero confirmaciones automáticas, doble ejecución idempotente). Transacción con `ROLLBACK`.
+
+## 2026-08-17 — E2E Bloque 1 Conciliación: correcciones mecánicas
+
+1. **`conciliacion_importaciones.conc_imp_estado_chk`** sólo admitía `completada|fallida`, pero
+   `uploadMovimientos` abre la importación en `procesando`. Toda importación por el camino real
+   fallaba (tabla con 0 filas históricas). Migración correctiva: la restricción admite exactamente
+   `procesando|completada|fallida`. Regresión: `supabase/tests/conciliacion_importaciones_estado.sql`.
+2. **Disparador de reapertura inválido**: `conciliacion_confirmar_grupo`, `_rechazar_grupo`,
+   `_revertir_grupo` y `conciliacion_ignorar_movimiento` llamaban a `cierre_reabrir_cascada` con
+   `conciliacion_confirmada|rechazada|revertida|movimiento_ignorado`, ausentes del mapa canónico
+   (`cfdi|clasificacion|banco|poliza|parametro_fiscal`) → `Disparador desconocido`, confirmación
+   humana imposible. Ahora usan el disparador canónico `banco`; el motivo descriptivo se conserva.
+3. Correcciones del arnés (no del producto): conteo real vía `content-range`, lectura del sobre
+   `{result,error,context}` de TanStack Start, calentamiento de la ruta para registrar la función
+   servidora en desarrollo, y lectura de la cobertura en
+   `cierre_diag_bancos.resultado.movimientos_confirmados_por_persona`.
+
+Pendiente reportado (no modificado): la bitácora de conciliación es inmutable por diseño
+(`trg_conc_bit_inmutable` bloquea DELETE), por lo que la purga sandbox no puede alcanzar residuo cero
+en esa tabla.
