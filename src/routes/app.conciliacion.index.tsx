@@ -194,7 +194,7 @@ function ConciliacionPage() {
     onSuccess: (r) => {
       const reutilizada = (r.corrida as { reutilizada?: boolean } | null)?.reutilizada;
       toast.success(reutilizada ? "Sin cambios: el insumo es idéntico a la corrida anterior." : "Corrida terminada", {
-        description: `${r.metricas.automaticos} coincidencias automáticas · ${r.metricas.propuestos} propuestas para revisar`,
+        description: `${r.metricas.propuestos} propuestas (${r.metricas.alta_confianza} de alta confianza) · ninguna queda conciliada hasta que tú la confirmes`,
       });
       invalidar();
     },
@@ -563,6 +563,11 @@ function FilaGrupo({
         </div>
         <div className="flex items-center gap-2">
           <span className={`text-xs px-2 py-0.5 rounded-full border ${COLOR_ESTADO[estado]}`}>{ETIQUETA_ESTADO[estado]}</span>
+          {estado === "propuesto" && grupo.nivel_propuesta === "automatica_alta_confianza" && (
+            <span className="text-xs px-2 py-0.5 rounded-full border border-primary/40 text-primary">
+              Alta confianza
+            </span>
+          )}
           <span className="text-xs text-muted-foreground">{ETIQUETA_ORIGEN[grupo.origen as "motor" | "humano"]}</span>
           {acciones}
         </div>
@@ -579,11 +584,12 @@ function FilaGrupo({
         <li>Regla: {String(ev.regla ?? "—")} ({String(ev.version ?? "—")})</li>
       </ul>
       {grupo.motivo && <p className="text-xs">{grupo.motivo}</p>}
-      {estado === "confirmado" && !grupo.confirmado_por && (
+      {estado === "propuesto" && grupo.nivel_propuesta === "automatica_alta_confianza" && (
         <p className="text-xs text-amber-600 flex items-center gap-1">
-          <AlertTriangle className="h-3 w-3" /> Coincidencia automática del motor: el cierre aún espera tu confirmación.
+          <AlertTriangle className="h-3 w-3" /> Propuesta de alta confianza: no está conciliada; el cierre sólo cuenta tu confirmación.
         </p>
       )}
+
     </div>
   );
 }
