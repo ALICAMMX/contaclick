@@ -5558,6 +5558,197 @@ export type Database = {
           },
         ]
       }
+      sat_programacion_bitacora: {
+        Row: {
+          accion: string
+          actor_user_id: string | null
+          cliente_id: string
+          created_at: string
+          despacho_id: string
+          detalle: Json
+          id: string
+          programacion_id: string
+          programada_at: string | null
+          resultado: string | null
+          retraso_ms: number | null
+          run_id: string | null
+        }
+        Insert: {
+          accion: string
+          actor_user_id?: string | null
+          cliente_id: string
+          created_at?: string
+          despacho_id: string
+          detalle?: Json
+          id?: string
+          programacion_id: string
+          programada_at?: string | null
+          resultado?: string | null
+          retraso_ms?: number | null
+          run_id?: string | null
+        }
+        Update: {
+          accion?: string
+          actor_user_id?: string | null
+          cliente_id?: string
+          created_at?: string
+          despacho_id?: string
+          detalle?: Json
+          id?: string
+          programacion_id?: string
+          programada_at?: string | null
+          resultado?: string | null
+          retraso_ms?: number | null
+          run_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sat_programacion_bitacora_programacion_id_fkey"
+            columns: ["programacion_id"]
+            isOneToOne: false
+            referencedRelation: "sat_programaciones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sat_programaciones: {
+        Row: {
+          activa: boolean
+          actualizado_por: string | null
+          bloqueo_at: string | null
+          cancelada: boolean
+          clasificar_nomina: boolean
+          clasificar_pagos: boolean
+          cliente_id: string
+          creado_por: string | null
+          created_at: string
+          despacho_id: string
+          dia_mes: number | null
+          dias_semana: number[] | null
+          emitidos: boolean
+          fecha_unica: string | null
+          hora: number
+          id: string
+          minuto: number
+          pausada: boolean
+          periodo_opcion: string
+          politica_retraso: string
+          proxima_ejecucion_at: string | null
+          rango_desde: string | null
+          rango_hasta: string | null
+          recibidos: boolean
+          recurrencia: string | null
+          solapamiento_dias: number
+          tipo: string
+          tolerancia_minutos: number
+          ultima_corrida_id: string | null
+          ultima_ejecucion_at: string | null
+          ultima_ocurrencia_key: string | null
+          ultima_programada_at: string | null
+          ultimo_detalle: string | null
+          ultimo_resultado: string | null
+          ultimo_retraso_ms: number | null
+          updated_at: string
+          version: number
+          zona_horaria: string
+        }
+        Insert: {
+          activa?: boolean
+          actualizado_por?: string | null
+          bloqueo_at?: string | null
+          cancelada?: boolean
+          clasificar_nomina?: boolean
+          clasificar_pagos?: boolean
+          cliente_id: string
+          creado_por?: string | null
+          created_at?: string
+          despacho_id: string
+          dia_mes?: number | null
+          dias_semana?: number[] | null
+          emitidos?: boolean
+          fecha_unica?: string | null
+          hora?: number
+          id?: string
+          minuto?: number
+          pausada?: boolean
+          periodo_opcion?: string
+          politica_retraso?: string
+          proxima_ejecucion_at?: string | null
+          rango_desde?: string | null
+          rango_hasta?: string | null
+          recibidos?: boolean
+          recurrencia?: string | null
+          solapamiento_dias?: number
+          tipo?: string
+          tolerancia_minutos?: number
+          ultima_corrida_id?: string | null
+          ultima_ejecucion_at?: string | null
+          ultima_ocurrencia_key?: string | null
+          ultima_programada_at?: string | null
+          ultimo_detalle?: string | null
+          ultimo_resultado?: string | null
+          ultimo_retraso_ms?: number | null
+          updated_at?: string
+          version?: number
+          zona_horaria?: string
+        }
+        Update: {
+          activa?: boolean
+          actualizado_por?: string | null
+          bloqueo_at?: string | null
+          cancelada?: boolean
+          clasificar_nomina?: boolean
+          clasificar_pagos?: boolean
+          cliente_id?: string
+          creado_por?: string | null
+          created_at?: string
+          despacho_id?: string
+          dia_mes?: number | null
+          dias_semana?: number[] | null
+          emitidos?: boolean
+          fecha_unica?: string | null
+          hora?: number
+          id?: string
+          minuto?: number
+          pausada?: boolean
+          periodo_opcion?: string
+          politica_retraso?: string
+          proxima_ejecucion_at?: string | null
+          rango_desde?: string | null
+          rango_hasta?: string | null
+          recibidos?: boolean
+          recurrencia?: string | null
+          solapamiento_dias?: number
+          tipo?: string
+          tolerancia_minutos?: number
+          ultima_corrida_id?: string | null
+          ultima_ejecucion_at?: string | null
+          ultima_ocurrencia_key?: string | null
+          ultima_programada_at?: string | null
+          ultimo_detalle?: string | null
+          ultimo_resultado?: string | null
+          ultimo_retraso_ms?: number | null
+          updated_at?: string
+          version?: number
+          zona_horaria?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sat_programaciones_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sat_programaciones_despacho_id_fkey"
+            columns: ["despacho_id"]
+            isOneToOne: false
+            referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sat_sync_config: {
         Row: {
           activo: boolean
@@ -7471,6 +7662,55 @@ export type Database = {
           _rfc_contraparte: string
         }
         Returns: Json
+      }
+      sat_programaciones_reclamar: {
+        Args: { _ahora?: string; _limite?: number }
+        Returns: {
+          activa: boolean
+          actualizado_por: string | null
+          bloqueo_at: string | null
+          cancelada: boolean
+          clasificar_nomina: boolean
+          clasificar_pagos: boolean
+          cliente_id: string
+          creado_por: string | null
+          created_at: string
+          despacho_id: string
+          dia_mes: number | null
+          dias_semana: number[] | null
+          emitidos: boolean
+          fecha_unica: string | null
+          hora: number
+          id: string
+          minuto: number
+          pausada: boolean
+          periodo_opcion: string
+          politica_retraso: string
+          proxima_ejecucion_at: string | null
+          rango_desde: string | null
+          rango_hasta: string | null
+          recibidos: boolean
+          recurrencia: string | null
+          solapamiento_dias: number
+          tipo: string
+          tolerancia_minutos: number
+          ultima_corrida_id: string | null
+          ultima_ejecucion_at: string | null
+          ultima_ocurrencia_key: string | null
+          ultima_programada_at: string | null
+          ultimo_detalle: string | null
+          ultimo_resultado: string | null
+          ultimo_retraso_ms: number | null
+          updated_at: string
+          version: number
+          zona_horaria: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "sat_programaciones"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       validar_cupon: {
         Args: {
