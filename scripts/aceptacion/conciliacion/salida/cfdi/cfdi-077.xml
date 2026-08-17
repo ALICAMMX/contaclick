@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- DOCUMENTO SINTETICO DE LABORATORIO: NO VERIFICADO ANTE EL SAT -->
+<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital"
+  Version="4.0" Fecha="2026-07-10T12:00:00" Moneda="MXN" Total="76237.49" SubTotal="76237.49"
+  TipoDeComprobante="I" MetodoPago="PUE" FormaPago="03" Exportacion="01" LugarExpedicion="64000">
+  <cfdi:Emisor Rfc="SOM010730EF3" Nombre="SERVICIOS OMEGA SC" RegimenFiscal="601"/>
+  <cfdi:Receptor Rfc="SAND010101AAA" Nombre="EXPEDIENTE SANDBOX CONTACLICK" DomicilioFiscalReceptor="64000" RegimenFiscalReceptor="601" UsoCFDI="G03"/>
+  <cfdi:Conceptos>
+    <cfdi:Concepto ClaveProdServ="01010101" Cantidad="1" ClaveUnidad="ACT" Descripcion="Operacion sintetica de laboratorio" ValorUnitario="76237.49" Importe="76237.49" ObjetoImp="02"/>
+  </cfdi:Conceptos>
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital Version="1.1" UUID="8E440A5B-B49E-5BB6-BC83-E3036DE5C2E0" FechaTimbrado="2026-07-10T12:05:00" RfcProvCertif="SINTETICO"/>
+  </cfdi:Complemento>
+</cfdi:Comprobante>

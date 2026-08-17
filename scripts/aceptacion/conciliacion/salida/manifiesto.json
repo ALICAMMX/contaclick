@@ -1,0 +1,19 @@
+{
+  "semilla": 20260817,
+  "version_laboratorio": "lab-conciliacion@1",
+  "periodo": "2026-07",
+  "rfc_sandbox": "SAND010101AAA",
+  "despacho_aislamiento": "SAND020202BBB",
+  "estatus_sat_documentos": "sintetico_no_verificado",
+  "conteos": {
+    "movimientos": 97,
+    "cfdi": 112,
+    "inequivocos": 45,
+    "desplazados": 20,
+    "mismo_importe": 10,
+    "ambiguos": 10,
+    "movimientos_sin_cfdi": 10,
+    "identicos_legitimos": 2,
+    "cfdi_sin_movimiento": 5
+  }
+}

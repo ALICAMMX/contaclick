@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- DOCUMENTO SINTETICO DE LABORATORIO: NO VERIFICADO ANTE EL SAT -->
+<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital"
+  Version="4.0" Fecha="2026-07-09T12:00:00" Moneda="MXN" Total="34158.22" SubTotal="34158.22"
+  TipoDeComprobante="I" MetodoPago="PUE" FormaPago="03" Exportacion="01" LugarExpedicion="64000">
+  <cfdi:Emisor Rfc="SAND010101AAA" Nombre="EXPEDIENTE SANDBOX CONTACLICK" RegimenFiscal="601"/>
+  <cfdi:Receptor Rfc="DNO880420CD2" Nombre="DISTRIBUIDORA NORTE SA DE CV" DomicilioFiscalReceptor="64000" RegimenFiscalReceptor="601" UsoCFDI="G03"/>
+  <cfdi:Conceptos>
+    <cfdi:Concepto ClaveProdServ="01010101" Cantidad="1" ClaveUnidad="ACT" Descripcion="Operacion sintetica de laboratorio" ValorUnitario="34158.22" Importe="34158.22" ObjetoImp="02"/>
+  </cfdi:Conceptos>
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital Version="1.1" UUID="D07CBBB9-A81C-2024-D622-06241CBEB374" FechaTimbrado="2026-07-09T12:05:00" RfcProvCertif="SINTETICO"/>
+  </cfdi:Complemento>
+</cfdi:Comprobante>
