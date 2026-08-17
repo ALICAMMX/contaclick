@@ -1259,7 +1259,22 @@ export async function ejecutarCorridaSat(args: {
         : "Solicitud enviada al SAT. La descarga continúa en segundo plano; puedes cerrar esta pantalla.",
       errores,
     };
-  });
+  }
+}
+
+export const runSyncNow = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) => RunSchema.parse(d))
+  .handler(async ({ data, context }): Promise<any> =>
+    ejecutarCorridaSat({
+      supabase: context.supabase,
+      userId: context.userId,
+      cliente_id: data.cliente_id,
+      origen: data.origen,
+      cascade: data.cascade,
+    }),
+  );
+
 
 /**
  * Recálculos posteriores a una descarga.
