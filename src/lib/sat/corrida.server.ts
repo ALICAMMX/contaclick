@@ -32,7 +32,7 @@ import {
   type Frecuencia,
 } from "@/lib/sat/sat-sync.functions";
 
-export function fallo(e: FalloSatSync["error"]): FalloSatSync {
+export export function fallo(e: FalloSatSync["error"]): FalloSatSync {
   return { ok: false, error: e };
 }
 
@@ -419,14 +419,14 @@ export async function ejecutarCorridaSat(args: {
   }
 }
 
-export /**
+/**
  * Recálculos posteriores a una descarga.
  *
  * Cada módulo deja un EVENTO con su resultado (ok o fallo) ligado a la corrida:
  * el detalle de la corrida debe poder responder "qué se recalculó y cuándo",
  * y una corrida no se declara completada sin esa evidencia.
  */
-async function ejecutarCascada(
+export async function ejecutarCascada(
   clienteId: string,
   ctx?: {
     supabase: any;
@@ -481,7 +481,7 @@ async function ejecutarCascada(
 
 
 /** Ejecuta los recálculos y cierra la corrida que quedó en `recalculando`. */
-async function recalcularYCerrar(args: {
+export async function recalcularYCerrar(args: {
   supabase: any;
   clienteId: string;
   despachoId?: string | null;
