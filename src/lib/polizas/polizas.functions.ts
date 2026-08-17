@@ -25,7 +25,7 @@ import {
   type ResolucionConcepto,
 } from "./motor";
 import { aPolizaExportable, validarLote, type LotePolizasExportable } from "./exportacion";
-import { distribuirComplemento, type NivelEvidencia } from "./evidencia";
+import type { NivelEvidencia } from "./evidencia";
 
 const periodoSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Periodo con formato AAAA-MM");
 const motivoSchema = z.string().min(10, "Se exige un motivo de al menos 10 caracteres.").max(1000);
@@ -33,7 +33,7 @@ const motivoSchema = z.string().min(10, "Se exige un motivo de al menos 10 carac
 const cent = (n: unknown) => Math.round(Number(n ?? 0) * 100);
 
 const SELECT_POLIZA =
-  "id, fecha, periodo, tipo, concepto, estado, version, origen, referencia, uuid_cfdi, input_hash, idempotency_key, rechazo_motivo, aprobada_por, aprobada_at, created_at, poliza_renglones(id, numero, cuenta, cuenta_nombre, concepto, cargo_centavos, abono_centavos, cfdi_id, movimiento_bancario_id)";
+  "id, fecha, periodo, tipo, concepto, estado, version, origen, referencia, uuid_cfdi, nivel_evidencia, evidencia_detalle, input_hash, idempotency_key, rechazo_motivo, aprobada_por, aprobada_at, created_at, poliza_renglones(id, numero, cuenta, cuenta_nombre, concepto, cargo_centavos, abono_centavos, cfdi_id, movimiento_bancario_id)";
 
 /** Bloqueos derivados de los renglones canónicos (nunca de metadata). */
 function analizar(p: any) {
