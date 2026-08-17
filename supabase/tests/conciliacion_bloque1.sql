@@ -19,6 +19,7 @@ DECLARE
   v_cli_b uuid := gen_random_uuid();
   v_user uuid; -- persona autenticada real (sólo lectura de auth.users); todo se revierte
   v_cta_a uuid; v_cta_b uuid;
+  v_rfc_a uuid; v_rfc_b uuid;
   v_mov_a uuid; v_mov_b uuid; v_mov_a2 uuid;
   v_cfdi_a uuid; v_cfdi_b uuid; v_cfdi_a2 uuid;
   v_grupo uuid;
@@ -37,6 +38,10 @@ BEGIN
   INSERT INTO public.clientes(id, despacho_id, user_id, rfc, razon_social) VALUES
     (v_cli_a, v_desp_a, v_user, 'SAND010101AAA', 'Sandbox A'),
     (v_cli_b, v_desp_b, v_user, 'SAND020202BBB', 'Sandbox B');
+  INSERT INTO public.rfcs(despacho_id, cliente_id, rfc, tipo_persona)
+    VALUES (v_desp_a, v_cli_a, 'SAND010101AAA', 'moral') RETURNING id INTO v_rfc_a;
+  INSERT INTO public.rfcs(despacho_id, cliente_id, rfc, tipo_persona)
+    VALUES (v_desp_b, v_cli_b, 'SAND020202BBB', 'moral') RETURNING id INTO v_rfc_b;
   INSERT INTO public.cuentas_bancarias(despacho_id, cliente_id, banco, alias, moneda)
     VALUES (v_desp_a, v_cli_a, 'BANCO SANDBOX', 'Principal', 'MXN') RETURNING id INTO v_cta_a;
   INSERT INTO public.cuentas_bancarias(despacho_id, cliente_id, banco, alias, moneda)
@@ -49,12 +54,12 @@ BEGIN
   INSERT INTO public.movimientos_bancarios(despacho_id, cliente_id, cuenta_id, fila_origen, fecha, descripcion, referencia, abono, cargo, moneda, hash)
     VALUES (v_desp_b, v_cli_b, v_cta_b, 1, '2026-07-10', 'SPEI OTRO', 'R9', 1000.00, 0, 'MXN', md5('sandbox-b-1')) RETURNING id INTO v_mov_b;
 
-  INSERT INTO public.cfdi_xml(despacho_id, cliente_id, uuid, fecha, total, direccion, tipo_cfdi, metodo_pago, moneda, periodo, estatus_sat)
-    VALUES (v_desp_a, v_cli_a, gen_random_uuid()::text, '2026-07-10', 1000.00, 'emitido', 'I', 'PUE', 'MXN', PERIODO, 'sintetico_no_verificado') RETURNING id INTO v_cfdi_a;
-  INSERT INTO public.cfdi_xml(despacho_id, cliente_id, uuid, fecha, total, direccion, tipo_cfdi, metodo_pago, moneda, periodo, estatus_sat)
-    VALUES (v_desp_a, v_cli_a, gen_random_uuid()::text, '2026-07-10', 1000.00, 'emitido', 'I', 'PUE', 'MXN', PERIODO, 'sintetico_no_verificado') RETURNING id INTO v_cfdi_a2;
-  INSERT INTO public.cfdi_xml(despacho_id, cliente_id, uuid, fecha, total, direccion, tipo_cfdi, metodo_pago, moneda, periodo, estatus_sat)
-    VALUES (v_desp_b, v_cli_b, gen_random_uuid()::text, '2026-07-10', 1000.00, 'emitido', 'I', 'PUE', 'MXN', PERIODO, 'sintetico_no_verificado') RETURNING id INTO v_cfdi_b;
+  INSERT INTO public.cfdi_xml(despacho_id, cliente_id, rfc_id, uuid, fecha, total, direccion, tipo_cfdi, metodo_pago, moneda, periodo, estatus_sat)
+    VALUES (v_desp_a, v_cli_a, v_rfc_a, gen_random_uuid()::text, '2026-07-10', 1000.00, 'emitido', 'I', 'PUE', 'MXN', PERIODO, 'sintetico_no_verificado') RETURNING id INTO v_cfdi_a;
+  INSERT INTO public.cfdi_xml(despacho_id, cliente_id, rfc_id, uuid, fecha, total, direccion, tipo_cfdi, metodo_pago, moneda, periodo, estatus_sat)
+    VALUES (v_desp_a, v_cli_a, v_rfc_a, gen_random_uuid()::text, '2026-07-10', 1000.00, 'emitido', 'I', 'PUE', 'MXN', PERIODO, 'sintetico_no_verificado') RETURNING id INTO v_cfdi_a2;
+  INSERT INTO public.cfdi_xml(despacho_id, cliente_id, rfc_id, uuid, fecha, total, direccion, tipo_cfdi, metodo_pago, moneda, periodo, estatus_sat)
+    VALUES (v_desp_b, v_cli_b, v_rfc_b, gen_random_uuid()::text, '2026-07-10', 1000.00, 'emitido', 'I', 'PUE', 'MXN', PERIODO, 'sintetico_no_verificado') RETURNING id INTO v_cfdi_b;
 
   -- 1. Ataque: movimiento propio con comprobante de OTRO expediente
   BEGIN
