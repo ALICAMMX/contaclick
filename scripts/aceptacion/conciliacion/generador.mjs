@@ -253,17 +253,23 @@ function csvBancario(movs) {
 }
 
 function xlsxBancario(movs, ruta) {
-  const rows = movs.map((m) => ({
-    Fecha: m.fecha,
-    Descripcion: m.descripcion,
-    Referencia: m.referencia ?? "",
-    Cargo: m.cargo || "",
-    Abono: m.abono || "",
-  }));
+  let saldo = 1000000;
+  const rows = movs.map((m) => {
+    saldo += m.abono - m.cargo;
+    return {
+      Fecha: m.fecha,
+      Descripcion: m.descripcion,
+      Referencia: m.referencia ?? "",
+      Cargo: m.cargo ? Number(m.cargo.toFixed(2)) : "",
+      Abono: m.abono ? Number(m.abono.toFixed(2)) : "",
+      Saldo: Number(saldo.toFixed(2)),
+    };
+  });
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Movimientos");
   XLSX.writeFile(wb, ruta);
 }
+
 
 export function escribir() {
   const { cfdi, movimientos, verdad } = generar();
@@ -271,7 +277,7 @@ export function escribir() {
 
   for (const c of cfdi) writeFileSync(join(SALIDA, "cfdi", `${c.id}.xml`), c.xml, "utf8");
   writeFileSync(join(SALIDA, "estado_cuenta.csv"), csvBancario(movimientos), "utf8");
-  xlsxBancario(movimientos.slice(0, 20), join(SALIDA, "estado_cuenta_secundario.xlsx"));
+  xlsxBancario(movimientos, join(SALIDA, "estado_cuenta.xlsx"));
 
   const sinXml = cfdi.map(({ xml, ...resto }) => resto);
   writeFileSync(join(SALIDA, "cfdi.json"), JSON.stringify(sinXml, null, 2));
