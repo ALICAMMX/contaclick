@@ -257,8 +257,8 @@ export async function parsearCatalogo(file: File): Promise<ResultadoLectura> {
   const mapeo = detectarMapeo(encabezados);
   const avisos: string[] = [];
   for (const campo of CAMPOS_CATALOGO) {
-    if (campo.requerido && !mapeo[campo.clave]) {
-      avisos.push(`No se reconoció la columna obligatoria “${campo.etiqueta}”.`);
+    if (campo.requerido && !mapeo[campo.key]) {
+      avisos.push(`No se reconoció la columna obligatoria “${campo.label}”.`);
     }
   }
 
