@@ -72,6 +72,8 @@ export type EvidenciaConciliacion = {
   confirmada: boolean;
   movimiento_bancario_id?: string | null;
   estado?: string | null;
+  actor?: string | null;
+  fecha?: string | null;
 };
 
 export type BorradorCanonico = {
@@ -83,7 +85,14 @@ export type BorradorCanonico = {
   cargos_centavos: number;
   abonos_centavos: number;
   cuadra: boolean;
+  /** Nivel de evidencia de cobro/pago que respalda este borrador. */
+  evidencia: EvidenciaFlujo;
+  /** Evidencias adicionales que refuerzan sin duplicar el reconocimiento. */
+  refuerzos: NivelEvidencia[];
+  /** Contradicciones detectadas entre las evidencias disponibles. */
+  incidencias: string[];
 };
+
 
 const fila = (
   cuenta: string,
