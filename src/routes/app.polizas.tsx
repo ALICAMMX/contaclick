@@ -14,6 +14,15 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
+/** Etiquetas humanas del nivel de evidencia de cobro o pago. */
+const LEYENDA_EVIDENCIA = {
+  documental_pue: "PUE declarado",
+  complemento_pago: "Complemento de pago",
+  banco_confirmado: "Banco confirmado",
+  manual_justificado: "Manual justificado",
+  sin_evidencia: "Sin evidencia de flujo",
+} as const;
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { useActiveCliente } from "@/lib/active-cliente";
