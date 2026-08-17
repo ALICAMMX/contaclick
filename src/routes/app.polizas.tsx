@@ -144,7 +144,7 @@ function PolizasPage() {
             <Label className="text-xs">Periodo</Label>
             <Input type="month" value={periodo} onChange={(e) => setPeriodo(e.target.value)} className="w-40" />
           </div>
-          <HerramientaHelp herramienta="polizas" />
+          <HerramientaHelp slug="polizas" />
         </div>
       </div>
 
