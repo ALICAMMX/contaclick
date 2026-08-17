@@ -151,6 +151,13 @@ export function AppLayout() {
                 <Home className="h-3.5 w-3.5" /> Inicio
               </Link>
             )}
+            <Link
+              to="/app/inicio-guiado"
+              className="hidden sm:inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-primary/40 bg-primary/10 hover:bg-primary/20 text-xs font-medium text-primary transition-colors shrink-0"
+              title="Ruta guiada del expediente"
+            >
+              <Compass className="h-3.5 w-3.5" /> Ruta guiada
+            </Link>
             {!atHub && crumbs.length > 1 && (
               <nav className="hidden md:flex items-center gap-1 text-sm min-w-0">
                 <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
