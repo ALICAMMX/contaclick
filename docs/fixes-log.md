@@ -1375,3 +1375,26 @@ inmutabilidad de los expedientes reales (verificado: residuo 0).
 Pendiente reportado (no modificado): la bitácora de conciliación es inmutable por diseño
 (`trg_conc_bit_inmutable` bloquea DELETE), por lo que la purga sandbox no puede alcanzar residuo cero
 en esa tabla.
+
+## Bloque 2 · Cierre — migración legada de pólizas y niveles de evidencia
+
+- **Escritores legados migrados al contrato canónico.** `contabilidad-auto`
+  (CFDI y bancos) y el generador del expediente demostrativo ya no insertan en
+  `polizas` ni escriben `metadata.asientos`: generan, versionan, aprueban y
+  rechazan exclusivamente por `poliza_generar_borrador`, `poliza_aprobar` y
+  `poliza_rechazar`, con motivo humano obligatorio y reapertura en cascada.
+- **Exportadores y reportes leen sólo renglones canónicos.** CONTPAQi, Anexo 24,
+  balanza, ZIP del expediente, conciliación integral y reportes ejecutivos se
+  alimentan de `poliza_renglones` mediante un adaptador de lectura; ninguno
+  vuelve a leer `metadata`. Ahora consideran también el estado `aprobada`.
+- **Niveles de evidencia de cobro/pago.** Se publica el nivel real
+  (PUE declarado, complemento de pago, banco confirmado, manual justificado o
+  sin evidencia) por póliza, con su detalle y contradicciones visibles. Un PUE
+  jamás se presenta como conciliación bancaria; un PPD sin complemento ni banco
+  no inventa cobro ni IVA efectivamente cobrado.
+- **Complemento de pago desbloqueado.** El complemento es evidencia por sí mismo;
+  cuando además existe conciliación confirmada, ésta gana y el complemento queda
+  como refuerzo, sin reconocer el flujo dos veces.
+- **Corrección de pólizas.** Editar un borrador ya no sobreescribe metadata:
+  produce una nueva versión auditada con motivo.
+- Pruebas: 710 aprobadas (19 del bloque de pólizas y evidencia).
