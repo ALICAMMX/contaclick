@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
+import { assertClienteScope } from "@/lib/despacho/scope";
+import { llaveIdempotencia } from "@/lib/polizas/motor";
 
 // Cuentas por defecto usadas para movimientos bancarios sin clasificar.
 const CTA_BANCOS = { c: "102-01", n: "Bancos" };
