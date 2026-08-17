@@ -61,6 +61,28 @@ function Hub() {
         </p>
       </section>
 
+      {/* Ruta guiada — nuevo flujo recomendado. El resto de esta pantalla se conserva como vista anterior. */}
+      <section>
+        <Link
+          to="/app/inicio-guiado"
+          className="group flex flex-wrap items-center justify-between gap-4 rounded-lg border border-primary/40 bg-primary/5 hover:bg-primary/10 transition-colors p-5"
+        >
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-primary mb-1">
+              <span className="h-1 w-6 bg-primary" /> Nuevo
+            </div>
+            <h2 className="serif text-xl text-foreground">Inicio guiado del expediente</h2>
+            <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
+              CSF → expediente → e.firma → CFDI → banco. Cinco cargas y tres decisiones; lo demás se calcula solo.
+              Esta pantalla sigue disponible como vista anterior.
+            </p>
+          </div>
+          <span className="inline-flex items-center gap-1.5 h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium shrink-0">
+            Abrir ruta guiada <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+          </span>
+        </Link>
+      </section>
+
       {/* Expediente activo */}
       <ExpedienteBar />
 
