@@ -13,8 +13,10 @@
 import {
   ALGORITMO_VERSION,
   type EvidenciaConciliacion,
+  type NivelPropuesta,
   type OrigenConciliacion,
 } from "./contrato";
+
 
 export type MovimientoEntrada = {
   id: string;
@@ -60,8 +62,10 @@ export const PARAMETROS_POR_DEFECTO: ParametrosMotor = {
 export type GrupoPropuesto = {
   tipo: "uno_a_uno";
   origen: OrigenConciliacion;
-  /** El motor sólo puede producir "propuesto" o "confirmado" automático. */
-  estado: "propuesto" | "confirmado";
+  /** El motor SÓLO puede producir "propuesto". Confirmar es un acto humano. */
+  estado: "propuesto";
+  /** Calidad de la propuesta; alta confianza NO significa conciliado. */
+  nivel_propuesta: Exclude<NivelPropuesta, "decision_humana">;
   movimiento_id: string;
   cfdi_id: string;
   importe_banco_centavos: number;
@@ -93,10 +97,11 @@ export type ResultadoMotor = {
     movimientos_evaluados: number;
     cfdi_evaluados: number;
     propuestos: number;
-    automaticos: number;
+    alta_confianza: number;
     ambiguos: number;
   };
 };
+
 
 export type EntradaMotor = {
   movimientos: MovimientoEntrada[];
@@ -311,7 +316,9 @@ export function conciliarUnoAUno(entrada: EntradaMotor): ResultadoMotor {
     grupos.push({
       tipo: "uno_a_uno",
       origen: "motor",
-      estado: automatico ? "confirmado" : "propuesto",
+      // El motor NUNCA confirma: su mejor resultado es una propuesta de alta confianza.
+      estado: "propuesto",
+      nivel_propuesta: automatico ? "automatica_alta_confianza" : "revision_requerida",
       movimiento_id: m.id,
       cfdi_id: mejor.c.id,
       importe_banco_centavos: m.importe_centavos,
@@ -321,10 +328,10 @@ export function conciliarUnoAUno(entrada: EntradaMotor): ResultadoMotor {
       evidencia,
       idempotency_key: `1a1:${m.id}:${mejor.c.id}`,
       motivo: automatico
-        ? "Coincidencia automática: candidato único, importe exacto y dos señales fuertes independientes."
+        ? "Propuesta de alta confianza: candidato único, importe exacto y dos señales fuertes independientes. Requiere confirmación de una persona."
         : empate
           ? "Varios comprobantes empatan con este movimiento: requiere revisión humana."
-          : "Candidato con evidencia insuficiente para confirmar automáticamente: requiere revisión humana.",
+          : "Candidato con evidencia insuficiente para proponerlo con alta confianza: requiere revisión humana.",
     });
   }
 
@@ -341,12 +348,13 @@ export function conciliarUnoAUno(entrada: EntradaMotor): ResultadoMotor {
     metricas: {
       movimientos_evaluados: movimientos.length,
       cfdi_evaluados: cfdiActivos.length,
-      propuestos: grupos.filter((g) => g.estado === "propuesto").length,
-      automaticos: grupos.filter((g) => g.estado === "confirmado").length,
+      propuestos: grupos.length,
+      alta_confianza: grupos.filter((g) => g.nivel_propuesta === "automatica_alta_confianza").length,
       ambiguos,
     },
   };
 }
+
 
 /** Huella estable del insumo: dos corridas con el mismo insumo comparten hash. */
 export function huellaEntrada(entrada: EntradaMotor, periodo: string): string {
