@@ -214,3 +214,57 @@ export function huellaImportacion(filas: FilaCatalogo[]): string {
   }
   return `cat_${h.toString(16).padStart(8, "0")}_${filas.length}`;
 }
+
+// ─────────────────────────── Lectura del archivo (navegador) ─────────────────
+export const PLANTILLA_CATALOGO_CSV = `codigo,nombre,naturaleza,codigo_padre,agrupador_sat,nivel,moneda,activa
+100,Activo,deudora,,100,1,MXN,si
+102-001,Bancos moneda nacional,deudora,100,102.01,3,MXN,si
+105-001,Clientes nacionales,deudora,100,105.01,3,MXN,si
+113-001,IVA acreditable pagado,deudora,100,113.01,3,MXN,si
+118-001,IVA acreditable pendiente de pago,deudora,100,118.01,3,MXN,si
+201-001,Proveedores nacionales,acreedora,200,201.01,3,MXN,si
+208-001,IVA trasladado no cobrado,acreedora,200,208.01,3,MXN,si
+209-001,IVA trasladado cobrado,acreedora,200,209.01,3,MXN,si
+216-001,ISR retenido por terceros,acreedora,200,216.01,3,MXN,si
+216-002,IVA retenido por terceros,acreedora,200,216.02,3,MXN,si
+401-001,Ingresos por servicios,acreedora,400,401.01,3,MXN,si
+601-001,Gastos de operacion,deudora,600,601.01,3,MXN,si
+`;
+
+export type ResultadoLectura = { filas: FilaCatalogo[]; huella: string; avisos: string[] };
+
+/**
+ * Lee un CSV o XLSX del navegador y devuelve las filas canónicas.
+ * No escribe nada: la validación dura vive en el RPC atómico.
+ */
+export async function parsearCatalogo(file: File): Promise<ResultadoLectura> {
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  let crudas: Record<string, unknown>[] = [];
+
+  if (ext === "csv" || ext === "txt") {
+    const Papa = (await import("papaparse")).default;
+    const texto = await file.text();
+    const res = Papa.parse<Record<string, unknown>>(texto, { header: true, skipEmptyLines: true });
+    crudas = res.data ?? [];
+  } else {
+    const XLSX = await import("xlsx");
+    const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    crudas = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "", raw: false });
+  }
+
+  const encabezados = Object.keys(crudas[0] ?? {});
+  const mapeo = detectarMapeo(encabezados);
+  const avisos: string[] = [];
+  for (const campo of CAMPOS_CATALOGO) {
+    if (campo.requerido && !mapeo[campo.clave]) {
+      avisos.push(`No se reconoció la columna obligatoria “${campo.etiqueta}”.`);
+    }
+  }
+
+  const filas = crudas.map((c) => filaCanonica(c, mapeo)).filter((f) => f.codigo.trim() || f.nombre.trim());
+  if (filas.length > 5000) avisos.push("El archivo excede 5000 cuentas: sólo se enviarán las primeras 5000.");
+
+  const recorte = filas.slice(0, 5000);
+  return { filas: recorte, huella: huellaImportacion(recorte), avisos };
+}
