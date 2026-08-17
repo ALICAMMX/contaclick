@@ -2167,6 +2167,7 @@ export type Database = {
           importe_banco_centavos: number
           importe_cfdi_centavos: number
           motivo: string | null
+          nivel_propuesta: string
           origen: string
           periodo: string
           probabilidad_bp: number
@@ -2192,6 +2193,7 @@ export type Database = {
           importe_banco_centavos?: number
           importe_cfdi_centavos?: number
           motivo?: string | null
+          nivel_propuesta?: string
           origen: string
           periodo: string
           probabilidad_bp?: number
@@ -2217,6 +2219,7 @@ export type Database = {
           importe_banco_centavos?: number
           importe_cfdi_centavos?: number
           motivo?: string | null
+          nivel_propuesta?: string
           origen?: string
           periodo?: string
           probabilidad_bp?: number
@@ -2515,6 +2518,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      conciliacion_respaldo_bloque1: {
+        Row: {
+          etiqueta: string
+          fila_id: string
+          id: string
+          snapshot: Json
+          tabla: string
+          tomado_at: string
+        }
+        Insert: {
+          etiqueta: string
+          fila_id: string
+          id?: string
+          snapshot: Json
+          tabla: string
+          tomado_at?: string
+        }
+        Update: {
+          etiqueta?: string
+          fila_id?: string
+          id?: string
+          snapshot?: Json
+          tabla?: string
+          tomado_at?: string
+        }
+        Relationships: []
       }
       conciliacion_score_historico: {
         Row: {
@@ -6875,8 +6905,10 @@ export type Database = {
       }
       conciliacion_ejecutar_corrida: {
         Args: {
+          _actor: string
           _algoritmo_version: string
           _cliente_id: string
+          _dias_ventana?: number
           _grupos: Json
           _idempotency_key: string
           _input_hash: string

@@ -1,0 +1,669 @@
+[
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-001",
+    "cfdi_id": "cfdi-001",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-002",
+    "cfdi_id": "cfdi-002",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-003",
+    "cfdi_id": "cfdi-003",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-004",
+    "cfdi_id": "cfdi-004",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-005",
+    "cfdi_id": "cfdi-005",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-006",
+    "cfdi_id": "cfdi-006",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-007",
+    "cfdi_id": "cfdi-007",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-008",
+    "cfdi_id": "cfdi-008",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-009",
+    "cfdi_id": "cfdi-009",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-010",
+    "cfdi_id": "cfdi-010",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-011",
+    "cfdi_id": "cfdi-011",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-012",
+    "cfdi_id": "cfdi-012",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-013",
+    "cfdi_id": "cfdi-013",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-014",
+    "cfdi_id": "cfdi-014",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-015",
+    "cfdi_id": "cfdi-015",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-016",
+    "cfdi_id": "cfdi-016",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-017",
+    "cfdi_id": "cfdi-017",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-018",
+    "cfdi_id": "cfdi-018",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-019",
+    "cfdi_id": "cfdi-019",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-020",
+    "cfdi_id": "cfdi-020",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-021",
+    "cfdi_id": "cfdi-021",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-022",
+    "cfdi_id": "cfdi-022",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-023",
+    "cfdi_id": "cfdi-023",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-024",
+    "cfdi_id": "cfdi-024",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-025",
+    "cfdi_id": "cfdi-025",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-026",
+    "cfdi_id": "cfdi-026",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-027",
+    "cfdi_id": "cfdi-027",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-028",
+    "cfdi_id": "cfdi-028",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-029",
+    "cfdi_id": "cfdi-029",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-030",
+    "cfdi_id": "cfdi-030",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-031",
+    "cfdi_id": "cfdi-031",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-032",
+    "cfdi_id": "cfdi-032",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-033",
+    "cfdi_id": "cfdi-033",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-034",
+    "cfdi_id": "cfdi-034",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-035",
+    "cfdi_id": "cfdi-035",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-036",
+    "cfdi_id": "cfdi-036",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-037",
+    "cfdi_id": "cfdi-037",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-038",
+    "cfdi_id": "cfdi-038",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-039",
+    "cfdi_id": "cfdi-039",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-040",
+    "cfdi_id": "cfdi-040",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-041",
+    "cfdi_id": "cfdi-041",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-042",
+    "cfdi_id": "cfdi-042",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-043",
+    "cfdi_id": "cfdi-043",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-044",
+    "cfdi_id": "cfdi-044",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "inequivoco",
+    "movimiento_id": "mov-045",
+    "cfdi_id": "cfdi-045",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "desplazado",
+    "dias": 1,
+    "movimiento_id": "mov-046",
+    "cfdi_id": "cfdi-046",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "desplazado",
+    "dias": 2,
+    "movimiento_id": "mov-047",
+    "cfdi_id": "cfdi-047",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "desplazado",
+    "dias": 3,
+    "movimiento_id": "mov-048",
+    "cfdi_id": "cfdi-048",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "desplazado",
+    "dias": 1,
+    "movimiento_id": "mov-049",
+    "cfdi_id": "cfdi-049",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "desplazado",
+    "dias": 2,
+    "movimiento_id": "mov-050",
+    "cfdi_id": "cfdi-050",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "desplazado",
+    "dias": 3,
+    "movimiento_id": "mov-051",
+    "cfdi_id": "cfdi-051",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "desplazado",
+    "dias": 1,
+    "movimiento_id": "mov-052",
+    "cfdi_id": "cfdi-052",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "desplazado",
+    "dias": 2,
+    "movimiento_id": "mov-053",
+    "cfdi_id": "cfdi-053",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "desplazado",
+    "dias": 3,
+    "movimiento_id": "mov-054",
+    "cfdi_id": "cfdi-054",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "desplazado",
+    "dias": 1,
+    "movimiento_id": "mov-055",
+    "cfdi_id": "cfdi-055",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "desplazado",
+    "dias": 2,
+    "movimiento_id": "mov-056",
+    "cfdi_id": "cfdi-056",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "desplazado",
+    "dias": 3,
+    "movimiento_id": "mov-057",
+    "cfdi_id": "cfdi-057",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "desplazado",
+    "dias": 1,
+    "movimiento_id": "mov-058",
+    "cfdi_id": "cfdi-058",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "desplazado",
+    "dias": 2,
+    "movimiento_id": "mov-059",
+    "cfdi_id": "cfdi-059",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "desplazado",
+    "dias": 3,
+    "movimiento_id": "mov-060",
+    "cfdi_id": "cfdi-060",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "desplazado",
+    "dias": 1,
+    "movimiento_id": "mov-061",
+    "cfdi_id": "cfdi-061",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "desplazado",
+    "dias": 2,
+    "movimiento_id": "mov-062",
+    "cfdi_id": "cfdi-062",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "desplazado",
+    "dias": 3,
+    "movimiento_id": "mov-063",
+    "cfdi_id": "cfdi-063",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "desplazado",
+    "dias": 1,
+    "movimiento_id": "mov-064",
+    "cfdi_id": "cfdi-064",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "desplazado",
+    "dias": 2,
+    "movimiento_id": "mov-065",
+    "cfdi_id": "cfdi-065",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "mismo_importe_distinta_contraparte",
+    "movimiento_id": "mov-066",
+    "cfdi_id": "cfdi-067",
+    "descartado_id": "cfdi-066",
+    "nivel": "revision_requerida"
+  },
+  {
+    "caso": "mismo_importe_distinta_contraparte",
+    "movimiento_id": "mov-067",
+    "cfdi_id": "cfdi-069",
+    "descartado_id": "cfdi-068",
+    "nivel": "revision_requerida"
+  },
+  {
+    "caso": "mismo_importe_distinta_contraparte",
+    "movimiento_id": "mov-068",
+    "cfdi_id": "cfdi-071",
+    "descartado_id": "cfdi-070",
+    "nivel": "revision_requerida"
+  },
+  {
+    "caso": "mismo_importe_distinta_contraparte",
+    "movimiento_id": "mov-069",
+    "cfdi_id": "cfdi-073",
+    "descartado_id": "cfdi-072",
+    "nivel": "revision_requerida"
+  },
+  {
+    "caso": "mismo_importe_distinta_contraparte",
+    "movimiento_id": "mov-070",
+    "cfdi_id": "cfdi-075",
+    "descartado_id": "cfdi-074",
+    "nivel": "revision_requerida"
+  },
+  {
+    "caso": "mismo_importe_distinta_contraparte",
+    "movimiento_id": "mov-071",
+    "cfdi_id": "cfdi-077",
+    "descartado_id": "cfdi-076",
+    "nivel": "revision_requerida"
+  },
+  {
+    "caso": "mismo_importe_distinta_contraparte",
+    "movimiento_id": "mov-072",
+    "cfdi_id": "cfdi-079",
+    "descartado_id": "cfdi-078",
+    "nivel": "revision_requerida"
+  },
+  {
+    "caso": "mismo_importe_distinta_contraparte",
+    "movimiento_id": "mov-073",
+    "cfdi_id": "cfdi-081",
+    "descartado_id": "cfdi-080",
+    "nivel": "revision_requerida"
+  },
+  {
+    "caso": "mismo_importe_distinta_contraparte",
+    "movimiento_id": "mov-074",
+    "cfdi_id": "cfdi-083",
+    "descartado_id": "cfdi-082",
+    "nivel": "revision_requerida"
+  },
+  {
+    "caso": "mismo_importe_distinta_contraparte",
+    "movimiento_id": "mov-075",
+    "cfdi_id": "cfdi-085",
+    "descartado_id": "cfdi-084",
+    "nivel": "revision_requerida"
+  },
+  {
+    "caso": "ambiguo",
+    "movimiento_id": "mov-076",
+    "candidatos": [
+      "cfdi-086",
+      "cfdi-087"
+    ],
+    "nivel": "revision_requerida",
+    "ambiguo": true
+  },
+  {
+    "caso": "ambiguo",
+    "movimiento_id": "mov-077",
+    "candidatos": [
+      "cfdi-088",
+      "cfdi-089"
+    ],
+    "nivel": "revision_requerida",
+    "ambiguo": true
+  },
+  {
+    "caso": "ambiguo",
+    "movimiento_id": "mov-078",
+    "candidatos": [
+      "cfdi-090",
+      "cfdi-091"
+    ],
+    "nivel": "revision_requerida",
+    "ambiguo": true
+  },
+  {
+    "caso": "ambiguo",
+    "movimiento_id": "mov-079",
+    "candidatos": [
+      "cfdi-092",
+      "cfdi-093"
+    ],
+    "nivel": "revision_requerida",
+    "ambiguo": true
+  },
+  {
+    "caso": "ambiguo",
+    "movimiento_id": "mov-080",
+    "candidatos": [
+      "cfdi-094",
+      "cfdi-095"
+    ],
+    "nivel": "revision_requerida",
+    "ambiguo": true
+  },
+  {
+    "caso": "ambiguo",
+    "movimiento_id": "mov-081",
+    "candidatos": [
+      "cfdi-096",
+      "cfdi-097"
+    ],
+    "nivel": "revision_requerida",
+    "ambiguo": true
+  },
+  {
+    "caso": "ambiguo",
+    "movimiento_id": "mov-082",
+    "candidatos": [
+      "cfdi-098",
+      "cfdi-099"
+    ],
+    "nivel": "revision_requerida",
+    "ambiguo": true
+  },
+  {
+    "caso": "ambiguo",
+    "movimiento_id": "mov-083",
+    "candidatos": [
+      "cfdi-100",
+      "cfdi-101"
+    ],
+    "nivel": "revision_requerida",
+    "ambiguo": true
+  },
+  {
+    "caso": "ambiguo",
+    "movimiento_id": "mov-084",
+    "candidatos": [
+      "cfdi-102",
+      "cfdi-103"
+    ],
+    "nivel": "revision_requerida",
+    "ambiguo": true
+  },
+  {
+    "caso": "ambiguo",
+    "movimiento_id": "mov-085",
+    "candidatos": [
+      "cfdi-104",
+      "cfdi-105"
+    ],
+    "nivel": "revision_requerida",
+    "ambiguo": true
+  },
+  {
+    "caso": "movimiento_sin_cfdi",
+    "movimiento_id": "mov-086",
+    "cfdi_id": null
+  },
+  {
+    "caso": "movimiento_sin_cfdi",
+    "movimiento_id": "mov-087",
+    "cfdi_id": null
+  },
+  {
+    "caso": "movimiento_sin_cfdi",
+    "movimiento_id": "mov-088",
+    "cfdi_id": null
+  },
+  {
+    "caso": "movimiento_sin_cfdi",
+    "movimiento_id": "mov-089",
+    "cfdi_id": null
+  },
+  {
+    "caso": "movimiento_sin_cfdi",
+    "movimiento_id": "mov-090",
+    "cfdi_id": null
+  },
+  {
+    "caso": "movimiento_sin_cfdi",
+    "movimiento_id": "mov-091",
+    "cfdi_id": null
+  },
+  {
+    "caso": "movimiento_sin_cfdi",
+    "movimiento_id": "mov-092",
+    "cfdi_id": null
+  },
+  {
+    "caso": "movimiento_sin_cfdi",
+    "movimiento_id": "mov-093",
+    "cfdi_id": null
+  },
+  {
+    "caso": "movimiento_sin_cfdi",
+    "movimiento_id": "mov-094",
+    "cfdi_id": null
+  },
+  {
+    "caso": "movimiento_sin_cfdi",
+    "movimiento_id": "mov-095",
+    "cfdi_id": null
+  },
+  {
+    "caso": "identicos_legitimos",
+    "movimiento_id": "mov-096",
+    "cfdi_id": "cfdi-106",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "identicos_legitimos",
+    "movimiento_id": "mov-097",
+    "cfdi_id": "cfdi-107",
+    "nivel": "automatica_alta_confianza"
+  },
+  {
+    "caso": "cfdi_sin_movimiento",
+    "cfdi_id": "cfdi-108",
+    "movimiento_id": null
+  },
+  {
+    "caso": "cfdi_sin_movimiento",
+    "cfdi_id": "cfdi-109",
+    "movimiento_id": null
+  },
+  {
+    "caso": "cfdi_sin_movimiento",
+    "cfdi_id": "cfdi-110",
+    "movimiento_id": null
+  },
+  {
+    "caso": "cfdi_sin_movimiento",
+    "cfdi_id": "cfdi-111",
+    "movimiento_id": null
+  },
+  {
+    "caso": "cfdi_sin_movimiento",
+    "cfdi_id": "cfdi-112",
+    "movimiento_id": null
+  }
+]

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- DOCUMENTO SINTETICO DE LABORATORIO: NO VERIFICADO ANTE EL SAT -->
+<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital"
+  Version="4.0" Fecha="2026-07-08T12:00:00" Moneda="MXN" Total="78220.96" SubTotal="78220.96"
+  TipoDeComprobante="I" MetodoPago="PUE" FormaPago="03" Exportacion="01" LugarExpedicion="64000">
+  <cfdi:Emisor Rfc="AIN920115AB1" Nombre="ACME INDUSTRIAL SA DE CV" RegimenFiscal="601"/>
+  <cfdi:Receptor Rfc="SAND010101AAA" Nombre="EXPEDIENTE SANDBOX CONTACLICK" DomicilioFiscalReceptor="64000" RegimenFiscalReceptor="601" UsoCFDI="G03"/>
+  <cfdi:Conceptos>
+    <cfdi:Concepto ClaveProdServ="01010101" Cantidad="1" ClaveUnidad="ACT" Descripcion="Operacion sintetica de laboratorio" ValorUnitario="78220.96" Importe="78220.96" ObjetoImp="02"/>
+  </cfdi:Conceptos>
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital Version="1.1" UUID="0FA40AB5-CDAF-5F51-9F54-0D8954FF0994" FechaTimbrado="2026-07-08T12:05:00" RfcProvCertif="SINTETICO"/>
+  </cfdi:Complemento>
+</cfdi:Comprobante>

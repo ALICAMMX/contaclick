@@ -44,10 +44,11 @@ describe("dinero en centavos", () => {
 });
 
 describe("contrato de estados", () => {
-  it("sólo confirmado cuenta como conciliado", () => {
-    expect(cuentaComoConciliado("confirmado")).toBe(true);
+  it("sólo confirmado por una persona cuenta como conciliado", () => {
+    expect(cuentaComoConciliado("confirmado", "usuario-1")).toBe(true);
+    expect(cuentaComoConciliado("confirmado", null)).toBe(false);
     for (const e of ["propuesto", "rechazado", "ignorado"] as const) {
-      expect(cuentaComoConciliado(e)).toBe(false);
+      expect(cuentaComoConciliado(e, "usuario-1")).toBe(false);
     }
   });
 
@@ -66,16 +67,26 @@ describe("contrato de estados", () => {
 describe("motor uno a uno", () => {
   const uuid = "A1B2C3D4-0000-0000-0000-99887766AABB";
 
-  it("confirma automáticamente sólo con candidato único, importe exacto y dos señales fuertes", () => {
+  it("marca alta confianza sólo con candidato único, importe exacto y dos señales fuertes, sin confirmar", () => {
     const r = conciliarUnoAUno({
       movimientos: [mov({ id: "m1", descripcion: "SPEI ACME SA DE CV", referencia: "REF99887766AABB" })],
       cfdi: [cfdi({ id: "c1", uuid, nombre_contraparte: "ACME SA DE CV" })],
     });
     expect(r.grupos).toHaveLength(1);
-    expect(r.grupos[0].estado).toBe("confirmado");
+    expect(r.grupos[0].estado).toBe("propuesto");
+    expect(r.grupos[0].nivel_propuesta).toBe("automatica_alta_confianza");
     expect(r.grupos[0].origen).toBe("motor");
     expect(r.grupos[0].evidencia.senales_fuertes).toBeGreaterThanOrEqual(2);
   });
+
+  it("el motor nunca produce estado confirmado", () => {
+    const r = conciliarUnoAUno({
+      movimientos: [mov({ id: "m1", descripcion: "SPEI ACME SA DE CV", referencia: "REF99887766AABB" })],
+      cfdi: [cfdi({ id: "c1", uuid, nombre_contraparte: "ACME SA DE CV" })],
+    });
+    expect(r.grupos.every((g) => g.estado === "propuesto")).toBe(true);
+  });
+
 
   it("importe y fecha por sí solos nunca confirman", () => {
     const r = conciliarUnoAUno({
