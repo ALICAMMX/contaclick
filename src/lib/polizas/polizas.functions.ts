@@ -251,18 +251,29 @@ export const generarBorradoresCanonicos = createServerFn({ method: "POST" })
         );
       }
 
-      let conciliacion: { confirmada: boolean; movimiento_bancario_id?: string | null } | null = null;
+      let conciliacion: {
+        confirmada: boolean;
+        movimiento_bancario_id?: string | null;
+        actor?: string | null;
+        fecha?: string | null;
+      } | null = null;
       if (c.tipo_cfdi === "P") {
         const { data: conc } = await supabase
           .from("conciliaciones")
-          .select("movimiento_bancario_id, estado")
+          .select("movimiento_id, estatus, estado_grupo, confirmado_por, confirmado_at")
           .eq("cliente_id", scope.cliente_id)
           .eq("cfdi_id", c.id)
+          .order("confirmado_at", { ascending: false, nullsFirst: false })
           .limit(1);
         const fila = (conc ?? [])[0] as any;
+        // La conciliación sólo cuenta como evidencia de flujo cuando una
+        // persona la confirmó: una propuesta automática nunca reconoce pago.
+        const confirmada = fila?.estatus === "confirmado" || fila?.estado_grupo === "confirmado";
         conciliacion = {
-          confirmada: fila?.estado === "confirmada",
-          movimiento_bancario_id: fila?.movimiento_bancario_id ?? null,
+          confirmada,
+          movimiento_bancario_id: confirmada ? (fila?.movimiento_id ?? null) : null,
+          actor: fila?.confirmado_por ?? null,
+          fecha: fila?.confirmado_at ?? null,
         };
       }
 
@@ -314,7 +325,7 @@ export const generarBorradoresCanonicos = createServerFn({ method: "POST" })
       generadas += 1;
       const polizaId = (res as any)?.poliza_id ?? (res as any)?.id ?? null;
       if (polizaId) {
-        await supabase.rpc("poliza_marcar_evidencia", {
+        const { error: errEv } = await supabase.rpc("poliza_marcar_evidencia", {
           _poliza_id: polizaId,
           _nivel: borrador.evidencia.nivel as NivelEvidencia,
           _detalle: {
@@ -325,6 +336,9 @@ export const generarBorradoresCanonicos = createServerFn({ method: "POST" })
             cfdi_pago_id: borrador.evidencia.cfdi_pago_id,
           },
         } as never);
+        // El nivel de evidencia es parte del contrato: si no puede registrarse,
+        // la póliza no debe publicarse con un nivel silenciosamente falso.
+        if (errEv) throw new Error(`No se pudo registrar la evidencia de cobro/pago: ${errEv.message}`);
       }
       detalle.push({
         uuid: c.uuid,

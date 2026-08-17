@@ -1,0 +1,1 @@
+ALTER FUNCTION public.catalogo_importar_lote(uuid, text, jsonb, text) SET search_path = public, extensions;
