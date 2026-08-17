@@ -2044,6 +2044,281 @@ export type Database = {
           },
         ]
       }
+      conciliacion_bitacora: {
+        Row: {
+          accion: string
+          actor: string | null
+          cliente_id: string
+          created_at: string
+          despacho_id: string
+          detalle: Json
+          estado_anterior: string | null
+          estado_nuevo: string | null
+          grupo_id: string | null
+          id: string
+          motivo: string | null
+          movimiento_id: string | null
+          periodo: string
+        }
+        Insert: {
+          accion: string
+          actor?: string | null
+          cliente_id: string
+          created_at?: string
+          despacho_id: string
+          detalle?: Json
+          estado_anterior?: string | null
+          estado_nuevo?: string | null
+          grupo_id?: string | null
+          id?: string
+          motivo?: string | null
+          movimiento_id?: string | null
+          periodo: string
+        }
+        Update: {
+          accion?: string
+          actor?: string | null
+          cliente_id?: string
+          created_at?: string
+          despacho_id?: string
+          detalle?: Json
+          estado_anterior?: string | null
+          estado_nuevo?: string | null
+          grupo_id?: string | null
+          id?: string
+          motivo?: string | null
+          movimiento_id?: string | null
+          periodo?: string
+        }
+        Relationships: []
+      }
+      conciliacion_corridas: {
+        Row: {
+          actor: string | null
+          algoritmo_version: string
+          cliente_id: string
+          despacho_id: string
+          error: string | null
+          estado: string
+          fin_at: string | null
+          id: string
+          idempotency_key: string
+          inicio_at: string
+          input_hash: string
+          metricas: Json
+          parametros: Json
+          periodo: string
+        }
+        Insert: {
+          actor?: string | null
+          algoritmo_version: string
+          cliente_id: string
+          despacho_id: string
+          error?: string | null
+          estado?: string
+          fin_at?: string | null
+          id?: string
+          idempotency_key: string
+          inicio_at?: string
+          input_hash: string
+          metricas?: Json
+          parametros?: Json
+          periodo: string
+        }
+        Update: {
+          actor?: string | null
+          algoritmo_version?: string
+          cliente_id?: string
+          despacho_id?: string
+          error?: string | null
+          estado?: string
+          fin_at?: string | null
+          id?: string
+          idempotency_key?: string
+          inicio_at?: string
+          input_hash?: string
+          metricas?: Json
+          parametros?: Json
+          periodo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conciliacion_corridas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conciliacion_grupos: {
+        Row: {
+          cliente_id: string
+          confirmado_at: string | null
+          confirmado_por: string | null
+          corrida_id: string | null
+          created_at: string
+          despacho_id: string
+          diferencia_centavos: number
+          estado: string
+          evidencia: Json
+          id: string
+          idempotency_key: string | null
+          importe_banco_centavos: number
+          importe_cfdi_centavos: number
+          motivo: string | null
+          origen: string
+          periodo: string
+          probabilidad_bp: number
+          rechazado_at: string | null
+          rechazado_por: string | null
+          regla: string | null
+          tipo: string
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          cliente_id: string
+          confirmado_at?: string | null
+          confirmado_por?: string | null
+          corrida_id?: string | null
+          created_at?: string
+          despacho_id: string
+          diferencia_centavos?: number
+          estado?: string
+          evidencia?: Json
+          id?: string
+          idempotency_key?: string | null
+          importe_banco_centavos?: number
+          importe_cfdi_centavos?: number
+          motivo?: string | null
+          origen: string
+          periodo: string
+          probabilidad_bp?: number
+          rechazado_at?: string | null
+          rechazado_por?: string | null
+          regla?: string | null
+          tipo?: string
+          updated_at?: string
+          version?: string
+        }
+        Update: {
+          cliente_id?: string
+          confirmado_at?: string | null
+          confirmado_por?: string | null
+          corrida_id?: string | null
+          created_at?: string
+          despacho_id?: string
+          diferencia_centavos?: number
+          estado?: string
+          evidencia?: Json
+          id?: string
+          idempotency_key?: string | null
+          importe_banco_centavos?: number
+          importe_cfdi_centavos?: number
+          motivo?: string | null
+          origen?: string
+          periodo?: string
+          probabilidad_bp?: number
+          rechazado_at?: string | null
+          rechazado_por?: string | null
+          regla?: string | null
+          tipo?: string
+          updated_at?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conciliacion_grupos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conciliacion_grupos_corrida_id_fkey"
+            columns: ["corrida_id"]
+            isOneToOne: false
+            referencedRelation: "conciliacion_corridas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conciliacion_importaciones: {
+        Row: {
+          actor: string | null
+          archivo_bytes: number
+          archivo_nombre: string
+          archivo_sha256: string
+          candidatos_duplicado: number
+          cliente_id: string
+          created_at: string
+          cuenta_id: string
+          despacho_id: string
+          error: string | null
+          estado: string
+          filas_insertadas: number
+          filas_reimportadas: number
+          filas_totales: number
+          formato: string
+          id: string
+          periodo_detectado: string | null
+        }
+        Insert: {
+          actor?: string | null
+          archivo_bytes?: number
+          archivo_nombre: string
+          archivo_sha256: string
+          candidatos_duplicado?: number
+          cliente_id: string
+          created_at?: string
+          cuenta_id: string
+          despacho_id: string
+          error?: string | null
+          estado?: string
+          filas_insertadas?: number
+          filas_reimportadas?: number
+          filas_totales?: number
+          formato?: string
+          id?: string
+          periodo_detectado?: string | null
+        }
+        Update: {
+          actor?: string | null
+          archivo_bytes?: number
+          archivo_nombre?: string
+          archivo_sha256?: string
+          candidatos_duplicado?: number
+          cliente_id?: string
+          created_at?: string
+          cuenta_id?: string
+          despacho_id?: string
+          error?: string | null
+          estado?: string
+          filas_insertadas?: number
+          filas_reimportadas?: number
+          filas_totales?: number
+          formato?: string
+          id?: string
+          periodo_detectado?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conciliacion_importaciones_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conciliacion_importaciones_cuenta_id_fkey"
+            columns: ["cuenta_id"]
+            isOneToOne: false
+            referencedRelation: "cuentas_bancarias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conciliacion_incidencias: {
         Row: {
           cfdi_id: string | null
@@ -2304,48 +2579,69 @@ export type Database = {
       }
       conciliaciones: {
         Row: {
+          asignado_centavos: number
           cfdi_id: string | null
           cliente_id: string
           confirmado_at: string | null
           confirmado_por: string | null
+          corrida_id: string | null
           created_at: string
           despacho_id: string
           diferencia: number | null
+          estado_grupo: string | null
           estatus: string
+          grupo_id: string | null
           id: string
           motivo: string | null
           movimiento_id: string | null
+          periodo: string | null
           probabilidad: number | null
+          rechazado_at: string | null
+          rechazado_por: string | null
           tipo_match: string
         }
         Insert: {
+          asignado_centavos?: number
           cfdi_id?: string | null
           cliente_id: string
           confirmado_at?: string | null
           confirmado_por?: string | null
+          corrida_id?: string | null
           created_at?: string
           despacho_id: string
           diferencia?: number | null
+          estado_grupo?: string | null
           estatus?: string
+          grupo_id?: string | null
           id?: string
           motivo?: string | null
           movimiento_id?: string | null
+          periodo?: string | null
           probabilidad?: number | null
+          rechazado_at?: string | null
+          rechazado_por?: string | null
           tipo_match: string
         }
         Update: {
+          asignado_centavos?: number
           cfdi_id?: string | null
           cliente_id?: string
           confirmado_at?: string | null
           confirmado_por?: string | null
+          corrida_id?: string | null
           created_at?: string
           despacho_id?: string
           diferencia?: number | null
+          estado_grupo?: string | null
           estatus?: string
+          grupo_id?: string | null
           id?: string
           motivo?: string | null
           movimiento_id?: string | null
+          periodo?: string | null
           probabilidad?: number | null
+          rechazado_at?: string | null
+          rechazado_por?: string | null
           tipo_match?: string
         }
         Relationships: [
@@ -2364,10 +2660,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "conciliaciones_corrida_id_fkey"
+            columns: ["corrida_id"]
+            isOneToOne: false
+            referencedRelation: "conciliacion_corridas"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "conciliaciones_despacho_id_fkey"
             columns: ["despacho_id"]
             isOneToOne: false
             referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conciliaciones_grupo_id_fkey"
+            columns: ["grupo_id"]
+            isOneToOne: false
+            referencedRelation: "conciliacion_grupos"
             referencedColumns: ["id"]
           },
           {
@@ -3585,9 +3895,18 @@ export type Database = {
           cuenta_id: string
           descripcion: string | null
           despacho_id: string
+          duplicado_candidato_de: string | null
           fecha: string
+          fila_origen: number | null
           hash: string
           id: string
+          ignorado_at: string | null
+          ignorado_motivo: string | null
+          ignorado_por: string | null
+          importacion_id: string | null
+          importe_centavos: number | null
+          moneda: string
+          no_fiscal: boolean
           referencia: string | null
           saldo: number | null
         }
@@ -3599,9 +3918,18 @@ export type Database = {
           cuenta_id: string
           descripcion?: string | null
           despacho_id: string
+          duplicado_candidato_de?: string | null
           fecha: string
+          fila_origen?: number | null
           hash: string
           id?: string
+          ignorado_at?: string | null
+          ignorado_motivo?: string | null
+          ignorado_por?: string | null
+          importacion_id?: string | null
+          importe_centavos?: number | null
+          moneda?: string
+          no_fiscal?: boolean
           referencia?: string | null
           saldo?: number | null
         }
@@ -3613,9 +3941,18 @@ export type Database = {
           cuenta_id?: string
           descripcion?: string | null
           despacho_id?: string
+          duplicado_candidato_de?: string | null
           fecha?: string
+          fila_origen?: number | null
           hash?: string
           id?: string
+          ignorado_at?: string | null
+          ignorado_motivo?: string | null
+          ignorado_por?: string | null
+          importacion_id?: string | null
+          importe_centavos?: number | null
+          moneda?: string
+          no_fiscal?: boolean
           referencia?: string | null
           saldo?: number | null
         }
@@ -3639,6 +3976,13 @@ export type Database = {
             columns: ["despacho_id"]
             isOneToOne: false
             referencedRelation: "despachos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movimientos_bancarios_importacion_id_fkey"
+            columns: ["importacion_id"]
+            isOneToOne: false
+            referencedRelation: "conciliacion_importaciones"
             referencedColumns: ["id"]
           },
         ]
@@ -6523,6 +6867,34 @@ export type Database = {
           _motivo: string
           _tolerancia_centavos: number
         }
+        Returns: Json
+      }
+      conciliacion_confirmar_grupo: {
+        Args: { _grupo_id: string; _motivo?: string }
+        Returns: Json
+      }
+      conciliacion_ejecutar_corrida: {
+        Args: {
+          _algoritmo_version: string
+          _cliente_id: string
+          _grupos: Json
+          _idempotency_key: string
+          _input_hash: string
+          _parametros: Json
+          _periodo: string
+        }
+        Returns: Json
+      }
+      conciliacion_ignorar_movimiento: {
+        Args: { _motivo: string; _movimiento_id: string; _no_fiscal?: boolean }
+        Returns: Json
+      }
+      conciliacion_rechazar_grupo: {
+        Args: { _grupo_id: string; _motivo: string }
+        Returns: Json
+      }
+      conciliacion_revertir_grupo: {
+        Args: { _grupo_id: string; _motivo: string }
         Returns: Json
       }
       delete_email: {
