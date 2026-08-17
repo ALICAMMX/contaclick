@@ -49,8 +49,8 @@ export const getRutaExpediente = createServerFn({ method: "POST" })
           .from("movimientos_bancarios")
           .select("id", cnt)
           .eq("cliente_id", clienteId)
-          .gte("fecha", rango.inicio)
-          .lte("fecha", rango.fin),
+          .gte("fecha", rango.desde)
+          .lt("fecha", rango.hastaExclusivo),
         supabase.from("cuentas_bancarias").select("id", cnt).eq("cliente_id", clienteId),
         supabase.from("cierre_etapas").select("etapa, estado").eq("cliente_id", clienteId).eq("periodo", periodo),
         supabase
