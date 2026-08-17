@@ -46,6 +46,7 @@ export async function llamar(archivo, exportado, data, token) {
     return texto;
   }
 
+  if (process.env.DEBUG_SERVERFN) console.log(`[serverFn ${exportado}] ${r.status} ${texto.slice(0, 500)}`);
   const json = JSON.parse(texto);
   let valor = json;
   if (r.headers.get("x-tss-serialized")) {
