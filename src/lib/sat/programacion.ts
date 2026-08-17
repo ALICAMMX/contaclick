@@ -233,24 +233,28 @@ export function decidirOcurrencia(args: {
 }): DecisionOcurrencia {
   const retraso = Math.max(0, args.ahora.getTime() - args.programada_at.getTime());
   const tol = Math.max(0, args.tolerancia_minutos) * 60000;
-  if (args.politica === "omitir" && retraso > 60000) {
+  // Dentro de la tolerancia la ocurrencia siempre se ejecuta, sin importar la
+  // política: la tolerancia ES el margen aceptado de retraso.
+  if (retraso <= tol) {
+    return {
+      accion: "ejecutar",
+      retraso_ms: retraso,
+      motivo: retraso > 0 ? "Ocurrencia recuperada dentro de la tolerancia." : "Ocurrencia puntual.",
+    };
+  }
+  if (args.politica === "omitir") {
     return {
       accion: "omitir",
       retraso_ms: retraso,
-      motivo: "La ocurrencia se perdió y la política configurada es omitirla.",
+      motivo: `La ocurrencia se retrasó ${Math.round(retraso / 60000)} min, por encima de la tolerancia de ${args.tolerancia_minutos} min, y la política configurada es omitirla.`,
     };
   }
-  if (retraso > tol) {
-    return {
-      accion: "omitir",
-      retraso_ms: retraso,
-      motivo: `La ocurrencia se retrasó ${Math.round(retraso / 60000)} min, por encima de la tolerancia de ${args.tolerancia_minutos} min.`,
-    };
-  }
+  // Política "recuperar": se ejecuta UNA sola vez, aunque haya pasado la
+  // tolerancia. Nunca se acumulan ocurrencias anteriores.
   return {
     accion: "ejecutar",
     retraso_ms: retraso,
-    motivo: retraso > 0 ? "Ocurrencia recuperada dentro de la tolerancia." : "Ocurrencia puntual.",
+    motivo: `Ocurrencia recuperada con ${Math.round(retraso / 60000)} min de retraso.`,
   };
 }
 
