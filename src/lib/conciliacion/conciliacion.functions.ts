@@ -218,7 +218,7 @@ export const listMovimientos = createServerFn({ method: "POST" })
       supabase
         .from("conciliacion_grupos")
         .select(
-          "id, periodo, tipo, origen, estado, probabilidad_bp, importe_banco_centavos, importe_cfdi_centavos, diferencia_centavos, evidencia, motivo, confirmado_por, confirmado_at, rechazado_por, rechazado_at, created_at",
+          "id, periodo, tipo, origen, estado, nivel_propuesta, probabilidad_bp, importe_banco_centavos, importe_cfdi_centavos, diferencia_centavos, evidencia, motivo, confirmado_por, confirmado_at, rechazado_por, rechazado_at, created_at",
         )
         .eq("cliente_id", data.cliente_id)
         .eq("periodo", data.periodo)
