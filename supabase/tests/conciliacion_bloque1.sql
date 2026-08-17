@@ -27,7 +27,8 @@ DECLARE
   EVID constant jsonb := jsonb_build_object('regla','unico_exacto_dos_senales','version','conciliacion-1a1@2');
 
 BEGIN
-  SELECT id INTO v_user FROM auth.users ORDER BY created_at LIMIT 1;
+  -- Reutiliza una persona real ya existente (sin tocar el esquema auth); todo se revierte.
+  SELECT owner_user_id INTO v_user FROM public.despachos WHERE owner_user_id IS NOT NULL ORDER BY created_at LIMIT 1;
   IF v_user IS NULL THEN RAISE EXCEPTION 'No hay usuarios autenticados para la prueba'; END IF;
 
   -- Sandbox de dos despachos distintos
