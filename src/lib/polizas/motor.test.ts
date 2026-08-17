@@ -22,8 +22,8 @@ const cuentas: CuentasSistema = {
   descuentos: "402-001",
 };
 
-const resuelta = (cuenta: string): ResolucionConcepto => ({ estado: "resuelta", cuenta, cuenta_nombre: cuenta, motivo: null });
-const sinRegla: ResolucionConcepto = { estado: "sin_regla", cuenta: null, cuenta_nombre: null, motivo: "Sin regla vigente" };
+const resuelta = (cuenta: string): ResolucionConcepto => ({ estado: "resuelta", cuenta, cuenta_nombre: cuenta, regla_id: "00000000-0000-0000-0000-000000000001", version: 1 });
+const sinRegla: ResolucionConcepto = { estado: "sin_regla", motivo: "Sin regla vigente" };
 
 function cfdiBase(over: Partial<any> = {}) {
   return {
