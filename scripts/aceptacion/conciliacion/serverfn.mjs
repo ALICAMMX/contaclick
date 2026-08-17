@@ -63,6 +63,11 @@ export async function llamar(archivo, exportado, data, token) {
     throw new Error(String(valor.message));
   }
   if (!r.ok) throw new Error(`[${r.status}] ${texto.slice(0, 400)}`);
+  // El servidor responde el sobre { result, error, context } de TanStack Start.
+  if (valor && typeof valor === "object" && "result" in valor && "context" in valor) {
+    if (valor.error) throw valor.error instanceof Error ? valor.error : new Error(String(valor.error));
+    return valor.result;
+  }
   return valor;
 }
 

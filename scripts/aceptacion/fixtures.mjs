@@ -41,7 +41,7 @@ async function pedir(url, opciones) {
   } catch {
     cuerpo = texto;
   }
-  return { status: r.status, ok: r.ok, cuerpo };
+  return { status: r.status, ok: r.ok, cuerpo, rango: r.headers.get("content-range") };
 }
 
 export function cliente(env) {
@@ -71,6 +71,9 @@ export function cliente(env) {
       const r = await pedir(`${env.url}/rest/v1/${tabla}?${filtro}&select=id`, {
         headers: { ...svc, prefer: "count=exact", range: "0-0" },
       });
+      // PostgREST devuelve el total real en content-range: "0-0/97".
+      const total = Number(String(r.rango ?? "").split("/")[1]);
+      if (Number.isFinite(total)) return total;
       return Array.isArray(r.cuerpo) ? r.cuerpo.length : 0;
     },
     rpc: (fn, args, token) =>
