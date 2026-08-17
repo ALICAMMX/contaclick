@@ -198,6 +198,9 @@ function PolizasPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Badge variant="outline" title={p.evidencia_detalle?.leyenda ?? undefined}>
+                    {LEYENDA_EVIDENCIA[p.nivel_evidencia as keyof typeof LEYENDA_EVIDENCIA] ?? "Sin evidencia"}
+                  </Badge>
                   <Badge variant={p.estado === "aprobada" ? "default" : p.estado === "rechazada" ? "destructive" : "secondary"}>
                     {p.estado}
                   </Badge>
@@ -205,11 +208,18 @@ function PolizasPage() {
                 </div>
               </div>
 
+              {(p.evidencia_detalle?.incidencias ?? []).map((inc: string) => (
+                <div key={inc} className="flex items-start gap-2 rounded-md border border-sky-500/40 bg-sky-500/10 p-2 text-xs">
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 text-sky-400 shrink-0" /> {inc}
+                </div>
+              ))}
+
               {p.bloqueos.map((b: string) => (
                 <div key={b} className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs">
                   <AlertTriangle className="h-3.5 w-3.5 mt-0.5 text-amber-400 shrink-0" /> {b}
                 </div>
               ))}
+
 
               <Table>
                 <TableHeader>
