@@ -135,10 +135,14 @@ async function main() {
     const totMov = await api.contar("movimientos_bancarios", `cliente_id=eq.${a.clienteId}`);
     const dupResp = await api.rest(
       "GET",
-      `movimientos_bancarios?cliente_id=eq.${a.clienteId}&select=id,fecha,descripcion,cargo,abono,hash`,
+      `movimientos_bancarios?cliente_id=eq.${a.clienteId}&select=id,fecha,descripcion,cargo,abono`,
     );
     const porHash = new Map();
-    for (const m of dupResp.cuerpo ?? []) porHash.set(m.hash, (porHash.get(m.hash) ?? 0) + 1);
+    // Operación idéntica = misma fecha, concepto e importe (la referencia bancaria difiere).
+    for (const m of dupResp.cuerpo ?? []) {
+      const k = `${m.fecha}|${m.descripcion}|${m.cargo}|${m.abono}`;
+      porHash.set(k, (porHash.get(k) ?? 0) + 1);
+    }
     const gemelos = [...porHash.values()].filter((n) => n === 2).length;
     paso(3, "97 movimientos y las dos operaciones idénticas conservadas", totMov === 97 && gemelos === 1,
       "97 movimientos y 1 par idéntico conservado (2 filas)", `movimientos=${totMov}, pares idénticos=${gemelos}`,
@@ -200,8 +204,9 @@ async function main() {
     const intentoEdicion = await api.rest("PATCH", `conciliacion_bitacora?id=eq.${evento?.id}`, { cuerpo: { motivo: "alteración" } });
     const intentoBorrado = await api.rest("DELETE", `conciliacion_bitacora?id=eq.${evento?.id}`);
     const diagDespues = await api.rpc("cierre_diag_bancos", { _cliente_id: a.clienteId, _periodo: PERIODO });
-    const covAntes = diagAntes.cuerpo?.conciliados ?? diagAntes.cuerpo?.movimientos_conciliados ?? 0;
-    const covDespues = diagDespues.cuerpo?.conciliados ?? diagDespues.cuerpo?.movimientos_conciliados ?? 0;
+    // cierre_diag_bancos@5 publica la cobertura humana en resultado.movimientos_confirmados_por_persona.
+    const covAntes = diagAntes.cuerpo?.resultado?.movimientos_confirmados_por_persona ?? 0;
+    const covDespues = diagDespues.cuerpo?.resultado?.movimientos_confirmados_por_persona ?? 0;
     const ok9 = !!evento && evento.actor === a.userId && !intentoEdicion.ok && !intentoBorrado.ok && covDespues === covAntes + 1;
     paso(9, "Evento inmutable y cobertura bancaria actualizada", ok9,
       "evento con actor real, edición y borrado rechazados, conciliados +1",
