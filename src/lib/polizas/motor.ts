@@ -12,6 +12,13 @@
 //    pago sólo se contabiliza con conciliación bancaria confirmada por persona.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import {
+  resolverEvidencia,
+  evidencia as construirEvidencia,
+  type EvidenciaFlujo,
+  type NivelEvidencia,
+} from "./evidencia";
+
 export const CUENTA_POR_IDENTIFICAR = "POR IDENTIFICAR";
 
 export type RenglonCanonico = {
@@ -267,6 +274,11 @@ function cerrar(
   sinResolver: number,
   tipo: "ingreso" | "egreso" | "diario",
   concepto: string,
+  flujo: { evidencia: EvidenciaFlujo; refuerzos: NivelEvidencia[]; incidencias: string[] } = {
+    evidencia: construirEvidencia("sin_evidencia"),
+    refuerzos: [],
+    incidencias: [],
+  },
 ): BorradorCanonico {
   const cargos = renglones.reduce((s, r) => s + r.cargo_centavos, 0);
   const abonos = renglones.reduce((s, r) => s + r.abono_centavos, 0);
@@ -283,6 +295,9 @@ function cerrar(
     cargos_centavos: cargos,
     abonos_centavos: abonos,
     cuadra,
+    evidencia: flujo.evidencia,
+    refuerzos: flujo.refuerzos,
+    incidencias: flujo.incidencias,
   };
 }
 
