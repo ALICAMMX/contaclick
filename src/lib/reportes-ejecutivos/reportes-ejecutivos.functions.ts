@@ -185,6 +185,7 @@ async function recolectarDatos(sb: any, cliente_id: string, periodo: string) {
       cfdi_emitidos: emitidosI.length,
       cfdi_recibidos: recibidosI.length,
       polizas_registradas: (polizas.data ?? []).length,
+      polizas_monto: (polizas.data ?? []).reduce((s: number, p: any) => s + montoDesdeRenglones(p), 0),
       movimientos_bancarios: (movs.data ?? []).length,
     },
     resumen_fiscal: {

@@ -254,7 +254,7 @@ export const runConciliacionIntegral = createServerFn({ method: "POST" })
     ]);
 
     const cfdi = cfdis ?? [];
-    const pol = polizas ?? [];
+    const pol = (polizas ?? []).map((p: any) => ({ ...p, monto: montoDesdeRenglones(p) }));
     const mov = movs ?? [];
 
     const polByUuid = new Map<string, any>();
