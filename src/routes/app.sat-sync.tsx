@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { EFirmaCard } from "@/components/EFirmaCard";
+import { ProgramacionSat } from "@/components/sat/ProgramacionSat";
 import { semanticaCodigo } from "@/lib/sat/maquina-estados";
 import { descripcionAlcance } from "@/lib/sat/solicitud-xml";
 import { fechaLocalSat, periodoEfectivo, notaCriterio, ETIQUETA_ZONA_SAT } from "@/lib/sat/periodo";
@@ -56,7 +57,7 @@ function EstadoBadge({ estado }: { estado?: string | null }) {
 }
 
 function SatSyncPage() {
-  const [tab, setTab] = useState<"dashboard" | "actividad" | "novedades" | "config">("dashboard");
+  const [tab, setTab] = useState<"dashboard" | "actividad" | "novedades" | "programacion" | "config">("dashboard");
   const { cliente, hydrating } = useActiveCliente();
   const fnDash = useServerFn(dashboardSatSync);
   const dash = useQuery({
@@ -98,6 +99,7 @@ function SatSyncPage() {
           ["dashboard", "Dashboard"],
           ["actividad", "Actividad"],
           ["novedades", "Novedades"],
+          ["programacion", "Programación"],
           ["config", "Sincronización SAT"],
         ] as const).map(([k, l]) => (
           <button
@@ -118,6 +120,7 @@ function SatSyncPage() {
           {tab === "dashboard" && <DashboardTab d={dash.data} loading={dash.isLoading} />}
           {tab === "actividad" && <ActividadTab clienteId={cliente.id} />}
           {tab === "novedades" && <NovedadesTab clienteId={cliente.id} />}
+          {tab === "programacion" && <ProgramacionSat clienteId={cliente.id} />}
           {tab === "config" && <ConfigTab />}
         </>
       )}
