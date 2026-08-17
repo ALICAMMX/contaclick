@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
+import { montoDesdeRenglones, SELECT_RENGLONES_LEGADO } from "@/lib/polizas/adaptador";
 
 function extractJsonObject(raw: string) {
   const text = String(raw ?? "").trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
@@ -240,7 +241,7 @@ export const runConciliacionIntegral = createServerFn({ method: "POST" })
         .lte("fecha", `${hasta}T23:59:59`),
       supabase
         .from("polizas")
-        .select("id, tipo, fecha, monto, concepto, uuid_cfdi, movimiento_bancario_id, referencia")
+        .select(`id, tipo, fecha, concepto, uuid_cfdi, movimiento_bancario_id, referencia, ${SELECT_RENGLONES_LEGADO}`)
         .eq("cliente_id", data.cliente_id)
         .gte("fecha", desde)
         .lte("fecha", hasta),

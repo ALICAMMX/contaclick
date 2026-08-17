@@ -125,7 +125,7 @@ export const exportarExpedienteZip = createServerFn({ method: "POST" })
       .lte("fecha", fin)
       .order("fecha");
 
-    const polRows = polizas ?? [];
+    const polRows = (polizas ?? []).map((p: any) => ({ ...p, monto: montoDesdeRenglones(p) }));
     const polHeader = ["PolizaID", "Fecha", "Tipo", "Concepto", "Cuenta", "Nombre Cuenta", "Debe", "Haber", "UUID CFDI", "Referencia"];
     const polLines = [csvLine(polHeader)];
     for (const p of polRows as any[]) {
