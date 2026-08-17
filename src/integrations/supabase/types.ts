@@ -4480,6 +4480,7 @@ export type Database = {
           cuenta: string | null
           despacho_id: string
           estado: string
+          evidencia_detalle: Json
           fecha: string
           id: string
           idempotency_key: string | null
@@ -4487,6 +4488,7 @@ export type Database = {
           metadata: Json
           monto: number
           movimiento_bancario_id: string | null
+          nivel_evidencia: string
           origen: string
           periodo: string | null
           rechazada_at: string | null
@@ -4509,6 +4511,7 @@ export type Database = {
           cuenta?: string | null
           despacho_id: string
           estado?: string
+          evidencia_detalle?: Json
           fecha: string
           id?: string
           idempotency_key?: string | null
@@ -4516,6 +4519,7 @@ export type Database = {
           metadata?: Json
           monto?: number
           movimiento_bancario_id?: string | null
+          nivel_evidencia?: string
           origen?: string
           periodo?: string | null
           rechazada_at?: string | null
@@ -4538,6 +4542,7 @@ export type Database = {
           cuenta?: string | null
           despacho_id?: string
           estado?: string
+          evidencia_detalle?: Json
           fecha?: string
           id?: string
           idempotency_key?: string | null
@@ -4545,6 +4550,7 @@ export type Database = {
           metadata?: Json
           monto?: number
           movimiento_bancario_id?: string | null
+          nivel_evidencia?: string
           origen?: string
           periodo?: string | null
           rechazada_at?: string | null
@@ -7396,6 +7402,10 @@ export type Database = {
           _renglones: Json
           _tipo: string
         }
+        Returns: Json
+      }
+      poliza_marcar_evidencia: {
+        Args: { _detalle?: Json; _nivel: string; _poliza_id: string }
         Returns: Json
       }
       poliza_rechazar: {

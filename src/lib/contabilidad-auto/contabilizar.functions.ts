@@ -1,10 +1,24 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Contabilidad automática · MIGRADO al contrato canónico del Bloque 2.
+//
+// Esta capa ya NO inserta en `polizas` ni escribe `metadata.asientos`.
+// Generar, versionar, aprobar y rechazar pasan exclusivamente por los RPC
+// `poliza_generar_borrador`, `poliza_aprobar` y `poliza_rechazar`.
+// La lectura sale siempre de `poliza_renglones` (centavos enteros).
+// ─────────────────────────────────────────────────────────────────────────────
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
+import { assertClienteScope } from "@/lib/despacho/scope";
+import { llaveIdempotencia } from "@/lib/polizas/motor";
+import { asientosDesdeRenglones, montoDesdeRenglones, SELECT_RENGLONES_LEGADO } from "@/lib/polizas/adaptador";
 import { contabilizarCfdi, type CfdiParaContabilizar, type Asiento, type ReglaContable } from "./engine";
 
-// ---------- Listar CFDI pendientes de contabilizar (sin póliza vinculada) ----------
+const motivoSchema = z.string().min(10, "Se exige un motivo de al menos 10 caracteres.").max(1000);
+const cent = (n: unknown) => Math.round((Number(n) || 0) * 100);
+
+// ---------- Listar CFDI pendientes de contabilizar ----------
 export const listarCfdiPendientes = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) =>
@@ -16,11 +30,12 @@ export const listarCfdiPendientes = createServerFn({ method: "POST" })
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
+    const scope = await assertClienteScope(supabase, userId, data.cliente_id);
     let q = supabase
       .from("cfdi_xml")
       .select("id, uuid, tipo_cfdi, rfc_emisor, rfc_receptor, nombre_emisor, nombre_receptor, fecha, subtotal, descuento, iva_trasladado, ieps_trasladado, iva_retenido, isr_retenido, total, estatus_sat")
-      .eq("cliente_id", data.cliente_id)
+      .eq("cliente_id", scope.cliente_id)
       .order("fecha", { ascending: false })
       .limit(data.limit);
     if (data.desde) q = q.gte("fecha", data.desde);
@@ -28,18 +43,17 @@ export const listarCfdiPendientes = createServerFn({ method: "POST" })
     const { data: cfdis, error } = await q;
     if (error) throw new Error(error.message);
 
-    // Excluir UUIDs ya contabilizados
-    const uuids = (cfdis ?? []).map((c) => c.uuid.toUpperCase());
-    let yaContabilizados = new Set<string>();
-    if (uuids.length) {
-      const { data: existentes } = await supabase
-        .from("polizas")
-        .select("uuid_cfdi")
-        .eq("cliente_id", data.cliente_id)
-        .in("uuid_cfdi", uuids);
-      yaContabilizados = new Set((existentes ?? []).map((p: any) => p.uuid_cfdi));
+    // “Ya contabilizado” se decide por los renglones canónicos, no por metadata.
+    const ids = (cfdis ?? []).map((c) => c.id);
+    const contabilizados = new Set<string>();
+    for (let i = 0; i < ids.length; i += 200) {
+      const { data: rs } = await supabase
+        .from("poliza_renglones")
+        .select("cfdi_id")
+        .in("cfdi_id", ids.slice(i, i + 200));
+      for (const r of rs ?? []) if (r.cfdi_id) contabilizados.add(r.cfdi_id);
     }
-    return (cfdis ?? []).filter((c) => !yaContabilizados.has(c.uuid.toUpperCase()));
+    return (cfdis ?? []).filter((c) => !contabilizados.has(c.id));
   });
 
 // ---------- Generar pólizas borrador desde CFDI seleccionados ----------
@@ -53,140 +67,186 @@ export const generarPolizasDesdeCfdi = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { data: cli, error: errCli } = await supabase
-      .from("clientes")
-      .select("id, despacho_id, rfc")
-      .eq("id", data.cliente_id)
-      .maybeSingle();
-    if (errCli || !cli) throw new Error("Cliente no encontrado");
-    if (!cli.rfc) throw new Error("El cliente no tiene RFC configurado");
+    const scope = await assertClienteScope(supabase, userId, data.cliente_id);
 
     const { data: cfdis, error } = await supabase
       .from("cfdi_xml")
-      .select("id, uuid, tipo_cfdi, rfc_emisor, rfc_receptor, nombre_emisor, nombre_receptor, fecha, subtotal, descuento, iva_trasladado, ieps_trasladado, iva_retenido, isr_retenido, total")
-      .eq("cliente_id", data.cliente_id)
+      .select("id, uuid, tipo_cfdi, rfc_emisor, rfc_receptor, nombre_emisor, nombre_receptor, fecha, subtotal, descuento, iva_trasladado, ieps_trasladado, iva_retenido, isr_retenido, total, estatus_sat")
+      .eq("cliente_id", scope.cliente_id)
       .in("id", data.cfdi_ids);
     if (error) throw new Error(error.message);
 
-    // Cargar reglas activas del cliente
     const { data: reglasRows } = await supabase
       .from("reglas_contables")
       .select("id, nombre, prioridad, activa, cuenta_cargo, cuenta_abono, condicion")
-      .eq("cliente_id", data.cliente_id)
+      .eq("cliente_id", scope.cliente_id)
       .eq("activa", true);
     const reglas: ReglaContable[] = (reglasRows ?? []) as any;
 
-    const rfcCliente = cli.rfc as string;
-    const filas: any[] = [];
+    const detalle: Array<{ uuid: string; accion: string; motivo?: string }> = [];
+    let generadas = 0;
     let omitidos = 0;
+
     for (const c of cfdis ?? []) {
-      const input: CfdiParaContabilizar = { ...(c as any), rfc_cliente: rfcCliente };
-      const sug = contabilizarCfdi(input, reglas);
-      if (sug.asientos.length === 0) { omitidos++; continue; }
-      filas.push({
-        id: crypto.randomUUID(),
-        cliente_id: data.cliente_id,
-        despacho_id: cli.despacho_id as string,
-        cfdi_id: c.id,
-        uuid_cfdi: c.uuid.toUpperCase(),
-        tipo: sug.tipo,
-        fecha: String(c.fecha).slice(0, 10),
-        monto: sug.monto,
+      if (c.estatus_sat && c.estatus_sat !== "vigente") {
+        omitidos++;
+        detalle.push({ uuid: c.uuid, accion: "omitida", motivo: `Estatus SAT “${c.estatus_sat}”: sólo se contabiliza evidencia vigente.` });
+        continue;
+      }
+      const sug = contabilizarCfdi({ ...(c as any), rfc_cliente: scope.rfc } as CfdiParaContabilizar, reglas);
+      if (sug.asientos.length === 0) {
+        omitidos++;
+        detalle.push({ uuid: c.uuid, accion: "omitida", motivo: sug.warnings[0] ?? "El motor no produjo asientos." });
+        continue;
+      }
+      const renglones = sug.asientos.map((a) => ({
+        cuenta: a.cuenta,
+        cuenta_nombre: a.nombre,
         concepto: sug.concepto,
-        cuenta: sug.asientos[0]?.cuenta ?? null,
-        referencia: c.uuid.slice(0, 8),
-        origen: "auto_sat",
-        estado: "borrador",
-        metadata: { asientos: sug.asientos, warnings: sug.warnings, tipo_cfdi: c.tipo_cfdi },
-        created_by: userId,
-      });
+        cargo_centavos: cent(a.debe),
+        abono_centavos: cent(a.haber),
+        cfdi_id: c.id,
+      }));
+      const cargos = renglones.reduce((s, r) => s + r.cargo_centavos, 0);
+      const abonos = renglones.reduce((s, r) => s + r.abono_centavos, 0);
+      if (cargos !== abonos) {
+        detalle.push({ uuid: c.uuid, accion: "bloqueada", motivo: `Partida doble rota al centavo (${cargos} ≠ ${abonos}).` });
+        continue;
+      }
+      const fecha = String(c.fecha).slice(0, 10);
+      const { error: errRpc } = await supabase.rpc("poliza_generar_borrador", {
+        _cliente_id: scope.cliente_id,
+        _periodo: fecha.slice(0, 7),
+        _idempotency_key: llaveIdempotencia("cfdi", c.id, "contabilidad-auto@1"),
+        _tipo: sug.tipo,
+        _fecha: fecha,
+        _concepto: sug.concepto,
+        _origen: "auto_sat",
+        _renglones: renglones as never,
+      } as never);
+      if (errRpc) {
+        detalle.push({ uuid: c.uuid, accion: "error", motivo: errRpc.message });
+        continue;
+      }
+      generadas += 1;
+      detalle.push({ uuid: c.uuid, accion: "creada" });
     }
 
-    let insertadas = 0;
-    for (let i = 0; i < filas.length; i += 200) {
-      const chunk = filas.slice(i, i + 200);
-      const { error: errIns } = await supabase.from("polizas").insert(chunk);
-      if (errIns) throw new Error(`Lote ${i / 200 + 1}: ${errIns.message}`);
-      insertadas += chunk.length;
-    }
-    return { insertadas, omitidos };
+    return { insertadas: generadas, omitidos, detalle };
   });
 
-// ---------- Listar pólizas borrador (auto_sat) ----------
+// ---------- Listar pólizas con sus renglones canónicos ----------
 export const listarPolizasBorrador = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) =>
     z.object({
       cliente_id: z.string().uuid(),
-      estado: z.enum(["borrador", "confirmada", "rechazada"]).default("borrador"),
+      estado: z.enum(["borrador", "aprobada", "rechazada", "confirmada"]).default("borrador"),
       limit: z.number().int().min(1).max(500).default(200),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { data: rows, error } = await context.supabase
+    const { supabase, userId } = context;
+    const scope = await assertClienteScope(supabase, userId, data.cliente_id);
+    const { data: rows, error } = await supabase
       .from("polizas")
-      .select("id, fecha, tipo, monto, concepto, uuid_cfdi, estado, origen, metadata, cfdi_id")
-      .eq("cliente_id", data.cliente_id)
+      .select(`id, fecha, periodo, tipo, concepto, uuid_cfdi, estado, version, origen, ${SELECT_RENGLONES_LEGADO}`)
+      .eq("cliente_id", scope.cliente_id)
       .eq("estado", data.estado)
       .order("fecha", { ascending: false })
       .limit(data.limit);
     if (error) throw new Error(error.message);
-    return rows ?? [];
+    return (rows ?? []).map((p: any) => ({
+      ...p,
+      monto: montoDesdeRenglones(p),
+      // Compatibilidad de LECTURA para la vista histórica: derivado de los
+      // renglones canónicos, nunca de `metadata`.
+      metadata: { asientos: asientosDesdeRenglones(p) },
+    }));
   });
 
-// ---------- Aprobar / rechazar ----------
+// ---------- Aprobar / rechazar (con motivo obligatorio) ----------
 export const cambiarEstadoPoliza = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) =>
     z.object({
+      cliente_id: z.string().uuid(),
       ids: z.array(z.string().uuid()).min(1).max(500),
-      estado: z.enum(["confirmada", "rechazada", "borrador"]),
+      estado: z.enum(["aprobada", "rechazada"]),
+      motivo: motivoSchema,
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
-      .from("polizas")
-      .update({ estado: data.estado })
-      .in("id", data.ids);
-    if (error) throw new Error(error.message);
-    return { actualizadas: data.ids.length };
+    const { supabase, userId } = context;
+    await assertClienteScope(supabase, userId, data.cliente_id);
+    const rpc = data.estado === "aprobada" ? "poliza_aprobar" : "poliza_rechazar";
+    const fallos: Array<{ id: string; motivo: string }> = [];
+    let actualizadas = 0;
+    for (const id of data.ids) {
+      const { error } = await supabase.rpc(rpc, { _poliza_id: id, _motivo: data.motivo } as never);
+      if (error) fallos.push({ id, motivo: error.message });
+      else actualizadas += 1;
+    }
+    return { actualizadas, fallos };
   });
 
-// ---------- Editar asientos de una póliza borrador ----------
+// ---------- Corregir una póliza borrador (genera nueva versión) ----------
 export const editarAsientosPoliza = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) =>
     z.object({
+      cliente_id: z.string().uuid(),
       id: z.string().uuid(),
       asientos: z.array(z.object({
-        cuenta: z.string().min(1),
-        nombre: z.string().min(1),
+        cuenta: z.string().min(1).max(60),
+        nombre: z.string().min(1).max(200),
         debe: z.number().nonnegative(),
         haber: z.number().nonnegative(),
-      })).min(2),
+      })).min(2).max(200),
+      motivo: motivoSchema,
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    const td = data.asientos.reduce((s, a) => s + a.debe, 0);
-    const th = data.asientos.reduce((s, a) => s + a.haber, 0);
-    if (Math.abs(td - th) > 0.05) throw new Error(`Asiento descuadrado: cargos ${td.toFixed(2)} vs abonos ${th.toFixed(2)}`);
+    const { supabase, userId } = context;
+    const scope = await assertClienteScope(supabase, userId, data.cliente_id);
 
-    const { data: row, error: errSel } = await context.supabase
+    const { data: poliza, error: errSel } = await supabase
       .from("polizas")
-      .select("metadata")
+      .select("id, periodo, fecha, tipo, concepto, estado, origen, idempotency_key")
+      .eq("cliente_id", scope.cliente_id)
       .eq("id", data.id)
       .maybeSingle();
     if (errSel) throw new Error(errSel.message);
-    const meta = (row?.metadata ?? {}) as any;
-    meta.asientos = data.asientos;
-    meta.warnings = [];
+    if (!poliza) throw new Error("La póliza no existe en este expediente.");
+    if (poliza.estado !== "borrador") {
+      throw new Error("Sólo puede corregirse una póliza en borrador; reabre el periodo para modificar una aprobada.");
+    }
 
-    const { error } = await context.supabase
-      .from("polizas")
-      .update({ metadata: meta, monto: Math.max(td, th), cuenta: data.asientos[0].cuenta })
-      .eq("id", data.id);
+    const renglones = data.asientos.map((a) => ({
+      cuenta: a.cuenta,
+      cuenta_nombre: a.nombre,
+      concepto: data.motivo.slice(0, 300),
+      cargo_centavos: cent(a.debe),
+      abono_centavos: cent(a.haber),
+    }));
+    const cargos = renglones.reduce((s, r) => s + r.cargo_centavos, 0);
+    const abonos = renglones.reduce((s, r) => s + r.abono_centavos, 0);
+    if (cargos !== abonos) {
+      throw new Error(`La póliza no cuadra: cargos ${cargos} vs abonos ${abonos} (centavos).`);
+    }
+
+    const { data: res, error } = await supabase.rpc("poliza_generar_borrador", {
+      _cliente_id: scope.cliente_id,
+      _periodo: poliza.periodo,
+      _idempotency_key: poliza.idempotency_key ?? llaveIdempotencia("manual", poliza.id, "correccion@1"),
+      _tipo: poliza.tipo,
+      _fecha: String(poliza.fecha).slice(0, 10),
+      _concepto: poliza.concepto,
+      _origen: poliza.origen ?? "manual",
+      _renglones: renglones as never,
+    } as never);
     if (error) throw new Error(error.message);
-    return { ok: true };
+    return { ok: true, resultado: res };
   });
 
 export type AsientoEditable = Asiento;

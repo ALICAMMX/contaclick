@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
+import { assertClienteScope } from "@/lib/despacho/scope";
+import { llaveIdempotencia } from "@/lib/polizas/motor";
 
 // Cuentas por defecto usadas para movimientos bancarios sin clasificar.
 const CTA_BANCOS = { c: "102-01", n: "Bancos" };
@@ -73,6 +75,9 @@ export const listarMovimientosSinPoliza = createServerFn({ method: "POST" })
   });
 
 // ---------- Generar pólizas borrador desde movimientos ----------
+// MIGRADO AL CONTRATO CANÓNICO: ya no inserta en `polizas` ni escribe
+// `metadata.asientos`. Todo pasa por `poliza_generar_borrador`, que valida
+// partida doble al centavo, versiona y reabre la cascada del periodo.
 export const generarPolizasDesdeMovimientos = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) =>
@@ -83,76 +88,100 @@ export const generarPolizasDesdeMovimientos = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { data: cli, error: errCli } = await supabase
-      .from("clientes")
-      .select("id, despacho_id")
-      .eq("id", data.cliente_id)
-      .maybeSingle();
-    if (errCli || !cli) throw new Error("Cliente no encontrado");
+    const scope = await assertClienteScope(supabase, userId, data.cliente_id);
 
     const { data: movs, error } = await supabase
       .from("movimientos_bancarios")
       .select("id, fecha, descripcion, referencia, cargo, abono")
-      .eq("cliente_id", data.cliente_id)
+      .eq("cliente_id", scope.cliente_id)
       .in("id", data.movimiento_ids);
     if (error) throw new Error(error.message);
 
     const { data: reglasRows } = await supabase
       .from("reglas_contables")
       .select("id, nombre, prioridad, activa, cuenta_cargo, cuenta_abono, condicion")
-      .eq("cliente_id", data.cliente_id)
+      .eq("cliente_id", scope.cliente_id)
       .eq("activa", true);
     const reglas: ReglaBanco[] = (reglasRows ?? []) as any;
 
-    const r2 = (n: number) => Math.round((Number(n) || 0) * 100) / 100;
-    const filas: any[] = [];
+    // Conciliaciones confirmadas por una persona: única fuente de evidencia
+    // bancaria. Sin ellas el movimiento se contabiliza sin reconocer flujo.
+    const { data: concs } = await supabase
+      .from("conciliaciones")
+      .select("movimiento_bancario_id, estado")
+      .eq("cliente_id", scope.cliente_id)
+      .in("movimiento_bancario_id", data.movimiento_ids);
+    const confirmados = new Set(
+      (concs ?? []).filter((c: any) => c.estado === "confirmada").map((c: any) => c.movimiento_bancario_id),
+    );
+
+    const cent = (n: unknown) => Math.round((Number(n) || 0) * 100);
+    const detalle: Array<{ movimiento_id: string; accion: string; motivo?: string }> = [];
+    let generadas = 0;
     let omitidos = 0;
 
     for (const m of movs ?? []) {
-      const cargo = r2(m.cargo as number);
-      const abono = r2(m.abono as number);
-      if (cargo === 0 && abono === 0) { omitidos++; continue; }
+      const cargo = cent(m.cargo);
+      const abono = cent(m.abono);
+      if (cargo === 0 && abono === 0) {
+        omitidos++;
+        detalle.push({ movimiento_id: m.id, accion: "omitida", motivo: "Movimiento sin importe." });
+        continue;
+      }
       const esIngreso = abono > 0;
       const monto = esIngreso ? abono : cargo;
       const desc = m.descripcion ?? "(sin descripción)";
-      const regla = matchReglaBanco(desc, monto, reglas);
+      const regla = matchReglaBanco(desc, monto / 100, reglas);
 
-      let cuentaCargo = esIngreso ? CTA_BANCOS.c : (regla?.cuenta_cargo ?? CTA_GTO_POR_IDENT.c);
-      let nombreCargo = esIngreso ? CTA_BANCOS.n : (regla ? `${CTA_GTO_POR_IDENT.n} · ${regla.nombre}` : CTA_GTO_POR_IDENT.n);
-      let cuentaAbono = esIngreso ? (regla?.cuenta_abono ?? CTA_ING_POR_IDENT.c) : CTA_BANCOS.c;
-      let nombreAbono = esIngreso ? (regla ? `${CTA_ING_POR_IDENT.n} · ${regla.nombre}` : CTA_ING_POR_IDENT.n) : CTA_BANCOS.n;
+      const cuentaCargo = esIngreso ? CTA_BANCOS.c : (regla?.cuenta_cargo ?? CTA_GTO_POR_IDENT.c);
+      const nombreCargo = esIngreso ? CTA_BANCOS.n : (regla ? `${regla.nombre}` : CTA_GTO_POR_IDENT.n);
+      const cuentaAbono = esIngreso ? (regla?.cuenta_abono ?? CTA_ING_POR_IDENT.c) : CTA_BANCOS.c;
+      const nombreAbono = esIngreso ? (regla ? `${regla.nombre}` : CTA_ING_POR_IDENT.n) : CTA_BANCOS.n;
 
-      const asientos = [
-        { cuenta: cuentaCargo, nombre: nombreCargo, debe: monto, haber: 0 },
-        { cuenta: cuentaAbono, nombre: nombreAbono, debe: 0, haber: monto },
+      const concepto = `Banco · ${esIngreso ? "depósito" : "cargo"} · ${desc.slice(0, 80)}`;
+      const renglones = [
+        {
+          cuenta: cuentaCargo,
+          cuenta_nombre: nombreCargo,
+          concepto,
+          cargo_centavos: monto,
+          abono_centavos: 0,
+          movimiento_bancario_id: m.id,
+        },
+        {
+          cuenta: cuentaAbono,
+          cuenta_nombre: nombreAbono,
+          concepto,
+          cargo_centavos: 0,
+          abono_centavos: monto,
+          movimiento_bancario_id: m.id,
+        },
       ];
-      const warnings: string[] = [];
-      if (!regla) warnings.push("Sin regla: clasificación pendiente.");
 
-      filas.push({
-        id: crypto.randomUUID(),
-        cliente_id: data.cliente_id,
-        despacho_id: cli.despacho_id as string,
-        movimiento_bancario_id: m.id,
-        tipo: esIngreso ? "ingreso" : "egreso",
-        fecha: String(m.fecha).slice(0, 10),
-        monto,
-        concepto: `Banco · ${esIngreso ? "depósito" : "cargo"} · ${desc.slice(0, 80)}`,
-        cuenta: cuentaCargo,
-        referencia: m.referencia ?? null,
-        origen: "auto_banco",
-        estado: "borrador",
-        metadata: { asientos, warnings, regla_aplicada: regla?.nombre ?? null },
-        created_by: userId,
+      const fecha = String(m.fecha).slice(0, 10);
+      const nivel = confirmados.has(m.id) ? "banco_confirmado" : "sin_evidencia";
+      const { error: errRpc } = await supabase.rpc("poliza_generar_borrador", {
+        _cliente_id: scope.cliente_id,
+        _periodo: fecha.slice(0, 7),
+        _idempotency_key: llaveIdempotencia("banco", m.id, `banco@${nivel}`),
+        _tipo: esIngreso ? "ingreso" : "egreso",
+        _fecha: fecha,
+        _concepto: concepto,
+        _origen: "auto_banco",
+        _renglones: renglones as never,
+      } as never);
+      if (errRpc) {
+        detalle.push({ movimiento_id: m.id, accion: "error", motivo: errRpc.message });
+        continue;
+      }
+      generadas += 1;
+      detalle.push({
+        movimiento_id: m.id,
+        accion: "creada",
+        motivo: regla ? undefined : "Sin regla contable: quedó en cuenta por identificar.",
       });
     }
 
-    let insertadas = 0;
-    for (let i = 0; i < filas.length; i += 200) {
-      const chunk = filas.slice(i, i + 200);
-      const { error: errIns } = await supabase.from("polizas").insert(chunk);
-      if (errIns) throw new Error(`Lote ${i / 200 + 1}: ${errIns.message}`);
-      insertadas += chunk.length;
-    }
-    return { insertadas, omitidos };
+    return { insertadas: generadas, omitidos, detalle };
   });
+

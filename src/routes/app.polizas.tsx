@@ -14,6 +14,15 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
+/** Etiquetas humanas del nivel de evidencia de cobro o pago. */
+const LEYENDA_EVIDENCIA = {
+  documental_pue: "PUE declarado",
+  complemento_pago: "Complemento de pago",
+  banco_confirmado: "Banco confirmado",
+  manual_justificado: "Manual justificado",
+  sin_evidencia: "Sin evidencia de flujo",
+} as const;
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { useActiveCliente } from "@/lib/active-cliente";
@@ -198,6 +207,9 @@ function PolizasPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Badge variant="outline" title={p.evidencia_detalle?.leyenda ?? undefined}>
+                    {LEYENDA_EVIDENCIA[p.nivel_evidencia as keyof typeof LEYENDA_EVIDENCIA] ?? "Sin evidencia"}
+                  </Badge>
                   <Badge variant={p.estado === "aprobada" ? "default" : p.estado === "rechazada" ? "destructive" : "secondary"}>
                     {p.estado}
                   </Badge>
@@ -205,11 +217,18 @@ function PolizasPage() {
                 </div>
               </div>
 
+              {(p.evidencia_detalle?.incidencias ?? []).map((inc: string) => (
+                <div key={inc} className="flex items-start gap-2 rounded-md border border-sky-500/40 bg-sky-500/10 p-2 text-xs">
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 text-sky-400 shrink-0" /> {inc}
+                </div>
+              ))}
+
               {p.bloqueos.map((b: string) => (
                 <div key={b} className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs">
                   <AlertTriangle className="h-3.5 w-3.5 mt-0.5 text-amber-400 shrink-0" /> {b}
                 </div>
               ))}
+
 
               <Table>
                 <TableHeader>

@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
+import { asientosDesdeRenglones, montoDesdeRenglones, SELECT_RENGLONES_LEGADO } from "@/lib/polizas/adaptador";
 import JSZip from "jszip";
 
 const xmlEsc = (s: string) =>
@@ -117,18 +118,18 @@ export const exportarExpedienteZip = createServerFn({ method: "POST" })
     // ---- Pólizas
     const { data: polizas } = await supabase
       .from("polizas")
-      .select("id, fecha, tipo, concepto, monto, uuid_cfdi, referencia, metadata, estado")
+      .select(`id, fecha, tipo, concepto, uuid_cfdi, referencia, estado, ${SELECT_RENGLONES_LEGADO}`)
       .eq("cliente_id", data.cliente_id)
-      .eq("estado", "confirmada")
+      .in("estado", ["aprobada", "confirmada"])
       .gte("fecha", ini)
       .lte("fecha", fin)
       .order("fecha");
 
-    const polRows = polizas ?? [];
+    const polRows = (polizas ?? []).map((p: any) => ({ ...p, monto: montoDesdeRenglones(p) }));
     const polHeader = ["PolizaID", "Fecha", "Tipo", "Concepto", "Cuenta", "Nombre Cuenta", "Debe", "Haber", "UUID CFDI", "Referencia"];
     const polLines = [csvLine(polHeader)];
     for (const p of polRows as any[]) {
-      const asientos: Asiento[] = (p.metadata?.asientos ?? []) as Asiento[];
+      const asientos: Asiento[] = asientosDesdeRenglones(p);
       for (const a of asientos) {
         polLines.push(csvLine([p.id.slice(0, 12), p.fecha, p.tipo, p.concepto, a.cuenta, a.nombre, a.debe, a.haber, p.uuid_cfdi, p.referencia]));
       }
@@ -166,7 +167,7 @@ export const exportarExpedienteZip = createServerFn({ method: "POST" })
           `Version="1.3" RFC="${xmlEsc(cli.rfc)}" Mes="${mm}" Anio="${data.anio}" TipoSolicitud="AF">`,
       );
       for (const p of polRows as any[]) {
-        const asientos: Asiento[] = (p.metadata?.asientos ?? []) as Asiento[];
+        const asientos: Asiento[] = asientosDesdeRenglones(p);
         if (!asientos.length) continue;
         lines.push(`  <PLZ:Poliza NumUnIdenPol="${xmlEsc(p.id.slice(0, 12))}" Fecha="${String(p.fecha).slice(0, 10)}" Concepto="${xmlEsc(p.concepto || "Póliza")}">`);
         for (const a of asientos) {
@@ -187,9 +188,9 @@ export const exportarExpedienteZip = createServerFn({ method: "POST" })
 
       const { data: prev } = await supabase
         .from("polizas")
-        .select("metadata")
+        .select(SELECT_RENGLONES_LEGADO)
         .eq("cliente_id", data.cliente_id)
-        .eq("estado", "confirmada")
+        .in("estado", ["aprobada", "confirmada"])
         .lt("fecha", ini);
 
       type Acc = { debe: number; haber: number };
@@ -199,8 +200,8 @@ export const exportarExpedienteZip = createServerFn({ method: "POST" })
         const cur = m.get(k) ?? { debe: 0, haber: 0 };
         cur.debe += d; cur.haber += h; m.set(k, cur);
       };
-      for (const p of (prev ?? []) as any[]) for (const a of (p.metadata?.asientos ?? []) as Asiento[]) add(iniMap, a.cuenta, a.debe || 0, a.haber || 0);
-      for (const p of polRows as any[]) for (const a of (p.metadata?.asientos ?? []) as Asiento[]) add(perMap, a.cuenta, a.debe || 0, a.haber || 0);
+      for (const p of (prev ?? []) as any[]) for (const a of asientosDesdeRenglones(p)) add(iniMap, a.cuenta, a.debe || 0, a.haber || 0);
+      for (const p of polRows as any[]) for (const a of asientosDesdeRenglones(p)) add(perMap, a.cuenta, a.debe || 0, a.haber || 0);
 
       const codigos = Array.from(new Set([...iniMap.keys(), ...perMap.keys()])).sort();
       const lines: string[] = [`<?xml version="1.0" encoding="UTF-8"?>`];
@@ -225,7 +226,7 @@ export const exportarExpedienteZip = createServerFn({ method: "POST" })
     const asLines: string[] = [];
     let cons = 0;
     for (const p of polRows as any[]) {
-      const asientos: Asiento[] = (p.metadata?.asientos ?? []) as Asiento[];
+      const asientos: Asiento[] = asientosDesdeRenglones(p);
       if (!asientos.length) continue;
       cons++;
       const tCp = tipoMapCp[p.tipo] ?? "3";

@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
+import { montoDesdeRenglones, SELECT_RENGLONES_LEGADO } from "@/lib/polizas/adaptador";
 import { assertClienteScope, assertRecordScope } from "@/lib/despacho/scope";
 
 
@@ -143,7 +144,7 @@ async function recolectarDatos(sb: any, cliente_id: string, periodo: string) {
     sb.from("conciliacion_incidencias").select("tipo, gravedad, estatus, monto, impacto_isr, impacto_iva").eq("cliente_id", cliente_id),
     sb.from("obligaciones_fiscales").select("nombre, fecha_vencimiento, estatus").eq("cliente_id", cliente_id).gte("fecha_vencimiento", new Date().toISOString().slice(0, 10)).order("fecha_vencimiento").limit(10),
     sb.from("semaforo_fiscal").select("*").eq("cliente_id", cliente_id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
-    sb.from("polizas").select("tipo, monto").eq("cliente_id", cliente_id).gte("fecha", desde.slice(0, 10)).lte("fecha", hasta.slice(0, 10)),
+    sb.from("polizas").select(`tipo, ${SELECT_RENGLONES_LEGADO}`).eq("cliente_id", cliente_id).gte("fecha", desde.slice(0, 10)).lte("fecha", hasta.slice(0, 10)),
     sb.from("movimientos_bancarios").select("tipo, monto").eq("cliente_id", cliente_id).gte("fecha", desde.slice(0, 10)).lte("fecha", hasta.slice(0, 10)),
   ]);
 
@@ -184,6 +185,7 @@ async function recolectarDatos(sb: any, cliente_id: string, periodo: string) {
       cfdi_emitidos: emitidosI.length,
       cfdi_recibidos: recibidosI.length,
       polizas_registradas: (polizas.data ?? []).length,
+      polizas_monto: (polizas.data ?? []).reduce((s: number, p: any) => s + montoDesdeRenglones(p), 0),
       movimientos_bancarios: (movs.data ?? []).length,
     },
     resumen_fiscal: {

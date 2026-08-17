@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
+import { asientosDesdeRenglones, montoDesdeRenglones, SELECT_RENGLONES_LEGADO } from "@/lib/polizas/adaptador";
 
 const xmlEsc = (s: string) =>
   String(s ?? "").replace(/[<>&'"]/g, (m) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" }[m]!));
@@ -14,14 +15,14 @@ async function fetchPolizas(supabase: any, cliente_id: string, anio: number, mes
   const fin = `${anio}-${String(mes).padStart(2, "0")}-${String(finDate.getDate()).padStart(2, "0")}`;
   const { data, error } = await supabase
     .from("polizas")
-    .select("id, fecha, tipo, monto, concepto, uuid_cfdi, referencia, metadata")
+    .select(`id, fecha, tipo, concepto, uuid_cfdi, referencia, ${SELECT_RENGLONES_LEGADO}`)
     .eq("cliente_id", cliente_id)
-    .eq("estado", "confirmada")
+    .in("estado", ["aprobada", "confirmada"])
     .gte("fecha", ini)
     .lte("fecha", fin)
     .order("fecha");
   if (error) throw new Error(error.message);
-  return data ?? [];
+  return (data ?? []).map((p: any) => ({ ...p, monto: montoDesdeRenglones(p) }));
 }
 
 // ===== Anexo 24 — Pólizas (RFC, Anio, Mes, TipoSolicitud=AF por defecto) =====
@@ -59,7 +60,7 @@ export const exportarAnexo24Polizas = createServerFn({ method: "POST" })
     );
 
     for (const p of polizas as any[]) {
-      const asientos: Asiento[] = (p.metadata?.asientos ?? []) as Asiento[];
+      const asientos: Asiento[] = asientosDesdeRenglones(p);
       if (!asientos.length) continue;
       lines.push(
         `  <PLZ:Poliza NumUnIdenPol="${xmlEsc(p.id.slice(0, 12))}" Fecha="${String(p.fecha).slice(0, 10)}" Concepto="${xmlEsc(p.concepto || "Póliza")}">`,
@@ -105,7 +106,7 @@ export const exportarContpaqi = createServerFn({ method: "POST" })
     const lines: string[] = [];
     let consecutivo = 0;
     for (const p of polizas as any[]) {
-      const asientos: Asiento[] = (p.metadata?.asientos ?? []) as Asiento[];
+      const asientos: Asiento[] = asientosDesdeRenglones(p);
       if (!asientos.length) continue;
       consecutivo++;
       const tp = tipoMap[p.tipo] ?? "3";
@@ -148,7 +149,7 @@ export const exportarAspelCoi = createServerFn({ method: "POST" })
     const lines: string[] = [];
     let cons = 0;
     for (const p of polizas as any[]) {
-      const asientos: Asiento[] = (p.metadata?.asientos ?? []) as Asiento[];
+      const asientos: Asiento[] = asientosDesdeRenglones(p);
       if (!asientos.length) continue;
       cons++;
       const tp = tipoMap[p.tipo] ?? "Dr";
@@ -253,9 +254,9 @@ export const exportarAnexo24Balanza = createServerFn({ method: "POST" })
 
     const { data: prev } = await supabase
       .from("polizas")
-      .select("metadata")
+      .select(SELECT_RENGLONES_LEGADO)
       .eq("cliente_id", data.cliente_id)
-      .eq("estado", "confirmada")
+      .in("estado", ["aprobada", "confirmada"])
       .lt("fecha", iniDate);
 
     const periodo = await fetchPolizas(supabase, data.cliente_id, data.anio, data.mes);
@@ -269,11 +270,11 @@ export const exportarAnexo24Balanza = createServerFn({ method: "POST" })
       m.set(k, cur);
     };
     for (const p of (prev ?? []) as any[]) {
-      const arr: Asiento[] = (p.metadata?.asientos ?? []) as Asiento[];
+      const arr: Asiento[] = asientosDesdeRenglones(p);
       for (const a of arr) sum(ini, a.cuenta, a.debe || 0, a.haber || 0);
     }
     for (const p of periodo as any[]) {
-      const arr: Asiento[] = (p.metadata?.asientos ?? []) as Asiento[];
+      const arr: Asiento[] = asientosDesdeRenglones(p);
       for (const a of arr) sum(per, a.cuenta, a.debe || 0, a.haber || 0);
     }
 
@@ -340,15 +341,15 @@ export const exportarAnexo24AuxCuentas = createServerFn({ method: "POST" })
     // Saldos iniciales (movimientos previos al período)
     const { data: prev } = await supabase
       .from("polizas")
-      .select("metadata")
+      .select(SELECT_RENGLONES_LEGADO)
       .eq("cliente_id", data.cliente_id)
-      .eq("estado", "confirmada")
+      .in("estado", ["aprobada", "confirmada"])
       .lt("fecha", iniDate);
 
     type Acc = { debe: number; haber: number };
     const saldosIni = new Map<string, Acc>();
     for (const p of (prev ?? []) as any[]) {
-      const arr: Asiento[] = (p.metadata?.asientos ?? []) as Asiento[];
+      const arr: Asiento[] = asientosDesdeRenglones(p);
       for (const a of arr) {
         const cur = saldosIni.get(a.cuenta) ?? { debe: 0, haber: 0 };
         cur.debe += a.debe || 0; cur.haber += a.haber || 0;
@@ -361,7 +362,7 @@ export const exportarAnexo24AuxCuentas = createServerFn({ method: "POST" })
     type Mov = { fecha: string; numUnIdenPol: string; concepto: string; debe: number; haber: number };
     const movsPorCuenta = new Map<string, Mov[]>();
     for (const p of polizas as any[]) {
-      const arr: Asiento[] = (p.metadata?.asientos ?? []) as Asiento[];
+      const arr: Asiento[] = asientosDesdeRenglones(p);
       for (const a of arr) {
         if (data.cuenta_filtro && a.cuenta !== data.cuenta_filtro) continue;
         const list = movsPorCuenta.get(a.cuenta) ?? [];

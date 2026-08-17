@@ -25,6 +25,7 @@ import {
   type ResolucionConcepto,
 } from "./motor";
 import { aPolizaExportable, validarLote, type LotePolizasExportable } from "./exportacion";
+import type { NivelEvidencia } from "./evidencia";
 
 const periodoSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Periodo con formato AAAA-MM");
 const motivoSchema = z.string().min(10, "Se exige un motivo de al menos 10 caracteres.").max(1000);
@@ -32,7 +33,7 @@ const motivoSchema = z.string().min(10, "Se exige un motivo de al menos 10 carac
 const cent = (n: unknown) => Math.round(Number(n ?? 0) * 100);
 
 const SELECT_POLIZA =
-  "id, fecha, periodo, tipo, concepto, estado, version, origen, referencia, uuid_cfdi, input_hash, idempotency_key, rechazo_motivo, aprobada_por, aprobada_at, created_at, poliza_renglones(id, numero, cuenta, cuenta_nombre, concepto, cargo_centavos, abono_centavos, cfdi_id, movimiento_bancario_id)";
+  "id, fecha, periodo, tipo, concepto, estado, version, origen, referencia, uuid_cfdi, nivel_evidencia, evidencia_detalle, input_hash, idempotency_key, rechazo_motivo, aprobada_por, aprobada_at, created_at, poliza_renglones(id, numero, cuenta, cuenta_nombre, concepto, cargo_centavos, abono_centavos, cfdi_id, movimiento_bancario_id)";
 
 /** Bloqueos derivados de los renglones canónicos (nunca de metadata). */
 function analizar(p: any) {
@@ -192,6 +193,22 @@ export const generarBorradoresCanonicos = createServerFn({ method: "POST" })
       }
     }
 
+    // Complementos de pago del periodo: la evidencia de flujo de cada factura
+    // sale de aquí, y su importe se reparte sin duplicar cobros.
+    const complementoPorCfdi = new Map<string, { cfdi_pago_id: string; importe_centavos: number }>();
+    for (let i = 0; i < ids.length; i += 200) {
+      const { data: docs } = await supabase
+        .from("cfdi_pago_documentos")
+        .select("cfdi_id, cfdi_padre_id, imp_pagado")
+        .in("cfdi_id", ids.slice(i, i + 200));
+      for (const d of docs ?? []) {
+        if (!d.cfdi_padre_id) continue;
+        const previo = complementoPorCfdi.get(d.cfdi_padre_id);
+        const suma = (previo?.importe_centavos ?? 0) + cent(d.imp_pagado);
+        complementoPorCfdi.set(d.cfdi_padre_id, { cfdi_pago_id: d.cfdi_id, importe_centavos: suma });
+      }
+    }
+
     const cache = new Map<string, ResolucionConcepto>();
     const resolver = async (clave: string, rfc: string | null, desc: string, fecha: string) => {
       const k = `${clave}|${rfc ?? ""}|${desc.slice(0, 40)}`;
@@ -271,14 +288,9 @@ export const generarBorradoresCanonicos = createServerFn({ method: "POST" })
         resoluciones,
         cuentas,
         conciliacion,
+        complemento: complementoPorCfdi.get(c.id) ?? null,
       });
 
-      // Un complemento de pago sin conciliación humana NO produce póliza.
-      if (c.tipo_cfdi === "P" && !conciliacion?.confirmada) {
-        bloqueadas += 1;
-        detalle.push({ uuid: c.uuid, accion: "bloqueada", motivo: "El movimiento bancario todavía no tiene conciliación confirmada." });
-        continue;
-      }
       if (!borrador.cuadra) {
         bloqueadas += 1;
         detalle.push({ uuid: c.uuid, accion: "bloqueada", motivo: borrador.bloqueos.join(" ") });
@@ -300,6 +312,20 @@ export const generarBorradoresCanonicos = createServerFn({ method: "POST" })
         continue;
       }
       generadas += 1;
+      const polizaId = (res as any)?.poliza_id ?? (res as any)?.id ?? null;
+      if (polizaId) {
+        await supabase.rpc("poliza_marcar_evidencia", {
+          _poliza_id: polizaId,
+          _nivel: borrador.evidencia.nivel as NivelEvidencia,
+          _detalle: {
+            leyenda: borrador.evidencia.leyenda,
+            refuerzos: borrador.refuerzos,
+            incidencias: borrador.incidencias,
+            movimiento_bancario_id: borrador.evidencia.movimiento_bancario_id,
+            cfdi_pago_id: borrador.evidencia.cfdi_pago_id,
+          },
+        } as never);
+      }
       detalle.push({
         uuid: c.uuid,
         accion: ((res as any)?.accion as string) ?? "creada",

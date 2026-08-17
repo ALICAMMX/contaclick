@@ -42,7 +42,7 @@ export const getPolizasPeriodo = createServerFn({ method: "POST" })
       .from("polizas")
       // Columnas CANÓNICAS reales: la póliza usa `referencia` (no "folio") y el
       // renglón se ordena por `numero` (no "orden").
-      .select("id, referencia, tipo, fecha, concepto, estado, version, origen, input_hash, idempotency_key, rechazo_motivo, aprobada_at, created_at, poliza_renglones(id, numero, cuenta, cuenta_nombre, concepto, cargo_centavos, abono_centavos)")
+      .select("id, referencia, tipo, fecha, concepto, estado, version, origen, nivel_evidencia, evidencia_detalle, input_hash, idempotency_key, rechazo_motivo, aprobada_at, created_at, poliza_renglones(id, numero, cuenta, cuenta_nombre, concepto, cargo_centavos, abono_centavos)")
       .eq("cliente_id", scope.cliente_id)
       .eq("periodo", data.periodo)
       .order("fecha", { ascending: true })
