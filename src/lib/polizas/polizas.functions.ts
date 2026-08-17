@@ -1,128 +1,474 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// BLOQUE 2 · FUENTE ÚNICA de pólizas contables.
+//
+// `poliza_renglones` (centavos enteros) es la única fuente contable.
+// `metadata.asientos` quedó como formato LEGADO de sólo lectura: la base
+// rechaza cualquier escritura nueva sobre ese campo.
+//
+// Ninguna función de aplicación cambia `polizas.estado` directamente: generar,
+// regenerar, aprobar y rechazar pasan por `poliza_generar_borrador`,
+// `poliza_aprobar` y `poliza_rechazar` (SECURITY DEFINER).
+//
+// /app/polizas, /app/contabilidad-auto y el Centro de Cierre leen esto mismo.
+// ─────────────────────────────────────────────────────────────────────────────
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
+import { assertClienteScope } from "@/lib/despacho/scope";
+import { elegirCuentasSistema, type CuentaCatalogo } from "./cuentas";
+import {
+  construirBorradorCfdi,
+  llaveIdempotencia,
+  CUENTA_POR_IDENTIFICAR,
+  type ConceptoCfdi,
+  type ResolucionConcepto,
+} from "./motor";
+import { aPolizaExportable, validarLote, type LotePolizasExportable } from "./exportacion";
 
-const PolizaRow = z.object({
-  fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida (YYYY-MM-DD)"),
-  tipo: z.enum(["ingreso", "egreso", "diario"]),
-  monto: z.number().finite(),
-  concepto: z.string().max(500).optional().nullable(),
-  cuenta: z.string().max(120).optional().nullable(),
-  referencia: z.string().max(120).optional().nullable(),
-  uuid_cfdi: z.string().max(64).optional().nullable(),
-});
+const periodoSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Periodo con formato AAAA-MM");
+const motivoSchema = z.string().min(10, "Se exige un motivo de al menos 10 caracteres.").max(1000);
 
-export type PolizaInput = z.infer<typeof PolizaRow>;
+const cent = (n: unknown) => Math.round(Number(n ?? 0) * 100);
 
-// ---------- Crear póliza manual ----------
-export const crearPoliza = createServerFn({ method: "POST" })
+const SELECT_POLIZA =
+  "id, fecha, periodo, tipo, concepto, estado, version, origen, referencia, uuid_cfdi, input_hash, idempotency_key, rechazo_motivo, aprobada_por, aprobada_at, created_at, poliza_renglones(id, numero, cuenta, cuenta_nombre, concepto, cargo_centavos, abono_centavos, cfdi_id, movimiento_bancario_id)";
+
+/** Bloqueos derivados de los renglones canónicos (nunca de metadata). */
+function analizar(p: any) {
+  const renglones = (p.poliza_renglones ?? []) as any[];
+  const cargos = renglones.reduce((s, r) => s + Number(r.cargo_centavos ?? 0), 0);
+  const abonos = renglones.reduce((s, r) => s + Number(r.abono_centavos ?? 0), 0);
+  const porIdentificar = renglones.filter((r) => /por identificar/i.test(String(r.cuenta ?? ""))).length;
+  const bloqueos: string[] = [];
+  if (renglones.length < 2) bloqueos.push("La póliza necesita al menos dos renglones.");
+  if (cargos !== abonos) bloqueos.push(`No puede aprobarse: descuadre de ${Math.abs(cargos - abonos)} centavos.`);
+  if (porIdentificar > 0) {
+    bloqueos.push(
+      porIdentificar === 1
+        ? "No puede aprobarse: contiene una cuenta por identificar."
+        : `No puede aprobarse: contiene ${porIdentificar} cuentas por identificar.`,
+    );
+  }
+  return {
+    ...p,
+    cargos_centavos: cargos,
+    abonos_centavos: abonos,
+    diferencia_centavos: cargos - abonos,
+    conceptos_sin_resolver: porIdentificar,
+    bloqueos,
+    aprobable: bloqueos.length === 0 && p.estado === "borrador",
+  };
+}
+
+/** Versión de reglas del expediente: cambia al cambiar cualquier regla activa. */
+async function versionReglas(supabase: any, cliente_id: string): Promise<string> {
+  const { data } = await supabase
+    .from("reglas_concepto")
+    .select("id, updated_at")
+    .eq("cliente_id", cliente_id)
+    .eq("activa", true)
+    .order("updated_at", { ascending: false })
+    .limit(1);
+  const ultima = (data ?? [])[0];
+  const { count } = await supabase
+    .from("reglas_concepto")
+    .select("id", { count: "exact", head: true })
+    .eq("cliente_id", cliente_id)
+    .eq("activa", true);
+  return `r${count ?? 0}@${String(ultima?.updated_at ?? "sin-reglas").slice(0, 19)}`;
+}
+
+// ───────────────────────────── Lectura unificada ─────────────────────────────
+export const listarPolizasCanonicas = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) =>
-    z.object({ cliente_id: z.string().uuid(), poliza: PolizaRow }).parse(d),
+    z
+      .object({
+        cliente_id: z.string().uuid(),
+        periodo: periodoSchema.optional(),
+        estado: z.enum(["borrador", "aprobada", "rechazada", "confirmada"]).optional(),
+        limit: z.number().int().min(1).max(500).default(300),
+      })
+      .parse(d),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { data: cli, error: errCli } = await supabase
-      .from("clientes")
-      .select("id, despacho_id")
-      .eq("id", data.cliente_id)
-      .maybeSingle();
-    if (errCli || !cli) throw new Error("Cliente no encontrado");
-    if (!cli.despacho_id) throw new Error("Cliente sin despacho asignado");
-
-    const row = {
-      id: crypto.randomUUID(),
-      cliente_id: data.cliente_id,
-      despacho_id: cli.despacho_id as string,
-      tipo: data.poliza.tipo,
-      fecha: data.poliza.fecha,
-      monto: data.poliza.monto,
-      concepto: data.poliza.concepto ?? null,
-      cuenta: data.poliza.cuenta ?? null,
-      referencia: data.poliza.referencia ?? null,
-      uuid_cfdi: data.poliza.uuid_cfdi ? data.poliza.uuid_cfdi.toUpperCase() : null,
-      origen: "manual" as const,
-      created_by: userId,
-    };
-    const { error } = await supabase.from("polizas").insert(row);
-    if (error) throw new Error(error.message);
-    return { id: row.id };
-  });
-
-// ---------- Importar lote (CSV ya parseado) ----------
-export const importarPolizas = createServerFn({ method: "POST" })
-  .middleware([attachSupabaseAuth, requireSupabaseAuth])
-  .inputValidator((d: unknown) =>
-    z.object({
-      cliente_id: z.string().uuid(),
-      polizas: z.array(PolizaRow).min(1).max(2000),
-    }).parse(d),
-  )
-  .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
-    const { data: cli, error: errCli } = await supabase
-      .from("clientes")
-      .select("id, despacho_id")
-      .eq("id", data.cliente_id)
-      .maybeSingle();
-    if (errCli || !cli) throw new Error("Cliente no encontrado");
-    if (!cli.despacho_id) throw new Error("Cliente sin despacho asignado");
-
-    const rows = data.polizas.map((p) => ({
-      id: crypto.randomUUID(),
-      cliente_id: data.cliente_id,
-      despacho_id: cli.despacho_id as string,
-      tipo: p.tipo,
-      fecha: p.fecha,
-      monto: p.monto,
-      concepto: p.concepto ?? null,
-      cuenta: p.cuenta ?? null,
-      referencia: p.referencia ?? null,
-      uuid_cfdi: p.uuid_cfdi ? p.uuid_cfdi.toUpperCase() : null,
-      origen: "import" as const,
-      created_by: userId,
-    }));
-
-    // Insertar en lotes de 500 para no exceder límites
-    let insertadas = 0;
-    for (let i = 0; i < rows.length; i += 500) {
-      const chunk = rows.slice(i, i + 500);
-      const { error } = await supabase.from("polizas").insert(chunk);
-      if (error) throw new Error(`Error en lote ${i / 500 + 1}: ${error.message}`);
-      insertadas += chunk.length;
-    }
-    return { insertadas };
-  });
-
-// ---------- Listar pólizas ----------
-export const listarPolizas = createServerFn({ method: "POST" })
-  .middleware([attachSupabaseAuth, requireSupabaseAuth])
-  .inputValidator((d: unknown) =>
-    z.object({
-      cliente_id: z.string().uuid(),
-      limit: z.number().int().min(1).max(500).default(100),
-    }).parse(d),
-  )
-  .handler(async ({ data, context }) => {
-    const { supabase } = context;
-    const { data: rows, error } = await supabase
+    const scope = await assertClienteScope(supabase, userId, data.cliente_id);
+    let q = supabase
       .from("polizas")
-      .select("id, fecha, tipo, monto, concepto, cuenta, referencia, uuid_cfdi, origen, created_at")
-      .eq("cliente_id", data.cliente_id)
+      .select(SELECT_POLIZA)
+      .eq("cliente_id", scope.cliente_id)
       .order("fecha", { ascending: false })
       .limit(data.limit);
+    if (data.periodo) q = q.eq("periodo", data.periodo);
+    if (data.estado) q = q.eq("estado", data.estado);
+    const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
-    return rows ?? [];
+
+    const polizas = (rows ?? []).map(analizar);
+    return {
+      polizas,
+      resumen: {
+        total: polizas.length,
+        borradores: polizas.filter((p) => p.estado === "borrador").length,
+        por_revisar: polizas.filter((p) => p.estado === "borrador" && p.aprobable).length,
+        bloqueadas: polizas.filter((p) => p.estado === "borrador" && !p.aprobable).length,
+        aprobadas: polizas.filter((p) => p.estado === "aprobada").length,
+        rechazadas: polizas.filter((p) => p.estado === "rechazada").length,
+        conceptos_sin_resolver: polizas.reduce((s, p) => s + p.conceptos_sin_resolver, 0),
+      },
+    };
   });
 
-// ---------- Eliminar póliza ----------
-export const eliminarPoliza = createServerFn({ method: "POST" })
+/** Lectura del formato LEGADO `metadata.asientos` — sólo consulta histórica. */
+export const leerAsientosLegado = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .inputValidator((d: unknown) =>
+    z.object({ cliente_id: z.string().uuid(), poliza_id: z.string().uuid() }).parse(d),
+  )
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
-    const { error } = await supabase.from("polizas").delete().eq("id", data.id);
+    const { supabase, userId } = context;
+    const scope = await assertClienteScope(supabase, userId, data.cliente_id);
+    const { data: row, error } = await supabase
+      .from("polizas")
+      .select("id, metadata")
+      .eq("cliente_id", scope.cliente_id)
+      .eq("id", data.poliza_id)
+      .maybeSingle();
     if (error) throw new Error(error.message);
-    return { ok: true };
+    const asientos = ((row?.metadata as any)?.asientos ?? []) as Array<Record<string, unknown>>;
+    return { legado: true, asientos, nota: "Formato legado de sólo lectura; no alimenta exportaciones." };
   });
+
+// ─────────────────────── Generación canónica de borradores ───────────────────
+export const generarBorradoresCanonicos = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ cliente_id: z.string().uuid(), periodo: periodoSchema }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const scope = await assertClienteScope(supabase, userId, data.cliente_id);
+
+    const { data: cuentasRows, error: errCat } = await supabase
+      .from("catalogo_cuentas")
+      .select("codigo, nombre, naturaleza, tipo_sat, activa")
+      .eq("cliente_id", scope.cliente_id);
+    if (errCat) throw new Error(errCat.message);
+    if (!cuentasRows?.length) {
+      throw new Error("El expediente no tiene catálogo de cuentas: impórtalo antes de generar pólizas.");
+    }
+    const { cuentas, faltantes } = elegirCuentasSistema(cuentasRows as unknown as CuentaCatalogo[]);
+    const version = await versionReglas(supabase, scope.cliente_id);
+
+    const { data: cfdis, error } = await supabase
+      .from("cfdi_xml")
+      .select("id, uuid, tipo_cfdi, metodo_pago, fecha, rfc_emisor, rfc_receptor, subtotal, descuento, iva_trasladado, ieps_trasladado, iva_retenido, isr_retenido, total, estatus_sat")
+      .eq("cliente_id", scope.cliente_id)
+      .eq("periodo", data.periodo)
+      .order("fecha", { ascending: true })
+      .limit(2000);
+    if (error) throw new Error(error.message);
+
+    const ids = (cfdis ?? []).map((c) => c.id);
+    const conceptosPorCfdi = new Map<string, ConceptoCfdi[]>();
+    for (let i = 0; i < ids.length; i += 200) {
+      const { data: pagina, error: errCon } = await supabase
+        .from("cfdi_conceptos")
+        .select("cfdi_id, numero, clave_prod_serv, descripcion, importe, descuento")
+        .in("cfdi_id", ids.slice(i, i + 200));
+      if (errCon) throw new Error(errCon.message);
+      for (const c of pagina ?? []) {
+        const lista = conceptosPorCfdi.get(c.cfdi_id) ?? [];
+        lista.push({
+          numero: Number(c.numero ?? lista.length + 1),
+          clave_prod_serv: c.clave_prod_serv ?? null,
+          descripcion: c.descripcion ?? null,
+          importe_centavos: cent(c.importe),
+          descuento_centavos: cent(c.descuento),
+        });
+        conceptosPorCfdi.set(c.cfdi_id, lista);
+      }
+    }
+
+    const cache = new Map<string, ResolucionConcepto>();
+    const resolver = async (clave: string, rfc: string | null, desc: string, fecha: string) => {
+      const k = `${clave}|${rfc ?? ""}|${desc.slice(0, 40)}`;
+      const hit = cache.get(k);
+      if (hit) return hit;
+      const { data: res, error: errR } = await supabase.rpc("regla_concepto_resolver", {
+        _cliente_id: scope.cliente_id,
+        _clave_prod_serv: clave,
+        _rfc_contraparte: rfc,
+        _descripcion: desc,
+        _fecha: fecha,
+      } as never);
+      if (errR) throw new Error(errR.message);
+      const r = res as unknown as ResolucionConcepto;
+      cache.set(k, r);
+      return r;
+    };
+
+    const detalle: Array<{ uuid: string; accion: string; motivo?: string }> = [];
+    let generadas = 0;
+    let bloqueadas = 0;
+
+    for (const c of cfdis ?? []) {
+      if (c.estatus_sat !== "vigente") {
+        detalle.push({ uuid: c.uuid, accion: "omitida", motivo: `Estatus SAT “${c.estatus_sat ?? "desconocido"}”: sólo se contabiliza evidencia vigente.` });
+        continue;
+      }
+      const esIngreso = String(c.rfc_emisor ?? "").toUpperCase() === scope.rfc.toUpperCase();
+      const contraparte = esIngreso ? c.rfc_receptor : c.rfc_emisor;
+      const conceptos = (conceptosPorCfdi.get(c.id) ?? []).sort((a, b) => a.numero - b.numero);
+      const fecha = String(c.fecha).slice(0, 10);
+
+      const resoluciones: Record<number, ResolucionConcepto> = {};
+      for (const con of conceptos) {
+        resoluciones[con.numero] = await resolver(
+          String(con.clave_prod_serv ?? "").trim() || "(sin clave)",
+          contraparte ?? null,
+          String(con.descripcion ?? ""),
+          fecha,
+        );
+      }
+
+      let conciliacion: { confirmada: boolean; movimiento_bancario_id?: string | null } | null = null;
+      if (c.tipo_cfdi === "P") {
+        const { data: conc } = await supabase
+          .from("conciliaciones")
+          .select("movimiento_bancario_id, estado")
+          .eq("cliente_id", scope.cliente_id)
+          .eq("cfdi_id", c.id)
+          .limit(1);
+        const fila = (conc ?? [])[0] as any;
+        conciliacion = {
+          confirmada: fila?.estado === "confirmada",
+          movimiento_bancario_id: fila?.movimiento_bancario_id ?? null,
+        };
+      }
+
+      const borrador = construirBorradorCfdi({
+        cfdi: {
+          id: c.id,
+          uuid: c.uuid,
+          tipo_cfdi: c.tipo_cfdi ?? null,
+          metodo_pago: (c as any).metodo_pago ?? null,
+          fecha,
+          rfc_emisor: c.rfc_emisor ?? null,
+          rfc_receptor: c.rfc_receptor ?? null,
+          total_centavos: cent(c.total),
+          subtotal_centavos: cent(c.subtotal),
+          descuento_centavos: cent(c.descuento),
+          iva_trasladado_centavos: cent(c.iva_trasladado),
+          ieps_trasladado_centavos: cent(c.ieps_trasladado),
+          iva_retenido_centavos: cent(c.iva_retenido),
+          isr_retenido_centavos: cent(c.isr_retenido),
+        },
+        esIngreso,
+        conceptos,
+        resoluciones,
+        cuentas,
+        conciliacion,
+      });
+
+      // Un complemento de pago sin conciliación humana NO produce póliza.
+      if (c.tipo_cfdi === "P" && !conciliacion?.confirmada) {
+        bloqueadas += 1;
+        detalle.push({ uuid: c.uuid, accion: "bloqueada", motivo: "El movimiento bancario todavía no tiene conciliación confirmada." });
+        continue;
+      }
+      if (!borrador.cuadra) {
+        bloqueadas += 1;
+        detalle.push({ uuid: c.uuid, accion: "bloqueada", motivo: borrador.bloqueos.join(" ") });
+        continue;
+      }
+
+      const { data: res, error: errRpc } = await supabase.rpc("poliza_generar_borrador", {
+        _cliente_id: scope.cliente_id,
+        _periodo: data.periodo,
+        _idempotency_key: llaveIdempotencia("cfdi", c.id, version),
+        _tipo: borrador.tipo,
+        _fecha: fecha,
+        _concepto: borrador.concepto,
+        _origen: "auto_sat",
+        _renglones: borrador.renglones as never,
+      } as never);
+      if (errRpc) {
+        detalle.push({ uuid: c.uuid, accion: "error", motivo: errRpc.message });
+        continue;
+      }
+      generadas += 1;
+      detalle.push({
+        uuid: c.uuid,
+        accion: ((res as any)?.accion as string) ?? "creada",
+        motivo: borrador.conceptos_sin_resolver
+          ? `Faltan ${borrador.conceptos_sin_resolver} conceptos por asignar a una cuenta.`
+          : undefined,
+      });
+    }
+
+    await supabase.rpc("cierre_evaluar_polizas", {
+      _cliente_id: scope.cliente_id,
+      _periodo: data.periodo,
+    } as never);
+
+    return {
+      generadas,
+      bloqueadas,
+      revisados: (cfdis ?? []).length,
+      version_reglas: version,
+      cuentas_faltantes: faltantes,
+      detalle,
+    };
+  });
+
+// ─────────────────────────── Captura manual auditada ─────────────────────────
+export const crearPolizaManual = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        cliente_id: z.string().uuid(),
+        periodo: periodoSchema,
+        fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        tipo: z.enum(["ingreso", "egreso", "diario"]),
+        concepto: z.string().min(3).max(500),
+        referencia: z.string().max(120).optional(),
+        renglones: z
+          .array(
+            z.object({
+              cuenta: z.string().min(1).max(60),
+              cuenta_nombre: z.string().max(200).optional(),
+              concepto: z.string().max(300).optional(),
+              cargo_centavos: z.number().int().min(0),
+              abono_centavos: z.number().int().min(0),
+            }),
+          )
+          .min(2)
+          .max(200),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const scope = await assertClienteScope(supabase, userId, data.cliente_id);
+    const cargos = data.renglones.reduce((s, r) => s + r.cargo_centavos, 0);
+    const abonos = data.renglones.reduce((s, r) => s + r.abono_centavos, 0);
+    if (cargos !== abonos) {
+      throw new Error(`La póliza no cuadra: cargos ${cargos} vs abonos ${abonos} (centavos).`);
+    }
+    const llave = llaveIdempotencia(
+      "manual",
+      `${data.fecha}:${data.concepto.slice(0, 40)}:${cargos}`,
+      "manual",
+    );
+    const { data: res, error } = await supabase.rpc("poliza_generar_borrador", {
+      _cliente_id: scope.cliente_id,
+      _periodo: data.periodo,
+      _idempotency_key: llave,
+      _tipo: data.tipo,
+      _fecha: data.fecha,
+      _concepto: data.concepto,
+      _origen: "manual",
+      _renglones: data.renglones as never,
+    } as never);
+    if (error) throw new Error(error.message);
+    return res;
+  });
+
+// ───────────────────────────── Revisión humana ───────────────────────────────
+export const aprobarPoliza = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ cliente_id: z.string().uuid(), poliza_id: z.string().uuid(), motivo: motivoSchema }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertClienteScope(supabase, userId, data.cliente_id);
+    const { data: res, error } = await supabase.rpc("poliza_aprobar", {
+      _poliza_id: data.poliza_id,
+      _motivo: data.motivo,
+    } as never);
+    if (error) throw new Error(error.message);
+    return res;
+  });
+
+export const rechazarPoliza = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ cliente_id: z.string().uuid(), poliza_id: z.string().uuid(), motivo: motivoSchema }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertClienteScope(supabase, userId, data.cliente_id);
+    const { data: res, error } = await supabase.rpc("poliza_rechazar", {
+      _poliza_id: data.poliza_id,
+      _motivo: data.motivo,
+    } as never);
+    if (error) throw new Error(error.message);
+    return res;
+  });
+
+// ───────────────────── Contrato canónico de exportación ──────────────────────
+export const loteExportable = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ cliente_id: z.string().uuid(), periodo: periodoSchema }).parse(d),
+  )
+  .handler(async ({ data, context }): Promise<LotePolizasExportable> => {
+    const { supabase, userId } = context;
+    const scope = await assertClienteScope(supabase, userId, data.cliente_id);
+    const { data: rows, error } = await supabase
+      .from("polizas")
+      .select(SELECT_POLIZA)
+      .eq("cliente_id", scope.cliente_id)
+      .eq("periodo", data.periodo)
+      .eq("estado", "aprobada")
+      .order("fecha", { ascending: true })
+      .limit(1000);
+    if (error) throw new Error(error.message);
+
+    // UUID y contraparte se derivan del CFDI ligado a los renglones canónicos.
+    const cfdiIds = [
+      ...new Set(
+        (rows ?? []).flatMap((p: any) => (p.poliza_renglones ?? []).map((r: any) => r.cfdi_id).filter(Boolean)),
+      ),
+    ] as string[];
+    const meta = new Map<string, { uuid: string; rfc: string | null }>();
+    for (let i = 0; i < cfdiIds.length; i += 200) {
+      const { data: cs } = await supabase
+        .from("cfdi_xml")
+        .select("id, uuid, rfc_emisor, rfc_receptor")
+        .in("id", cfdiIds.slice(i, i + 200));
+      for (const c of cs ?? []) {
+        const contraparte =
+          String(c.rfc_emisor ?? "").toUpperCase() === scope.rfc.toUpperCase() ? c.rfc_receptor : c.rfc_emisor;
+        meta.set(c.id, { uuid: c.uuid, rfc: contraparte ?? null });
+      }
+    }
+
+    const polizas = (rows ?? []).map((p: any, i: number) => {
+      const primerCfdi = (p.poliza_renglones ?? []).find((r: any) => r.cfdi_id)?.cfdi_id ?? null;
+      const m = primerCfdi ? meta.get(primerCfdi) : null;
+      return aPolizaExportable(
+        { ...p, uuid_cfdi: p.uuid_cfdi ?? m?.uuid ?? null, contraparte_rfc: m?.rfc ?? null },
+        i,
+      );
+    });
+
+    const lote: LotePolizasExportable = {
+      cliente_id: scope.cliente_id,
+      rfc: scope.rfc,
+      periodo: data.periodo,
+      generado_at: new Date().toISOString(),
+      polizas,
+      total_centavos: polizas.reduce((s, p) => s + p.total_centavos, 0),
+      advertencias: [],
+    };
+    lote.advertencias = validarLote(lote);
+    return lote;
+  });
+
+export { CUENTA_POR_IDENTIFICAR };
