@@ -34,9 +34,9 @@ BEGIN
   -- Sandbox de dos despachos distintos
   INSERT INTO public.despachos(id, nombre, owner_user_id) VALUES
     (v_desp_a, 'Sandbox A', v_user), (v_desp_b, 'Sandbox B', v_user);
-  INSERT INTO public.clientes(id, despacho_id, rfc, razon_social) VALUES
-    (v_cli_a, v_desp_a, 'SAND010101AAA', 'Sandbox A'),
-    (v_cli_b, v_desp_b, 'SAND020202BBB', 'Sandbox B');
+  INSERT INTO public.clientes(id, despacho_id, user_id, rfc, razon_social) VALUES
+    (v_cli_a, v_desp_a, v_user, 'SAND010101AAA', 'Sandbox A'),
+    (v_cli_b, v_desp_b, v_user, 'SAND020202BBB', 'Sandbox B');
   INSERT INTO public.cuentas_bancarias(despacho_id, cliente_id, banco, alias, moneda)
     VALUES (v_desp_a, v_cli_a, 'BANCO SANDBOX', 'Principal', 'MXN') RETURNING id INTO v_cta_a;
   INSERT INTO public.cuentas_bancarias(despacho_id, cliente_id, banco, alias, moneda)
