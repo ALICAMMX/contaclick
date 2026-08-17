@@ -1348,3 +1348,10 @@ inmutabilidad de los expedientes reales (verificado: residuo 0).
   ataques de tenant cruzado, importe y periodo falsificados, estado `confirmado`
   falsificado, idempotencia, bitácora inmutable, `confirmado` sin persona,
   permisos del escritor y verificación de `bancos@5`.
+
+## 2026-08-17 — Bitácora de conciliación: acción fuera de catálogo
+
+- **Fallo:** `ERROR 23514 conc_bit_accion_chk` al ejecutar `supabase/tests/conciliacion_bloque1.sql`. `conciliacion_ejecutar_corrida` insertaba `accion='motor'`, valor ausente del catálogo canónico (`confirmar, rechazar, ignorar, revertir, propuesta, importacion`).
+- **Corrección:** migración correctiva con `CREATE OR REPLACE FUNCTION`. La creación automática se registra como `accion='propuesta'`, `estado_nuevo='propuesto'`, `actor` = persona que solicitó la corrida. El carácter automático se conserva en `conciliacion_grupos.origen='motor'` y en `detalle` (`origen`, `algoritmo_version`, `corrida_id`, `nivel_propuesta`, `probabilidad_bp`, `evidencia`). No se amplió la restricción ni se tocó la inmutabilidad.
+- **Escritores fuera de catálogo:** revisados los seis escritores desplegados de `conciliacion_bitacora`; ninguno usa acciones no canónicas. El `normalizacion_semantica` de la migración `20260817073347` fue una operación única ya aplicada (la bitácora no conserva filas con ese valor); si vuelve a requerirse, deberá registrarse con acción canónica y `normalizacion_semantica` dentro de `detalle`.
+- **Regresión:** `supabase/tests/conciliacion_bitacora_regresion.sql` (corrida legítima → grupo `propuesto`, bitácora `propuesta`, origen `motor`, cero confirmaciones automáticas, doble ejecución idempotente). Transacción con `ROLLBACK`.
