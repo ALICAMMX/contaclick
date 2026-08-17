@@ -955,7 +955,13 @@ export async function ejecutarCorridaSat(args: {
 
     const proveedor = estado.proveedor;
     const meta = PROVEEDORES[proveedor];
-    const { desde, hasta } = estado.rango;
+    // La programación puede forzar la ventana; el resto del preflight (cuota,
+    // e.firma, candado, proveedor) es idéntico al de la ejecución manual.
+    const ventana =
+      args.rangoOverride && rangoValido(args.rangoOverride.desde, args.rangoOverride.hasta)
+        ? args.rangoOverride
+        : estado.rango;
+    const { desde, hasta } = ventana;
     const direcciones = estado.direcciones;
 
     // 2) Idempotencia: una sola corrida activa por proveedor+expediente+ventana.
