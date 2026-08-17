@@ -19,6 +19,7 @@ import { HelpBot } from "./HelpBot";
 
 const LABELS: Record<string, string> = {
   app: "Inicio",
+  "inicio-guiado": "Inicio guiado",
   despacho: "Dashboard del despacho",
   contable: "Contable y Fiscal",
   admin: "Administrativo & RH",
