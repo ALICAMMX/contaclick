@@ -43,11 +43,11 @@ BEGIN
     VALUES (v_desp_b, v_cli_b, 'BANCO SANDBOX', 'Principal', 'MXN') RETURNING id INTO v_cta_b;
 
   INSERT INTO public.movimientos_bancarios(despacho_id, cliente_id, cuenta_id, fila_origen, fecha, descripcion, referencia, abono, cargo, moneda, hash)
-    VALUES (v_desp_a, v_cli_a, v_cta_a, 1, '2026-07-10', 'SPEI ACME', 'R1', 1000.00, 0, 'MXN') RETURNING id INTO v_mov_a;
+    VALUES (v_desp_a, v_cli_a, v_cta_a, 1, '2026-07-10', 'SPEI ACME', 'R1', 1000.00, 0, 'MXN', md5('sandbox-a-1')) RETURNING id INTO v_mov_a;
   INSERT INTO public.movimientos_bancarios(despacho_id, cliente_id, cuenta_id, fila_origen, fecha, descripcion, referencia, abono, cargo, moneda, hash)
-    VALUES (v_desp_a, v_cli_a, v_cta_a, 2, '2026-07-10', 'SPEI ACME', 'R1', 1000.00, 0, 'MXN') RETURNING id INTO v_mov_a2;
+    VALUES (v_desp_a, v_cli_a, v_cta_a, 2, '2026-07-10', 'SPEI ACME', 'R1', 1000.00, 0, 'MXN', md5('sandbox-a-2')) RETURNING id INTO v_mov_a2;
   INSERT INTO public.movimientos_bancarios(despacho_id, cliente_id, cuenta_id, fila_origen, fecha, descripcion, referencia, abono, cargo, moneda, hash)
-    VALUES (v_desp_b, v_cli_b, v_cta_b, 1, '2026-07-10', 'SPEI OTRO', 'R9', 1000.00, 0, 'MXN') RETURNING id INTO v_mov_b;
+    VALUES (v_desp_b, v_cli_b, v_cta_b, 1, '2026-07-10', 'SPEI OTRO', 'R9', 1000.00, 0, 'MXN', md5('sandbox-b-1')) RETURNING id INTO v_mov_b;
 
   INSERT INTO public.cfdi_xml(despacho_id, cliente_id, uuid, fecha, total, direccion, tipo_cfdi, metodo_pago, moneda, periodo, estatus_sat)
     VALUES (v_desp_a, v_cli_a, gen_random_uuid()::text, '2026-07-10', 1000.00, 'emitido', 'I', 'PUE', 'MXN', PERIODO, 'sintetico_no_verificado') RETURNING id INTO v_cfdi_a;
