@@ -253,17 +253,23 @@ function csvBancario(movs) {
 }
 
 function xlsxBancario(movs, ruta) {
-  const rows = movs.map((m) => ({
-    Fecha: m.fecha,
-    Descripcion: m.descripcion,
-    Referencia: m.referencia ?? "",
-    Cargo: m.cargo || "",
-    Abono: m.abono || "",
-  }));
+  let saldo = 1000000;
+  const rows = movs.map((m) => {
+    saldo += m.abono - m.cargo;
+    return {
+      Fecha: m.fecha,
+      Descripcion: m.descripcion,
+      Referencia: m.referencia ?? "",
+      Cargo: m.cargo ? Number(m.cargo.toFixed(2)) : "",
+      Abono: m.abono ? Number(m.abono.toFixed(2)) : "",
+      Saldo: Number(saldo.toFixed(2)),
+    };
+  });
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Movimientos");
   XLSX.writeFile(wb, ruta);
 }
+
 
 export function escribir() {
   const { cfdi, movimientos, verdad } = generar();
