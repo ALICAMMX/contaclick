@@ -17,7 +17,7 @@ DECLARE
   v_desp_b uuid := gen_random_uuid();
   v_cli_a uuid := gen_random_uuid();
   v_cli_b uuid := gen_random_uuid();
-  v_user uuid := gen_random_uuid();
+  v_user uuid; -- persona autenticada real (sólo lectura de auth.users); todo se revierte
   v_cta_a uuid; v_cta_b uuid;
   v_mov_a uuid; v_mov_b uuid; v_mov_a2 uuid;
   v_cfdi_a uuid; v_cfdi_b uuid; v_cfdi_a2 uuid;
@@ -27,6 +27,9 @@ DECLARE
   EVID constant jsonb := jsonb_build_object('regla','unico_exacto_dos_senales','version','conciliacion-1a1@2');
 
 BEGIN
+  SELECT id INTO v_user FROM auth.users ORDER BY created_at LIMIT 1;
+  IF v_user IS NULL THEN RAISE EXCEPTION 'No hay usuarios autenticados para la prueba'; END IF;
+
   -- Sandbox de dos despachos distintos
   INSERT INTO public.despachos(id, nombre, owner_user_id) VALUES
     (v_desp_a, 'Sandbox A', v_user), (v_desp_b, 'Sandbox B', v_user);
