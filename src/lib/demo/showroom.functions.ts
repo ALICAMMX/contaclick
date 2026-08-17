@@ -153,20 +153,36 @@ async function seedOneCliente(supabase: SupabaseClient, despacho_id: string, use
     }))
   );
 
-  // 8) Pólizas (1 por CFDI emitido + 1 por recibido)
+  // 8) Pólizas demostrativas — MIGRADAS al contrato canónico.
+  // No se inserta en `polizas` ni en `metadata.asientos`: todo pasa por el RPC,
+  // y cada póliza queda marcada como sintética de demostración.
   for (const c of cfdisInserted) {
     const esEmisor = c.rfc_emisor === perfil.rfc;
-    polizasRows.push({
-      despacho_id, cliente_id, cfdi_id: c.id, uuid_cfdi: c.uuid,
-      tipo: esEmisor ? "ingreso" : "egreso",
-      fecha: new Date(c.fecha as string).toISOString().slice(0, 10),
-      concepto: esEmisor ? "Venta a público" : "Compra a proveedor",
-      monto: Number(c.total),
-      cuenta: esEmisor ? "4000" : "5000", origen: "auto_sat", estado: "confirmada",
-      created_by: userId, metadata: { demo: true },
-    });
+    const totalCent = Math.round(Number(c.total) * 100);
+    const fechaPol = new Date(c.fecha as string).toISOString().slice(0, 10);
+    const concepto = `[DEMO SINTÉTICA] ${esEmisor ? "Venta a público" : "Compra a proveedor"}`;
+    const renglones = esEmisor
+      ? [
+          { cuenta: "105-01", cuenta_nombre: "Clientes (demo)", concepto, cargo_centavos: totalCent, abono_centavos: 0, cfdi_id: c.id },
+          { cuenta: "4000", cuenta_nombre: "Ingresos (demo)", concepto, cargo_centavos: 0, abono_centavos: totalCent, cfdi_id: c.id },
+        ]
+      : [
+          { cuenta: "5000", cuenta_nombre: "Gastos (demo)", concepto, cargo_centavos: totalCent, abono_centavos: 0, cfdi_id: c.id },
+          { cuenta: "201-01", cuenta_nombre: "Proveedores (demo)", concepto, cargo_centavos: 0, abono_centavos: totalCent, cfdi_id: c.id },
+        ];
+    const { error: errPol } = await supabase.rpc("poliza_generar_borrador", {
+      _cliente_id: cliente_id,
+      _periodo: fechaPol.slice(0, 7),
+      _idempotency_key: `demo:${c.id}`,
+      _tipo: esEmisor ? "ingreso" : "egreso",
+      _fecha: fechaPol,
+      _concepto: concepto,
+      _origen: "demo_sintetica",
+      _renglones: renglones as never,
+    } as never);
+    if (errPol) throw new Error(`Póliza demo ${c.uuid}: ${errPol.message}`);
   }
-  await supabase.from("polizas").insert(polizasRows);
+
 
   // 9) Movimientos bancarios
   const movsRows: any[] = [];
