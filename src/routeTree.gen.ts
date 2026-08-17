@@ -52,6 +52,7 @@ import { Route as AppReporteEjecutivoRouteImport } from './routes/app.reporte-ej
 import { Route as AppPolizasRouteImport } from './routes/app.polizas'
 import { Route as AppMensajesRouteImport } from './routes/app.mensajes'
 import { Route as AppLegalRouteImport } from './routes/app.legal'
+import { Route as AppInicioGuiadoRouteImport } from './routes/app.inicio-guiado'
 import { Route as AppExpedientesRouteImport } from './routes/app.expedientes'
 import { Route as AppEquipoRouteImport } from './routes/app.equipo'
 import { Route as AppDespachoRouteImport } from './routes/app.despacho'
@@ -343,6 +344,11 @@ const AppMensajesRoute = AppMensajesRouteImport.update({
 const AppLegalRoute = AppLegalRouteImport.update({
   id: '/legal',
   path: '/legal',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppInicioGuiadoRoute = AppInicioGuiadoRouteImport.update({
+  id: '/inicio-guiado',
+  path: '/inicio-guiado',
   getParentRoute: () => AppRoute,
 } as any)
 const AppExpedientesRoute = AppExpedientesRouteImport.update({
@@ -775,6 +781,7 @@ export interface FileRoutesByFullPath {
   '/app/despacho': typeof AppDespachoRoute
   '/app/equipo': typeof AppEquipoRoute
   '/app/expedientes': typeof AppExpedientesRoute
+  '/app/inicio-guiado': typeof AppInicioGuiadoRoute
   '/app/legal': typeof AppLegalRouteWithChildren
   '/app/mensajes': typeof AppMensajesRouteWithChildren
   '/app/polizas': typeof AppPolizasRoute
@@ -890,6 +897,7 @@ export interface FileRoutesByTo {
   '/app/despacho': typeof AppDespachoRoute
   '/app/equipo': typeof AppEquipoRoute
   '/app/expedientes': typeof AppExpedientesRoute
+  '/app/inicio-guiado': typeof AppInicioGuiadoRoute
   '/app/polizas': typeof AppPolizasRoute
   '/app/reporte-ejecutivo': typeof AppReporteEjecutivoRoute
   '/app/rfcs-vinculados': typeof AppRfcsVinculadosRoute
@@ -1010,6 +1018,7 @@ export interface FileRoutesById {
   '/app/despacho': typeof AppDespachoRoute
   '/app/equipo': typeof AppEquipoRoute
   '/app/expedientes': typeof AppExpedientesRoute
+  '/app/inicio-guiado': typeof AppInicioGuiadoRoute
   '/app/legal': typeof AppLegalRouteWithChildren
   '/app/mensajes': typeof AppMensajesRouteWithChildren
   '/app/polizas': typeof AppPolizasRoute
@@ -1134,6 +1143,7 @@ export interface FileRouteTypes {
     | '/app/despacho'
     | '/app/equipo'
     | '/app/expedientes'
+    | '/app/inicio-guiado'
     | '/app/legal'
     | '/app/mensajes'
     | '/app/polizas'
@@ -1249,6 +1259,7 @@ export interface FileRouteTypes {
     | '/app/despacho'
     | '/app/equipo'
     | '/app/expedientes'
+    | '/app/inicio-guiado'
     | '/app/polizas'
     | '/app/reporte-ejecutivo'
     | '/app/rfcs-vinculados'
@@ -1368,6 +1379,7 @@ export interface FileRouteTypes {
     | '/app/despacho'
     | '/app/equipo'
     | '/app/expedientes'
+    | '/app/inicio-guiado'
     | '/app/legal'
     | '/app/mensajes'
     | '/app/polizas'
@@ -1787,6 +1799,13 @@ declare module '@tanstack/react-router' {
       path: '/legal'
       fullPath: '/app/legal'
       preLoaderRoute: typeof AppLegalRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/inicio-guiado': {
+      id: '/app/inicio-guiado'
+      path: '/inicio-guiado'
+      fullPath: '/app/inicio-guiado'
+      preLoaderRoute: typeof AppInicioGuiadoRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/expedientes': {
@@ -2479,6 +2498,7 @@ interface AppRouteChildren {
   AppDespachoRoute: typeof AppDespachoRoute
   AppEquipoRoute: typeof AppEquipoRoute
   AppExpedientesRoute: typeof AppExpedientesRoute
+  AppInicioGuiadoRoute: typeof AppInicioGuiadoRoute
   AppLegalRoute: typeof AppLegalRouteWithChildren
   AppMensajesRoute: typeof AppMensajesRouteWithChildren
   AppPolizasRoute: typeof AppPolizasRoute
@@ -2532,6 +2552,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppDespachoRoute: AppDespachoRoute,
   AppEquipoRoute: AppEquipoRoute,
   AppExpedientesRoute: AppExpedientesRoute,
+  AppInicioGuiadoRoute: AppInicioGuiadoRoute,
   AppLegalRoute: AppLegalRouteWithChildren,
   AppMensajesRoute: AppMensajesRouteWithChildren,
   AppPolizasRoute: AppPolizasRoute,
