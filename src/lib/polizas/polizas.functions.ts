@@ -137,7 +137,7 @@ export const leerAsientosLegado = createServerFn({ method: "POST" })
       .eq("id", data.poliza_id)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    const asientos = ((row?.metadata as any)?.asientos ?? []) as Array<Record<string, unknown>>;
+    const asientos = ((row?.metadata as any)?.asientos ?? []) as any[];
     return { legado: true, asientos, nota: "Formato legado de sólo lectura; no alimenta exportaciones." };
   });
 
