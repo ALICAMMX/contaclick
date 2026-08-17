@@ -58,12 +58,13 @@ function ContabilidadAutoPage() {
   });
   const confirmadas = useQuery({
     queryKey: ["polizas-confirmadas", cliente?.id],
-    queryFn: () => fnList({ data: { cliente_id: cliente!.id, estado: "confirmada" } }),
+    queryFn: () => fnList({ data: { cliente_id: cliente!.id, estado: "aprobada" } }),
     enabled: !!cliente?.id,
   });
 
   const [selCfdi, setSelCfdi] = useState<Set<string>>(new Set());
   const [selBorr, setSelBorr] = useState<Set<string>>(new Set());
+  const [motivo, setMotivo] = useState("");
   const [editing, setEditing] = useState<any | null>(null);
 
   const genMut = useMutation({
@@ -77,11 +78,12 @@ function ContabilidadAutoPage() {
     onError: (e: any) => toast.error(e.message ?? "Error generando pólizas"),
   });
   const estMut = useMutation({
-    mutationFn: (estado: "confirmada" | "rechazada") =>
-      fnEst({ data: { ids: Array.from(selBorr), estado } }),
+    mutationFn: (estado: "aprobada" | "rechazada") =>
+      fnEst({ data: { cliente_id: cliente!.id, ids: Array.from(selBorr), estado, motivo } }),
     onSuccess: () => {
       toast.success("Pólizas actualizadas");
       setSelBorr(new Set());
+      setMotivo("");
       qc.invalidateQueries({ queryKey: ["polizas-borrador"] });
       qc.invalidateQueries({ queryKey: ["polizas-confirmadas"] });
     },
@@ -229,12 +231,19 @@ function ContabilidadAutoPage() {
                 {selBorr.size > 0 ? `${selBorr.size} seleccionadas` : "Revisa y aprueba las pólizas generadas"}
               </p>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" disabled={selBorr.size === 0 || estMut.isPending}
+                <Input
+                  className="h-9 w-72"
+                  placeholder="Motivo de la decisión (mínimo 10 caracteres)"
+                  value={motivo}
+                  onChange={(e) => setMotivo(e.target.value)}
+                />
+                <Button variant="outline" size="sm"
+                  disabled={selBorr.size === 0 || estMut.isPending || motivo.trim().length < 10}
                   onClick={() => estMut.mutate("rechazada")}>
                   <XCircle className="h-4 w-4 mr-2" /> Rechazar
                 </Button>
-                <Button disabled={selBorr.size === 0 || estMut.isPending}
-                  onClick={() => estMut.mutate("confirmada")}>
+                <Button disabled={selBorr.size === 0 || estMut.isPending || motivo.trim().length < 10}
+                  onClick={() => estMut.mutate("aprobada")}>
                   <CheckCircle2 className="h-4 w-4 mr-2" /> Aprobar {selBorr.size || ""}
                 </Button>
               </div>
@@ -270,9 +279,9 @@ function ContabilidadAutoPage() {
         <EditorAsientosDialog
           poliza={editing}
           onClose={() => setEditing(null)}
-          onSave={async (asientos) => {
+          onSave={async (asientos, motivoEdicion) => {
             try {
-              await fnEdit({ data: { id: editing.id, asientos } });
+              await fnEdit({ data: { cliente_id: cliente!.id, id: editing.id, asientos, motivo: motivoEdicion } });
               toast.success("Asientos actualizados");
               setEditing(null);
               qc.invalidateQueries({ queryKey: ["polizas-borrador"] });
@@ -359,9 +368,10 @@ function ListaPolizas({
 function EditorAsientosDialog({ poliza, onClose, onSave }: {
   poliza: any;
   onClose: () => void;
-  onSave: (asientos: any[]) => void;
+  onSave: (asientos: any[], motivo: string) => void;
 }) {
   const [rows, setRows] = useState<any[]>(() => poliza.metadata?.asientos ?? []);
+  const [motivoEdicion, setMotivoEdicion] = useState("");
   const totals = useMemo(() => {
     const d = rows.reduce((s, a) => s + (Number(a.debe) || 0), 0);
     const h = rows.reduce((s, a) => s + (Number(a.haber) || 0), 0);
@@ -419,9 +429,20 @@ function EditorAsientosDialog({ poliza, onClose, onSave }: {
               <span className="text-destructive">· Diferencia {mxn(totals.diff)}</span>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            <Input
+              className="h-9 w-64"
+              placeholder="Motivo de la corrección (mín. 10)"
+              value={motivoEdicion}
+              onChange={(e) => setMotivoEdicion(e.target.value)}
+            />
             <Button variant="outline" onClick={onClose}>Cancelar</Button>
-            <Button disabled={Math.abs(totals.diff) > 0.05} onClick={() => onSave(rows)}>Guardar</Button>
+            <Button
+              disabled={Math.abs(totals.diff) > 0.05 || motivoEdicion.trim().length < 10}
+              onClick={() => onSave(rows, motivoEdicion.trim())}
+            >
+              Guardar nueva versión
+            </Button>
           </div>
         </DialogFooter>
       </DialogContent>
