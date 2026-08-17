@@ -295,7 +295,7 @@ function ConciliacionPage() {
       };
     });
     if (!filas.length) { toast.error("No hay grupos que exportar en este periodo."); return; }
-    exportXlsx(filas, buildFilename(`conciliacion-${periodo}`, cliente?.rfc ?? ""), "Conciliación");
+    exportXlsx(buildFilename(`conciliacion-${periodo}`, cliente?.rfc ?? ""), [{ name: "Conciliación", rows: filas }]);
   }
 
   if (hydrating) return <div className="p-6 text-sm text-muted-foreground">Cargando expediente…</div>;
@@ -327,7 +327,7 @@ function ConciliacionPage() {
             aria-label="Cuenta bancaria"
           >
             <option value="__all__">Todas las cuentas</option>
-            {(cuentas.data ?? []).map((c: any) => (
+            {((cuentas.data as any)?.cuentas ?? []).map((c: any) => (
               <option key={c.id} value={c.id}>{c.banco} · {c.alias}</option>
             ))}
           </select>
@@ -336,7 +336,7 @@ function ConciliacionPage() {
             {run.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Wand2 className="h-4 w-4 mr-1" />}
             Ejecutar motor
           </Button>
-          <HerramientaHelp id="bank-reconciler" />
+          <HerramientaHelp slug="bank-reconciler" />
         </div>
       </header>
 
@@ -357,7 +357,7 @@ function ConciliacionPage() {
         <div className="flex flex-wrap items-center gap-2">
           <select value={cuentaSel} onChange={(e) => setCuentaSel(e.target.value)} className="h-9 rounded-md border bg-background px-2 text-sm">
             <option value="__nueva__">Crear cuenta nueva…</option>
-            {(cuentas.data ?? []).map((c: any) => <option key={c.id} value={c.id}>{c.banco} · {c.alias}</option>)}
+            {((cuentas.data as any)?.cuentas ?? []).map((c: any) => <option key={c.id} value={c.id}>{c.banco} · {c.alias}</option>)}
           </select>
           {cuentaSel === "__nueva__" && (
             <>
@@ -490,7 +490,7 @@ function ConciliacionPage() {
       <Dialog open={aiOpen} onOpenChange={setAiOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Resumen de conciliación</DialogTitle></DialogHeader>
-          <RichMarkdown content={aiContent} />
+          <RichMarkdown>{aiContent}</RichMarkdown>
         </DialogContent>
       </Dialog>
     </div>
