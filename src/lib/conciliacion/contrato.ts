@@ -11,19 +11,41 @@
 export const ESTADOS_CONCILIACION = ["propuesto", "confirmado", "rechazado", "ignorado"] as const;
 export type EstadoConciliacion = (typeof ESTADOS_CONCILIACION)[number];
 
-/** Quién produjo el grupo. Una confirmación del motor NUNCA falsifica una persona. */
+/** Quién produjo el grupo. Una propuesta del motor NUNCA falsifica una persona. */
 export type OrigenConciliacion = "motor" | "humano";
+
+/**
+ * Nivel de una propuesta. El motor jamás produce estado `confirmado`:
+ * su mejor resultado posible es una propuesta de ALTA CONFIANZA que sigue
+ * esperando la decisión de una persona.
+ */
+export const NIVELES_PROPUESTA = [
+  "automatica_alta_confianza",
+  "revision_requerida",
+  "decision_humana",
+] as const;
+export type NivelPropuesta = (typeof NIVELES_PROPUESTA)[number];
+
+export const ETIQUETA_NIVEL: Record<NivelPropuesta, string> = {
+  automatica_alta_confianza: "Propuesta de alta confianza",
+  revision_requerida: "Propuesta para revisión",
+  decision_humana: "Decisión humana",
+};
 
 /** Formas de agrupación. El Bloque 1 sólo genera uno_a_uno. */
 export type TipoGrupo = "uno_a_uno" | "uno_a_varios" | "varios_a_uno";
 
 /** Versión del algoritmo. Cambiar el puntaje o las reglas obliga a subirla. */
-export const ALGORITMO_VERSION = "conciliacion-1a1@1";
+export const ALGORITMO_VERSION = "conciliacion-1a1@2";
 
-/** Sólo un grupo confirmado cuenta como conciliado. */
-export function cuentaComoConciliado(estado: EstadoConciliacion): boolean {
-  return estado === "confirmado";
+/**
+ * Sólo un grupo confirmado por una persona cuenta como conciliado.
+ * `confirmado` significa exclusivamente eso; no existe "confirmado automático".
+ */
+export function cuentaComoConciliado(estado: EstadoConciliacion, confirmadoPor: string | null): boolean {
+  return estado === "confirmado" && !!confirmadoPor;
 }
+
 
 /**
  * Para el Centro de Cierre, la etapa Bancos sólo puede declararse "lista"
