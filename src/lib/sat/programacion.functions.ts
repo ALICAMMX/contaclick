@@ -318,7 +318,7 @@ export const cambiarEstadoProgramacionSat = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!p) throw new Error("Este expediente no tiene una programación activa.");
 
-    const cambios: Record<string, unknown> = { actualizado_por: userId };
+    const cambios: any = { actualizado_por: userId };
     if (data.accion === "pausar") {
       cambios["pausada"] = true;
     } else if (data.accion === "reanudar") {
