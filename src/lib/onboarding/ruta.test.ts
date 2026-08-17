@@ -67,7 +67,8 @@ describe("ruta guiada del expediente", () => {
     };
     expect(estado(s, "bancos")).toBe("listo");
     expect(estado(s, "cierre")).toBe("atencion");
-    expect(siguientePaso(construirRuta(s))?.id).toBe("cierre");
+    // La e.firma sigue pendiente y es anterior en la ruta, así que es la sugerencia.
+    expect(siguientePaso(construirRuta(s))?.id).toBe("efirma");
   });
 
   it("periodo sellado deja la ruta completa", () => {
