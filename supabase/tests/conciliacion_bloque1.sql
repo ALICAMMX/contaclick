@@ -26,7 +26,6 @@ DECLARE
   PERIODO constant text := '2026-07';
   EVID constant jsonb := jsonb_build_object('regla','unico_exacto_dos_senales','version','conciliacion-1a1@2');
 
-  PROCEDURE_FALLA boolean;
 BEGIN
   -- Sandbox de dos despachos distintos
   INSERT INTO public.despachos(id, nombre, owner_user_id) VALUES
