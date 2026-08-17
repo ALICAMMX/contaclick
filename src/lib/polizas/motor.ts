@@ -139,6 +139,8 @@ export function construirBorradorCfdi(params: {
   resoluciones: Record<number, ResolucionConcepto>;
   cuentas: CuentasSistema;
   conciliacion?: EvidenciaConciliacion | null;
+  complemento?: { cfdi_pago_id: string; importe_centavos: number } | null;
+  manual?: { actor: string; fecha: string; motivo: string } | null;
 }): BorradorCanonico {
   const { cfdi, esIngreso, conceptos, resoluciones, cuentas } = params;
   const bloqueos: string[] = [];
@@ -225,12 +227,28 @@ export function construirBorradorCfdi(params: {
     }
   }
 
-  return cerrar(renglones, bloqueos, sinResolver, esIngreso ? "ingreso" : "egreso", etiqueta);
+  const flujo = resolverEvidencia({
+    metodo_pago: cfdi.metodo_pago,
+    tipo_cfdi: cfdi.tipo_cfdi,
+    complemento: params.complemento ?? null,
+    banco_confirmado: params.conciliacion?.confirmada
+      ? {
+          movimiento_bancario_id: params.conciliacion.movimiento_bancario_id ?? "",
+          actor: params.conciliacion.actor ?? null,
+          fecha: params.conciliacion.fecha ?? null,
+        }
+      : null,
+    manual: params.manual ?? null,
+  });
+
+  return cerrar(renglones, bloqueos, sinResolver, esIngreso ? "ingreso" : "egreso", etiqueta, flujo);
 }
 
 /**
- * Complemento de pago: sólo con conciliación bancaria CONFIRMADA por una
- * persona. Sin ella el borrador queda bloqueado con la causa visible.
+ * Complemento de pago: el complemento ES evidencia de flujo por sí mismo
+ * (nivel `complemento_pago`). Cuando además existe conciliación bancaria
+ * confirmada por una persona, el nivel sube a `banco_confirmado` y el
+ * complemento queda como refuerzo — nunca se reconoce el cobro dos veces.
  */
 export function construirBorradorComplementoPago(params: {
   cfdi: CfdiCanonico;
@@ -242,9 +260,6 @@ export function construirBorradorComplementoPago(params: {
   const etiqueta = `Complemento de pago ${cfdi.uuid.slice(0, 8)}`;
   const bloqueos: string[] = [];
 
-  if (!conciliacion?.confirmada) {
-    bloqueos.push("El movimiento bancario todavía no tiene conciliación confirmada.");
-  }
   if (!cuentas.bancos) {
     bloqueos.push("El expediente no tiene una cuenta de bancos asignada en el catálogo.");
   }
@@ -265,7 +280,20 @@ export function construirBorradorComplementoPago(params: {
     for (const r of renglones) r.movimiento_bancario_id = conciliacion.movimiento_bancario_id;
   }
 
-  return cerrar(renglones, bloqueos, cuentas.bancos ? 0 : 1, "diario", etiqueta);
+  const flujo = resolverEvidencia({
+    metodo_pago: cfdi.metodo_pago,
+    tipo_cfdi: "P",
+    complemento: { cfdi_pago_id: cfdi.id, importe_centavos: monto },
+    banco_confirmado: conciliacion?.confirmada
+      ? {
+          movimiento_bancario_id: conciliacion.movimiento_bancario_id ?? "",
+          actor: conciliacion.actor ?? null,
+          fecha: conciliacion.fecha ?? null,
+        }
+      : null,
+  });
+
+  return cerrar(renglones, bloqueos, cuentas.bancos ? 0 : 1, "diario", etiqueta, flujo);
 }
 
 function cerrar(
