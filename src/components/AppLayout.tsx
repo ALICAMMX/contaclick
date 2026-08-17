@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
-import { LogOut, UserRound, Settings, Building2, Sun, Moon, ChevronRight, Home, ShieldCheck } from "lucide-react";
+import { LogOut, UserRound, Settings, Building2, Sun, Moon, ChevronRight, Home, ShieldCheck, Compass } from "lucide-react";
 import { Logo } from "./Logo";
 import { useAuth } from "@/lib/auth";
 import { useDespacho } from "@/lib/despacho/use-despacho";
