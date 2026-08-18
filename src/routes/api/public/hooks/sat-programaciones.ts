@@ -323,25 +323,22 @@ export const Route = createFileRoute("/api/public/hooks/sat-programaciones")({
               continue;
             }
 
-            await registrar(
-              "ejecucion",
-              {
+            await resolver({
+              accion: "ejecucion",
+              resultado: salida?.duplicada ? "duplicada" : (salida?.estado ?? "en_curso"),
+              run_id: salida?.run_id ?? null,
+              retraso_ms: decision.retraso_ms,
+              detalle: {
                 rango,
                 nota_rango: rango.nota,
                 estado_corrida: salida?.estado ?? null,
                 duplicada: !!salida?.duplicada,
               },
-              salida?.estado ?? "en_curso",
-              salida?.run_id ?? null,
-              decision.retraso_ms,
-            );
-            await avanzar({
-              ultimo_resultado: salida?.duplicada ? "duplicada" : (salida?.estado ?? "en_curso"),
               ultimo_detalle: String(salida?.mensaje ?? "").slice(0, 300),
-              ultimo_retraso_ms: decision.retraso_ms,
-              ultima_ejecucion_at: new Date().toISOString(),
-              ultima_corrida_id: salida?.run_id ?? null,
+              marcar_ejecucion: true,
+              corrida_id: salida?.run_id ?? null,
             });
+
             resultados.push({
               programacion_id: p.id,
               estado: "ejecutada",
@@ -354,8 +351,13 @@ export const Route = createFileRoute("/api/public/hooks/sat-programaciones")({
             const mensaje = String((e as Error)?.message ?? e).slice(0, 300);
             fallos.push(`${p.id}: ${mensaje}`);
             try {
-              await registrar("fallo", { motivo: mensaje }, "fallida");
-              await avanzar({ ultimo_resultado: "fallida", ultimo_detalle: mensaje });
+              await resolver({
+                accion: "fallo",
+                resultado: "fallida",
+                detalle: { motivo: mensaje },
+                ultimo_detalle: mensaje,
+              });
+
             } catch (e2) {
               console.error("[sat-prog] no se pudo registrar el fallo:", (e2 as Error)?.message);
             }
