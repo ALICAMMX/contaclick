@@ -203,11 +203,12 @@ export const Route = createFileRoute("/api/public/hooks/sat-programaciones")({
             });
 
             if (decision.accion === "omitir") {
-              await registrar("omision", { motivo: decision.motivo }, "omitida", null, decision.retraso_ms);
-              await avanzar({
-                ultimo_resultado: "omitida",
+              await resolver({
+                accion: "omision",
+                resultado: "omitida",
+                retraso_ms: decision.retraso_ms,
+                detalle: { motivo: decision.motivo },
                 ultimo_detalle: decision.motivo,
-                ultimo_retraso_ms: decision.retraso_ms,
               });
               resultados.push({
                 programacion_id: p.id,
@@ -223,16 +224,14 @@ export const Route = createFileRoute("/api/public/hooks/sat-programaciones")({
             // la ocurrencia queda EN COLA (no se pierde ni se adelanta) y se
             // reintenta en el siguiente minuto, dentro de su tolerancia.
             if (lanzadas >= MAX_CONCURRENTES) {
-              await registrar("encolada", { motivo: "Límite global de concurrencia alcanzado." });
-              await supabase
-                .from("sat_programaciones")
-                .update({
-                  bloqueo_at: null,
-                  ultimo_resultado: "en_cola",
-                  ultimo_detalle: "En cola por límite global de solicitudes simultáneas.",
-                  ultimo_retraso_ms: decision.retraso_ms,
-                })
-                .eq("id", p.id);
+              await resolver({
+                accion: "encolada",
+                resultado: "en_cola",
+                retraso_ms: decision.retraso_ms,
+                detalle: { motivo: "Límite global de concurrencia alcanzado." },
+                ultimo_detalle: "En cola por límite global de solicitudes simultáneas.",
+                avanzar: false,
+              });
               resultados.push({
                 programacion_id: p.id,
                 estado: "encolada",
@@ -242,6 +241,7 @@ export const Route = createFileRoute("/api/public/hooks/sat-programaciones")({
               });
               continue;
             }
+
 
             // Ventana a solicitar. "Desde la última descarga exitosa" usa la
             // última corrida completada del expediente más un solapamiento.
