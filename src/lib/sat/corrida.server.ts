@@ -17,6 +17,7 @@ import {
 } from "@/lib/usage/sat-quota";
 import { PROVEEDORES } from "@/lib/sat/providers/contrato";
 import { rangoValido } from "@/lib/sat/consumo";
+import { resolverRangoSat } from "@/lib/sat/periodo";
 import { llaveCorrida } from "@/lib/sat/idempotencia";
 import { tieneFolioSat } from "@/lib/sat/saneamiento";
 import {
@@ -86,6 +87,19 @@ export async function ejecutarCorridaSat(args: {
     //    con su AAD y su versión de llave: si aquí falla, no se crea corrida,
     //    no se consume cuota, no queda candado y no se contacta al SAT.
     const estado = await calcularEstado(supabase, userId, scope, { verificarDescifrado: true });
+    // 1.a) Rango: se detecta LOCALMENTE. Una FechaFinal futura provoca el
+    //      rechazo 301 del SAT; jamás debe crearse una corrida por eso.
+    if (estado.rango_error) {
+      return fallo({
+        etapa: "preflight",
+        codigo: "rango_sat_invalido",
+        mensaje: estado.rango_error.motivo,
+        accion: estado.rango_error.accion,
+        corrida_creada: false,
+        solicitud_enviada: false,
+        run_id: null,
+      });
+    }
     if (!estado.puede_ejecutar) {
       return fallo({
         etapa: "preflight",
@@ -115,6 +129,26 @@ export async function ejecutarCorridaSat(args: {
         : estado.rango;
     const { desde, hasta } = ventana;
     const direcciones = estado.direcciones;
+
+    // Candado final ANTES de insertar la corrida, reservar cuota, firmar o
+    // contactar al SAT: el rango efectivo (incluida la ventana forzada por una
+    // programación) debe terminar en un día completo de la hora del centro.
+    const rangoEfectivo = resolverRangoSat({
+      periodo: "personalizado",
+      fechaDesde: desde,
+      fechaHasta: hasta,
+    });
+    if (!rangoEfectivo.ok) {
+      return fallo({
+        etapa: "preflight",
+        codigo: "rango_sat_invalido",
+        mensaje: rangoEfectivo.motivo,
+        accion: rangoEfectivo.accion,
+        corrida_creada: false,
+        solicitud_enviada: false,
+        run_id: null,
+      });
+    }
 
     // 2) Idempotencia: una sola corrida activa por proveedor+expediente+ventana.
     const idem = llaveCorrida({
