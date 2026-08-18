@@ -302,7 +302,10 @@ async function main() {
     const bit = await api.rest("GET", `sat_programacion_bitacora?programacion_id=eq.${pVencida.id}&select=accion,resultado,retraso_ms,detalle`);
     const filas = bit.cuerpo ?? [];
     const texto = JSON.stringify(filas);
-    const sinSecretos = !/BEGIN |PRIVATE KEY|certificado|password|contrase/i.test(texto);
+    // Material sensible real: llaves, certificados, contraseñas o blobs base64
+    // largos. El texto explicativo ("falta la e.firma") sí es admisible.
+    const sinSecretos =
+      !/-----BEGIN|PRIVATE KEY|CERTIFICATE|password"|"contrasena|"clave"|[A-Za-z0-9+/]{200,}/.test(texto);
     caso(
       "La bitácora registra la ocurrencia y no contiene secretos",
       "≥1 registro sin material criptográfico",
