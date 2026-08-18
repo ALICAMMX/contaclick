@@ -158,7 +158,7 @@ async function main() {
     );
   }
   {
-    const r = await fetch(HOOK, { method: "POST", headers: { apikey: env.anon } });
+    const r = await fetch(HOOK, { method: "POST", headers: conSecreto });
     igual("POST con publishable/anon key es rechazado", "401", r.status);
   }
   {
@@ -184,7 +184,7 @@ async function main() {
   const email = `qa.${qa}.satprog@contaclick-qa.invalid`;
   const password = `Qa-${randomUUID()}`;
   const userId = await api.crearUsuario(email, password);
-  await api.iniciarSesion(email, password);
+  const token = await api.iniciarSesion(email, password);
   const desp = await api.rest("PATCH", `despachos?owner_user_id=eq.${userId}`, {
     cuerpo: { es_sandbox: true, nombre: `QA SATPROG ${qa}`, estado: "activo" },
     representar: true,
@@ -297,7 +297,7 @@ async function main() {
       cuerpo: { bloqueo_at: null, proxima_ejecucion_at: hace(5), ultima_ocurrencia_key: null },
     });
     const programadaKey = llaveOcurrencia(pVencida.id, new Date((await leer(pVencida.id)).proxima_ejecucion_at));
-    let resp = await fetch(HOOK, { method: "POST", headers: { apikey: env.anon } });
+    let resp = await fetch(HOOK, { method: "POST", headers: conSecreto });
     let cuerpo = await resp.json();
     const mio = (c) => (c.resultados ?? []).find((x) => x.programacion_id === pVencida.id);
     caso(
@@ -352,14 +352,14 @@ async function main() {
       await nuevoCliente("omitir"),
     );
     creadas.push(pOmitir.id);
-    resp = await fetch(HOOK, { method: "POST", headers: { apikey: env.anon } });
+    resp = await fetch(HOOK, { method: "POST", headers: conSecreto });
     cuerpo = await resp.json();
     const rOmitir = (cuerpo.resultados ?? []).find((x) => x.programacion_id === pOmitir.id);
     igual("Ocurrencia perdida con política 'omitir' se omite y no descarga", "omitida", rOmitir?.estado);
 
     // Segundo tick inmediato: ninguna de las ocurrencias ya resueltas se repite.
     await esperar(500);
-    resp = await fetch(HOOK, { method: "POST", headers: { apikey: env.anon } });
+    resp = await fetch(HOOK, { method: "POST", headers: conSecreto });
     cuerpo = await resp.json();
     const repetidas = (cuerpo.resultados ?? []).filter((x) => creadas.includes(x.programacion_id) && x.estado === "ejecutada").length;
     igual("Un segundo tick inmediato no repite ocurrencias ya resueltas", 0, repetidas);
