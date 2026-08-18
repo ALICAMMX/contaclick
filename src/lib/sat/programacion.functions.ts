@@ -285,34 +285,18 @@ export const cambiarEstadoProgramacionSat = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!p) throw new Error("Este expediente no tiene una programación activa.");
 
-    const cambios: any = { actualizado_por: userId };
-    if (data.accion === "pausar") {
-      cambios["pausada"] = true;
-    } else if (data.accion === "reanudar") {
-      const prox = proximaEjecucion(p as any, new Date());
-      cambios["pausada"] = false;
-      cambios["proxima_ejecucion_at"] = prox ? prox.toISOString() : null;
-    } else {
-      cambios["cancelada"] = true;
-      cambios["activa"] = false;
-      cambios["proxima_ejecucion_at"] = null;
-    }
+    const prox =
+      data.accion === "reanudar" ? proximaEjecucion(p as any, new Date()) : null;
 
-    const { error } = await supabase
-      .from("sat_programaciones")
-      .update(cambios)
-      .eq("id", (p as any).id);
-    if (error) throw new Error(error.message);
-
-    await bitacora(supabase, {
-      programacion_id: (p as any).id,
-      despacho_id: scope.despacho_id,
-      cliente_id: scope.cliente_id,
-      accion:
-        data.accion === "pausar" ? "pausa" : data.accion === "reanudar" ? "reanudacion" : "cancelacion",
-      actor_user_id: userId,
-      detalle: { proxima_utc: cambios["proxima_ejecucion_at"] ?? null },
+    // Cambio de estado + versión + bitácora en una sola transacción.
+    const { error } = await supabase.rpc("sat_programacion_cambiar_estado", {
+      _cliente: scope.cliente_id,
+      _accion: data.accion,
+      _proxima: prox ? prox.toISOString() : null,
+      _detalle: { proxima_utc: prox?.toISOString() ?? null } as any,
     });
+    if (error) throw new Error(error.message);
 
     return { ok: true };
   });
+
