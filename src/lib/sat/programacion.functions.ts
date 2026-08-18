@@ -93,8 +93,10 @@ const GuardarSchema = z
     }
   });
 
-/** Permiso fino: quién puede crear, modificar, pausar o cancelar. */
-const ROLES_ADMIN = ["super_admin", "despacho", "contador"];
+/** Permiso fino: quién puede crear, modificar, pausar o cancelar.
+ *  Siempre acotado al despacho del expediente: un rol de contador o despacho
+ *  en OTRO despacho no concede administración aquí. */
+const ROLES_ADMIN = ["despacho", "contador"];
 
 async function assertPuedeAdministrar(supabase: any, userId: string, despachoId: string) {
   const { data: owner } = await supabase
@@ -104,37 +106,28 @@ async function assertPuedeAdministrar(supabase: any, userId: string, despachoId:
     .eq("owner_user_id", userId)
     .maybeSingle();
   if (owner) return;
+
+  const { data: superAdmin } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .eq("role", "super_admin")
+    .maybeSingle();
+  if (superAdmin) return;
+
   const { data: roles } = await supabase
     .from("user_roles")
     .select("role")
     .eq("user_id", userId)
+    .eq("despacho_id", despachoId)
     .in("role", ROLES_ADMIN);
   if (!roles || roles.length === 0) {
-    throw new Error("No tienes permiso para administrar la programación de descargas SAT.");
+    throw new Error(
+      "No tienes permiso para administrar la programación de descargas SAT en este despacho.",
+    );
   }
 }
 
-async function bitacora(
-  supabase: any,
-  fila: {
-    programacion_id: string;
-    despacho_id: string;
-    cliente_id: string;
-    accion: string;
-    actor_user_id?: string | null;
-    detalle?: Record<string, unknown>;
-  },
-) {
-  // Nunca se registran secretos: sólo parámetros de calendario.
-  await supabase.from("sat_programacion_bitacora").insert({
-    programacion_id: fila.programacion_id,
-    despacho_id: fila.despacho_id,
-    cliente_id: fila.cliente_id,
-    accion: fila.accion,
-    actor_user_id: fila.actor_user_id ?? null,
-    detalle: fila.detalle ?? {},
-  });
-}
 
 function derivar(p: any) {
   if (!p) return null;
