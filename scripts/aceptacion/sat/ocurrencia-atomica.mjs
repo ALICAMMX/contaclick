@@ -23,6 +23,10 @@ function caso(nombre, esperado, obtenido, ok) {
 }
 const igual = (nombre, esperado, obtenido) =>
   caso(nombre, String(esperado), obtenido, String(esperado) === String(obtenido));
+// Postgres devuelve "+00:00"; se compara el instante, no el formato.
+const instante = (v) => (v ? new Date(v).toISOString() : String(v));
+const igualFecha = (nombre, esperado, obtenido) =>
+  caso(nombre, instante(esperado), instante(obtenido), instante(esperado) === instante(obtenido));
 
 async function main() {
   const env = entorno();
@@ -116,7 +120,7 @@ async function main() {
     igual("Recibo de resolución exitosa", "resuelta", r1.cuerpo?.estado);
     caso("Recibo trae id de bitácora", "uuid", r1.cuerpo?.bitacora_id, !!r1.cuerpo?.bitacora_id);
     igual("Bitácora escrita una sola vez", 1, b1.length);
-    igual("Avanza próxima ejecución", proxima, e1.proxima_ejecucion_at);
+    igualFecha("Avanza próxima ejecución", proxima, e1.proxima_ejecucion_at);
     igual("Registra la llave de ocurrencia", clave1, e1.ultima_ocurrencia_key);
     igual("Libera el bloqueo", "null", String(e1.bloqueo_at));
     igual("Guarda el resultado", "completada", e1.ultimo_resultado);
@@ -142,7 +146,7 @@ async function main() {
     });
     igual("Bloqueo ajeno rechazado", "bloqueo_ajeno", r3.cuerpo?.estado);
     igual("Bloqueo ajeno no deja bitácora", 0, (await bitacoras(p3.id)).length);
-    igual("Bloqueo ajeno no avanza el calendario", programada, (await leer(p3.id)).proxima_ejecucion_at);
+    igualFecha("Bloqueo ajeno no avanza el calendario", programada, (await leer(p3.id)).proxima_ejecucion_at);
 
     // A4. Llave/ocurrencia antigua o distinta a la vigente.
     const r4 = await resolver({
@@ -158,9 +162,9 @@ async function main() {
     const r5 = await resolver({ _programacion: p3.id, _ocurrencia: clave3, _accion: null });
     caso("Bitácora inválida → error", "error", r5.status, r5.status >= 400);
     const e5 = await leer(p3.id);
-    igual("Fallo de bitácora deja estado intacto", programada, e5.proxima_ejecucion_at);
+    igualFecha("Fallo de bitácora deja estado intacto", programada, e5.proxima_ejecucion_at);
     igual("Fallo de bitácora no escribe llave", "null", String(e5.ultima_ocurrencia_key));
-    igual("Fallo de bitácora conserva el bloqueo (reintento seguro)", bloqueo, e5.bloqueo_at);
+    igualFecha("Fallo de bitácora conserva el bloqueo (reintento seguro)", bloqueo, e5.bloqueo_at);
 
     // A6. Fallo inducido del UPDATE (corrida inexistente): sin bitácora huérfana.
     const r6 = await resolver({
@@ -173,7 +177,7 @@ async function main() {
     });
     caso("UPDATE inválido → error", "error", r6.status, r6.status >= 400);
     igual("Sin bitácora huérfana tras fallo de UPDATE", 0, (await bitacoras(p3.id)).length);
-    igual("Sin avance tras fallo de UPDATE", programada, (await leer(p3.id)).proxima_ejecucion_at);
+    igualFecha("Sin avance tras fallo de UPDATE", programada, (await leer(p3.id)).proxima_ejecucion_at);
 
     // A7. Encolada: deja recibo pero NO consume la ocurrencia.
     const p7 = await nuevaProg("cola");
@@ -189,7 +193,7 @@ async function main() {
     const e7 = await leer(p7.id);
     igual("Encolada devuelve recibo", "encolada", r7.cuerpo?.estado);
     igual("Encolada deja evidencia en bitácora", 1, (await bitacoras(p7.id)).length);
-    igual("Encolada NO se pierde: conserva la ocurrencia", programada, e7.proxima_ejecucion_at);
+    igualFecha("Encolada NO se pierde: conserva la ocurrencia", programada, e7.proxima_ejecucion_at);
     igual("Encolada no marca la llave como resuelta", "null", String(e7.ultima_ocurrencia_key));
     igual("Encolada libera el bloqueo para reintentar", "null", String(e7.bloqueo_at));
 
@@ -210,7 +214,7 @@ async function main() {
     igual("Fallo conserva evidencia en bitácora", "fallo", b8[0]?.accion);
     igual("Fallo marca el resultado", "fallida", e8.ultimo_resultado);
     igual("Fallo registra retraso", 1200, e8.ultimo_retraso_ms);
-    igual("Fallo avanza el calendario", proxima, e8.proxima_ejecucion_at);
+    igualFecha("Fallo avanza el calendario", proxima, e8.proxima_ejecucion_at);
 
     // A9. El RPC es interno: anon y authenticated no pueden ejecutarlo.
     const anon = await api.rpcAnon("sat_programacion_resolver_ocurrencia", {
