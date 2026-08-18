@@ -327,6 +327,48 @@ export const upsertClienteFromCsf = createServerFn({ method: "POST" })
     return { accion: "creado" as const, cliente: inserted, diferencias: [] as string[] };
   });
 
+const UpdateDatosFiscalesSchema = z.object({
+  id: z.string().uuid(),
+  razon_social: z.string().min(2).max(200).optional(),
+  regimen_fiscal: z.string().max(500).optional().nullable(),
+  curp: z.string().max(20).optional().nullable(),
+  tipo_persona: z.enum(["fisica", "moral"]).optional().nullable(),
+  domicilio_fiscal: z.string().max(500).optional().nullable(),
+  codigo_postal: z.string().max(10).optional().nullable(),
+  email: z.string().email().optional().or(z.literal("")).nullable(),
+  telefono: z.string().max(40).optional().nullable(),
+});
+
+/**
+ * Captura manual de los datos fiscales del expediente.
+ * La CSF sigue siendo la vía preferente, pero cuando el PDF no entrega todo
+ * (o no hay CSF a la mano) el contador puede completarlo a mano. RLS acota
+ * el expediente al despacho del usuario.
+ */
+export const updateClienteDatosFiscales = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) => UpdateDatosFiscalesSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { id, ...campos } = data;
+    const payload: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(campos)) {
+      if (v === undefined) continue;
+      payload[k] = typeof v === "string" && v.trim() === "" ? null : v;
+    }
+    if (Object.keys(payload).length === 0) return { ok: true as const };
+
+    const { data: row, error } = await supabase
+      .from("clientes")
+      .update(payload)
+      .eq("id", id)
+      .select("*")
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row) throw new Error("No se pudo actualizar el expediente (sin acceso o inexistente).");
+    return { ok: true as const, cliente: row };
+  });
+
 export const listTerceros = createServerFn({ method: "GET" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ cliente_id: z.string().uuid() }).parse(d))
