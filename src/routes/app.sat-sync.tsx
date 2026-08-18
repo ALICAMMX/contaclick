@@ -12,6 +12,7 @@ import {
 import { CorridaDetalleDialog } from "@/components/sat/CorridaDetalle";
 import { corridaReintentable, motivoSinReintento } from "@/lib/sat/linaje";
 import { resumirEnvio } from "@/lib/sat/metricas";
+import { presentarResultadoSat, runIdDeResultado } from "@/lib/sat/presentacion";
 import { dashboardSatSync, runSyncNow, listSyncRuns, listSyncEventos, setSyncActivo, getSatSyncConfig, upsertSatSyncConfig, estadoServicioSat, cosecharAhora, reintentarCorrida, cerrarCorridaSat } from "@/lib/sat/sat-sync.functions";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { Button } from "@/components/ui/button";
@@ -530,18 +531,30 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
   const runNow = useMutation({
     mutationFn: () => fnRun({ data: { cliente_id: clienteId, origen: "expediente", cascade: true } }),
     onSuccess: (r: any) => {
-      // El servidor ya no lanza excepciones genéricas: devuelve el motivo real.
-      if (r?.ok === false) {
-        toast.error(r.error.mensaje, { description: r.error.accion });
+      // La corrida puede haberse creado aunque falle: siempre se refresca
+      // Actividad y jamás se accede directo a `r.error.mensaje`.
+      qc.invalidateQueries({ queryKey: ["sat-sync"] });
+      const runId = runIdDeResultado(r);
+      if (r?.ok === true) {
+        if (r.duplicada) toast.info(r.mensaje ?? "Ya hay una corrida en proceso.");
+        else toast.success(r.mensaje ?? "Solicitud enviada al SAT.");
         return;
       }
-      if (r.duplicada) toast.info(r.mensaje);
-      else toast.success(r.mensaje);
-      qc.invalidateQueries({ queryKey: ["sat-sync"] });
+      const { mensaje, accion } = presentarResultadoSat(r);
+      toast.error(mensaje, {
+        description: accion,
+        ...(runId
+          ? { action: { label: "Ver detalle", onClick: () => setDetalleId(runId) } }
+          : {}),
+      });
     },
     onSettled: () => { qc.invalidateQueries({ queryKey: ["sat-sync", "estado", clienteId] }); },
-    onError: (e: any) => toast.error(e?.message ?? "Error"),
+    onError: (e: unknown) => {
+      const { mensaje, accion } = presentarResultadoSat(e);
+      toast.error(mensaje, { description: accion });
+    },
   });
+
 
   const [detalleId, setDetalleId] = useState<string | null>(null);
   const fnReintentar = useServerFn(reintentarCorrida);
