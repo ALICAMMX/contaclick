@@ -158,7 +158,8 @@ async function main() {
     );
   }
   {
-    const r = await fetch(HOOK, { method: "POST", headers: conSecreto });
+    const r = await fetch(HOOK, { method: "POST", headers: { apikey: env.anon } });
+
     igual("POST con publishable/anon key es rechazado", "401", r.status);
   }
   {
