@@ -302,20 +302,17 @@ export const Route = createFileRoute("/api/public/hooks/sat-programaciones")({
               // Preflight/cuota fallidos: no hay corrida huérfana ni contacto
               // con el SAT. Se conserva la siguiente recurrencia.
               const err = salida.error ?? {};
-              await registrar(
-                "fallo",
-                { etapa: err.etapa, codigo: err.codigo, accion: err.accion, rango },
-                "fallida",
-                err.run_id ?? null,
-                decision.retraso_ms,
-              );
-              await avanzar({
-                ultimo_resultado: "fallida",
+              await resolver({
+                accion: "fallo",
+                resultado: "fallida",
+                run_id: err.run_id ?? null,
+                retraso_ms: decision.retraso_ms,
+                detalle: { etapa: err.etapa, codigo: err.codigo, accion: err.accion, rango },
                 ultimo_detalle: String(err.mensaje ?? "").slice(0, 300),
-                ultimo_retraso_ms: decision.retraso_ms,
-                ultima_ejecucion_at: new Date().toISOString(),
-                ultima_corrida_id: err.run_id ?? null,
+                marcar_ejecucion: true,
+                corrida_id: err.run_id ?? null,
               });
+
               resultados.push({
                 programacion_id: p.id,
                 estado: "fallida",
