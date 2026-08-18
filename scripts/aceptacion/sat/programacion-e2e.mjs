@@ -135,16 +135,49 @@ async function main() {
     caso("Llave de ocurrencia estable por minuto y distinta entre horas", "a==b y a!=c", `${a === b}/${a !== c}`, a === b && a !== c);
   }
 
-  // ── Bloque B: endpoint del despachador ────────────────────────────────────
+  // ── Bloque B: autenticación del despachador ───────────────────────────────
+  // El secreto NUNCA se imprime: se lee de la copia privada (service_role) que
+  // el propio endpoint sincroniza desde la variable de servidor.
+  await fetch(HOOK); // sondeo de salud: sincroniza el secreto
+  const secretoFila = await api.rest(
+    "GET",
+    "cron_secretos?nombre=eq.SAT_PROGRAMACIONES_CRON_SECRET&select=valor",
+  );
+  const SECRETO = secretoFila.cuerpo?.[0]?.valor ?? "";
+  const conSecreto = { "x-cron-secret": SECRETO };
+
   {
     const r = await fetch(HOOK);
     const j = await r.json().catch(() => ({}));
-    caso("GET del hook publica versión del despachador", "200 + versión", `${r.status} ${j.version}`, r.status === 200 && !!j.version);
+    const texto = JSON.stringify(j);
+    caso(
+      "GET del hook publica sólo salud y versión (sin secreto)",
+      "200 + versión y cero secreto",
+      `${r.status} ${j.version} secreto_en_respuesta=${SECRETO ? texto.includes(SECRETO) : "n/a"}`,
+      r.status === 200 && !!j.version && !!SECRETO && !texto.includes(SECRETO),
+    );
   }
   {
-    const r = await fetch(HOOK, { method: "POST", headers: { apikey: "clave-invalida" } });
-    igual("POST sin apikey válida es rechazado", "401", r.status);
+    const r = await fetch(HOOK, { method: "POST", headers: { apikey: env.anon } });
+    igual("POST con publishable/anon key es rechazado", "401", r.status);
   }
+  {
+    const r = await fetch(HOOK, { method: "POST", headers: { "x-cron-secret": env.anon } });
+    igual("POST con la llave pública como secreto es rechazado", "401", r.status);
+  }
+  {
+    const r = await fetch(HOOK, { method: "POST" });
+    igual("POST sin secreto es rechazado", "401", r.status);
+  }
+  {
+    const r = await fetch(HOOK, { method: "POST", headers: { "x-cron-secret": "secreto-incorrecto" } });
+    igual("POST con secreto incorrecto es rechazado", "401", r.status);
+  }
+  {
+    const r = await fetch(HOOK, { method: "POST", headers: conSecreto });
+    igual("POST con el secreto exclusivo del cron es aceptado", "200", r.status);
+  }
+
 
   // ── Bloque C: escenario sintético en despacho sandbox ─────────────────────
   const qa = randomUUID().slice(0, 8);
