@@ -168,10 +168,26 @@ async function main() {
   });
   const clienteId = cli.id;
 
-  const nuevaProg = async (campos) => {
+  // Sólo puede existir una programación viva por expediente: cada caso que
+  // necesita su propia programación usa un expediente sintético distinto.
+  const expedientes = [clienteId];
+  const nuevoCliente = async (etiqueta) => {
+    const [c] = await api.insertar("clientes", {
+      despacho_id: despachoId,
+      user_id: userId,
+      rfc: `Q${etiqueta.slice(0, 2).toUpperCase()}${qa.slice(0, 6).toUpperCase()}A`,
+      razon_social: `Expediente QA ${etiqueta} ${qa}`,
+      regimen_fiscal: "612",
+      tipo_persona: "fisica",
+    });
+    expedientes.push(c.id);
+    return c.id;
+  };
+
+  const nuevaProg = async (campos, cid = clienteId) => {
     const [p] = await api.insertar("sat_programaciones", {
       despacho_id: despachoId,
-      cliente_id: clienteId,
+      cliente_id: cid,
       creado_por: userId,
       actualizado_por: userId,
       tipo: "recurrente",
@@ -219,21 +235,21 @@ async function main() {
     await liberar(pVencida.id);
 
     // 21. Pausada nunca se reclama.
-    const pPausada = await nuevaProg({ proxima_ejecucion_at: hace(5), pausada: true });
+    const pPausada = await nuevaProg({ proxima_ejecucion_at: hace(5), pausada: true }, await nuevoCliente("pausada"));
     creadas.push(pPausada.id);
     r = await reclamar();
     caso("Programación pausada no se despacha", "no aparece", !(r.cuerpo ?? []).some((x) => x.id === pPausada.id), !(r.cuerpo ?? []).some((x) => x.id === pPausada.id));
     await liberar(pVencida.id);
 
     // 22. Cancelada nunca se reclama.
-    const pCancelada = await nuevaProg({ proxima_ejecucion_at: hace(5), cancelada: true, activa: false });
+    const pCancelada = await nuevaProg({ proxima_ejecucion_at: hace(5), cancelada: true, activa: false }, await nuevoCliente("cancelada"));
     creadas.push(pCancelada.id);
     r = await reclamar();
     caso("Programación cancelada no se despacha", "no aparece", !(r.cuerpo ?? []).some((x) => x.id === pCancelada.id), !(r.cuerpo ?? []).some((x) => x.id === pCancelada.id));
     await liberar(pVencida.id);
 
     // 23. Futura no se reclama.
-    const pFutura = await nuevaProg({ proxima_ejecucion_at: dentro(120) });
+    const pFutura = await nuevaProg({ proxima_ejecucion_at: dentro(120) }, await nuevoCliente("futura"));
     creadas.push(pFutura.id);
     r = await reclamar();
     caso("Programación futura no se adelanta", "no aparece", !(r.cuerpo ?? []).some((x) => x.id === pFutura.id), !(r.cuerpo ?? []).some((x) => x.id === pFutura.id));
@@ -287,11 +303,10 @@ async function main() {
     );
 
     // Ocurrencia fuera de tolerancia con política omitir → omitida por el hook.
-    const pOmitir = await nuevaProg({
-      proxima_ejecucion_at: hace(600),
-      tolerancia_minutos: 30,
-      politica_retraso: "omitir",
-    });
+    const pOmitir = await nuevaProg(
+      { proxima_ejecucion_at: hace(600), tolerancia_minutos: 30, politica_retraso: "omitir" },
+      await nuevoCliente("omitir"),
+    );
     creadas.push(pOmitir.id);
     resp = await fetch(HOOK, { method: "POST", headers: { apikey: env.anon } });
     cuerpo = await resp.json();
@@ -316,18 +331,21 @@ async function main() {
     );
   } finally {
     // ── Purga: residuo cero ────────────────────────────────────────────────
-    await api.borrar("sat_programacion_bitacora", `cliente_id=eq.${clienteId}`);
-    await api.borrar("sat_programaciones", `cliente_id=eq.${clienteId}`);
-    await api.borrar("sat_sync_eventos", `cliente_id=eq.${clienteId}`);
-    await api.borrar("sat_sync_runs", `cliente_id=eq.${clienteId}`);
-    await api.borrar("sat_sync_config", `cliente_id=eq.${clienteId}`);
-    await api.borrar("clientes", `id=eq.${clienteId}`);
+    for (const cid of expedientes) {
+      await api.borrar("sat_programacion_bitacora", `cliente_id=eq.${cid}`);
+      await api.borrar("sat_programaciones", `cliente_id=eq.${cid}`);
+      await api.borrar("sat_sync_eventos", `cliente_id=eq.${cid}`);
+      await api.borrar("sat_sync_runs", `cliente_id=eq.${cid}`);
+      await api.borrar("sat_sync_config", `cliente_id=eq.${cid}`);
+      await api.borrar("clientes", `id=eq.${cid}`);
+    }
     await api.borrar("user_roles", `user_id=eq.${userId}`);
     await api.borrar("user_memberships", `user_id=eq.${userId}`);
     await api.borrar("despachos", `id=eq.${despachoId}`);
     await api.borrar("profiles", `id=eq.${userId}`);
     await api.borrarUsuario(userId);
-    const resto = await api.contar("sat_programaciones", `cliente_id=eq.${clienteId}`);
+    let resto = 0;
+    for (const cid of expedientes) resto += await api.contar("sat_programaciones", `cliente_id=eq.${cid}`);
     igual("Purga sintética con residuo cero", 0, resto);
   }
 
