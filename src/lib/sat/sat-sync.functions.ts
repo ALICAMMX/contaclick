@@ -904,7 +904,7 @@ export type SalidaSatSync = ExitoSatSync | FalloSatSync;
 export const runSyncNow = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) => RunSchema.parse(d))
-  .handler(async ({ data, context }): Promise<any> =>
+  .handler(async ({ data, context }): Promise<SalidaSatSync> =>
     (await import("@/lib/sat/corrida.server")).ejecutarCorridaSat({
       supabase: context.supabase,
       userId: context.userId,

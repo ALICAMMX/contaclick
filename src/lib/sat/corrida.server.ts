@@ -29,6 +29,7 @@ import {
   calcularEstado,
   calcularProxima,
   type FalloSatSync,
+  type SalidaSatSync,
   type Frecuencia,
 } from "@/lib/sat/sat-sync.functions";
 
@@ -52,7 +53,7 @@ export async function ejecutarCorridaSat(args: {
   cascade?: boolean;
   /** Ventana forzada por una programación; si falta se usa la del expediente. */
   rangoOverride?: { desde: string; hasta: string } | null;
-}): Promise<any> {
+}): Promise<SalidaSatSync> {
   {
     const { supabase, userId } = args;
     const data = {
