@@ -57,6 +57,7 @@ import {
   type ProveedorId,
 } from "@/lib/sat/providers/contrato";
 import { contarSolicitudes, rangoValido } from "@/lib/sat/consumo";
+import { resolverRangoSat } from "@/lib/sat/periodo";
 import { llaveCorrida } from "@/lib/sat/idempotencia";
 import {
   candidatosReconciliacion,
