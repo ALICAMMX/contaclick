@@ -633,6 +633,7 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
               size="sm"
               variant="hero"
               onClick={() => {
+                if (!rangoSat.ok) { toast.error(`${rangoSat.motivo} ${rangoSat.accion}`); return; }
                 if (!envio.valido) { toast.error(envio.motivo!); return; }
                 const ok = window.confirm(
                   `Se enviarán ${envio.solicitudes} solicitud(es) al SAT.\n\n` +
@@ -643,7 +644,7 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
                 );
                 if (ok) runNow.mutate();
               }}
-              disabled={runNow.isPending || estadoQ.isLoading || bloqueado || !envio.valido}
+              disabled={runNow.isPending || estadoQ.isLoading || bloqueado || !envio.valido || !rangoSat.ok}
               title={estado?.motivo ?? undefined}
             >
               {runNow.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -696,6 +697,18 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
                 ? `Al sincronizar se enviarán ${envio.solicitudes} solicitud(es): ${envio.direcciones_label}, del ${rangoUI.desde} al ${rangoUI.hasta} (${envio.dias} día(s), ambos incluidos).`
                 : envio.motivo}
             </li>
+            {!rangoSat.ok && (
+              <li data-testid="rango-invalido" className="text-destructive">
+                • {rangoSat.motivo} {rangoSat.accion}
+              </li>
+            )}
+            {rangoSat.ok && (
+              <li>
+                • Último día completo disponible en {ETIQUETA_ZONA_SAT}:{" "}
+                <span className="font-mono">{rangoSat.maximo}</span>. El SAT rechaza periodos que
+                terminan en el futuro (código 301).
+              </li>
+            )}
             {periodo.valido && (
               <li data-testid="periodo-efectivo">
                 • Periodo efectivo enviado al SAT: <span className="font-mono">{periodo.fechaInicial}</span> a{" "}

@@ -15,6 +15,7 @@
 // =====================================================================
 
 import { validarContraEsquema } from "./contrato-wsdl";
+import { ETIQUETA_ZONA_SAT, ultimoDiaCompletoSat } from "./periodo";
 
 export type DireccionSolicitud = "emitidos" | "recibidos";
 export type TipoDescargaSat = "CFDI" | "Metadata";
@@ -80,6 +81,10 @@ export type EntradaSolicitud = {
   rfcSolicitante: string;
   desde: string; // YYYY-MM-DD
   hasta: string; // YYYY-MM-DD
+  /** Reloj inyectable: por omisión, el instante real. */
+  ahora?: Date;
+  /** Rango mostrado al usuario en la confirmación: debe ser idéntico. */
+  rangoConfirmado?: { desde: string; hasta: string } | null;
 };
 
 export type ErrorConstruccion = {
@@ -241,6 +246,27 @@ export function construirSolicitudDescarga(entrada: EntradaSolicitud): Solicitud
     valor: `${desde}..${hasta}`,
     motivo: "La fecha inicial no puede ser posterior a la final.",
   });
+
+  // Una FechaFinal en el futuro provoca el rechazo 301 del SAT. Se valida
+  // ANTES del sellado, con el día completo más reciente en hora del centro.
+  const maximo = ultimoDiaCompletoSat(entrada.ahora ?? new Date());
+  exigir(hasta <= maximo, {
+    campo: "FechaFinal",
+    valor: hasta,
+    motivo: `La fecha final aún no es un día completo en ${ETIQUETA_ZONA_SAT}. Máximo permitido: ${maximo}.`,
+  });
+
+  // El rango firmado debe ser exactamente el confirmado por el usuario.
+  if (entrada.rangoConfirmado) {
+    exigir(
+      entrada.rangoConfirmado.desde === desde && entrada.rangoConfirmado.hasta === hasta,
+      {
+        campo: "FechaInicial",
+        valor: `${desde}..${hasta}`,
+        motivo: `El rango a firmar no coincide con el confirmado (${entrada.rangoConfirmado.desde}..${entrada.rangoConfirmado.hasta}).`,
+      },
+    );
+  }
 
   const operacion =
     direccion === "emitidos" ? "SolicitaDescargaEmitidos" : "SolicitaDescargaRecibidos";
