@@ -101,7 +101,7 @@ export function construirRuta(s: SnapshotRuta): PasoRuta[] {
   const efirmaVencida = fechaVencida(s.efirmaVenceAt);
   const efirmaActiva =
     s.efirmaUtilizable === true ||
-    (s.efirmaUtilizable == null &&
+    (s.efirmaUtilizable == null && !efirmaVencida &&
       (s.efirmaEstatus === "activo" || s.efirmaEstatus === "activa" || s.efirmaEstatus === "conectada"));
   const efirmaAtencion = !efirmaActiva && (efirmaVencida || (s.efirmaUtilizable === false && !!s.efirmaEstatus));
   const paso3: PasoRuta = {

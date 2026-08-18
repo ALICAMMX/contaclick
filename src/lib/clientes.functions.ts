@@ -360,7 +360,7 @@ export const updateClienteDatosFiscales = createServerFn({ method: "POST" })
 
     const { data: row, error } = await supabase
       .from("clientes")
-      .update(payload)
+      .update(payload as any)
       .eq("id", id)
       .select("*")
       .maybeSingle();
