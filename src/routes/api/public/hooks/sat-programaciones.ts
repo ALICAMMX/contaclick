@@ -118,50 +118,72 @@ export const Route = createFileRoute("/api/public/hooks/sat-programaciones")({
         for (const p of (debidas ?? []) as any[]) {
           const programada = new Date(p.proxima_ejecucion_at);
           const clave = llaveOcurrencia(p.id, programada);
-          const registrar = async (
-            accion: string,
-            extra: Record<string, unknown> = {},
-            resultado?: string,
-            runId?: string | null,
-            retraso = 0,
-          ) => {
-            await supabase.from("sat_programacion_bitacora").insert({
-              programacion_id: p.id,
-              despacho_id: p.despacho_id,
-              cliente_id: p.cliente_id,
-              accion,
-              programada_at: programada.toISOString(),
-              retraso_ms: retraso,
-              run_id: runId ?? null,
-              resultado: resultado ?? null,
-              // Sin secretos: sólo calendario y resultado operativo.
-              detalle: { ocurrencia: clave, ...extra },
-            });
-          };
-
           // Siguiente ocurrencia: como máximo se recupera UNA. Nunca se
           // ejecutan acumuladas varias ocurrencias antiguas.
           const siguiente = proximaEjecucion(p as any, ahora);
-          const avanzar = async (campos: Record<string, unknown>) => {
-            await supabase
-              .from("sat_programaciones")
-              .update({
-                bloqueo_at: null,
-                ultima_ocurrencia_key: clave,
-                ultima_programada_at: programada.toISOString(),
-                proxima_ejecucion_at:
-                  p.tipo === "unica" ? null : siguiente ? siguiente.toISOString() : null,
-                activa: p.tipo === "unica" ? false : p.activa,
-                ...campos,
-              })
-              .eq("id", p.id);
+          const proximaCalculada =
+            p.tipo === "unica" ? null : siguiente ? siguiente.toISOString() : null;
+
+          /**
+           * Resolución ATÓMICA de la ocurrencia: bitácora + estado + avance del
+           * calendario + liberación del bloqueo en UNA transacción. Si la
+           * bitácora o el UPDATE fallan, todo se revierte: la ocurrencia queda
+           * sin resolver y puede reintentarse con seguridad.
+           */
+          const resolver = async (opciones: {
+            accion: string;
+            resultado?: string | null;
+            run_id?: string | null;
+            retraso_ms?: number;
+            detalle?: Record<string, unknown>;
+            ultimo_detalle?: string | null;
+            avanzar?: boolean;
+            marcar_ejecucion?: boolean;
+            corrida_id?: string | null;
+          }) => {
+            const avanzar = opciones.avanzar !== false;
+            const { data: recibo, error } = await supabase.rpc(
+              "sat_programacion_resolver_ocurrencia",
+              {
+                _programacion: p.id,
+                _ocurrencia: clave,
+                _programada: programada.toISOString(),
+                _bloqueo: p.bloqueo_at,
+                _accion: opciones.accion,
+                _resultado: opciones.resultado ?? null,
+                _run: opciones.run_id ?? null,
+                _retraso: Math.round(opciones.retraso_ms ?? 0),
+                // Sin secretos: sólo calendario y resultado operativo.
+                _detalle: (opciones.detalle ?? {}) as any,
+                _proxima: avanzar ? proximaCalculada : null,
+                _activa: avanzar ? (p.tipo === "unica" ? false : p.activa) : null,
+                _avanzar: avanzar,
+                _ultimo_detalle: opciones.ultimo_detalle ?? null,
+                _marcar_ejecucion: !!opciones.marcar_ejecucion,
+                _corrida: opciones.corrida_id ?? null,
+              } as any,
+            );
+            if (error) {
+              throw new Error(`Resolución atómica rechazada: ${error.message}`);
+            }
+            const r = recibo as any;
+            // Recibo nulo o incompleto = fallo. Nunca se asume éxito.
+            if (!r || r.ok !== true || typeof r.estado !== "string") {
+              throw new Error(
+                `Resolución atómica sin recibo válido (${JSON.stringify(r ?? null).slice(0, 200)}).`,
+              );
+            }
+            if (avanzar && r.estado === "resuelta" && !r.bitacora_id) {
+              throw new Error("Resolución atómica sin bitácora.");
+            }
+            return r as { ok: boolean; estado: string; bitacora_id: string | null };
           };
 
           try {
             // Idempotencia por ocurrencia: si esta misma ocurrencia ya se
-            // resolvió (doble ciclo del cron), no se repite.
+            // resolvió (doble ciclo del cron), el RPC sólo libera el bloqueo.
             if (p.ultima_ocurrencia_key === clave) {
-              await avanzar({});
+              await resolver({ accion: "duplicada", detalle: { motivo: "Ocurrencia ya resuelta." } });
               resultados.push({
                 programacion_id: p.id,
                 estado: "omitida",
@@ -171,6 +193,7 @@ export const Route = createFileRoute("/api/public/hooks/sat-programaciones")({
               });
               continue;
             }
+
 
             const decision = decidirOcurrencia({
               programada_at: programada,
