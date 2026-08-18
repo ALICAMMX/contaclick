@@ -76,12 +76,16 @@ export async function assertClienteScope(
   }
 
   // Permiso fino por expediente (acceso restringido / cliente_final).
-  const { data: allowed, error: rpcErr } = await supabase.rpc("has_cliente_access", {
+  // Se evalúa con el ACTOR explícito: el despachador de programaciones corre
+  // sin sesión (auth.uid() es nulo) y debe respetar el mismo permiso fino.
+  const { data: allowed, error: rpcErr } = await supabase.rpc("has_cliente_access_for", {
     _cliente: target.id,
+    _user: userId,
   });
   if (!rpcErr && allowed === false) {
     throw new Error("No tienes acceso a este expediente.");
   }
+
 
   return {
     cliente_id: target.id as string,
