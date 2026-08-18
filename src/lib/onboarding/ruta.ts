@@ -33,6 +33,10 @@ export type SnapshotRuta = {
   obligaciones: number;
   /** Credencial e.firma del expediente. */
   efirmaEstatus: string | null;
+  /** Veredicto del resolvedor central de e.firma (fuente única de verdad). */
+  efirmaUtilizable?: boolean | null;
+  /** Mensaje del resolvedor cuando la credencial existe pero no es utilizable. */
+  efirmaMensaje?: string | null;
   efirmaVenceAt: string | null;
   efirmaUltimaSync: string | null;
   /** Comprobantes del periodo. */
@@ -92,9 +96,14 @@ export function construirRuta(s: SnapshotRuta): PasoRuta[] {
         : "Se completa solo al leer la CSF.",
   };
 
-  // 3 · e.firma
+  // 3 · e.firma — no depende del domicilio: sólo del material criptográfico.
+  // El veredicto viene del resolvedor central; los estatus de texto son respaldo.
   const efirmaVencida = fechaVencida(s.efirmaVenceAt);
-  const efirmaActiva = s.efirmaEstatus === "activa" || s.efirmaEstatus === "conectada";
+  const efirmaActiva =
+    s.efirmaUtilizable === true ||
+    (s.efirmaUtilizable == null &&
+      (s.efirmaEstatus === "activo" || s.efirmaEstatus === "activa" || s.efirmaEstatus === "conectada"));
+  const efirmaAtencion = !efirmaActiva && (efirmaVencida || (s.efirmaUtilizable === false && !!s.efirmaEstatus));
   const paso3: PasoRuta = {
     id: "efirma",
     numero: 3,
@@ -103,15 +112,17 @@ export function construirRuta(s: SnapshotRuta): PasoRuta[] {
     desbloquea: ["Descarga Masiva SAT sin costo de PAC", "Evidencia SAT de cada comprobante"],
     ruta: "/app/sat-sync",
     accion: efirmaActiva ? "Administrar credencial" : "Conectar e.firma",
-    estado: efirmaVencida ? "atencion" : efirmaActiva ? "listo" : datosListo ? "pendiente" : "bloqueado",
-    bloqueadoPor: datosListo ? undefined : "Completa el expediente (paso 2).",
-    detalle: efirmaVencida
-      ? "El certificado está vencido. Renueva la e.firma en el SAT y vuelve a cargarla."
-      : efirmaActiva
-        ? s.efirmaUltimaSync
-          ? `Última sincronización: ${new Date(s.efirmaUltimaSync).toLocaleString("es-MX")}`
-          : "Credencial conectada. Aún no se ejecuta una descarga."
-        : "Sin credencial. Puedes seguir sin ella cargando los XML a mano.",
+    estado: efirmaActiva ? "listo" : efirmaAtencion ? "atencion" : csfListo ? "pendiente" : "bloqueado",
+    bloqueadoPor: csfListo ? undefined : "Falta leer la CSF (paso 1).",
+    detalle: efirmaActiva
+      ? s.efirmaUltimaSync
+        ? `Última sincronización: ${new Date(s.efirmaUltimaSync).toLocaleString("es-MX")}`
+        : "Credencial conectada. Aún no se ejecuta una descarga."
+      : efirmaVencida
+        ? "El certificado está vencido. Renueva la e.firma en el SAT y vuelve a cargarla."
+        : efirmaAtencion
+          ? (s.efirmaMensaje ?? "La credencial registrada no es utilizable.")
+          : "Sin credencial. Puedes seguir sin ella cargando los XML a mano.",
   };
 
   // 4 · CFDI del periodo
@@ -124,8 +135,8 @@ export function construirRuta(s: SnapshotRuta): PasoRuta[] {
     desbloquea: ["Clasificación fiscal", "Validador de deducibilidad", "Pólizas borrador", "Impuestos preliminares"],
     ruta: efirmaActiva && !efirmaVencida ? "/app/sat-sync" : "/app/cfdi",
     accion: efirmaActiva && !efirmaVencida ? "Descargar del SAT" : "Cargar XML",
-    estado: hayCfdi ? (s.cfdiSinOriginal > 0 ? "atencion" : "listo") : datosListo ? "pendiente" : "bloqueado",
-    bloqueadoPor: datosListo ? undefined : "Completa el expediente (paso 2).",
+    estado: hayCfdi ? (s.cfdiSinOriginal > 0 ? "atencion" : "listo") : csfListo ? "pendiente" : "bloqueado",
+    bloqueadoPor: csfListo ? undefined : "Falta leer la CSF (paso 1).",
     detalle: hayCfdi
       ? s.cfdiSinOriginal > 0
         ? `${s.cfdiPeriodo} comprobantes · ${s.cfdiSinOriginal} sin XML original verificado`
