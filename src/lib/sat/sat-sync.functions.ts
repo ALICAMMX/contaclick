@@ -867,6 +867,21 @@ const RunSchema = z.object({
   cascade: z.boolean().default(true),
 });
 
+/** Corrida aceptada (enviada, en curso, terminada o duplicada). */
+export type ExitoSatSync = {
+  ok: true;
+  duplicada: boolean;
+  run_id: string | null;
+  estado: string;
+  mensaje: string;
+  nuevos: number;
+  duplicados: number;
+  rechazados: number;
+  errores: Array<{ fase: string; mensaje: string }>;
+  cobertura?: string | null;
+  advertencia?: string | null;
+};
+
 /** Error operativo controlado: se devuelve al cliente, NUNCA se lanza. */
 export type FalloSatSync = {
   ok: false;
@@ -880,6 +895,10 @@ export type FalloSatSync = {
     run_id: string | null;
   };
 };
+
+/** Contrato único de `ejecutarCorridaSat` y `runSyncNow`. */
+export type SalidaSatSync = ExitoSatSync | FalloSatSync;
+
 
 
 export const runSyncNow = createServerFn({ method: "POST" })
