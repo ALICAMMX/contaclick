@@ -99,25 +99,24 @@ const ConfigSchema = z.object({
   activo: z.boolean().default(true),
 });
 
+/**
+ * Delegación total en la fuente única `resolverRangoSat` (periodo.ts).
+ * Nunca calcular "hoy" con toISOString(): eso toma el día UTC y a partir de
+ * las 18:00 del centro pedía al SAT una FechaFinal en el futuro (código 301).
+ */
 export function resolverRango(
   periodo: Periodo,
   desde?: string | null,
   hasta?: string | null,
-): { desde: string; hasta: string } {
-  const hoy = new Date();
-  const fmt = (d: Date) => d.toISOString().slice(0, 10);
-  if (periodo === "personalizado" && desde && hasta) return { desde, hasta };
-  if (periodo === "30d") {
-    const d = new Date(hoy);
-    d.setDate(d.getDate() - 30);
-    return { desde: fmt(d), hasta: fmt(hoy) };
+  ahora: Date = new Date(),
+): { desde: string; hasta: string; ok: boolean; motivo?: string; accion?: string; maximo: string } {
+  const r = resolverRangoSat({ periodo, fechaDesde: desde, fechaHasta: hasta, ahora });
+  if (!r.ok) {
+    return { desde: "", hasta: "", ok: false, motivo: r.motivo, accion: r.accion, maximo: r.maximo };
   }
-  if (periodo === "ejercicio") {
-    return { desde: `${hoy.getFullYear()}-01-01`, hasta: fmt(hoy) };
-  }
-  const ini = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-  return { desde: fmt(ini), hasta: fmt(hoy) };
+  return { desde: r.desde, hasta: r.hasta, ok: true, maximo: r.maximo };
 }
+
 
 export function calcularProxima(frec: Frecuencia, base = new Date()): string | null {
   if (frec === "manual") return null;
