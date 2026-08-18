@@ -292,7 +292,7 @@ export const cambiarEstadoProgramacionSat = createServerFn({ method: "POST" })
     const { error } = await supabase.rpc("sat_programacion_cambiar_estado", {
       _cliente: scope.cliente_id,
       _accion: data.accion,
-      _proxima: prox ? prox.toISOString() : null,
+      _proxima: prox ? prox.toISOString() : undefined,
       _detalle: { proxima_utc: prox?.toISOString() ?? null } as any,
     });
     if (error) throw new Error(error.message);
