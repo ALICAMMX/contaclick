@@ -7706,6 +7706,26 @@ export type Database = {
         Args: { _cliente: string; _detalle?: Json; _fila: Json }
         Returns: Json
       }
+      sat_programacion_resolver_ocurrencia: {
+        Args: {
+          _accion: string
+          _activa?: boolean
+          _avanzar?: boolean
+          _bloqueo: string
+          _corrida?: string
+          _detalle?: Json
+          _marcar_ejecucion?: boolean
+          _ocurrencia: string
+          _programacion: string
+          _programada: string
+          _proxima?: string
+          _resultado?: string
+          _retraso?: number
+          _run?: string
+          _ultimo_detalle?: string
+        }
+        Returns: Json
+      }
       sat_programaciones_reclamar: {
         Args: { _ahora?: string; _limite?: number }
         Returns: {
