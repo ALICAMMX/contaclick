@@ -8,7 +8,7 @@ import { computeSaludFiscal } from "@/lib/salud/salud.functions";
 import { ConfigExpediente } from "./app.sat-sync";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { getCliente, listTerceros } from "@/lib/clientes.functions";
+import { getCliente, listTerceros, updateClienteDatosFiscales } from "@/lib/clientes.functions";
 import { getClienteHistorial } from "@/lib/clientes/historial.functions";
 import { listCuentas, createCuenta, deleteCuenta, BANCOS } from "@/lib/cuentas/cuentas.functions";
 import { Banknote, Plus, Trash2 } from "lucide-react";
@@ -358,8 +358,42 @@ function CuentasBancariasSection({ clienteId }: { clienteId: string }) {
 }
 
 function DatosFiscalesSection({ cli }: { cli: any }) {
+  const qc = useQueryClient();
+  const guardar = useServerFn(updateClienteDatosFiscales);
+  const [editando, setEditando] = useState(false);
+  const [form, setForm] = useState<any>(null);
+
+  const mut = useMutation({
+    mutationFn: (payload: any) => guardar({ data: payload }),
+    onSuccess: () => {
+      toast.success("Datos fiscales actualizados");
+      setEditando(false);
+      qc.invalidateQueries({ queryKey: ["cliente", cli?.id] });
+      qc.invalidateQueries({ queryKey: ["ruta-expediente"] });
+      qc.invalidateQueries({ queryKey: ["cli-hist", cli?.id] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "No se pudo guardar"),
+  });
+
   if (!cli) return null;
   const has = cli.curp || cli.domicilio_fiscal || cli.codigo_postal || cli.tipo_persona || cli.csf_ultima_emision;
+
+  const abrir = () => {
+    setForm({
+      razon_social: cli.razon_social ?? "",
+      tipo_persona: cli.tipo_persona ?? "",
+      curp: cli.curp ?? "",
+      regimen_fiscal: cli.regimen_fiscal ?? "",
+      domicilio_fiscal: cli.domicilio_fiscal ?? "",
+      codigo_postal: cli.codigo_postal ?? "",
+      email: cli.email ?? "",
+      telefono: cli.telefono ?? "",
+    });
+    setEditando(true);
+  };
+
+  const set = (k: string) => (e: any) => setForm((f: any) => ({ ...f, [k]: e.target.value }));
+
   return (
     <section className="rounded-xl border border-border/60 bg-card/50 p-6 space-y-3">
       <div className="flex items-center gap-2">
@@ -370,12 +404,64 @@ function DatosFiscalesSection({ cli }: { cli: any }) {
             CSF: {new Date(cli.csf_ultima_emision).toLocaleDateString("es-MX")}
           </span>
         )}
+        {!editando && (
+          <Button size="sm" variant="outline" className={cli.csf_ultima_emision ? "" : "ml-auto"} onClick={abrir}>
+            Editar a mano
+          </Button>
+        )}
       </div>
-      {!has ? (
+
+      {editando ? (
+        <form
+          className="grid sm:grid-cols-2 gap-3 text-sm"
+          onSubmit={(e) => {
+            e.preventDefault();
+            mut.mutate({ id: cli.id, ...form, tipo_persona: form.tipo_persona || null });
+          }}
+        >
+          <Campo label="Razón social o nombre" className="sm:col-span-2">
+            <input className={INPUT} value={form.razon_social} onChange={set("razon_social")} required minLength={2} />
+          </Campo>
+          <Campo label="Tipo de persona">
+            <select className={INPUT} value={form.tipo_persona} onChange={set("tipo_persona")}>
+              <option value="">Sin especificar</option>
+              <option value="fisica">Persona Física</option>
+              <option value="moral">Persona Moral</option>
+            </select>
+          </Campo>
+          <Campo label="CURP">
+            <input className={INPUT} value={form.curp} onChange={set("curp")} maxLength={20} />
+          </Campo>
+          <Campo label="Régimen fiscal" className="sm:col-span-2">
+            <input className={INPUT} value={form.regimen_fiscal} onChange={set("regimen_fiscal")} placeholder="612 - Personas Físicas con Actividades Empresariales y Profesionales" />
+          </Campo>
+          <Campo label="Domicilio fiscal" className="sm:col-span-2">
+            <input className={INPUT} value={form.domicilio_fiscal} onChange={set("domicilio_fiscal")} maxLength={500} />
+          </Campo>
+          <Campo label="Código postal">
+            <input className={INPUT} value={form.codigo_postal} onChange={set("codigo_postal")} maxLength={10} inputMode="numeric" />
+          </Campo>
+          <Campo label="Correo">
+            <input className={INPUT} type="email" value={form.email} onChange={set("email")} />
+          </Campo>
+          <Campo label="Teléfono">
+            <input className={INPUT} value={form.telefono} onChange={set("telefono")} maxLength={40} />
+          </Campo>
+          <div className="sm:col-span-2 flex gap-2 pt-1">
+            <Button type="submit" size="sm" disabled={mut.isPending}>
+              {mut.isPending ? "Guardando…" : "Guardar datos fiscales"}
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setEditando(false)}>Cancelar</Button>
+          </div>
+          <p className="sm:col-span-2 text-xs text-muted-foreground">
+            Lo capturado a mano se conserva; si después subes la CSF, sus datos actualizan estos campos.
+          </p>
+        </form>
+      ) : !has ? (
         <p className="text-sm text-muted-foreground">
           Aún no hay datos fiscales. Sube una CSF en{" "}
           <Link to="/app/tools/csf-parser" className="text-primary hover:underline">Lector de CSF</Link>{" "}
-          y elige <em>"Crear / actualizar cliente"</em> para rellenar este expediente.
+          y elige <em>"Crear / actualizar cliente"</em>, o captúralos a mano con <em>Editar a mano</em>.
         </p>
       ) : (
         <div className="grid sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
@@ -387,6 +473,17 @@ function DatosFiscalesSection({ cli }: { cli: any }) {
         </div>
       )}
     </section>
+  );
+}
+
+const INPUT = "w-full h-9 rounded-md border border-border bg-background px-3 text-sm";
+
+function Campo({ label, className = "", children }: { label: string; className?: string; children: React.ReactNode }) {
+  return (
+    <label className={`block ${className}`}>
+      <span className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</span>
+      <div className="mt-1">{children}</div>
+    </label>
   );
 }
 
