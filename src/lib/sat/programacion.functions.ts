@@ -215,16 +215,10 @@ export const guardarProgramacionSat = createServerFn({ method: "POST" })
       );
     }
 
-    const { data: previa } = await supabase
-      .from("sat_programaciones")
-      .select("id, version")
-      .eq("cliente_id", scope.cliente_id)
-      .eq("cancelada", false)
-      .maybeSingle();
-
+    // Escritura canónica y atómica: autorización + alta/actualización +
+    // versión + próxima ejecución + bitácora en UNA sola transacción. Si la
+    // bitácora falla, la programación se revierte.
     const fila = {
-      despacho_id: scope.despacho_id,
-      cliente_id: scope.cliente_id,
       zona_horaria: data.zona_horaria,
       tipo: data.tipo,
       recurrencia: regla.recurrencia,
@@ -244,36 +238,13 @@ export const guardarProgramacionSat = createServerFn({ method: "POST" })
       tolerancia_minutos: data.tolerancia_minutos,
       politica_retraso: data.politica_retraso,
       activa: data.activa,
-      pausada: false,
       proxima_ejecucion_at: prox ? prox.toISOString() : null,
-      actualizado_por: userId,
     };
 
-    let id: string;
-    if (previa) {
-      const { error } = await supabase
-        .from("sat_programaciones")
-        .update({ ...fila, version: ((previa as any).version ?? 1) + 1 })
-        .eq("id", (previa as any).id);
-      if (error) throw new Error(error.message);
-      id = (previa as any).id;
-    } else {
-      const { data: ins, error } = await supabase
-        .from("sat_programaciones")
-        .insert({ ...fila, creado_por: userId })
-        .select("id")
-        .single();
-      if (error) throw new Error(error.message);
-      id = (ins as any).id;
-    }
-
-    await bitacora(supabase, {
-      programacion_id: id,
-      despacho_id: scope.despacho_id,
-      cliente_id: scope.cliente_id,
-      accion: previa ? "modificacion" : "creacion",
-      actor_user_id: userId,
-      detalle: {
+    const { data: salida, error } = await supabase.rpc("sat_programacion_guardar", {
+      _cliente: scope.cliente_id,
+      _fila: fila as any,
+      _detalle: {
         tipo: data.tipo,
         recurrencia: regla.recurrencia,
         zona_horaria: data.zona_horaria,
@@ -282,11 +253,14 @@ export const guardarProgramacionSat = createServerFn({ method: "POST" })
         emitidos: data.emitidos,
         recibidos: data.recibidos,
         proxima_utc: prox?.toISOString() ?? null,
-      },
+      } as any,
     });
+    if (error) throw new Error(error.message);
+    const id = (salida as any)?.id as string;
 
     return { ok: true, id, proxima_utc: prox?.toISOString() ?? null, aviso: AVISO_ASINCRONO };
   });
+
 
 export const cambiarEstadoProgramacionSat = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
