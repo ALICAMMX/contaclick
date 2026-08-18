@@ -401,8 +401,27 @@ export async function ejecutarCorridaSat(args: {
       });
     }
 
+    // CONTRATO DISCRIMINADO: una corrida terminada en error NUNCA se devuelve
+    // como éxito, y ninguna salida `ok:false` puede carecer de `error`.
+    if (resumen.estado === "error") {
+      const motivoSat =
+        errores.find((x) => !!x?.mensaje)?.mensaje ??
+        resumen.advertencia ??
+        "El SAT no completó la descarga de esta corrida.";
+      return fallo({
+        etapa: "cosecha",
+        codigo: "respuesta_sat_no_completada",
+        mensaje: String(motivoSat).slice(0, 300),
+        accion:
+          "Revisa el detalle de la corrida y usa Reintentar para volver a consultar el avance en el SAT.",
+        corrida_creada: true,
+        solicitud_enviada: enviadas > 0 || tieneFolioSat(solicitudes),
+        run_id: runId,
+      });
+    }
+
     return {
-      ok: resumen.estado !== "error",
+      ok: true as const,
       duplicada: false,
       run_id: runId,
       estado: resumen.estado,
@@ -416,6 +435,7 @@ export async function ejecutarCorridaSat(args: {
         : "Solicitud enviada al SAT. La descarga continúa en segundo plano; puedes cerrar esta pantalla.",
       errores,
     };
+
   }
 }
 
