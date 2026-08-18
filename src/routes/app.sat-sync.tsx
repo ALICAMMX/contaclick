@@ -12,6 +12,7 @@ import {
 import { CorridaDetalleDialog } from "@/components/sat/CorridaDetalle";
 import { corridaReintentable, motivoSinReintento } from "@/lib/sat/linaje";
 import { resumirEnvio } from "@/lib/sat/metricas";
+import { presentarResultadoSat, runIdDeResultado } from "@/lib/sat/presentacion";
 import { dashboardSatSync, runSyncNow, listSyncRuns, listSyncEventos, setSyncActivo, getSatSyncConfig, upsertSatSyncConfig, estadoServicioSat, cosecharAhora, reintentarCorrida, cerrarCorridaSat } from "@/lib/sat/sat-sync.functions";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { Button } from "@/components/ui/button";
