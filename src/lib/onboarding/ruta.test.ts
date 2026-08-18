@@ -35,7 +35,8 @@ describe("ruta guiada del expediente", () => {
     const s = { ...vacio, regimenFiscal: "601" };
     expect(estado(s, "csf")).toBe("listo");
     expect(estado(s, "expediente")).toBe("pendiente");
-    expect(estado(s, "efirma")).toBe("bloqueado");
+    // La e.firma no depende del domicilio: con la CSF leída ya es accionable.
+    expect(estado(s, "efirma")).toBe("pendiente");
   });
 
   it("e.firma vencida se reporta como atención, no como lista", () => {

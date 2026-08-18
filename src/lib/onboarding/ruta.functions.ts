@@ -70,14 +70,25 @@ export const getRutaExpediente = createServerFn({ method: "POST" })
     const mapaEtapas: Record<string, string> = {};
     for (const e of etapas.data ?? []) mapaEtapas[e.etapa] = e.estado;
 
+    // Fuente única de verdad de la e.firma: el mismo resolvedor que usa la
+    // tarjeta de conexión y el runner, para que la ruta no diga "desconectada"
+    // cuando la credencial sí es utilizable.
+    const { resolverCredencialEFirma } = await import("@/lib/sat/credencial.server");
+    const credEfirma = await resolverCredencialEFirma(supabase, {
+      clienteId,
+      rfcExpediente: scope.rfc ?? null,
+    });
+
     const snapshot: SnapshotRuta = {
       regimenFiscal: cliente.data?.regimen_fiscal ?? null,
       domicilioFiscal: cliente.data?.domicilio_fiscal ?? null,
       codigoPostal: cliente.data?.codigo_postal ?? null,
       csfUltimaEmision: cliente.data?.csf_ultima_emision ?? null,
       obligaciones: cliente.data?.obligaciones ?? 0,
-      efirmaEstatus: credencial.data?.estatus ?? null,
-      efirmaVenceAt: credencial.data?.efirma_vence_at ?? null,
+      efirmaEstatus: credEfirma.existe ? (credEfirma.estatus ?? credencial.data?.estatus ?? null) : null,
+      efirmaUtilizable: credEfirma.existe ? credEfirma.utilizable : null,
+      efirmaMensaje: credEfirma.utilizable ? null : credEfirma.mensaje,
+      efirmaVenceAt: credEfirma.vence_at ?? credencial.data?.efirma_vence_at ?? null,
       efirmaUltimaSync: credencial.data?.last_sync_at ?? null,
       cfdiPeriodo: cfdiTotal.count ?? 0,
       cfdiSinOriginal: cfdiSinOriginal.count ?? 0,
