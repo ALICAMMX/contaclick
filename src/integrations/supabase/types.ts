@@ -5768,6 +5768,13 @@ export type Database = {
             referencedRelation: "despachos"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "sat_programaciones_ultima_corrida_id_fkey"
+            columns: ["ultima_corrida_id"]
+            isOneToOne: false
+            referencedRelation: "sat_sync_runs"
+            referencedColumns: ["id"]
+          },
         ]
       }
       sat_sync_config: {
