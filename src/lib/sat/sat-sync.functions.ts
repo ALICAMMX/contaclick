@@ -677,6 +677,8 @@ export type EstadoServicioSat = {
   previstas: number;
   direcciones: DireccionDescarga[];
   rango: { desde: string; hasta: string };
+  /** Motivo del rango inválido detectado localmente (nunca se envía al SAT). */
+  rango_error: { motivo: string; accion: string; maximo: string } | null;
   cuota: { usado: number; limite: number; ilimitado: boolean; restante: number | null };
   es_sandbox: boolean;
   credencial_activa: boolean;
@@ -777,7 +779,14 @@ export async function calcularEstado(
     etiqueta_costo: meta.etiquetaCosto,
     previstas,
     direcciones,
-    rango,
+    rango: { desde: rango.desde, hasta: rango.hasta },
+    rango_error: rango.ok
+      ? null
+      : {
+          motivo: rango.motivo ?? "El periodo solicitado no es válido.",
+          accion: rango.accion ?? `Selecciona un periodo que termine como máximo en ${rango.maximo}.`,
+          maximo: rango.maximo,
+        },
     cuota: { usado, limite, ilimitado, restante },
     es_sandbox: ent.es_sandbox,
     credencial_activa: credencialActiva,
@@ -801,7 +810,7 @@ export async function calcularEstado(
     acceso: ent.acceso,
     motivoBloqueo: ent.motivo_bloqueo,
     previstas,
-    rangoValido: rangoValido(rango.desde, rango.hasta),
+    rangoValido: rango.ok && rangoValido(rango.desde, rango.hasta),
     credencialActiva,
     efirmaVenceAt,
     solicitudActiva: mismaVentana,
