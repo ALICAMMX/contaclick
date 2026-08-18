@@ -1437,3 +1437,9 @@ borradores). Pendiente corregir y reanudar desde el caso 22.
 - **Purga sintética**: la bitácora de programaciones era inmutable incluso en despachos sandbox, dejando residuo en las pruebas. Ahora sólo los despachos sandbox pueden borrar sus rastros; en producción sigue siendo inmutable.
 - Nuevo arnés: `scripts/aceptacion/sat/programacion-e2e.mjs` (34 casos, sin contacto con el SAT ni e.firma real, residuo cero).
 - Despachador publicado en producción: el cron pasó de 404 a 200 y deja latido cada minuto.
+
+## Verificación autenticada en producción — Programación SAT
+- Cuenta sintética en despacho sandbox, sesión real por UI en `contaclick.cloud`.
+- 11/11 casos PASA: alta, zona `America/Mexico_City`, próxima ejecución futura y visible,
+  aviso asíncrono, pausar/reanudar/cancelar vía RPC canónico, bitácora con actor y purga sin residuo.
+- Sin errores de consola. Datos de prueba eliminados al finalizar.
