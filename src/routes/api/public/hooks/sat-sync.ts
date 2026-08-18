@@ -16,27 +16,21 @@ import { contarSolicitudes, rangoValido } from "@/lib/sat/consumo";
 import { llaveCorrida } from "@/lib/sat/idempotencia";
 import { resolverEstadoCorrida } from "@/lib/sat/maquina-estados";
 import { CRON_SAT_VERSION } from "@/lib/sat/cron-version";
+import { resolverRangoSat } from "@/lib/sat/periodo";
 
 
 function resolverRango(cfg: {
   periodo?: string | null;
   fecha_desde?: string | null;
   fecha_hasta?: string | null;
-}) {
-  const hoy = new Date();
-  const fmt = (d: Date) => d.toISOString().slice(0, 10);
-  if (cfg.periodo === "personalizado" && cfg.fecha_desde && cfg.fecha_hasta) {
-    return { desde: cfg.fecha_desde, hasta: cfg.fecha_hasta };
-  }
-  if (cfg.periodo === "30d") {
-    const d = new Date(hoy);
-    d.setDate(d.getDate() - 30);
-    return { desde: fmt(d), hasta: fmt(hoy) };
-  }
-  if (cfg.periodo === "ejercicio") {
-    return { desde: `${hoy.getFullYear()}-01-01`, hasta: fmt(hoy) };
-  }
-  return { desde: fmt(new Date(hoy.getFullYear(), hoy.getMonth(), 1)), hasta: fmt(hoy) };
+}): { desde: string; hasta: string } {
+  // Delegación total en la fuente única: días completos en hora del centro.
+  const r = resolverRangoSat({
+    periodo: cfg.periodo,
+    fechaDesde: cfg.fecha_desde,
+    fechaHasta: cfg.fecha_hasta,
+  });
+  return r.ok ? { desde: r.desde, hasta: r.hasta } : { desde: "", hasta: "" };
 }
 
 export const Route = createFileRoute("/api/public/hooks/sat-sync")({

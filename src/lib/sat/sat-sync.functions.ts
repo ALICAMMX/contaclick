@@ -57,6 +57,7 @@ import {
   type ProveedorId,
 } from "@/lib/sat/providers/contrato";
 import { contarSolicitudes, rangoValido } from "@/lib/sat/consumo";
+import { resolverRangoSat } from "@/lib/sat/periodo";
 import { llaveCorrida } from "@/lib/sat/idempotencia";
 import {
   candidatosReconciliacion,
@@ -99,25 +100,24 @@ const ConfigSchema = z.object({
   activo: z.boolean().default(true),
 });
 
+/**
+ * Delegación total en la fuente única `resolverRangoSat` (periodo.ts).
+ * Nunca calcular "hoy" con toISOString(): eso toma el día UTC y a partir de
+ * las 18:00 del centro pedía al SAT una FechaFinal en el futuro (código 301).
+ */
 export function resolverRango(
   periodo: Periodo,
   desde?: string | null,
   hasta?: string | null,
-): { desde: string; hasta: string } {
-  const hoy = new Date();
-  const fmt = (d: Date) => d.toISOString().slice(0, 10);
-  if (periodo === "personalizado" && desde && hasta) return { desde, hasta };
-  if (periodo === "30d") {
-    const d = new Date(hoy);
-    d.setDate(d.getDate() - 30);
-    return { desde: fmt(d), hasta: fmt(hoy) };
+  ahora: Date = new Date(),
+): { desde: string; hasta: string; ok: boolean; motivo?: string; accion?: string; maximo: string } {
+  const r = resolverRangoSat({ periodo, fechaDesde: desde, fechaHasta: hasta, ahora });
+  if (!r.ok) {
+    return { desde: "", hasta: "", ok: false, motivo: r.motivo, accion: r.accion, maximo: r.maximo };
   }
-  if (periodo === "ejercicio") {
-    return { desde: `${hoy.getFullYear()}-01-01`, hasta: fmt(hoy) };
-  }
-  const ini = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-  return { desde: fmt(ini), hasta: fmt(hoy) };
+  return { desde: r.desde, hasta: r.hasta, ok: true, maximo: r.maximo };
 }
+
 
 export function calcularProxima(frec: Frecuencia, base = new Date()): string | null {
   if (frec === "manual") return null;
@@ -677,6 +677,8 @@ export type EstadoServicioSat = {
   previstas: number;
   direcciones: DireccionDescarga[];
   rango: { desde: string; hasta: string };
+  /** Motivo del rango inválido detectado localmente (nunca se envía al SAT). */
+  rango_error: { motivo: string; accion: string; maximo: string } | null;
   cuota: { usado: number; limite: number; ilimitado: boolean; restante: number | null };
   es_sandbox: boolean;
   credencial_activa: boolean;
@@ -777,7 +779,14 @@ export async function calcularEstado(
     etiqueta_costo: meta.etiquetaCosto,
     previstas,
     direcciones,
-    rango,
+    rango: { desde: rango.desde, hasta: rango.hasta },
+    rango_error: rango.ok
+      ? null
+      : {
+          motivo: rango.motivo ?? "El periodo solicitado no es válido.",
+          accion: rango.accion ?? `Selecciona un periodo que termine como máximo en ${rango.maximo}.`,
+          maximo: rango.maximo,
+        },
     cuota: { usado, limite, ilimitado, restante },
     es_sandbox: ent.es_sandbox,
     credencial_activa: credencialActiva,
@@ -801,7 +810,7 @@ export async function calcularEstado(
     acceso: ent.acceso,
     motivoBloqueo: ent.motivo_bloqueo,
     previstas,
-    rangoValido: rangoValido(rango.desde, rango.hasta),
+    rangoValido: rango.ok && rangoValido(rango.desde, rango.hasta),
     credencialActiva,
     efirmaVenceAt,
     solicitudActiva: mismaVentana,

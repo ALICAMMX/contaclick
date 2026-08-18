@@ -1450,3 +1450,10 @@ borradores). Pendiente corregir y reanudar desde el caso 22.
 - El despachador usa el RPC para ejecución, omisión, fallo, duplicada y encolamiento; se eliminaron `registrar()`/`avanzar()`. Toda llamada valida `error` y el recibo (nulo o incompleto = fallo).
 - Integridad extra: `sat_programaciones.ultima_corrida_id` ahora referencia `sat_sync_runs`.
 - Pruebas: `bun scripts/aceptacion/sat/ocurrencia-atomica.mjs` → 35/35 (rollback de bitácora y de UPDATE, idempotencia, llave antigua, bloqueo ajeno, encolada, RPC cerrado a anon/authenticated, cero contacto SAT/e.firma, residuo cero). Typecheck y build en verde.
+
+## Rechazo SAT 301 — FechaFinal futura (raíz corregida)
+- **Causa**: `resolverRango` calculaba "hoy" con `toISOString().slice(0,10)` (día UTC). A las 22:38 del centro ya era el día siguiente en UTC y la solicitud pedía `FechaFinal` futura (`2026-08-18T23:59:59`) → SAT 301 en emitidos y recibidos.
+- **Corrección**: fuente única `resolverRangoSat()` en `src/lib/sat/periodo.ts` (hora del centro, sólo días completos, `hasta = ayer`); delegan `sat-sync.functions.ts`, `routes/app.sat-sync.tsx` y `api/public/hooks/sat-sync.ts`. Preflight `rango_sat_invalido` en `corrida.server.ts` antes de crear corrida/reservar cuota/firmar, y validación de fecha futura + rango confirmado en `solicitud-xml.ts` antes del sellado.
+- **Rango para 2026-08-18T04:38Z (17/08 22:38 centro)**: antes `2026-08-01 → 2026-08-18`; ahora `2026-08-01 → 2026-08-16`.
+- **Pruebas**: `src/lib/sat/rango.test.ts` (15) + suite SAT 221 en verde; typecheck limpio.
+- **FECHA_FUTURA_SAT_BLOQUEADA_ANTES_DE_CREAR_CORRIDA**

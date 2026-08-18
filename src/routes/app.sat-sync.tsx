@@ -22,7 +22,7 @@ import { EFirmaCard } from "@/components/EFirmaCard";
 import { ProgramacionSat } from "@/components/sat/ProgramacionSat";
 import { semanticaCodigo } from "@/lib/sat/maquina-estados";
 import { descripcionAlcance } from "@/lib/sat/solicitud-xml";
-import { fechaLocalSat, periodoEfectivo, notaCriterio, ETIQUETA_ZONA_SAT } from "@/lib/sat/periodo";
+import { periodoEfectivo, notaCriterio, resolverRangoSat, ETIQUETA_ZONA_SAT } from "@/lib/sat/periodo";
 
 
 export const Route = createFileRoute("/app/sat-sync")({ component: SatSyncPage });
@@ -600,20 +600,15 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
   const set = (k: string, v: any) => setForm({ ...f, [k]: v });
 
   // Resumen previo al envío: dice EXACTAMENTE qué se pedirá al SAT.
-  const rangoUI = (() => {
-    const hoy = new Date();
-    // Día local del centro de México: usar toISOString adelantaba el día
-    // después de las 18:00 y pedía al SAT un periodo distinto al mostrado.
-    const iso = (d: Date) => fechaLocalSat(d);
-    if (f.periodo === "personalizado") return { desde: f.fecha_desde ?? "", hasta: f.fecha_hasta ?? "" };
-    if (f.periodo === "30d") {
-      const d = new Date(hoy); d.setDate(d.getDate() - 30);
-      return { desde: iso(d), hasta: iso(hoy) };
-    }
-    const hoyLocal = iso(hoy);
-    if (f.periodo === "ejercicio") return { desde: `${hoyLocal.slice(0, 4)}-01-01`, hasta: hoyLocal };
-    return { desde: `${hoyLocal.slice(0, 7)}-01`, hasta: hoyLocal };
-  })();
+  const rangoSat = resolverRangoSat({
+    periodo: f.periodo,
+    fechaDesde: f.fecha_desde,
+    fechaHasta: f.fecha_hasta,
+  });
+  const rangoUI = rangoSat.ok
+    ? { desde: rangoSat.desde, hasta: rangoSat.hasta }
+    : { desde: "", hasta: "" };
+
   const envio = resumirEnvio({
     emitidos: !!f.emitidos,
     recibidos: !!f.recibidos,
@@ -638,6 +633,7 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
               size="sm"
               variant="hero"
               onClick={() => {
+                if (!rangoSat.ok) { toast.error(`${rangoSat.motivo} ${rangoSat.accion}`); return; }
                 if (!envio.valido) { toast.error(envio.motivo!); return; }
                 const ok = window.confirm(
                   `Se enviarán ${envio.solicitudes} solicitud(es) al SAT.\n\n` +
@@ -648,7 +644,7 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
                 );
                 if (ok) runNow.mutate();
               }}
-              disabled={runNow.isPending || estadoQ.isLoading || bloqueado || !envio.valido}
+              disabled={runNow.isPending || estadoQ.isLoading || bloqueado || !envio.valido || !rangoSat.ok}
               title={estado?.motivo ?? undefined}
             >
               {runNow.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -701,6 +697,18 @@ export function ConfigExpediente({ clienteId, rfc }: { clienteId: string; rfc?: 
                 ? `Al sincronizar se enviarán ${envio.solicitudes} solicitud(es): ${envio.direcciones_label}, del ${rangoUI.desde} al ${rangoUI.hasta} (${envio.dias} día(s), ambos incluidos).`
                 : envio.motivo}
             </li>
+            {!rangoSat.ok && (
+              <li data-testid="rango-invalido" className="text-destructive">
+                • {rangoSat.motivo} {rangoSat.accion}
+              </li>
+            )}
+            {rangoSat.ok && (
+              <li>
+                • Último día completo disponible en {ETIQUETA_ZONA_SAT}:{" "}
+                <span className="font-mono">{rangoSat.maximo}</span>. El SAT rechaza periodos que
+                terminan en el futuro (código 301).
+              </li>
+            )}
             {periodo.valido && (
               <li data-testid="periodo-efectivo">
                 • Periodo efectivo enviado al SAT: <span className="font-mono">{periodo.fechaInicial}</span> a{" "}
