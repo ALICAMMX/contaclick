@@ -274,6 +274,10 @@ async function main() {
       resp.status === 200 && ["ejecutada", "fallida"].includes(mio(cuerpo)?.estado),
     );
 
+    // Alcance fino del actor evaluado sin sesión (como lo hace el despachador).
+    const acc = await api.rpc("has_cliente_access_for", { _cliente: clienteId, _user: userId });
+    igual("El actor conserva alcance fino sin sesión (auth.uid nulo)", "true", JSON.stringify(acc.cuerpo));
+
     // 25. Preflight honesto: sin e.firma no se crea corrida ni se contacta al SAT.
     const detalleProg = await leer(pVencida.id);
     caso(
