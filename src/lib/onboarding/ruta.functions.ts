@@ -70,6 +70,15 @@ export const getRutaExpediente = createServerFn({ method: "POST" })
     const mapaEtapas: Record<string, string> = {};
     for (const e of etapas.data ?? []) mapaEtapas[e.etapa] = e.estado;
 
+    // Fuente única de verdad de la e.firma: el mismo resolvedor que usa la
+    // tarjeta de conexión y el runner, para que la ruta no diga "desconectada"
+    // cuando la credencial sí es utilizable.
+    const { resolverCredencialEFirma } = await import("@/lib/sat/credencial.server");
+    const credEfirma = await resolverCredencialEFirma(supabase, {
+      clienteId,
+      rfcExpediente: scope.rfc ?? null,
+    });
+
     const snapshot: SnapshotRuta = {
       regimenFiscal: cliente.data?.regimen_fiscal ?? null,
       domicilioFiscal: cliente.data?.domicilio_fiscal ?? null,
