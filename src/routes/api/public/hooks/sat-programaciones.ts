@@ -31,24 +31,65 @@ type Resultado = {
   motivo: string;
 };
 
+/** Comparación en tiempo constante: no filtra el secreto por temporización. */
+function comparacionSegura(a: string, b: string): boolean {
+  if (a.length !== b.length || a.length === 0) return false;
+  let dif = 0;
+  for (let i = 0; i < a.length; i++) dif |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return dif === 0;
+}
+
+/**
+ * El secreto del cron vive SÓLO como variable de servidor. Para que pg_cron lo
+ * envíe sin conocerlo nadie más, se replica en una tabla privada legible
+ * únicamente por service_role/postgres. Rotar el secreto no requiere tocar
+ * código: al siguiente sondeo de salud se vuelve a sincronizar.
+ */
+async function sincronizarSecretoCron(): Promise<"sincronizado" | "sin_secreto" | "error"> {
+  const secreto = process.env["SAT_PROGRAMACIONES_CRON_SECRET"] ?? "";
+  if (!secreto) return "sin_secreto";
+  try {
+    const admin = createClient(
+      process.env["SUPABASE_URL"]!,
+      process.env["SUPABASE_SERVICE_ROLE_KEY"]!,
+      { auth: { persistSession: false, autoRefreshToken: false } },
+    );
+    const { error } = await admin
+      .from("cron_secretos")
+      .upsert(
+        { nombre: "SAT_PROGRAMACIONES_CRON_SECRET", valor: secreto, updated_at: new Date().toISOString() },
+        { onConflict: "nombre" },
+      );
+    return error ? "error" : "sincronizado";
+  } catch {
+    return "error";
+  }
+}
+
 export const Route = createFileRoute("/api/public/hooks/sat-programaciones")({
   server: {
     handlers: {
-      GET: async () =>
-        Response.json({
+      // GET publica únicamente salud y versión. Nunca el secreto.
+      GET: async () => {
+        const estado = await sincronizarSecretoCron();
+        return Response.json({
           ok: true,
           version: DESPACHADOR_VERSION,
-          info: "POST con apikey para despachar las programaciones SAT vencidas.",
-        }),
+          secreto_configurado: estado !== "sin_secreto",
+          info: "POST con el encabezado x-cron-secret para despachar las programaciones SAT vencidas.",
+        });
+      },
 
       POST: async ({ request }) => {
         const inicio = Date.now();
         const inicioIso = new Date().toISOString();
-        const apiKey = request.headers.get("apikey") ?? "";
-        const expected = process.env["SUPABASE_PUBLISHABLE_KEY"] ?? "";
-        if (!apiKey || apiKey !== expected) {
+        const enviado = request.headers.get("x-cron-secret") ?? "";
+        const expected = process.env["SAT_PROGRAMACIONES_CRON_SECRET"] ?? "";
+        // Sin secreto configurado el despachador queda cerrado, nunca abierto.
+        if (!expected || !comparacionSegura(enviado, expected)) {
           return new Response("Unauthorized", { status: 401 });
         }
+
 
         const supabase = createClient(
           process.env["SUPABASE_URL"]!,

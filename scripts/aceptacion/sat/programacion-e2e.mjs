@@ -135,23 +135,57 @@ async function main() {
     caso("Llave de ocurrencia estable por minuto y distinta entre horas", "a==b y a!=c", `${a === b}/${a !== c}`, a === b && a !== c);
   }
 
-  // ── Bloque B: endpoint del despachador ────────────────────────────────────
+  // ── Bloque B: autenticación del despachador ───────────────────────────────
+  // El secreto NUNCA se imprime: se lee de la copia privada (service_role) que
+  // el propio endpoint sincroniza desde la variable de servidor.
+  await fetch(HOOK); // sondeo de salud: sincroniza el secreto
+  const secretoFila = await api.rest(
+    "GET",
+    "cron_secretos?nombre=eq.SAT_PROGRAMACIONES_CRON_SECRET&select=valor",
+  );
+  const SECRETO = secretoFila.cuerpo?.[0]?.valor ?? "";
+  const conSecreto = { "x-cron-secret": SECRETO };
+
   {
     const r = await fetch(HOOK);
     const j = await r.json().catch(() => ({}));
-    caso("GET del hook publica versión del despachador", "200 + versión", `${r.status} ${j.version}`, r.status === 200 && !!j.version);
+    const texto = JSON.stringify(j);
+    caso(
+      "GET del hook publica sólo salud y versión (sin secreto)",
+      "200 + versión y cero secreto",
+      `${r.status} ${j.version} secreto_en_respuesta=${SECRETO ? texto.includes(SECRETO) : "n/a"}`,
+      r.status === 200 && !!j.version && !!SECRETO && !texto.includes(SECRETO),
+    );
   }
   {
-    const r = await fetch(HOOK, { method: "POST", headers: { apikey: "clave-invalida" } });
-    igual("POST sin apikey válida es rechazado", "401", r.status);
+    const r = await fetch(HOOK, { method: "POST", headers: { apikey: env.anon } });
+
+    igual("POST con publishable/anon key es rechazado", "401", r.status);
   }
+  {
+    const r = await fetch(HOOK, { method: "POST", headers: { "x-cron-secret": env.anon } });
+    igual("POST con la llave pública como secreto es rechazado", "401", r.status);
+  }
+  {
+    const r = await fetch(HOOK, { method: "POST" });
+    igual("POST sin secreto es rechazado", "401", r.status);
+  }
+  {
+    const r = await fetch(HOOK, { method: "POST", headers: { "x-cron-secret": "secreto-incorrecto" } });
+    igual("POST con secreto incorrecto es rechazado", "401", r.status);
+  }
+  {
+    const r = await fetch(HOOK, { method: "POST", headers: conSecreto });
+    igual("POST con el secreto exclusivo del cron es aceptado", "200", r.status);
+  }
+
 
   // ── Bloque C: escenario sintético en despacho sandbox ─────────────────────
   const qa = randomUUID().slice(0, 8);
   const email = `qa.${qa}.satprog@contaclick-qa.invalid`;
   const password = `Qa-${randomUUID()}`;
   const userId = await api.crearUsuario(email, password);
-  await api.iniciarSesion(email, password);
+  const token = await api.iniciarSesion(email, password);
   const desp = await api.rest("PATCH", `despachos?owner_user_id=eq.${userId}`, {
     cuerpo: { es_sandbox: true, nombre: `QA SATPROG ${qa}`, estado: "activo" },
     representar: true,
@@ -264,7 +298,7 @@ async function main() {
       cuerpo: { bloqueo_at: null, proxima_ejecucion_at: hace(5), ultima_ocurrencia_key: null },
     });
     const programadaKey = llaveOcurrencia(pVencida.id, new Date((await leer(pVencida.id)).proxima_ejecucion_at));
-    let resp = await fetch(HOOK, { method: "POST", headers: { apikey: env.anon } });
+    let resp = await fetch(HOOK, { method: "POST", headers: conSecreto });
     let cuerpo = await resp.json();
     const mio = (c) => (c.resultados ?? []).find((x) => x.programacion_id === pVencida.id);
     caso(
@@ -319,14 +353,14 @@ async function main() {
       await nuevoCliente("omitir"),
     );
     creadas.push(pOmitir.id);
-    resp = await fetch(HOOK, { method: "POST", headers: { apikey: env.anon } });
+    resp = await fetch(HOOK, { method: "POST", headers: conSecreto });
     cuerpo = await resp.json();
     const rOmitir = (cuerpo.resultados ?? []).find((x) => x.programacion_id === pOmitir.id);
     igual("Ocurrencia perdida con política 'omitir' se omite y no descarga", "omitida", rOmitir?.estado);
 
     // Segundo tick inmediato: ninguna de las ocurrencias ya resueltas se repite.
     await esperar(500);
-    resp = await fetch(HOOK, { method: "POST", headers: { apikey: env.anon } });
+    resp = await fetch(HOOK, { method: "POST", headers: conSecreto });
     cuerpo = await resp.json();
     const repetidas = (cuerpo.resultados ?? []).filter((x) => creadas.includes(x.programacion_id) && x.estado === "ejecutada").length;
     igual("Un segundo tick inmediato no repite ocurrencias ya resueltas", 0, repetidas);
@@ -340,7 +374,203 @@ async function main() {
       `${ultimo?.version} ${ultimo?.fin_at}`,
       !!ultimo && Date.now() - new Date(ultimo.fin_at).getTime() < 5 * 60000,
     );
+
+    // ── Bloque D: regresión de seguridad ────────────────────────────────────
+    const cidSeg = await nuevoCliente("seguridad");
+
+    // D1. Escritura directa de la tabla por un usuario autenticado.
+    const directo = await api.rest("POST", "sat_programaciones", {
+      token,
+      cuerpo: {
+        despacho_id: despachoId,
+        cliente_id: cidSeg,
+        creado_por: userId,
+        tipo: "recurrente",
+        recurrencia: "diaria",
+        hora: 3,
+        minuto: 0,
+        periodo_opcion: "dia_anterior",
+      },
+    });
+    caso(
+      "Un usuario autenticado no puede insertar programaciones directamente",
+      "401/403 (sin INSERT directo)",
+      directo.status,
+      !directo.ok,
+    );
+
+    // D2. Escritura directa de la bitácora por un usuario autenticado.
+    const directoBit = await api.rest("POST", "sat_programacion_bitacora", {
+      token,
+      cuerpo: { despacho_id: despachoId, cliente_id: cidSeg, accion: "creacion" },
+    });
+    caso(
+      "Un usuario autenticado no puede escribir la bitácora directamente",
+      "401/403 (sin INSERT directo)",
+      directoBit.status,
+      !directoBit.ok,
+    );
+
+    // D3. Alta canónica por RPC, con bitácora en la misma transacción.
+    const filaBase = {
+      despacho_id: despachoId,
+      cliente_id: cidSeg,
+      zona_horaria: "America/Mexico_City",
+      tipo: "recurrente",
+      recurrencia: "diaria",
+      dias_semana: [],
+      dia_mes: null,
+      hora: 3,
+      minuto: 15,
+      fecha_unica: null,
+      periodo_opcion: "dia_anterior",
+      rango_desde: null,
+      rango_hasta: null,
+      solapamiento_dias: 1,
+      emitidos: true,
+      recibidos: true,
+      clasificar_nomina: true,
+      clasificar_pagos: true,
+      tolerancia_minutos: 60,
+      politica_retraso: "recuperar",
+      activa: true,
+      pausada: false,
+      proxima_ejecucion_at: dentro(600),
+    };
+    const alta = await api.rpc(
+      "sat_programacion_guardar",
+      { _cliente: cidSeg, _fila: filaBase, _detalle: { periodo: "dia_anterior" } },
+      token,
+    );
+    caso("Alta de programación por el RPC canónico", "200 con id", `${alta.status}`, alta.ok);
+    const idSeg = alta.cuerpo?.id ?? alta.cuerpo?.[0]?.id ?? alta.cuerpo;
+    const bitAlta = await api.rest(
+      "GET",
+      `sat_programacion_bitacora?cliente_id=eq.${cidSeg}&select=accion`,
+    );
+    caso(
+      "El alta canónica deja bitácora en la misma transacción",
+      "≥1 registro",
+      (bitAlta.cuerpo ?? []).length,
+      (bitAlta.cuerpo ?? []).length >= 1,
+    );
+
+    // D4. Si la bitácora falla, la programación se revierte por completo.
+    const antes = await api.rest("GET", `sat_programaciones?cliente_id=eq.${cidSeg}&select=version`);
+    const versionAntes = antes.cuerpo?.[0]?.version;
+    const rollback = await api.rpc(
+      "sat_programacion_guardar",
+      { _cliente: cidSeg, _fila: { ...filaBase, hora: 9 }, _detalle: { qa_forzar_fallo: 1 } },
+      token,
+    );
+    const despues = await api.rest(
+      "GET",
+      `sat_programaciones?cliente_id=eq.${cidSeg}&select=version,hora`,
+    );
+    caso(
+      "Si la bitácora falla, la programación hace rollback completo",
+      "error y estado idéntico al previo",
+      `${rollback.status} v${despues.cuerpo?.[0]?.version} hora=${despues.cuerpo?.[0]?.hora}`,
+      !rollback.ok &&
+        despues.cuerpo?.[0]?.version === versionAntes &&
+        despues.cuerpo?.[0]?.hora !== 9,
+    );
+
+    // D5. Actor explícito protegido: nadie puede consultar por otro usuario.
+    const suplantar = await api.rpc(
+      "has_cliente_access_for",
+      { _cliente: cidSeg, _user: randomUUID() },
+      token,
+    );
+    caso(
+      "Un usuario autenticado no puede evaluar el acceso de otro usuario",
+      "error o false, nunca true",
+      `${suplantar.status} ${JSON.stringify(suplantar.cuerpo)}`,
+      !suplantar.ok || suplantar.cuerpo !== true,
+    );
+    const propio = await api.rpc(
+      "has_cliente_access_for",
+      { _cliente: cidSeg, _user: userId },
+      token,
+    );
+    caso(
+      "El usuario sí puede evaluar su propio acceso",
+      "true",
+      JSON.stringify(propio.cuerpo),
+      propio.cuerpo === true,
+    );
+
+    // D6. El anónimo no puede evaluar el actor.
+    const anonimo = await api.rpcAnon("has_cliente_access_for", { _cliente: cidSeg, _user: userId });
+    caso(
+      "El anónimo no puede evaluar el acceso de nadie",
+      "rechazo o distinto de true",
+      `${anonimo.status} ${JSON.stringify(anonimo.cuerpo)}`,
+      !anonimo.ok || anonimo.cuerpo !== true,
+    );
+
+    // D7. Administración acotada al despacho: rol de contador en OTRO despacho.
+    const emailB = `qa.${qa}.otro@contaclick-qa.invalid`;
+    const passB = `Qa-${randomUUID()}`;
+    const userB = await api.crearUsuario(emailB, passB);
+    const despB = await api.rest("PATCH", `despachos?owner_user_id=eq.${userB}`, {
+      cuerpo: { es_sandbox: true, nombre: `QA SATPROG B ${qa}`, estado: "activo" },
+      representar: true,
+    });
+    const despachoB = despB.cuerpo?.[0]?.id;
+    await api.insertar("user_roles", { user_id: userB, role: "contador", despacho_id: despachoB });
+    const cruzado = await api.rpc("sat_prog_puede_administrar", {
+      _user: userB,
+      _despacho: despachoId,
+    });
+    caso(
+      "Rol de contador en otro despacho NO concede administración aquí",
+      "false",
+      JSON.stringify(cruzado.cuerpo),
+      cruzado.cuerpo === false,
+    );
+    await api.insertar("user_roles", {
+      user_id: userB,
+      role: "contador",
+      despacho_id: despachoId,
+    });
+    const propioDespacho = await api.rpc("sat_prog_puede_administrar", {
+      _user: userB,
+      _despacho: despachoId,
+    });
+    caso(
+      "Rol de contador en el despacho del expediente sí administra",
+      "true",
+      JSON.stringify(propioDespacho.cuerpo),
+      propioDespacho.cuerpo === true,
+    );
+    await api.borrar("user_roles", `user_id=eq.${userB}`);
+    await api.borrar("user_memberships", `user_id=eq.${userB}`);
+    await api.borrar("despachos", `id=eq.${despachoB}`);
+    await api.borrar("profiles", `id=eq.${userB}`);
+    await api.borrarUsuario(userB);
+
+    // D8. Sin membresía activa, el despachador no ejecuta la programación.
+    await api.rest("PATCH", `user_memberships?user_id=eq.${userId}&despacho_id=eq.${despachoId}`, {
+      cuerpo: { estado: "inactivo" },
+    });
+    await api.rest("PATCH", `sat_programaciones?cliente_id=eq.${cidSeg}`, {
+      cuerpo: { bloqueo_at: null, proxima_ejecucion_at: hace(2), ultima_ocurrencia_key: null },
+    });
+    const tick = await fetch(HOOK, { method: "POST", headers: conSecreto });
+    const cuerpoTick = await tick.json().catch(() => ({}));
+    const rSeg = (cuerpoTick.resultados ?? []).find((x) => x.programacion_id === idSeg);
+    caso(
+      "Sin membresía activa el despachador falla cerrado y no descarga",
+      "sin ejecución exitosa",
+      `${tick.status} ${rSeg?.estado ?? "sin resultado"}`,
+      tick.status === 200 && rSeg?.estado !== "ejecutada",
+    );
+    await api.rest("PATCH", `user_memberships?user_id=eq.${userId}&despacho_id=eq.${despachoId}`, {
+      cuerpo: { estado: "activo" },
+    });
   } finally {
+
     // ── Purga: residuo cero ────────────────────────────────────────────────
     for (const cid of expedientes) {
       await api.borrar("sat_programacion_bitacora", `cliente_id=eq.${cid}`);

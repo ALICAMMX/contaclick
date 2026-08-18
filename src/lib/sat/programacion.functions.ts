@@ -93,8 +93,10 @@ const GuardarSchema = z
     }
   });
 
-/** Permiso fino: quién puede crear, modificar, pausar o cancelar. */
-const ROLES_ADMIN = ["super_admin", "despacho", "contador"];
+/** Permiso fino: quién puede crear, modificar, pausar o cancelar.
+ *  Siempre acotado al despacho del expediente: un rol de contador o despacho
+ *  en OTRO despacho no concede administración aquí. */
+const ROLES_ADMIN = ["despacho", "contador"];
 
 async function assertPuedeAdministrar(supabase: any, userId: string, despachoId: string) {
   const { data: owner } = await supabase
@@ -104,37 +106,28 @@ async function assertPuedeAdministrar(supabase: any, userId: string, despachoId:
     .eq("owner_user_id", userId)
     .maybeSingle();
   if (owner) return;
+
+  const { data: superAdmin } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .eq("role", "super_admin")
+    .maybeSingle();
+  if (superAdmin) return;
+
   const { data: roles } = await supabase
     .from("user_roles")
     .select("role")
     .eq("user_id", userId)
+    .eq("despacho_id", despachoId)
     .in("role", ROLES_ADMIN);
   if (!roles || roles.length === 0) {
-    throw new Error("No tienes permiso para administrar la programación de descargas SAT.");
+    throw new Error(
+      "No tienes permiso para administrar la programación de descargas SAT en este despacho.",
+    );
   }
 }
 
-async function bitacora(
-  supabase: any,
-  fila: {
-    programacion_id: string;
-    despacho_id: string;
-    cliente_id: string;
-    accion: string;
-    actor_user_id?: string | null;
-    detalle?: Record<string, unknown>;
-  },
-) {
-  // Nunca se registran secretos: sólo parámetros de calendario.
-  await supabase.from("sat_programacion_bitacora").insert({
-    programacion_id: fila.programacion_id,
-    despacho_id: fila.despacho_id,
-    cliente_id: fila.cliente_id,
-    accion: fila.accion,
-    actor_user_id: fila.actor_user_id ?? null,
-    detalle: fila.detalle ?? {},
-  });
-}
 
 function derivar(p: any) {
   if (!p) return null;
@@ -222,16 +215,10 @@ export const guardarProgramacionSat = createServerFn({ method: "POST" })
       );
     }
 
-    const { data: previa } = await supabase
-      .from("sat_programaciones")
-      .select("id, version")
-      .eq("cliente_id", scope.cliente_id)
-      .eq("cancelada", false)
-      .maybeSingle();
-
+    // Escritura canónica y atómica: autorización + alta/actualización +
+    // versión + próxima ejecución + bitácora en UNA sola transacción. Si la
+    // bitácora falla, la programación se revierte.
     const fila = {
-      despacho_id: scope.despacho_id,
-      cliente_id: scope.cliente_id,
       zona_horaria: data.zona_horaria,
       tipo: data.tipo,
       recurrencia: regla.recurrencia,
@@ -251,36 +238,13 @@ export const guardarProgramacionSat = createServerFn({ method: "POST" })
       tolerancia_minutos: data.tolerancia_minutos,
       politica_retraso: data.politica_retraso,
       activa: data.activa,
-      pausada: false,
       proxima_ejecucion_at: prox ? prox.toISOString() : null,
-      actualizado_por: userId,
     };
 
-    let id: string;
-    if (previa) {
-      const { error } = await supabase
-        .from("sat_programaciones")
-        .update({ ...fila, version: ((previa as any).version ?? 1) + 1 })
-        .eq("id", (previa as any).id);
-      if (error) throw new Error(error.message);
-      id = (previa as any).id;
-    } else {
-      const { data: ins, error } = await supabase
-        .from("sat_programaciones")
-        .insert({ ...fila, creado_por: userId })
-        .select("id")
-        .single();
-      if (error) throw new Error(error.message);
-      id = (ins as any).id;
-    }
-
-    await bitacora(supabase, {
-      programacion_id: id,
-      despacho_id: scope.despacho_id,
-      cliente_id: scope.cliente_id,
-      accion: previa ? "modificacion" : "creacion",
-      actor_user_id: userId,
-      detalle: {
+    const { data: salida, error } = await supabase.rpc("sat_programacion_guardar", {
+      _cliente: scope.cliente_id,
+      _fila: fila as any,
+      _detalle: {
         tipo: data.tipo,
         recurrencia: regla.recurrencia,
         zona_horaria: data.zona_horaria,
@@ -289,11 +253,14 @@ export const guardarProgramacionSat = createServerFn({ method: "POST" })
         emitidos: data.emitidos,
         recibidos: data.recibidos,
         proxima_utc: prox?.toISOString() ?? null,
-      },
+      } as any,
     });
+    if (error) throw new Error(error.message);
+    const id = (salida as any)?.id as string;
 
     return { ok: true, id, proxima_utc: prox?.toISOString() ?? null, aviso: AVISO_ASINCRONO };
   });
+
 
 export const cambiarEstadoProgramacionSat = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
@@ -318,34 +285,18 @@ export const cambiarEstadoProgramacionSat = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!p) throw new Error("Este expediente no tiene una programación activa.");
 
-    const cambios: any = { actualizado_por: userId };
-    if (data.accion === "pausar") {
-      cambios["pausada"] = true;
-    } else if (data.accion === "reanudar") {
-      const prox = proximaEjecucion(p as any, new Date());
-      cambios["pausada"] = false;
-      cambios["proxima_ejecucion_at"] = prox ? prox.toISOString() : null;
-    } else {
-      cambios["cancelada"] = true;
-      cambios["activa"] = false;
-      cambios["proxima_ejecucion_at"] = null;
-    }
+    const prox =
+      data.accion === "reanudar" ? proximaEjecucion(p as any, new Date()) : null;
 
-    const { error } = await supabase
-      .from("sat_programaciones")
-      .update(cambios)
-      .eq("id", (p as any).id);
-    if (error) throw new Error(error.message);
-
-    await bitacora(supabase, {
-      programacion_id: (p as any).id,
-      despacho_id: scope.despacho_id,
-      cliente_id: scope.cliente_id,
-      accion:
-        data.accion === "pausar" ? "pausa" : data.accion === "reanudar" ? "reanudacion" : "cancelacion",
-      actor_user_id: userId,
-      detalle: { proxima_utc: cambios["proxima_ejecucion_at"] ?? null },
+    // Cambio de estado + versión + bitácora en una sola transacción.
+    const { error } = await supabase.rpc("sat_programacion_cambiar_estado", {
+      _cliente: scope.cliente_id,
+      _accion: data.accion,
+      _proxima: prox ? prox.toISOString() : undefined,
+      _detalle: { proxima_utc: prox?.toISOString() ?? null } as any,
     });
+    if (error) throw new Error(error.message);
 
     return { ok: true };
   });
+
