@@ -269,8 +269,14 @@ export const Route = createFileRoute("/api/public/hooks/sat-programaciones")({
             // expediente es exactamente el de la ejecución manual.
             const actor = p.actualizado_por ?? p.creado_por;
             if (!actor) {
-              await registrar("fallo", { motivo: "La programación no tiene actor válido." }, "fallida");
-              await avanzar({ ultimo_resultado: "fallida", ultimo_detalle: "Sin actor válido." });
+              await resolver({
+                accion: "fallo",
+                resultado: "fallida",
+                retraso_ms: decision.retraso_ms,
+                detalle: { motivo: "La programación no tiene actor válido." },
+                ultimo_detalle: "Sin actor válido.",
+              });
+
               resultados.push({
                 programacion_id: p.id,
                 estado: "fallida",
