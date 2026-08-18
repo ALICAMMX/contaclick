@@ -158,6 +158,8 @@ async function main() {
   });
   const despachoId = desp.cuerpo?.[0]?.id;
   if (!despachoId) throw new Error("No se creó el despacho sintético.");
+  // Membresía activa: el despachador ejecuta con el alcance real del actor.
+  await api.insertar("user_memberships", { user_id: userId, despacho_id: despachoId, estado: "activo" });
   const [cli] = await api.insertar("clientes", {
     despacho_id: despachoId,
     user_id: userId,
