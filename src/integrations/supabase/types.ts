@@ -7413,6 +7413,10 @@ export type Database = {
         }[]
       }
       has_cliente_access: { Args: { _cliente: string }; Returns: boolean }
+      has_cliente_access_for: {
+        Args: { _cliente: string; _user: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _cliente?: string
