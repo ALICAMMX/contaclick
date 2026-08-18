@@ -1431,3 +1431,9 @@ borradores). Pendiente corregir y reanudar desde el caso 22.
 - Núcleo único `ejecutarCorridaSat`: el botón manual y el calendario usan el mismo preflight, e.firma, cuotas y bitácora.
 - Despachador global `/api/public/hooks/sat-programaciones` (pg_cron cada minuto), reclamo con `FOR UPDATE SKIP LOCKED`, tope de 3 corridas por tick y una sola ocurrencia recuperada.
 - Corregida la decisión de retraso: la tolerancia es el margen aceptado; la política `omitir` sólo aplica al superarla.
+
+## 2026-08-18 · Aceptación de la programación nocturna SAT
+- **Defecto crítico corregido**: el despachador corre sin sesión (`auth.uid()` nulo), por lo que `has_cliente_access` devolvía `false` y TODA corrida programada moría con "No tienes acceso a este expediente". Se creó `has_cliente_access_for(_cliente, _user)` (mismo permiso fino, actor explícito) y `assertClienteScope` ahora la usa.
+- **Purga sintética**: la bitácora de programaciones era inmutable incluso en despachos sandbox, dejando residuo en las pruebas. Ahora sólo los despachos sandbox pueden borrar sus rastros; en producción sigue siendo inmutable.
+- Nuevo arnés: `scripts/aceptacion/sat/programacion-e2e.mjs` (34 casos, sin contacto con el SAT ni e.firma real, residuo cero).
+- Despachador publicado en producción: el cron pasó de 404 a 200 y deja latido cada minuto.
