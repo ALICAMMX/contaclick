@@ -2928,6 +2928,27 @@ export type Database = {
         }
         Relationships: []
       }
+      cron_secretos: {
+        Row: {
+          created_at: string
+          nombre: string
+          updated_at: string
+          valor: string
+        }
+        Insert: {
+          created_at?: string
+          nombre: string
+          updated_at?: string
+          valor: string
+        }
+        Update: {
+          created_at?: string
+          nombre?: string
+          updated_at?: string
+          valor?: string
+        }
+        Relationships: []
+      }
       cuentas_bancarias: {
         Row: {
           alias: string | null
@@ -7357,6 +7378,7 @@ export type Database = {
         Args: { _grupo_id: string; _motivo: string }
         Returns: Json
       }
+      cron_secreto: { Args: { _nombre: string }; Returns: string }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -7665,6 +7687,23 @@ export type Database = {
           _fecha: string
           _rfc_contraparte: string
         }
+        Returns: Json
+      }
+      sat_prog_puede_administrar: {
+        Args: { _despacho: string; _user: string }
+        Returns: boolean
+      }
+      sat_programacion_cambiar_estado: {
+        Args: {
+          _accion: string
+          _cliente: string
+          _detalle?: Json
+          _proxima?: string
+        }
+        Returns: Json
+      }
+      sat_programacion_guardar: {
+        Args: { _cliente: string; _detalle?: Json; _fila: Json }
         Returns: Json
       }
       sat_programaciones_reclamar: {
