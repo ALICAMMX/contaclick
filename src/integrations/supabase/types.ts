@@ -5768,6 +5768,13 @@ export type Database = {
             referencedRelation: "despachos"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "sat_programaciones_ultima_corrida_id_fkey"
+            columns: ["ultima_corrida_id"]
+            isOneToOne: false
+            referencedRelation: "sat_sync_runs"
+            referencedColumns: ["id"]
+          },
         ]
       }
       sat_sync_config: {
@@ -7704,6 +7711,26 @@ export type Database = {
       }
       sat_programacion_guardar: {
         Args: { _cliente: string; _detalle?: Json; _fila: Json }
+        Returns: Json
+      }
+      sat_programacion_resolver_ocurrencia: {
+        Args: {
+          _accion: string
+          _activa?: boolean
+          _avanzar?: boolean
+          _bloqueo: string
+          _corrida?: string
+          _detalle?: Json
+          _marcar_ejecucion?: boolean
+          _ocurrencia: string
+          _programacion: string
+          _programada: string
+          _proxima?: string
+          _resultado?: string
+          _retraso?: number
+          _run?: string
+          _ultimo_detalle?: string
+        }
         Returns: Json
       }
       sat_programaciones_reclamar: {

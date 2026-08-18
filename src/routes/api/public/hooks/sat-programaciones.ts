@@ -118,50 +118,72 @@ export const Route = createFileRoute("/api/public/hooks/sat-programaciones")({
         for (const p of (debidas ?? []) as any[]) {
           const programada = new Date(p.proxima_ejecucion_at);
           const clave = llaveOcurrencia(p.id, programada);
-          const registrar = async (
-            accion: string,
-            extra: Record<string, unknown> = {},
-            resultado?: string,
-            runId?: string | null,
-            retraso = 0,
-          ) => {
-            await supabase.from("sat_programacion_bitacora").insert({
-              programacion_id: p.id,
-              despacho_id: p.despacho_id,
-              cliente_id: p.cliente_id,
-              accion,
-              programada_at: programada.toISOString(),
-              retraso_ms: retraso,
-              run_id: runId ?? null,
-              resultado: resultado ?? null,
-              // Sin secretos: sólo calendario y resultado operativo.
-              detalle: { ocurrencia: clave, ...extra },
-            });
-          };
-
           // Siguiente ocurrencia: como máximo se recupera UNA. Nunca se
           // ejecutan acumuladas varias ocurrencias antiguas.
           const siguiente = proximaEjecucion(p as any, ahora);
-          const avanzar = async (campos: Record<string, unknown>) => {
-            await supabase
-              .from("sat_programaciones")
-              .update({
-                bloqueo_at: null,
-                ultima_ocurrencia_key: clave,
-                ultima_programada_at: programada.toISOString(),
-                proxima_ejecucion_at:
-                  p.tipo === "unica" ? null : siguiente ? siguiente.toISOString() : null,
-                activa: p.tipo === "unica" ? false : p.activa,
-                ...campos,
-              })
-              .eq("id", p.id);
+          const proximaCalculada =
+            p.tipo === "unica" ? null : siguiente ? siguiente.toISOString() : null;
+
+          /**
+           * Resolución ATÓMICA de la ocurrencia: bitácora + estado + avance del
+           * calendario + liberación del bloqueo en UNA transacción. Si la
+           * bitácora o el UPDATE fallan, todo se revierte: la ocurrencia queda
+           * sin resolver y puede reintentarse con seguridad.
+           */
+          const resolver = async (opciones: {
+            accion: string;
+            resultado?: string | null;
+            run_id?: string | null;
+            retraso_ms?: number;
+            detalle?: Record<string, unknown>;
+            ultimo_detalle?: string | null;
+            avanzar?: boolean;
+            marcar_ejecucion?: boolean;
+            corrida_id?: string | null;
+          }) => {
+            const avanzar = opciones.avanzar !== false;
+            const { data: recibo, error } = await supabase.rpc(
+              "sat_programacion_resolver_ocurrencia",
+              {
+                _programacion: p.id,
+                _ocurrencia: clave,
+                _programada: programada.toISOString(),
+                _bloqueo: p.bloqueo_at,
+                _accion: opciones.accion,
+                _resultado: opciones.resultado ?? null,
+                _run: opciones.run_id ?? null,
+                _retraso: Math.round(opciones.retraso_ms ?? 0),
+                // Sin secretos: sólo calendario y resultado operativo.
+                _detalle: (opciones.detalle ?? {}) as any,
+                _proxima: avanzar ? proximaCalculada : null,
+                _activa: avanzar ? (p.tipo === "unica" ? false : p.activa) : null,
+                _avanzar: avanzar,
+                _ultimo_detalle: opciones.ultimo_detalle ?? null,
+                _marcar_ejecucion: !!opciones.marcar_ejecucion,
+                _corrida: opciones.corrida_id ?? null,
+              } as any,
+            );
+            if (error) {
+              throw new Error(`Resolución atómica rechazada: ${error.message}`);
+            }
+            const r = recibo as any;
+            // Recibo nulo o incompleto = fallo. Nunca se asume éxito.
+            if (!r || r.ok !== true || typeof r.estado !== "string") {
+              throw new Error(
+                `Resolución atómica sin recibo válido (${JSON.stringify(r ?? null).slice(0, 200)}).`,
+              );
+            }
+            if (avanzar && r.estado === "resuelta" && !r.bitacora_id) {
+              throw new Error("Resolución atómica sin bitácora.");
+            }
+            return r as { ok: boolean; estado: string; bitacora_id: string | null };
           };
 
           try {
             // Idempotencia por ocurrencia: si esta misma ocurrencia ya se
-            // resolvió (doble ciclo del cron), no se repite.
+            // resolvió (doble ciclo del cron), el RPC sólo libera el bloqueo.
             if (p.ultima_ocurrencia_key === clave) {
-              await avanzar({});
+              await resolver({ accion: "duplicada", detalle: { motivo: "Ocurrencia ya resuelta." } });
               resultados.push({
                 programacion_id: p.id,
                 estado: "omitida",
@@ -172,6 +194,7 @@ export const Route = createFileRoute("/api/public/hooks/sat-programaciones")({
               continue;
             }
 
+
             const decision = decidirOcurrencia({
               programada_at: programada,
               ahora,
@@ -180,11 +203,12 @@ export const Route = createFileRoute("/api/public/hooks/sat-programaciones")({
             });
 
             if (decision.accion === "omitir") {
-              await registrar("omision", { motivo: decision.motivo }, "omitida", null, decision.retraso_ms);
-              await avanzar({
-                ultimo_resultado: "omitida",
+              await resolver({
+                accion: "omision",
+                resultado: "omitida",
+                retraso_ms: decision.retraso_ms,
+                detalle: { motivo: decision.motivo },
                 ultimo_detalle: decision.motivo,
-                ultimo_retraso_ms: decision.retraso_ms,
               });
               resultados.push({
                 programacion_id: p.id,
@@ -200,16 +224,14 @@ export const Route = createFileRoute("/api/public/hooks/sat-programaciones")({
             // la ocurrencia queda EN COLA (no se pierde ni se adelanta) y se
             // reintenta en el siguiente minuto, dentro de su tolerancia.
             if (lanzadas >= MAX_CONCURRENTES) {
-              await registrar("encolada", { motivo: "Límite global de concurrencia alcanzado." });
-              await supabase
-                .from("sat_programaciones")
-                .update({
-                  bloqueo_at: null,
-                  ultimo_resultado: "en_cola",
-                  ultimo_detalle: "En cola por límite global de solicitudes simultáneas.",
-                  ultimo_retraso_ms: decision.retraso_ms,
-                })
-                .eq("id", p.id);
+              await resolver({
+                accion: "encolada",
+                resultado: "en_cola",
+                retraso_ms: decision.retraso_ms,
+                detalle: { motivo: "Límite global de concurrencia alcanzado." },
+                ultimo_detalle: "En cola por límite global de solicitudes simultáneas.",
+                avanzar: false,
+              });
               resultados.push({
                 programacion_id: p.id,
                 estado: "encolada",
@@ -219,6 +241,7 @@ export const Route = createFileRoute("/api/public/hooks/sat-programaciones")({
               });
               continue;
             }
+
 
             // Ventana a solicitar. "Desde la última descarga exitosa" usa la
             // última corrida completada del expediente más un solapamiento.
@@ -246,8 +269,14 @@ export const Route = createFileRoute("/api/public/hooks/sat-programaciones")({
             // expediente es exactamente el de la ejecución manual.
             const actor = p.actualizado_por ?? p.creado_por;
             if (!actor) {
-              await registrar("fallo", { motivo: "La programación no tiene actor válido." }, "fallida");
-              await avanzar({ ultimo_resultado: "fallida", ultimo_detalle: "Sin actor válido." });
+              await resolver({
+                accion: "fallo",
+                resultado: "fallida",
+                retraso_ms: decision.retraso_ms,
+                detalle: { motivo: "La programación no tiene actor válido." },
+                ultimo_detalle: "Sin actor válido.",
+              });
+
               resultados.push({
                 programacion_id: p.id,
                 estado: "fallida",
@@ -273,20 +302,17 @@ export const Route = createFileRoute("/api/public/hooks/sat-programaciones")({
               // Preflight/cuota fallidos: no hay corrida huérfana ni contacto
               // con el SAT. Se conserva la siguiente recurrencia.
               const err = salida.error ?? {};
-              await registrar(
-                "fallo",
-                { etapa: err.etapa, codigo: err.codigo, accion: err.accion, rango },
-                "fallida",
-                err.run_id ?? null,
-                decision.retraso_ms,
-              );
-              await avanzar({
-                ultimo_resultado: "fallida",
+              await resolver({
+                accion: "fallo",
+                resultado: "fallida",
+                run_id: err.run_id ?? null,
+                retraso_ms: decision.retraso_ms,
+                detalle: { etapa: err.etapa, codigo: err.codigo, accion: err.accion, rango },
                 ultimo_detalle: String(err.mensaje ?? "").slice(0, 300),
-                ultimo_retraso_ms: decision.retraso_ms,
-                ultima_ejecucion_at: new Date().toISOString(),
-                ultima_corrida_id: err.run_id ?? null,
+                marcar_ejecucion: true,
+                corrida_id: err.run_id ?? null,
               });
+
               resultados.push({
                 programacion_id: p.id,
                 estado: "fallida",
@@ -297,25 +323,22 @@ export const Route = createFileRoute("/api/public/hooks/sat-programaciones")({
               continue;
             }
 
-            await registrar(
-              "ejecucion",
-              {
+            await resolver({
+              accion: "ejecucion",
+              resultado: salida?.duplicada ? "duplicada" : (salida?.estado ?? "en_curso"),
+              run_id: salida?.run_id ?? null,
+              retraso_ms: decision.retraso_ms,
+              detalle: {
                 rango,
                 nota_rango: rango.nota,
                 estado_corrida: salida?.estado ?? null,
                 duplicada: !!salida?.duplicada,
               },
-              salida?.estado ?? "en_curso",
-              salida?.run_id ?? null,
-              decision.retraso_ms,
-            );
-            await avanzar({
-              ultimo_resultado: salida?.duplicada ? "duplicada" : (salida?.estado ?? "en_curso"),
               ultimo_detalle: String(salida?.mensaje ?? "").slice(0, 300),
-              ultimo_retraso_ms: decision.retraso_ms,
-              ultima_ejecucion_at: new Date().toISOString(),
-              ultima_corrida_id: salida?.run_id ?? null,
+              marcar_ejecucion: true,
+              corrida_id: salida?.run_id ?? null,
             });
+
             resultados.push({
               programacion_id: p.id,
               estado: "ejecutada",
@@ -328,8 +351,13 @@ export const Route = createFileRoute("/api/public/hooks/sat-programaciones")({
             const mensaje = String((e as Error)?.message ?? e).slice(0, 300);
             fallos.push(`${p.id}: ${mensaje}`);
             try {
-              await registrar("fallo", { motivo: mensaje }, "fallida");
-              await avanzar({ ultimo_resultado: "fallida", ultimo_detalle: mensaje });
+              await resolver({
+                accion: "fallo",
+                resultado: "fallida",
+                detalle: { motivo: mensaje },
+                ultimo_detalle: mensaje,
+              });
+
             } catch (e2) {
               console.error("[sat-prog] no se pudo registrar el fallo:", (e2 as Error)?.message);
             }
