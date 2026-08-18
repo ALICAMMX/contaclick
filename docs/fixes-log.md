@@ -1443,3 +1443,10 @@ borradores). Pendiente corregir y reanudar desde el caso 22.
 - 11/11 casos PASA: alta, zona `America/Mexico_City`, próxima ejecución futura y visible,
   aviso asíncrono, pausar/reanudar/cancelar vía RPC canónico, bitácora con actor y purga sin residuo.
 - Sin errores de consola. Datos de prueba eliminados al finalizar.
+
+## 2026-08-18 — Despachador SAT: resolución atómica de ocurrencias
+- **Defecto**: `registrar()` y `avanzar()` hacían INSERT y UPDATE separados sin revisar `error`; una programación podía avanzar sin bitácora, quedar "resuelta" sin recibo o reportar éxito con la escritura rechazada.
+- **Corrección**: nuevo RPC interno `sat_programacion_resolver_ocurrencia` (sólo `service_role`/`postgres`) que en UNA transacción bloquea por ID, valida llave de ocurrencia y propiedad del bloqueo, inserta bitácora, actualiza estado/retraso/corrida/próxima ejecución, libera el bloqueo y devuelve recibo. Rollback total si falla cualquier paso.
+- El despachador usa el RPC para ejecución, omisión, fallo, duplicada y encolamiento; se eliminaron `registrar()`/`avanzar()`. Toda llamada valida `error` y el recibo (nulo o incompleto = fallo).
+- Integridad extra: `sat_programaciones.ultima_corrida_id` ahora referencia `sat_sync_runs`.
+- Pruebas: `bun scripts/aceptacion/sat/ocurrencia-atomica.mjs` → 35/35 (rollback de bitácora y de UPDATE, idempotencia, llave antigua, bloqueo ajeno, encolada, RPC cerrado a anon/authenticated, cero contacto SAT/e.firma, residuo cero). Typecheck y build en verde.
