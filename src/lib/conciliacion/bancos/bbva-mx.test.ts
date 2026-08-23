@@ -162,6 +162,23 @@ describe("adaptador BBVA México · lectura posicional", () => {
     expect(resultado.movimientos).toHaveLength(5);
   });
 
+  it("reconoce F. OPER / F. LIQ y encabezados fusionados por pdf.js", () => {
+    const elementos = fixtureAscendente().filter(
+      (item) => !(item.pagina === 1 && item.y === 700),
+    );
+    elementos.push(
+      el(1, "F. OPER   F. LIQ.", X.oper, 710, 58),
+      el(1, "COD. DESCRIPCIÓN / REFERENCIA", X.desc, 700, 160),
+      el(1, "CARGOS", X.cargo - 20, 700, 40),
+      el(1, "ABONOS", X.abono - 20, 700, 40),
+      el(1, "SALDO", X.saldo - 18, 700, 36),
+    );
+    const resultado = leerPdfBancario(elementos);
+    expect(resultado.adaptador).toBe("bbva-mx");
+    expect(resultado.auto).toBe(true);
+    expect(resultado.movimientos).toHaveLength(5);
+  });
+
   it("respeta el año del periodo y nunca produce 2002, 2030 ni 2031", () => {
     const r = leerBbvaDesdeElementos(fixtureAscendente());
     expect(r.movimientos.map((m) => m.fecha)).toEqual([

@@ -17,8 +17,8 @@ import {
 
 export const BBVA_VERSION = "bbva-mx-2026.08.23";
 
-const RE_OPER = /^OPER(ACION)?\.?$/;
-const RE_LIQ = /^LIQ(UIDACION)?\.?$/;
+const RE_OPER = /(?:^|\b)(?:F(?:ECHA)?\.?\s*)?OPER(?:ACION)?\.?(?:\b|$)/;
+const RE_LIQ = /(?:^|\b)(?:F(?:ECHA)?\.?\s*)?LIQ(?:UIDACION)?\.?(?:\b|$)/;
 const RE_CARGO = /^(CARGOS?|RETIROS?|CARGOS \(-\))$/;
 const RE_ABONO = /^(ABONOS?|DEP[OÓ]SITOS?|ABONOS \(\+\))$/;
 const RE_SALDO = /^(SALDO|SALDOS)$/;
@@ -91,9 +91,10 @@ function columnasDeEncabezado(renglon: RenglonPdf): ColumnaDetectada[] | null {
       cols.push({ clave, x: el.x, xFin: el.x + el.ancho, etiqueta: t });
     }
   }
-  const tieneFechas =
-    renglon.elementos.some((e) => RE_OPER.test(normaliza(e.texto))) &&
-    renglon.elementos.some((e) => RE_LIQ.test(normaliza(e.texto)));
+  // pdf.js puede entregar OPER y LIQ como elementos separados o fusionarlos
+  // dentro de un solo item de texto.
+  const textoRenglon = normaliza(renglon.texto);
+  const tieneFechas = RE_OPER.test(textoRenglon) && RE_LIQ.test(textoRenglon);
   if (cols.length === 3 && tieneFechas) return cols;
   return null;
 }
@@ -121,8 +122,9 @@ function columnasDeBloqueEncabezado(
     (otro) => otro.pagina === renglon.pagina && Math.abs(otro.y - renglon.y) <= 24,
   );
   const elementos = cercanos.flatMap((otro) => otro.elementos);
-  const tieneOper = elementos.some((e) => RE_OPER.test(normaliza(e.texto)));
-  const tieneLiq = elementos.some((e) => RE_LIQ.test(normaliza(e.texto)));
+  const textoBloque = normaliza(cercanos.map((otro) => otro.texto).join(" "));
+  const tieneOper = RE_OPER.test(textoBloque);
+  const tieneLiq = RE_LIQ.test(textoBloque);
   if (!tieneOper || !tieneLiq) return null;
 
   const cols: ColumnaDetectada[] = [];
