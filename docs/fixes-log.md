@@ -1462,3 +1462,31 @@ borradores). Pendiente corregir y reanudar desde el caso 22.
 - **Rango para 2026-08-18T04:38Z (17/08 22:38 centro)**: antes `2026-08-01 → 2026-08-18`; ahora `2026-08-01 → 2026-08-16`.
 - **Pruebas**: `src/lib/sat/rango.test.ts` (15) + suite SAT 221 en verde; typecheck limpio.
 - **FECHA_FUTURA_SAT_BLOQUEADA_ANTES_DE_CREAR_CORRIDA**
+
+## 2026-08-24 — Importación bancaria segura (validación previa obligatoria)
+
+**Problema.** El parser podía interpretar mal fechas y sentido (cargo/abono) de un PDF y esa lectura entraba
+directo a conciliación y pólizas sin que nadie la revisara.
+
+**Corrección estructural.**
+- Importación en dos etapas: `previsualizarImportacion` (analiza y guarda como `pendiente_validacion`) y
+  `confirmarImportacion` / `rechazarImportacion`. Estados canónicos: procesando, pendiente_validacion,
+  validada, rechazada, fallida.
+- Vista previa obligatoria con banco/cuenta, archivo, periodo, número de movimientos, rango de fechas,
+  sumas y conteos de cargos y abonos, saldo inicial y final, ecuación bancaria, ambigüedades y muestra de filas.
+- Bloqueos duros: fecha inválida o fuera del periodo, cargo y abono simultáneos, importe cero,
+  contradicción descripción/columna, contradicción con la variación del saldo, descuadre de la ecuación,
+  archivo vacío, periodo no identificable, cuenta no seleccionada.
+- Candados de servidor: `movimientos_bancarios.validado_at` + triggers en `conciliaciones` y `poliza_renglones`;
+  conciliación, conciliación integral y pólizas de bancos ignoran movimientos no validados.
+- Años implausibles: el año sólo puede ser el del documento ±1 (se acabaron 2002, 2030 y 2031).
+- Diagnóstico copiable sin datos personales.
+
+**Auditoría de los 116 movimientos eliminados.** Cero conciliaciones y cero renglones de póliza los referenciaban;
+no quedaron registros huérfanos. Además se detectaron 342 movimientos anteriores con fechas 2027–2031 sin
+importación asociada: se marcaron como no validados (no se borraron) y quedan fuera de conciliación y pólizas
+hasta que se vuelva a importar el estado de cuenta.
+
+**Pruebas.** 19 casos deterministas de importación y parser, todos en verde.
+
+**ACEPTACION_REAL_PENDIENTE** — falta que el suscriptor recargue su PDF y confirme que los totales coinciden.
