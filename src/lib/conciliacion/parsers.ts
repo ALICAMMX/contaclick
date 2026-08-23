@@ -104,12 +104,29 @@ const MESES_ES: Record<string, string> = {
   dic: "12", diciembre: "12",
 };
 
+/**
+ * Expande un año de dos dígitos sólo si es plausible.
+ * Los estados de cuenta mexicanos repiten la fecha (p. ej. "31/DIC 31/DIC"
+ * = operación y liquidación); ese segundo "31" es un DÍA, no un año. Sin este
+ * candado se registraba 2031-12-31. Ante la duda mandan las fechas del documento.
+ */
+function anioPlausible(token: string | undefined, defaultYear: string): string {
+  if (!token) return defaultYear;
+  if (token.length === 4) return token;
+  const n = Number(token);
+  if (!Number.isFinite(n)) return defaultYear;
+  const limite = (new Date().getFullYear() % 100) + 1; // hasta el año próximo
+  if (n < 0 || n > limite) return defaultYear;
+  return `20${token.padStart(2, "0")}`;
+}
+
 /** Best-effort parser de movimientos a partir del texto de un PDF de estado de cuenta. */
 function parsePdfMovimientos(text: string): ParsedMovimiento[] {
   const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   // Detecta año predominante del documento (para fechas tipo "15/MAR")
   const anioMatch = text.match(/\b(20\d{2})\b/);
   const defaultYear = anioMatch ? anioMatch[1] : String(new Date().getFullYear());
+
 
   const out: ParsedMovimiento[] = [];
   const dateRe = new RegExp(
