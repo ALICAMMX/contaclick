@@ -17,8 +17,8 @@ import {
 
 export const BBVA_VERSION = "bbva-mx-2026.08.23";
 
-const RE_OPER = /(?:^|\b)(?:F(?:ECHA)?\.?\s*)?OPER(?:ACION)?\.?(?:\b|$)/;
-const RE_LIQ = /(?:^|\b)(?:F(?:ECHA)?\.?\s*)?LIQ(?:UIDACION)?\.?(?:\b|$)/;
+const RE_OPER = /(?:^|\s)(?:F(?:ECHA)?\.?\s*)?OPER(?:ACION)?\.?(?=\s|$)/;
+const RE_LIQ = /(?:^|\s)(?:F(?:ECHA)?\.?\s*)?LIQ(?:UIDACION)?\.?(?=\s|$)/;
 const RE_CARGO = /^(CARGOS?|RETIROS?|CARGOS \(-\))$/;
 const RE_ABONO = /^(ABONOS?|DEP[OÓ]SITOS?|ABONOS \(\+\))$/;
 const RE_SALDO = /^(SALDO|SALDOS)$/;
