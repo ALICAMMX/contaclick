@@ -269,8 +269,9 @@ type ResumenImpreso = TotalesResumen & { num_cargos: number | null; num_abonos: 
 
 const RE_SALDO_INICIAL = /^SALDO (ANTERIOR|INICIAL)$/;
 const RE_SALDO_FINAL = /^SALDO FINAL$/;
-const RE_TOT_ABONOS = /^(DEP[OÓ]SITOS? ?\/ ?ABONOS?( \(\+\))?|TOTAL IMPORTE ABONOS)$/;
-const RE_TOT_CARGOS = /^(RETIROS? ?\/ ?CARGOS?( \(-\))?|TOTAL IMPORTE CARGOS)$/;
+const RE_TOT_ABONOS = /^(DEP[OÓ]SITOS? ?\/ ?ABONOS?( \(\+\))?|TOTAL(ES)? (DE )?ABONOS|TOTAL IMPORTE ABONOS)$/;
+const RE_TOT_CARGOS = /^(RETIROS? ?\/ ?CARGOS?( \(-\))?|TOTAL(ES)? (DE )?CARGOS|TOTAL IMPORTE CARGOS)$/;
+
 const RE_NUM_ABONOS = /^TOTAL MOVIMIENTOS ABONOS$/;
 const RE_NUM_CARGOS = /^TOTAL MOVIMIENTOS CARGOS$/;
 
@@ -409,9 +410,16 @@ function extraerBbva(renglones: RenglonPdf[], texto: string): ResultadoAdaptador
       ? asignarPorBordeDerecho(el, colsDatos)
       : (asignarColumna(el, colsEncabezado) as { clave: ColumnaImporteBbva["clave"]; x: number } | null);
 
-  const xDescIni = enc.descripcion?.x ?? 0;
-  const xRefIni = enc.referencia?.x ?? null;
+  // La zona de descripción arranca donde arranca su ELEMENTO de encabezado:
+  // si el banco imprime "COD. DESCRIPCIÓN / REFERENCIA" como un solo texto,
+  // no existen dos columnas y el corte debe ser el de los importes.
+  const xDescIni = enc.descripcion?.xEl ?? 0;
+  const xRefIni =
+    enc.referencia && enc.descripcion && enc.referencia.xEl === enc.descripcion.xEl
+      ? null
+      : (enc.referencia?.xEl ?? null);
   const xDescFin = xRefIni ?? xNumIni;
+
 
   type Borrador = FilaBancaria & { _saldoEfectivo: number | null };
   const movimientos: Borrador[] = [];
