@@ -91,13 +91,14 @@ export const previsualizarImportacion = createServerFn({ method: "POST" })
     }
 
     // Reimportar el MISMO archivo en la misma cuenta es idempotente.
-    const { data: previa } = await supabase
+    const { data: previaRow } = await supabase
       .from("conciliacion_importaciones")
       .select(SELECT_IMPORTACION)
       .eq("cuenta_id", cuentaId)
       .eq("archivo_sha256", data.archivo.sha256)
       .in("estado", ["procesando", "pendiente_validacion", "validada"])
       .maybeSingle();
+    const previa = previaRow as any;
 
     if (previa) {
       return {
@@ -369,11 +370,12 @@ export const diagnosticoImportacion = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase } = context;
     await assertClienteScope(supabase as any, context.userId, data.cliente_id);
-    const { data: imp, error } = await supabase
+    const { data: impRow, error } = await supabase
       .from("conciliacion_importaciones")
       .select(SELECT_IMPORTACION)
       .eq("id", data.importacion_id)
       .maybeSingle();
+    const imp = impRow as any;
     if (error || !imp) throw new Error("Importación no encontrada.");
     if (imp.cliente_id !== data.cliente_id) throw new Error("La importación pertenece a otro expediente.");
 
