@@ -7637,6 +7637,7 @@ export type Database = {
         Args: { _motivo: string; _poliza_id: string }
         Returns: Json
       }
+      purga_expediente_en_curso: { Args: never; Returns: boolean }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {
