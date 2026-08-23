@@ -5,6 +5,15 @@ import { ensureCuenta, sha256Hex } from "@/lib/conciliacion/conciliacion.server"
 import { assertClienteScope } from "@/lib/despacho/scope";
 import { aCentavos, ALGORITMO_VERSION, type EstadoConciliacion } from "@/lib/conciliacion/contrato";
 import {
+  analizarImportacion,
+  incidenciasPorCodigo,
+  periodoDominante,
+  serializacionCanonica,
+  PARSER_VERSION,
+  type FilaImportacion,
+  type Incidencia,
+} from "@/lib/conciliacion/importacion";
+import {
   conciliarUnoAUno,
   huellaEntrada,
   type CfdiEntrada,
@@ -13,11 +22,15 @@ import {
 } from "@/lib/conciliacion/motor";
 import {
   parseClienteInput,
+  parseConfirmarImportacionInput,
   parseDecisionGrupoInput,
   parseIgnorarMovimientoInput,
+  parseImportacionIdInput,
+  parseListarImportacionesInput,
   parseListMovimientosInput,
+  parsePrevisualizarImportacionInput,
+  parseRechazarImportacionInput,
   parseRunReconciliationInput,
-  parseUploadMovimientosInput,
 } from "@/lib/conciliacion/conciliacion.validators";
 
 /** Rango mensual semiabierto [inicio, inicio del mes siguiente) en fechas locales. */
@@ -31,22 +44,30 @@ function rangoFechas(periodo: string): { desde: string; hastaExclusivo: string }
   };
 }
 
+const SELECT_IMPORTACION =
+  "id, cliente_id, cuenta_id, estado, bloqueada, archivo_nombre, archivo_sha256, archivo_bytes, formato, " +
+  "parser_version, periodo_declarado, periodo_detectado, filas_hash, filas_totales, filas_insertadas, " +
+  "filas_reimportadas, candidatos_duplicado, resumen, incidencias, error, actor, created_at, " +
+  "validada_por, validada_at, rechazada_por, rechazada_at, motivo_rechazo";
+
 // ─────────────────────────────────────────────────────────────────────────────
-// Carga de estados de cuenta con identidad de archivo
+// ETAPA 1 — Vista previa: interpreta, mide y deja la importación PENDIENTE.
+// Ningún movimiento cargado aquí puede conciliarse ni contabilizarse.
 // ─────────────────────────────────────────────────────────────────────────────
-export const uploadMovimientos = createServerFn({ method: "POST" })
+export const previsualizarImportacion = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
-  .inputValidator(parseUploadMovimientosInput)
+  .inputValidator(parsePrevisualizarImportacionInput)
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const scope = await assertClienteScope(supabase as any, userId, data.cliente_id);
     const despachoId = scope.despacho_id;
 
     let cuentaId: string;
+    let cuentaEtiqueta: string;
     if (data.cuenta_id) {
       const { data: cta, error: ctaErr } = await supabase
         .from("cuentas_bancarias")
-        .select("id, cliente_id, banco, alias")
+        .select("id, cliente_id, banco, alias, numero_cuenta_mask")
         .eq("id", data.cuenta_id)
         .maybeSingle();
       if (ctaErr || !cta) throw new Error("Cuenta bancaria no encontrada.");
@@ -56,6 +77,7 @@ export const uploadMovimientos = createServerFn({ method: "POST" })
         );
       }
       cuentaId = data.cuenta_id;
+      cuentaEtiqueta = `${cta.banco} · ${cta.alias ?? ""}`.trim();
     } else {
       if (!data.banco) throw new Error("Indica una cuenta existente o un banco para crearla.");
       cuentaId = await ensureCuenta(supabase, {
@@ -65,32 +87,48 @@ export const uploadMovimientos = createServerFn({ method: "POST" })
         alias: data.alias,
         mask: data.mask,
       });
+      cuentaEtiqueta = `${data.banco} · ${data.alias ?? "Principal"}`;
     }
 
-    // Reimportar el MISMO archivo es idempotente: no vuelve a insertar nada.
+    // Reimportar el MISMO archivo en la misma cuenta es idempotente.
     const { data: previa } = await supabase
       .from("conciliacion_importaciones")
-      .select("id, filas_insertadas, filas_totales, created_at")
+      .select(SELECT_IMPORTACION)
       .eq("cuenta_id", cuentaId)
       .eq("archivo_sha256", data.archivo.sha256)
-      .eq("estado", "completada")
+      .in("estado", ["procesando", "pendiente_validacion", "validada"])
       .maybeSingle();
 
     if (previa) {
       return {
         cuenta_id: cuentaId,
-        importacion_id: previa.id as string,
+        cuenta_etiqueta: cuentaEtiqueta,
+        importacion: previa,
         reimportacion: true,
-        inserted: 0,
-        duplicates: 0,
-        duplicados_candidatos: 0,
-        total: data.movimientos.length,
-        mensaje: "Este archivo ya se había importado en esta cuenta. No se duplicó ningún movimiento.",
+        mensaje:
+          previa.estado === "validada"
+            ? "Este archivo ya fue validado en esta cuenta. No se duplicó ningún movimiento."
+            : "Este archivo ya tiene una vista previa pendiente de validación en esta cuenta.",
       };
     }
 
-    const fechas = data.movimientos.map((m) => m.fecha).sort();
-    const periodoDetectado = fechas.length ? fechas[Math.floor(fechas.length / 2)].slice(0, 7) : null;
+    const filas: FilaImportacion[] = data.movimientos.map((m) => ({
+      fecha: m.fecha,
+      descripcion: m.descripcion,
+      referencia: m.referencia,
+      cargo: m.cargo,
+      abono: m.abono,
+      saldo: m.saldo,
+      moneda: m.moneda,
+    }));
+
+    const periodoDeclarado = data.periodo_declarado ?? periodoDominante(filas);
+    const analisis = analizarImportacion({
+      movimientos: filas,
+      periodo_declarado: periodoDeclarado,
+      cuenta_seleccionada: true,
+    });
+    const filasHash = await sha256Hex(serializacionCanonica(filas));
 
     const { data: imp, error: impErr } = await supabase
       .from("conciliacion_importaciones")
@@ -102,8 +140,11 @@ export const uploadMovimientos = createServerFn({ method: "POST" })
         archivo_nombre: data.archivo.nombre,
         archivo_bytes: data.archivo.bytes,
         formato: data.archivo.formato,
-        periodo_detectado: periodoDetectado,
-        filas_totales: data.movimientos.length,
+        parser_version: PARSER_VERSION,
+        periodo_declarado: periodoDeclarado ?? null,
+        periodo_detectado: periodoDominante(filas),
+        filas_hash: filasHash,
+        filas_totales: filas.length,
         estado: "procesando",
         actor: userId,
       })
@@ -112,86 +153,255 @@ export const uploadMovimientos = createServerFn({ method: "POST" })
     if (impErr || !imp) throw new Error(impErr?.message ?? "No se pudo registrar la importación.");
     const importacionId = imp.id as string;
 
-    // Cada fila conserva su posición: dos operaciones legítimas idénticas
-    // sobreviven como dos movimientos distintos.
-    const filas = [];
-    for (let i = 0; i < data.movimientos.length; i += 1) {
-      const m = data.movimientos[i];
-      const hash = await sha256Hex(
-        `${cuentaId}|${m.fecha}|${m.cargo}|${m.abono}|${m.descripcion}|${m.referencia ?? ""}`,
-      );
-      filas.push({
-        despacho_id: despachoId,
-        cliente_id: data.cliente_id,
-        cuenta_id: cuentaId,
-        importacion_id: importacionId,
-        fila_origen: i + 1,
-        fecha: m.fecha,
-        descripcion: m.descripcion,
-        referencia: m.referencia,
-        cargo: m.cargo,
-        abono: m.abono,
-        saldo: m.saldo,
-        moneda: (m.moneda ?? "MXN").toUpperCase().slice(0, 3),
-        hash,
-      });
-    }
+    const incidencias: Incidencia[] = [...analisis.incidencias];
+    let insertadas = 0;
+    let candidatos = 0;
 
-    // Un archivo diferente puede solapar operaciones de otro estado de cuenta.
-    // Los hashes ya existentes no se insertan otra vez; las filas idénticas
-    // legítimas dentro del archivo actual sí sobreviven.
-    const hashes = [...new Set(filas.map((f) => f.hash))];
-    const { data: previos } = hashes.length
-      ? await supabase
-          .from("movimientos_bancarios")
-          .select("id, hash")
-          .eq("cuenta_id", cuentaId)
-          .in("hash", hashes)
-      : { data: [] as { id: string; hash: string }[] };
-    const mapaPrevios = new Map((previos ?? []).map((p) => [p.hash as string, p.id as string]));
+    try {
+      if (!analisis.bloqueada) {
+        // Cada fila conserva su posición: dos operaciones legítimas idénticas
+        // dentro del mismo archivo sobreviven como dos movimientos distintos.
+        const preparadas = [];
+        for (let i = 0; i < filas.length; i += 1) {
+          const m = filas[i];
+          const hash = await sha256Hex(
+            `${cuentaId}|${m.fecha}|${m.cargo}|${m.abono}|${m.descripcion}|${m.referencia ?? ""}`,
+          );
+          preparadas.push({
+            despacho_id: despachoId,
+            cliente_id: data.cliente_id,
+            cuenta_id: cuentaId,
+            importacion_id: importacionId,
+            fila_origen: i + 1,
+            fecha: m.fecha,
+            descripcion: m.descripcion,
+            referencia: m.referencia,
+            cargo: aCentavos(m.cargo) / 100,
+            abono: aCentavos(m.abono) / 100,
+            saldo: m.saldo,
+            moneda: (m.moneda ?? "MXN").toUpperCase().slice(0, 3),
+            hash,
+            duplicado_candidato_de: null as string | null,
+          });
+        }
 
-    const duplicadas = filas.filter((f) => mapaPrevios.has(f.hash));
-    const nuevas = filas.filter((f) => !mapaPrevios.has(f.hash));
+        // Coincidencia con OTRO archivo: se marca como candidata a duplicado y
+        // se conserva. Sólo una persona puede excluirla.
+        const hashes = [...new Set(preparadas.map((f) => f.hash))];
+        const { data: previos } = hashes.length
+          ? await supabase
+              .from("movimientos_bancarios")
+              .select("id, hash, importacion_id")
+              .eq("cuenta_id", cuentaId)
+              .in("hash", hashes)
+          : { data: [] as { id: string; hash: string; importacion_id: string | null }[] };
+        const mapaPrevios = new Map(
+          (previos ?? [])
+            .filter((p) => p.importacion_id !== importacionId)
+            .map((p) => [p.hash as string, p.id as string]),
+        );
+        for (const fila of preparadas) {
+          const gemelo = mapaPrevios.get(fila.hash);
+          if (gemelo) {
+            fila.duplicado_candidato_de = gemelo;
+            candidatos += 1;
+          }
+        }
+        if (candidatos > 0) {
+          incidencias.push({
+            codigo: "DUPLICADO_ENTRE_ARCHIVOS",
+            severidad: "aviso",
+            fila: null,
+            mensaje: `${candidatos} movimiento(s) coinciden con otra importación de la misma cuenta. Se conservan marcados como candidatos a duplicado; ninguno se eliminó automáticamente.`,
+          });
+        }
 
-    let inserted = 0;
-    for (let i = 0; i < nuevas.length; i += 500) {
-      const chunk = nuevas.slice(i, i + 500);
-      const { error } = await supabase.from("movimientos_bancarios").insert(chunk);
-      if (error) {
-        await supabase
-          .from("conciliacion_importaciones")
-          .update({ estado: "fallida", error: error.message })
-          .eq("id", importacionId);
-        throw new Error(error.message);
+        for (let i = 0; i < preparadas.length; i += 500) {
+          const chunk = preparadas.slice(i, i + 500);
+          const { error } = await supabase.from("movimientos_bancarios").insert(chunk);
+          if (error) throw new Error(error.message);
+          insertadas += chunk.length;
+        }
       }
-      inserted += chunk.length;
+    } catch (e) {
+      await supabase
+        .from("movimientos_bancarios")
+        .delete()
+        .eq("importacion_id", importacionId)
+        .is("validado_at", null);
+      await supabase
+        .from("conciliacion_importaciones")
+        .update({ estado: "fallida", error: (e as Error).message, filas_insertadas: 0 })
+        .eq("id", importacionId);
+      throw new Error(
+        `No se pudo preparar la vista previa: ${(e as Error).message}. No quedó ningún movimiento cargado.`,
+      );
     }
 
-    const duplicadosOmitidos = duplicadas.length;
-    await supabase
+    const { data: actualizada, error: updErr } = await supabase
       .from("conciliacion_importaciones")
       .update({
-        estado: "completada",
-        filas_insertadas: inserted,
-        filas_reimportadas: duplicadosOmitidos,
-        candidatos_duplicado: duplicadosOmitidos,
+        estado: "pendiente_validacion",
+        bloqueada: analisis.bloqueada,
+        resumen: analisis.resumen as never,
+        incidencias: incidencias as never,
+        filas_insertadas: insertadas,
+        candidatos_duplicado: candidatos,
       })
-      .eq("id", importacionId);
+      .eq("id", importacionId)
+      .select(SELECT_IMPORTACION)
+      .single();
+    if (updErr) throw new Error(updErr.message);
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await (supabaseAdmin as any).from("conciliacion_importacion_bitacora").insert({
+      despacho_id: despachoId,
+      cliente_id: data.cliente_id,
+      importacion_id: importacionId,
+      estado_anterior: "procesando",
+      estado_nuevo: "pendiente_validacion",
+      actor: userId,
+      detalle: {
+        parser_version: PARSER_VERSION,
+        filas: filas.length,
+        bloqueada: analisis.bloqueada,
+        incidencias: incidenciasPorCodigo(incidencias),
+      },
+    });
 
     return {
       cuenta_id: cuentaId,
-      importacion_id: importacionId,
+      cuenta_etiqueta: cuentaEtiqueta,
+      importacion: actualizada,
       reimportacion: false,
-      inserted,
-      duplicates: duplicadosOmitidos,
-      duplicados_candidatos: 0,
-      total: filas.length,
-      mensaje:
-        duplicadosOmitidos > 0
-          ? `Se importaron ${inserted} movimientos. Se omitieron ${duplicadosOmitidos} duplicados exactos ya registrados.`
-          : `Se importaron ${inserted} movimientos.`,
+      mensaje: analisis.bloqueada
+        ? "La lectura tiene incidencias que impiden incorporar el archivo. Revisa el detalle."
+        : "Vista previa lista. Compara los totales con tu estado de cuenta antes de confirmar.",
     };
   });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ETAPA 2 — Confirmación humana: sella exactamente las filas previsualizadas.
+// ─────────────────────────────────────────────────────────────────────────────
+export const confirmarImportacion = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator(parseConfirmarImportacionInput)
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertClienteScope(supabase as any, userId, data.cliente_id);
+
+    const { data: imp, error } = await supabase
+      .from("conciliacion_importaciones")
+      .select("id, cliente_id")
+      .eq("id", data.importacion_id)
+      .maybeSingle();
+    if (error || !imp) throw new Error("Importación no encontrada.");
+    if (imp.cliente_id !== data.cliente_id) {
+      throw new Error("La importación pertenece a otro expediente. La operación fue rechazada.");
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: res, error: rpcErr } = await (supabaseAdmin as any).rpc(
+      "conciliacion_importacion_validar",
+      {
+        _importacion_id: data.importacion_id,
+        _actor: userId,
+        _archivo_sha256: data.archivo_sha256,
+        _parser_version: data.parser_version,
+        _filas_hash: data.filas_hash,
+      },
+    );
+    if (rpcErr) throw new Error(rpcErr.message);
+    return res;
+  });
+
+export const rechazarImportacion = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator(parseRechazarImportacionInput)
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertClienteScope(supabase as any, userId, data.cliente_id);
+
+    const { data: imp, error } = await supabase
+      .from("conciliacion_importaciones")
+      .select("id, cliente_id")
+      .eq("id", data.importacion_id)
+      .maybeSingle();
+    if (error || !imp) throw new Error("Importación no encontrada.");
+    if (imp.cliente_id !== data.cliente_id) {
+      throw new Error("La importación pertenece a otro expediente. La operación fue rechazada.");
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: res, error: rpcErr } = await (supabaseAdmin as any).rpc(
+      "conciliacion_importacion_rechazar",
+      { _importacion_id: data.importacion_id, _actor: userId, _motivo: data.motivo },
+    );
+    if (rpcErr) throw new Error(rpcErr.message);
+    return res;
+  });
+
+export const listarImportaciones = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator(parseListarImportacionesInput)
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    await assertClienteScope(supabase as any, context.userId, data.cliente_id);
+    let q = supabase
+      .from("conciliacion_importaciones")
+      .select(SELECT_IMPORTACION)
+      .eq("cliente_id", data.cliente_id)
+      .order("created_at", { ascending: false })
+      .limit(data.limit);
+    if (data.periodo) q = q.eq("periodo_declarado", data.periodo);
+    const { data: rows, error } = await q;
+    if (error) throw new Error(error.message);
+    return { importaciones: rows ?? [] };
+  });
+
+/**
+ * Diagnóstico para soporte: cifras y códigos, jamás nombres, cuentas,
+ * descripciones, referencias ni movimientos.
+ */
+export const diagnosticoImportacion = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator(parseImportacionIdInput)
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    await assertClienteScope(supabase as any, context.userId, data.cliente_id);
+    const { data: imp, error } = await supabase
+      .from("conciliacion_importaciones")
+      .select(SELECT_IMPORTACION)
+      .eq("id", data.importacion_id)
+      .maybeSingle();
+    if (error || !imp) throw new Error("Importación no encontrada.");
+    if (imp.cliente_id !== data.cliente_id) throw new Error("La importación pertenece a otro expediente.");
+
+    const resumen = (imp.resumen ?? {}) as Record<string, unknown>;
+    return {
+      importacion_id: imp.id,
+      estado: imp.estado,
+      bloqueada: imp.bloqueada,
+      parser_version: imp.parser_version,
+      huella_abreviada: String(imp.archivo_sha256 ?? "").slice(0, 12),
+      formato: imp.formato,
+      periodo: imp.periodo_declarado ?? imp.periodo_detectado ?? null,
+      movimientos: resumen.movimientos ?? 0,
+      cargos_num: resumen.cargos_num ?? 0,
+      cargos_centavos: resumen.cargos_centavos ?? 0,
+      abonos_num: resumen.abonos_num ?? 0,
+      abonos_centavos: resumen.abonos_centavos ?? 0,
+      saldo_inicial_centavos: resumen.saldo_inicial_centavos ?? null,
+      saldo_final_centavos: resumen.saldo_final_centavos ?? null,
+      diferencia_centavos: resumen.diferencia_centavos ?? null,
+      fecha_min: resumen.fecha_min ?? null,
+      fecha_max: resumen.fecha_max ?? null,
+      incidencias_por_codigo: incidenciasPorCodigo((imp.incidencias ?? []) as Incidencia[]),
+      candidatos_duplicado: imp.candidatos_duplicado ?? 0,
+      created_at: imp.created_at,
+    };
+  });
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Listado canónico del periodo
