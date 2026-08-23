@@ -137,8 +137,9 @@ export const uploadMovimientos = createServerFn({ method: "POST" })
       });
     }
 
-    // Un archivo DIFERENTE con operaciones parecidas marca candidatos a
-    // duplicado; jamás los elimina en silencio.
+    // Un archivo diferente puede solapar operaciones de otro estado de cuenta.
+    // Los hashes ya existentes no se insertan otra vez; las filas idénticas
+    // legítimas dentro del archivo actual sí sobreviven.
     const hashes = [...new Set(filas.map((f) => f.hash))];
     const { data: previos } = hashes.length
       ? await supabase
@@ -149,14 +150,12 @@ export const uploadMovimientos = createServerFn({ method: "POST" })
       : { data: [] as { id: string; hash: string }[] };
     const mapaPrevios = new Map((previos ?? []).map((p) => [p.hash as string, p.id as string]));
 
-    const conMarca = filas.map((f) => ({
-      ...f,
-      duplicado_candidato_de: mapaPrevios.get(f.hash) ?? null,
-    }));
+    const duplicadas = filas.filter((f) => mapaPrevios.has(f.hash));
+    const nuevas = filas.filter((f) => !mapaPrevios.has(f.hash));
 
     let inserted = 0;
-    for (let i = 0; i < conMarca.length; i += 500) {
-      const chunk = conMarca.slice(i, i + 500);
+    for (let i = 0; i < nuevas.length; i += 500) {
+      const chunk = nuevas.slice(i, i + 500);
       const { error } = await supabase.from("movimientos_bancarios").insert(chunk);
       if (error) {
         await supabase
@@ -168,10 +167,15 @@ export const uploadMovimientos = createServerFn({ method: "POST" })
       inserted += chunk.length;
     }
 
-    const duplicadosCandidatos = conMarca.filter((f) => f.duplicado_candidato_de).length;
+    const duplicadosOmitidos = duplicadas.length;
     await supabase
       .from("conciliacion_importaciones")
-      .update({ estado: "completada", filas_insertadas: inserted, filas_reimportadas: 0 })
+      .update({
+        estado: "completada",
+        filas_insertadas: inserted,
+        filas_reimportadas: duplicadosOmitidos,
+        candidatos_duplicado: duplicadosOmitidos,
+      })
       .eq("id", importacionId);
 
     return {
@@ -179,12 +183,12 @@ export const uploadMovimientos = createServerFn({ method: "POST" })
       importacion_id: importacionId,
       reimportacion: false,
       inserted,
-      duplicates: 0,
-      duplicados_candidatos: duplicadosCandidatos,
+      duplicates: duplicadosOmitidos,
+      duplicados_candidatos: 0,
       total: filas.length,
       mensaje:
-        duplicadosCandidatos > 0
-          ? `Se importaron ${inserted} movimientos. ${duplicadosCandidatos} se parecen a operaciones ya registradas y quedaron marcados como candidatos a duplicado para tu revisión.`
+        duplicadosOmitidos > 0
+          ? `Se importaron ${inserted} movimientos. Se omitieron ${duplicadosOmitidos} duplicados exactos ya registrados.`
           : `Se importaron ${inserted} movimientos.`,
     };
   });
