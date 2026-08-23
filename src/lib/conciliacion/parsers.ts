@@ -112,13 +112,16 @@ const MESES_ES: Record<string, string> = {
  */
 function anioPlausible(token: string | undefined, defaultYear: string): string {
   if (!token) return defaultYear;
-  if (token.length === 4) return token;
-  const n = Number(token);
-  if (!Number.isFinite(n)) return defaultYear;
-  const limite = (new Date().getFullYear() % 100) + 1; // hasta el año próximo
-  if (n < 0 || n > limite) return defaultYear;
-  return `20${token.padStart(2, "0")}`;
+  const base = Number(defaultYear);
+  const candidato = token.length === 4 ? Number(token) : 2000 + Number(token);
+  if (!Number.isFinite(candidato)) return defaultYear;
+  // Un estado de cuenta no cubre años lejanos al del propio documento: ni 2002
+  // ni 2030/2031 son años válidos en un estado de 2026. Ese "31" es un DÍA
+  // (BBVA imprime operación y liquidación: "31/DIC 31/DIC").
+  if (candidato < base - 1 || candidato > base + 1) return defaultYear;
+  return String(candidato);
 }
+
 
 /** Best-effort parser de movimientos a partir del texto de un PDF de estado de cuenta. */
 export function parsePdfMovimientos(text: string): ParsedMovimiento[] {
