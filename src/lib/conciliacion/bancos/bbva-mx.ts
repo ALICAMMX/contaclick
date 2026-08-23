@@ -94,7 +94,16 @@ type ClaveCaja =
   | "oper" | "liq" | "fecha" | "descripcion" | "referencia"
   | "cargo" | "abono" | "saldo" | "saldo_operacion" | "saldo_liquidacion";
 
-type Caja = { clave: ClaveCaja; x: number; xFin: number; etiqueta: string };
+type Caja = {
+  clave: ClaveCaja;
+  x: number;
+  xFin: number;
+  etiqueta: string;
+  /** Inicio del elemento de texto que la contiene (una etiqueta puede venir
+   *  fusionada con otra, p. ej. "COD. DESCRIPCIÓN / REFERENCIA"). */
+  xEl: number;
+};
+
 
 type Encabezado = {
   descripcion: Caja | null;
