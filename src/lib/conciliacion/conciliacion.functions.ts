@@ -44,6 +44,18 @@ function rangoFechas(periodo: string): { desde: string; hastaExclusivo: string }
   };
 }
 
+/** Muestra acotada para la vista previa: nunca el archivo completo. */
+function muestraDe(filas: FilaImportacion[]) {
+  return filas.slice(0, 12).map((f, i) => ({
+    fila: i + 1,
+    fecha: f.fecha,
+    descripcion: (f.descripcion ?? "").slice(0, 60),
+    cargo: Number(f.cargo) || 0,
+    abono: Number(f.abono) || 0,
+    saldo: f.saldo == null ? null : Number(f.saldo),
+  }));
+}
+
 const SELECT_IMPORTACION =
   "id, cliente_id, cuenta_id, estado, bloqueada, archivo_nombre, archivo_sha256, archivo_bytes, formato, " +
   "parser_version, periodo_declarado, periodo_detectado, filas_hash, filas_totales, filas_insertadas, " +
@@ -105,6 +117,7 @@ export const previsualizarImportacion = createServerFn({ method: "POST" })
         cuenta_id: cuentaId,
         cuenta_etiqueta: cuentaEtiqueta,
         importacion: previa,
+        muestra: muestraDe(data.movimientos as FilaImportacion[]),
         reimportacion: true,
         mensaje:
           previa.estado === "validada"
@@ -274,6 +287,7 @@ export const previsualizarImportacion = createServerFn({ method: "POST" })
       cuenta_id: cuentaId,
       cuenta_etiqueta: cuentaEtiqueta,
       importacion: actualizada,
+      muestra: muestraDe(filas),
       reimportacion: false,
       mensaje: analisis.bloqueada
         ? "La lectura tiene incidencias que impiden incorporar el archivo. Revisa el detalle."

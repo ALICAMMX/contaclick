@@ -778,7 +778,7 @@ function PreviewCuerpo({ preview }: { preview: any }) {
         </ul>
       )}
 
-      <PreviewMuestra importacionId={imp.id} />
+      <PreviewMuestra filas={preview.muestra ?? []} />
     </div>
   );
 }
@@ -792,11 +792,33 @@ function Dato({ k, v }: { k: string; v: string }) {
   );
 }
 
-function PreviewMuestra({ importacionId }: { importacionId?: string }) {
-  if (!importacionId) return null;
+function PreviewMuestra({ filas }: { filas: any[] }) {
+  if (!filas.length) return null;
   return (
-    <p className="text-xs text-muted-foreground">
-      Muestra de movimientos disponible en el listado del periodo una vez confirmada la importación.
-    </p>
+    <div className="overflow-x-auto rounded-md border">
+      <table className="w-full text-xs">
+        <thead className="bg-muted/40 text-muted-foreground">
+          <tr>
+            <th className="p-2 text-left">Fecha</th>
+            <th className="p-2 text-left">Descripción</th>
+            <th className="p-2 text-right">Cargo</th>
+            <th className="p-2 text-right">Abono</th>
+            <th className="p-2 text-right">Saldo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filas.map((f) => (
+            <tr key={f.fila} className="border-t border-border/40">
+              <td className="p-2">{f.fecha}</td>
+              <td className="p-2">{f.descripcion}</td>
+              <td className="p-2 text-right">{f.cargo ? f.cargo.toFixed(2) : "—"}</td>
+              <td className="p-2 text-right">{f.abono ? f.abono.toFixed(2) : "—"}</td>
+              <td className="p-2 text-right">{f.saldo == null ? "—" : Number(f.saldo).toFixed(2)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="p-2 text-[11px] text-muted-foreground">Muestra de las primeras {filas.length} filas interpretadas.</div>
+    </div>
   );
 }
