@@ -164,7 +164,7 @@ function parsePdfMovimientos(text: string): ParsedMovimiento[] {
       const d = dm[4].padStart(2, "0");
       const mo = MESES_ES[dm[5].toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")];
       if (!mo) continue;
-      const y = (dm[6] && dm[6].length === 4) ? dm[6] : dm[6] ? "20" + dm[6] : defaultYear;
+      const y = anioPlausible(dm[6], defaultYear);
       fecha = `${y}-${mo}-${d}`;
     }
     if (!fecha || !isValidIsoDate(fecha)) continue;
