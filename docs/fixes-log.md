@@ -1,3 +1,8 @@
+## 2026-08-23 — Estados de cuenta: cargos importados como depósitos, fechas corruptas y duplicados
+- **Síntoma:** retiros, compras y SPEI enviados de PDFs bancarios aparecían como ingresos; fechas dobles de BBVA como `02/ENE 02/ENE` producían años 2002/2030/2031; archivos distintos con movimientos solapados podían duplicar operaciones.
+- **Causa:** el parser genérico asumía abono cuando no reconocía explícitamente un cargo, confundía la segunda fecha de liquidación con parte del año y el importador sólo marcaba duplicados en lugar de omitir coincidencias exactas.
+- **Corrección:** clasificación fail-closed (un movimiento ambiguo bloquea toda la importación), señales explícitas para retiros/SPEI enviados/recibidos, verificación por variación de saldo, eliminación de la segunda fecha BBVA del concepto, validación estricta de exclusividad cargo/abono y omisión de hashes ya registrados en la misma cuenta. Se retiraron las importaciones afectadas para que se reprocesen desde el archivo original.
+
 ## 2026-08-08 — SAT rechazaba la firma XML con error de seguridad 500
 - **Síntoma:** después de validar correctamente `.cer`, `.key`, contraseña, RFC y vigencia, el SAT respondía `An error occurred when verifying security for the message`.
 - **Causa:** las solicitudes firmadas declaraban la transformación `enveloped-signature`, distinta a la `exc-c14n` exigida por las plantillas oficiales, y el digest manual incluía un namespace `xd` no visible que el canonicalizador del SAT elimina.

@@ -121,7 +121,7 @@ function anioPlausible(token: string | undefined, defaultYear: string): string {
 }
 
 /** Best-effort parser de movimientos a partir del texto de un PDF de estado de cuenta. */
-function parsePdfMovimientos(text: string): ParsedMovimiento[] {
+export function parsePdfMovimientos(text: string): ParsedMovimiento[] {
   const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   // Detecta año predominante del documento (para fechas tipo "15/MAR")
   const anioMatch = text.match(/\b(20\d{2})\b/);
@@ -131,7 +131,7 @@ function parsePdfMovimientos(text: string): ParsedMovimiento[] {
   const out: ParsedMovimiento[] = [];
   const dateRe = new RegExp(
     // dd/mm/yyyy | dd-mm-yyyy | dd/MES(/yyyy)? | dd MES yyyy
-    "^(?:(\\d{1,2})[\\/\\-.](\\d{1,2})(?:[\\/\\-.](\\d{2,4}))?|(\\d{1,2})[\\/\\-.\\s]([A-Za-zÁÉÍÓÚáéíóú]{3,10})(?:[\\/\\-.\\s](\\d{2,4}))?)\\b",
+    "^(?:(\\d{1,2})[\\/\\-.](\\d{1,2})(?:[\\/\\-.](\\d{2,4}))?|(\\d{1,2})[\\/\\-.\\s]([A-Za-zÁÉÍÓÚáéíóú]{3,10})(?:[\\/\\-.\\s](20\\d{2}|\\d{2})(?![\\/\\-.][A-Za-zÁÉÍÓÚáéíóú]))?)\\b",
   );
   const amountRe = /\(?-?\$?\s*(?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2}\)?/g;
   const firstAmountRe = /\(?-?\$?\s*(?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2}\)?/;
@@ -151,6 +151,8 @@ function parsePdfMovimientos(text: string): ParsedMovimiento[] {
   }
   if (current) entries.push(current);
 
+  type PendingMovimiento = ParsedMovimiento & { direccion: "cargo" | "abono" | null; monto: number; source: string };
+  const pending: PendingMovimiento[] = [];
   for (const line of entries) {
     const dm = line.match(dateRe);
     if (!dm) continue;
@@ -175,7 +177,7 @@ function parsePdfMovimientos(text: string): ParsedMovimiento[] {
     const nums = amounts.map((a) => parseAmount(a));
     let monto: number;
     let saldo: number | null = null;
-    let forcedCargo: boolean | null = null;
+    let direccion: "cargo" | "abono" | null = null;
     if (nums.length >= 2) {
       saldo = nums[nums.length - 1];
       if (nums.length >= 3) {
@@ -183,10 +185,10 @@ function parsePdfMovimientos(text: string): ParsedMovimiento[] {
         const abonoCol = Math.abs(nums[nums.length - 2]);
         if (cargoCol > 0 && abonoCol === 0) {
           monto = cargoCol;
-          forcedCargo = true;
+          direccion = "cargo";
         } else if (abonoCol > 0 && cargoCol === 0) {
           monto = abonoCol;
-          forcedCargo = false;
+          direccion = "abono";
         } else {
           monto = nums[nums.length - 2] || nums[nums.length - 3];
         }
@@ -199,21 +201,67 @@ function parsePdfMovimientos(text: string): ParsedMovimiento[] {
     }
 
     // Descripción = texto entre la fecha y el primer número
-    const afterDate = line.slice(dm[0].length).trim();
+    // BBVA imprime fecha de operación y liquidación (p. ej. 02/ENE 02/ENE).
+    // La segunda fecha no es un año ni forma parte del concepto.
+    const afterDate = line.slice(dm[0].length).trim().replace(
+      /^\d{1,2}[\/\-.](?:\d{1,2}|[A-Za-zÁÉÍÓÚáéíóú]{3,10})(?:[\/\-.](?:20\d{2}|\d{2}))?\s+/,
+      "",
+    );
     const firstAmountIdx = afterDate.search(firstAmountRe);
     const desc = (firstAmountIdx > 0 ? afterDate.slice(0, firstAmountIdx) : afterDate).trim();
 
-    // Determina cargo/abono: si hay marca de retiro/cargo o signo, se toma como cargo.
-    const isCargo = forcedCargo ?? (/(-\s*\$|\bretiro\b|\bcargo\b|\bcargos\b|\bdebito\b|\bdébito\b|\bpago\b|\btransferencia enviada\b|\bcompra\b|\bcomision\b|\bcomisión\b|\biva com\b|\bdisposicion\b|\bdisposición\b)/i.test(line) || monto < 0);
+    const cargoExplicito = /(-\s*\$|\bretiro\b|\bcargo(?:s)?\b|\bd[eé]bito\b|\bpago\b|\bspei\s+enviado\b|\btransferencia\s+enviada\b|\bcompra\b|\bcomisi[oó]n\b|\biva\s+com\b|\bdisposici[oó]n\b|\bmerpago\b)/i.test(line) || monto < 0;
+    const abonoExplicito = /\babono(?:s)?\b|\bdep[oó]sito(?:s)?\b|\bspei\s+recibido\b|\btransferencia\s+recibida\b|\bn[oó]mina\b|\binter[eé]s\s+(?:pagado|abonado)\b/i.test(line);
+    if (direccion === null) {
+      if (cargoExplicito && !abonoExplicito) direccion = "cargo";
+      else if (abonoExplicito && !cargoExplicito) direccion = "abono";
+    }
     const abs = Math.abs(monto);
     if (abs === 0) continue;
-    out.push({
+    pending.push({
       fecha,
       descripcion: normalizeBankDescription(desc),
       referencia: null,
-      cargo: isCargo ? abs : 0,
-      abono: isCargo ? 0 : abs,
+      cargo: 0,
+      abono: 0,
       saldo,
+      direccion,
+      monto: abs,
+      source: line,
+    });
+  }
+
+  // Cuando el PDF no conserva columnas, el cambio de saldo es la evidencia
+  // más confiable. Se usa según el orden cronológico visual del estado.
+  const ascending = pending.length < 2 || pending[0].fecha <= pending[pending.length - 1].fecha;
+  for (let i = 0; i < pending.length; i++) {
+    const row = pending[i];
+    const neighbor = ascending ? pending[i - 1] : pending[i + 1];
+    if (row.saldo !== null && neighbor?.saldo !== null) {
+      const delta = ascending ? row.saldo - neighbor.saldo : row.saldo - neighbor.saldo;
+      if (Math.abs(Math.abs(delta) - row.monto) <= 0.02 && Math.abs(delta) > 0.001) {
+        row.direccion = delta < 0 ? "cargo" : "abono";
+      }
+    }
+  }
+
+  const ambiguos = pending.filter((row) => row.direccion === null);
+  if (ambiguos.length > 0) {
+    throw new Error(
+      `El PDF contiene ${ambiguos.length} movimiento(s) cuyo cargo o depósito no puede determinarse con seguridad. ` +
+      "No se importó nada para evitar descuadres. Descarga el estado de cuenta en CSV o Excel desde tu banca en línea.",
+    );
+  }
+
+  for (const row of pending) {
+    const isCargo = row.direccion === "cargo";
+    out.push({
+      fecha: row.fecha,
+      descripcion: row.descripcion,
+      referencia: row.referencia,
+      cargo: isCargo ? row.monto : 0,
+      abono: isCargo ? 0 : row.monto,
+      saldo: row.saldo,
     });
   }
   return out;

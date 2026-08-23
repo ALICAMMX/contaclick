@@ -34,8 +34,17 @@ const MovimientoSchema = z.object({
   referencia: z.preprocess(normalizeBankReference, z.string().nullable()),
   cargo: z.number().min(0).default(0),
   abono: z.number().min(0).default(0),
-  saldo: z.number().nullable().default(null),
+  saldo: z.number().finite().nullable().default(null),
   moneda: z.string().max(3).nullable().default("MXN"),
+}).superRefine((movimiento, ctx) => {
+  const tieneCargo = movimiento.cargo > 0;
+  const tieneAbono = movimiento.abono > 0;
+  if (tieneCargo === tieneAbono) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Cada movimiento debe tener exactamente un cargo o un abono mayor a cero.",
+    });
+  }
 });
 
 const UploadSchema = z.object({
