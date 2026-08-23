@@ -38,8 +38,11 @@ const MESES_LARGOS: Record<string, string> = {
   JULIO: "07", AGOSTO: "08", SEPTIEMBRE: "09", OCTUBRE: "10", NOVIEMBRE: "11", DICIEMBRE: "12",
 };
 
+// "PAGO CUENTA DE TERCERO" queda FUERA a propósito: BBVA lo usa igual para
+// enviar y para recibir, así que como señal de sentido es falsa.
 const PALABRAS_CARGO =
-  /(RETIRO|SPEI ENVIAD|TRANSFERENCIA ENVIAD|PAGO CUENTA DE TERCERO|PAGO TARJETA|COMPRA|COMISION|DISPOSICION|DOMICILIACION)/;
+  /(RETIRO|SPEI ENVIAD|TRANSFERENCIA ENVIAD|PAGO TARJETA|COMPRA|COMISION|DISPOSICION|DOMICILIACION)/;
+
 const PALABRAS_ABONO =
   /(SPEI RECIBID|TRANSFERENCIA RECIBID|DEPOSITO|ABONO|NOMINA|INTERESES ABONAD|DEVOLUCION)/;
 
@@ -369,12 +372,22 @@ function extraerBbva(renglones: RenglonPdf[], texto: string): ResultadoAdaptador
   //    detectadas se conservan para las páginas continuadoras (BBVA no repite
   //    el encabezado en cada hoja).
   const cuerpo: RenglonPdf[] = [];
+  let enBloqueEncabezado = true;
   for (let i = iEnc + 1; i < renglones.length; i += 1) {
     const r = renglones[i];
     if (RE_FIN_MOVIMIENTOS.test(normaliza(r.texto))) break;
-    if (Math.abs(r.y - renglones[iEnc].y) <= 24 && r.pagina === renglones[iEnc].pagina) continue;
+    if (enBloqueEncabezado) {
+      // El segundo nivel del encabezado (OPER/LIQ/CARGOS/ABONOS/…) sigue siendo
+      // encabezado; el bloque termina en el primer renglón con datos.
+      const tieneDato =
+        r.elementos.some((e) => esImporte(e.texto)) ||
+        r.elementos.some((e) => RE_FECHA_CORTA.test(normaliza(e.texto)));
+      if (!tieneDato && r.elementos.some((e) => cajasDeElemento(e).length > 0)) continue;
+      enBloqueEncabezado = false;
+    }
     cuerpo.push(r);
   }
+
 
   const xNumIni = enc.cargo.x - 25;
   const importesDeRenglon = (r: RenglonPdf) =>
@@ -520,8 +533,10 @@ function extraerBbva(renglones: RenglonPdf[], texto: string): ResultadoAdaptador
 
     const saldoOperacion = asignados.saldo_operacion ?? null;
     const saldoLiquidacion = asignados.saldo_liquidacion ?? null;
-    // Para validar manda el saldo de LIQUIDACIÓN cuando el banco lo imprime.
-    const saldoEfectivo = saldoLiquidacion ?? saldoOperacion;
+    // El renglón se imprime en orden de FECHA DE OPERACIÓN: la cadena aritmética
+    // debe recorrerse con el saldo de operación. El de liquidación se conserva
+    // aparte y es el que se guarda como saldo del movimiento.
+    const saldoCadena = saldoOperacion ?? saldoLiquidacion;
 
     const borrador: Borrador = {
       fecha,
@@ -529,7 +544,7 @@ function extraerBbva(renglones: RenglonPdf[], texto: string): ResultadoAdaptador
       referencia: referencia ? referencia.slice(0, 120) : null,
       cargo,
       abono,
-      saldo: saldoEfectivo,
+      saldo: saldoLiquidacion ?? saldoOperacion,
       saldo_operacion: saldoOperacion,
       saldo_liquidacion: saldoLiquidacion,
       traza: {
@@ -543,25 +558,16 @@ function extraerBbva(renglones: RenglonPdf[], texto: string): ResultadoAdaptador
         fecha_liquidacion: fechaLiq,
         evidencia_sentido: "columna",
       },
-      _saldoEfectivo: saldoEfectivo,
+      _saldoEfectivo: saldoCadena,
     };
+
 
     movimientos.push(borrador);
     actual = borrador;
   }
 
-  // 3) Corroboración textual (sólo alerta; nunca sustituye a la columna).
-  for (const m of movimientos) {
-    const desc = normaliza(m.descripcion);
-    const sugerido = PALABRAS_CARGO.test(desc) ? "cargo" : PALABRAS_ABONO.test(desc) ? "abono" : null;
-    if (sugerido && (sugerido === "cargo") !== (m.cargo > 0)) {
-      problemas.push({
-        codigo: "CONTRADICCION_DESCRIPCION", pagina: m.traza.pagina, fila_visual: m.traza.fila_visual,
-        texto: "",
-        motivo: `El importe está bajo la columna de ${m.cargo > 0 ? "cargos" : "abonos"} pero el concepto describe un ${sugerido}.`,
-      });
-    }
-  }
+
+
 
   // 4) Comprobación matemática con SALDOS DISPERSOS: no se exige saldo por fila,
   //    se exige que cada tramo entre dos saldos impresos cuadre.
@@ -618,6 +624,22 @@ function extraerBbva(renglones: RenglonPdf[], texto: string): ResultadoAdaptador
     for (let k = puntos[puntos.length - 1].i + 1; k < crono.length; k += 1) cola += efecto(crono[k]);
     saldoFinalCent = cent(puntos[puntos.length - 1].saldo) + cola;
   }
+
+  // Corroboración textual: sólo alerta, y sólo cuando la aritmética NO probó el
+  // renglón. La columna y el saldo mandan sobre cualquier palabra del concepto.
+  for (const m of movimientos) {
+    if (m.traza.evidencia_sentido === "columna+saldo") continue;
+    const desc = normaliza(m.descripcion);
+    const sugerido = PALABRAS_CARGO.test(desc) ? "cargo" : PALABRAS_ABONO.test(desc) ? "abono" : null;
+    if (sugerido && (sugerido === "cargo") !== (m.cargo > 0)) {
+      problemas.push({
+        codigo: "CONTRADICCION_DESCRIPCION", pagina: m.traza.pagina, fila_visual: m.traza.fila_visual,
+        texto: "",
+        motivo: `El importe está bajo la columna de ${m.cargo > 0 ? "cargos" : "abonos"} pero el concepto describe un ${sugerido}.`,
+      });
+    }
+  }
+
 
   const diferenciaCent =
     saldoInicialCent == null || saldoFinalCent == null
