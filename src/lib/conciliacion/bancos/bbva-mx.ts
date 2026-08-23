@@ -144,7 +144,7 @@ function cajasDeElemento(el: ElementoPdf): Caja[] {
     if (!clave) continue;
     const x = el.x + (el.ancho * m.index) / t.length;
     const xFin = el.x + (el.ancho * (m.index + m[1].length)) / t.length;
-    out.push({ clave, x, xFin, etiqueta: m[1] });
+    out.push({ clave, x, xFin, etiqueta: m[1], xEl: el.x });
   }
   return out;
 }
