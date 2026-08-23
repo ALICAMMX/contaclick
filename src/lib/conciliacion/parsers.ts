@@ -1,6 +1,11 @@
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
+import { leerPdfBancario } from "@/lib/conciliacion/bancos/registry";
+import type { ElementoPdf, ResultadoAdaptador } from "@/lib/conciliacion/bancos/tipos";
+
+export type DeteccionBancaria = ResultadoAdaptador & { puntaje_deteccion: number };
+
 
 const MAX_BANK_DESCRIPTION_LENGTH = 450;
 const MAX_BANK_REFERENCE_LENGTH = 120;
@@ -52,23 +57,38 @@ async function ocrPdfPages(pdfjs: any, doc: any): Promise<string> {
   return text;
 }
 
-/** Extrae texto de un PDF; si viene vacío (escaneado) hace OCR. */
-async function extractPdfText(file: File): Promise<string> {
+/**
+ * Extracción POSICIONAL: conserva página, texto, X, Y, ancho y alto de cada
+ * elemento. Aplanar el PDF a texto pierde la columna (cargo/abono/saldo) y es
+ * la causa de que un retiro se registrara como depósito.
+ */
+async function extractPdfElementos(
+  file: File,
+): Promise<{ elementos: ElementoPdf[]; texto: string; escaneado: boolean }> {
   const pdfjs = await loadPdfjs();
   const buf = await file.arrayBuffer();
   const doc = await pdfjs.getDocument({ data: new Uint8Array(buf) }).promise;
+  const elementos: ElementoPdf[] = [];
   const lines: string[] = [];
   for (let i = 1; i <= doc.numPages; i++) {
     const page = await doc.getPage(i);
     const content = await page.getTextContent();
-    // Agrupa items por coordenada Y para reconstruir renglones
-    const items = (content.items as any[]).filter((it) => typeof it.str === "string");
+    const items = (content.items as any[]).filter((it) => typeof it.str === "string" && it.str.trim());
     const rows = new Map<number, { x: number; s: string }[]>();
     for (const it of items) {
-      const y = Math.round((it.transform?.[5] ?? 0) * 2) / 2;
+      const y = it.transform?.[5] ?? 0;
       const x = it.transform?.[4] ?? 0;
-      if (!rows.has(y)) rows.set(y, []);
-      rows.get(y)!.push({ x, s: it.str });
+      elementos.push({
+        pagina: i,
+        texto: it.str,
+        x,
+        y,
+        ancho: Number(it.width) || it.str.length * 5,
+        alto: Number(it.height) || 8,
+      });
+      const yk = Math.round(y * 2) / 2;
+      if (!rows.has(yk)) rows.set(yk, []);
+      rows.get(yk)!.push({ x, s: it.str });
     }
     const ys = [...rows.keys()].sort((a, b) => b - a);
     for (const y of ys) {
@@ -78,16 +98,24 @@ async function extractPdfText(file: File): Promise<string> {
   }
   const clean = lines.join("\n").trim();
   const hasRfc = /\b[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}\b/.test(clean);
-  if (clean.length < 200 || !/\d/.test(clean) || !hasRfc && clean.length < 800) {
+  if (clean.length < 200 || !/\d/.test(clean) || (!hasRfc && clean.length < 800)) {
     try {
       const ocr = await ocrPdfPages(pdfjs, doc);
-      if (ocr.trim().length > clean.length) return ocr;
+      // El OCR sólo sirve para previsualizar/validar titularidad: sin coordenadas
+      // fiables, ningún movimiento puede importarse automáticamente.
+      if (ocr.trim().length > clean.length) return { elementos: [], texto: ocr, escaneado: true };
     } catch (e) {
       console.warn("OCR PDF falló:", e);
     }
   }
-  return clean;
+  return { elementos, texto: clean, escaneado: false };
 }
+
+/** Extrae texto de un PDF; si viene vacío (escaneado) hace OCR. */
+async function extractPdfText(file: File): Promise<string> {
+  return (await extractPdfElementos(file)).texto;
+}
+
 
 const MESES_ES: Record<string, string> = {
   ene: "01", enero: "01",
@@ -284,7 +312,10 @@ export type ParsedMovimiento = {
 export type ParsedBankFileResult = {
   movimientos: ParsedMovimiento[];
   text: string;
+  /** Trazabilidad del adaptador bancario cuando el PDF fue leído por columnas. */
+  deteccion?: DeteccionBancaria;
 };
+
 
 const HEADER_ALIASES: Record<keyof Omit<ParsedMovimiento, "saldo"> | "saldo" | "monto", string[]> = {
   fecha: ["fecha", "date", "fecha movimiento", "fecha operacion", "fecha de operacion", "fec. mov."],
@@ -421,15 +452,54 @@ export async function parseBankFileWithText(file: File): Promise<ParsedBankFileR
     return { movimientos: rowsToMovimientos(rows), text };
   }
   if (name.endsWith(".pdf") || file.type === "application/pdf") {
-    const text = await extractPdfText(file);
-    const rows = parsePdfMovimientos(text);
+    const { elementos, texto, escaneado } = await extractPdfElementos(file);
+    const text = texto.slice(0, 200_000);
+
+    // 1) Adaptador bancario con lectura posicional (columna = sentido).
+    if (!escaneado && elementos.length) {
+      const deteccion = leerPdfBancario(elementos);
+      if (deteccion.adaptador !== "generico") {
+        if (deteccion.auto) {
+          return {
+            movimientos: deteccion.movimientos.map((m) => ({
+              fecha: m.fecha,
+              descripcion: m.descripcion,
+              referencia: m.referencia,
+              cargo: m.cargo,
+              abono: m.abono,
+              saldo: m.saldo,
+            })),
+            text,
+            deteccion,
+          };
+        }
+        // Formato reconocido pero con filas dudosas: no se importa nada y se
+        // muestran únicamente las filas problemáticas con su motivo.
+        const detalle = deteccion.problemas
+          .slice(0, 6)
+          .map((p) => (p.fila_visual ? `· Fila ${p.fila_visual} (pág. ${p.pagina}): ${p.motivo}` : `· ${p.motivo}`))
+          .join("\n");
+        throw new Error(
+          `El estado de cuenta ${deteccion.banco} no pudo comprobarse por completo (${deteccion.problemas.length} punto(s) a revisar). No se importó nada.\n${detalle}`,
+        );
+      }
+    }
+
+    // 2) Fallback genérico: sigue fallando cerrado ante cualquier ambigüedad.
+    if (escaneado) {
+      throw new Error(
+        "El PDF está escaneado: ContaClick no puede comprobar columnas ni saldos, así que no lo importa automáticamente. Descarga el estado de cuenta en CSV o Excel desde tu banca en línea.",
+      );
+    }
+    const rows = parsePdfMovimientos(texto);
     if (rows.length === 0) {
       throw new Error(
         "No pudimos detectar movimientos en el PDF. Descarga el estado de cuenta en formato CSV o Excel (.xlsx) desde tu banca en línea para una lectura más precisa.",
       );
     }
-    return { movimientos: rows, text: text.slice(0, 200_000) };
+    return { movimientos: rows, text };
   }
+
   throw new Error(`Formato no soportado: ${file.name}`);
 }
 

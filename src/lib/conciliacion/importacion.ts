@@ -147,6 +147,11 @@ export function analizarImportacion(input: {
   movimientos: FilaImportacion[];
   periodo_declarado: string | null;
   cuenta_seleccionada?: boolean;
+  /**
+   * Corte real impreso por el banco (p. ej. 26/dic al 25/ene). Cuando existe,
+   * manda sobre el mes calendario: un estado de cuenta legítimo cruza meses.
+   */
+  periodo_rango?: { inicio: string; fin: string } | null;
 }): AnalisisImportacion {
   const filas = input.movimientos ?? [];
   const incidencias: Incidencia[] = [];
@@ -170,6 +175,10 @@ export function analizarImportacion(input: {
     });
   }
 
+  const rango =
+    input.periodo_rango && esFechaIsoValida(input.periodo_rango.inicio) && esFechaIsoValida(input.periodo_rango.fin)
+      ? input.periodo_rango
+      : null;
   const periodo = input.periodo_declarado ?? periodoDominante(filas);
   if (!periodo || !/^\d{4}-(0[1-9]|1[0-2])$/.test(periodo)) {
     push({
@@ -202,13 +211,16 @@ export function analizarImportacion(input: {
       });
     } else {
       fechasValidas.push(f.fecha);
-      if (periodo && f.fecha.slice(0, 7) !== periodo) {
+      const fueraDeRango = rango
+        ? f.fecha < rango.inicio || f.fecha > rango.fin
+        : !!periodo && f.fecha.slice(0, 7) !== periodo;
+      if (fueraDeRango) {
         fueraPeriodo += 1;
         push({
           codigo: "FECHA_FUERA_PERIODO",
           severidad: "bloqueo",
           fila,
-          mensaje: `Fila ${fila}: la fecha ${f.fecha} queda fuera del periodo declarado ${periodo}.`,
+          mensaje: `Fila ${fila}: la fecha ${f.fecha} queda fuera del periodo declarado ${rango ? `${rango.inicio} a ${rango.fin}` : periodo}.`,
         });
       }
     }
