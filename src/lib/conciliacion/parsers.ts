@@ -158,13 +158,13 @@ function parsePdfMovimientos(text: string): ParsedMovimiento[] {
     if (dm[1]) {
       const d = dm[1].padStart(2, "0");
       const mo = dm[2].padStart(2, "0");
-      const y = (dm[3] && dm[3].length === 4) ? dm[3] : dm[3] ? "20" + dm[3] : defaultYear;
+      const y = anioPlausible(dm[3], defaultYear);
       fecha = `${y}-${mo}-${d}`;
     } else if (dm[4] && dm[5]) {
       const d = dm[4].padStart(2, "0");
       const mo = MESES_ES[dm[5].toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")];
       if (!mo) continue;
-      const y = (dm[6] && dm[6].length === 4) ? dm[6] : dm[6] ? "20" + dm[6] : defaultYear;
+      const y = anioPlausible(dm[6], defaultYear);
       fecha = `${y}-${mo}-${d}`;
     }
     if (!fecha || !isValidIsoDate(fecha)) continue;
