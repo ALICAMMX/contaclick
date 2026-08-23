@@ -17,9 +17,11 @@ import { fmtFechaMx } from "@/lib/utils";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { parseBankFileWithText, bankFileMatchesContribuyente, type ParsedMovimiento } from "@/lib/conciliacion/parsers";
 import {
-  uploadMovimientos, listMovimientos, runReconciliation,
+  previsualizarImportacion, confirmarImportacion, rechazarImportacion, diagnosticoImportacion,
+  listMovimientos, runReconciliation,
   getReconciliationStats, analyzeReconciliationAI, decidirGrupo, ignorarMovimiento,
 } from "@/lib/conciliacion/conciliacion.functions";
+import { ETIQUETA_ESTADO_IMPORTACION, type Incidencia } from "@/lib/conciliacion/importacion";
 import {
   ETIQUETA_ESTADO, ETIQUETA_ORIGEN, formateaCentavos, MOTIVO_MINIMO,
   type EstadoConciliacion,
@@ -47,7 +49,6 @@ function isValidIsoDate(s: string): boolean {
 
 function prepararMovimientos(list: ParsedMovimiento[]): ParsedMovimiento[] {
   return list
-    .filter((m) => isValidIsoDate(m.fecha))
     .map((m) => ({
       ...m,
       descripcion: String(m.descripcion ?? "").replace(/\s+/g, " ").trim().slice(0, 450) || "(sin descripción)",
@@ -89,7 +90,10 @@ function ConciliacionPage() {
   const cuentaFiltro = busqueda.cuenta ?? "__all__";
   const qc = useQueryClient();
 
-  const fnUpload = useServerFn(uploadMovimientos);
+  const fnPreview = useServerFn(previsualizarImportacion);
+  const fnConfirmar = useServerFn(confirmarImportacion);
+  const fnRechazar = useServerFn(rechazarImportacion);
+  const fnDiagnostico = useServerFn(diagnosticoImportacion);
   const fnList = useServerFn(listMovimientos);
   const fnRun = useServerFn(runReconciliation);
   const fnStats = useServerFn(getReconciliationStats);
@@ -109,6 +113,10 @@ function ConciliacionPage() {
   const [isParsing, setIsParsing] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiContent, setAiContent] = useState("");
+  const [preview, setPreview] = useState<any | null>(null);
+  const [aceptaTotales, setAceptaTotales] = useState(false);
+  const [motivoRechazo, setMotivoRechazo] = useState("");
+  const [modoRechazo, setModoRechazo] = useState(false);
   const [motivoDialog, setMotivoDialog] = useState<
     | { tipo: "rechazar" | "revertir"; grupoId: string }
     | { tipo: "ignorar"; movimientoId: string }
@@ -152,7 +160,8 @@ function ConciliacionPage() {
   const upload = useMutation({
     mutationFn: async () => {
       if (!cliente) throw new Error("Selecciona un expediente.");
-      if (!parsed.length || !archivo) throw new Error("Sube un archivo primero.");
+      if (!archivo) throw new Error("Sube un archivo primero.");
+      if (cuentaSel === "__nueva__" && !banco) throw new Error("Selecciona la cuenta bancaria del estado de cuenta.");
       const payload: Record<string, unknown> = {
         cliente_id: cliente.id,
         archivo,
@@ -164,18 +173,64 @@ function ConciliacionPage() {
         payload.alias = aliasNew || "Principal";
         if (maskNew) payload.mask = maskNew;
       }
-      return fnUpload({ data: payload as never });
+      return fnPreview({ data: payload as never });
     },
-    onSuccess: (res) => {
-      if (res.reimportacion) toast.info("Archivo ya importado", { description: res.mensaje });
-      else toast.success(res.mensaje);
-      setParsed([]);
-      setArchivo(null);
+    onSuccess: (res: any) => {
       setCuentaSel(res.cuenta_id);
-      invalidar();
+      setAceptaTotales(false);
+      setModoRechazo(false);
+      setMotivoRechazo("");
+      if (res.importacion?.estado === "validada") {
+        toast.info("Archivo ya validado", { description: res.mensaje });
+        setParsed([]); setArchivo(null); invalidar();
+        return;
+      }
+      setPreview(res);
     },
     onError: (e) => toast.error((e as Error).message),
   });
+
+  const confirmar = useMutation({
+    mutationFn: async () => {
+      const imp = preview?.importacion;
+      return fnConfirmar({ data: {
+        cliente_id: cliente!.id,
+        importacion_id: imp.id,
+        archivo_sha256: imp.archivo_sha256,
+        parser_version: imp.parser_version,
+        filas_hash: imp.filas_hash,
+        confirmacion_totales: true,
+      } as never });
+    },
+    onSuccess: (r: any) => {
+      toast.success(`Importación validada: ${r.movimientos_sellados ?? 0} movimientos quedaron disponibles para conciliar.`);
+      setPreview(null); setParsed([]); setArchivo(null); invalidar();
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  const rechazar = useMutation({
+    mutationFn: async () => fnRechazar({ data: {
+      cliente_id: cliente!.id,
+      importacion_id: preview?.importacion?.id,
+      motivo: motivoRechazo,
+    } as never }),
+    onSuccess: (r: any) => {
+      toast.success(`Importación rechazada. Se descartaron ${r.movimientos_eliminados ?? 0} movimientos provisionales.`);
+      setPreview(null); setParsed([]); setArchivo(null); invalidar();
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  async function copiarDiagnostico() {
+    try {
+      const d = await fnDiagnostico({ data: { cliente_id: cliente!.id, importacion_id: preview.importacion.id } as never });
+      await navigator.clipboard.writeText(JSON.stringify(d, null, 2));
+      toast.success("Diagnóstico copiado. No incluye nombres, cuentas ni descripciones.");
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
 
   const newCuenta = useMutation({
     mutationFn: async (input: { banco: string; alias: string; mask?: string }) => {
@@ -377,13 +432,18 @@ function ConciliacionPage() {
             {isParsing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <FileSpreadsheet className="h-4 w-4 mr-1" />}
             Elegir archivo
           </Button>
-          {parsed.length > 0 && (
+          {archivo && (
             <Button size="sm" onClick={() => upload.mutate()} disabled={upload.isPending}>
               {upload.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
-              Importar {parsed.length} movimientos
+              Revisar {parsed.length} movimientos
             </Button>
           )}
         </div>
+        <p className="text-xs text-muted-foreground flex items-start gap-2">
+          <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+          Para mayor precisión utiliza CSV o Excel descargado directamente de tu banca. Los PDF sólo se aceptan
+          cuando ContaClick puede comprobar fechas, sentido y saldos sin ambigüedad.
+        </p>
         {archivo && <p className="text-xs text-muted-foreground">Archivo: {archivo.nombre} · huella {archivo.sha256.slice(0, 12)}… Volver a importarlo no duplica movimientos.</p>}
         {parsingErr && (
           <p className="text-sm text-destructive flex items-start gap-2"><ShieldAlert className="h-4 w-4 mt-0.5 shrink-0" /> {parsingErr}</p>
