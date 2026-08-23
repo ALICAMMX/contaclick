@@ -29,3 +29,15 @@ describe("parsePdfMovimientos", () => {
     `)).toThrow(/no puede determinarse con seguridad/i);
   });
 });
+describe("años implausibles en PDF", () => {
+  it("no genera 2030, 2031 ni 2002 a partir del día repetido de BBVA", () => {
+    const rows = parsePdfMovimientos(`
+      ESTADO DE CUENTA 2026
+      31/DIC 31/DIC SPEI ENVIADO PROVEEDOR $1,000.00
+      30/DIC 30/DIC RETIRO CAJERO AUTOMATICO $500.00
+      02/ENE 02/ENE PAGO A TERCERO TDC $250.00
+    `);
+    expect(rows.map((r) => r.fecha)).toEqual(["2026-12-31", "2026-12-30", "2026-01-02"]);
+    expect(rows.every((r) => r.cargo > 0 && r.abono === 0)).toBe(true);
+  });
+});
