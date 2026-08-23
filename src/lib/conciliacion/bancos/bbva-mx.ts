@@ -17,8 +17,8 @@ import {
 
 export const BBVA_VERSION = "bbva-mx-2026.08.23";
 
-const RE_OPER = /^OPER(ACION)?\.?$/;
-const RE_LIQ = /^LIQ(UIDACION)?\.?$/;
+const RE_OPER = /(?:^|\s)(?:F(?:ECHA)?\.?\s*)?OPER(?:ACION)?\.?(?=\s|$)/;
+const RE_LIQ = /(?:^|\s)(?:F(?:ECHA)?\.?\s*)?LIQ(?:UIDACION)?\.?(?=\s|$)/;
 const RE_CARGO = /^(CARGOS?|RETIROS?|CARGOS \(-\))$/;
 const RE_ABONO = /^(ABONOS?|DEP[OÓ]SITOS?|ABONOS \(\+\))$/;
 const RE_SALDO = /^(SALDO|SALDOS)$/;
@@ -91,11 +91,57 @@ function columnasDeEncabezado(renglon: RenglonPdf): ColumnaDetectada[] | null {
       cols.push({ clave, x: el.x, xFin: el.x + el.ancho, etiqueta: t });
     }
   }
-  const tieneFechas =
-    renglon.elementos.some((e) => RE_OPER.test(normaliza(e.texto))) &&
-    renglon.elementos.some((e) => RE_LIQ.test(normaliza(e.texto)));
+  // pdf.js puede entregar OPER y LIQ como elementos separados o fusionarlos
+  // dentro de un solo item de texto.
+  const textoRenglon = normaliza(renglon.texto);
+  const tieneFechas = RE_OPER.test(textoRenglon) && RE_LIQ.test(textoRenglon);
   if (cols.length === 3 && tieneFechas) return cols;
   return null;
+}
+
+/**
+ * BBVA no siempre guarda el encabezado como un solo renglón PDF: en algunos
+ * estados OPER/LIQ quedan una línea arriba de CARGOS/ABONOS/SALDO. La lectura
+ * sigue siendo posicional; únicamente reunimos las etiquetas de un bloque
+ * visual pequeño de la misma página.
+ */
+function columnasDeBloqueEncabezado(
+  renglon: RenglonPdf,
+  renglones: RenglonPdf[],
+): ColumnaDetectada[] | null {
+  const directa = columnasDeEncabezado(renglon);
+  if (directa) return directa;
+
+  const renglonEsEncabezado = renglon.elementos.some((e) => {
+    const t = normaliza(e.texto);
+    return RE_OPER.test(t) || RE_LIQ.test(t) || RE_CARGO.test(t) || RE_ABONO.test(t) || RE_SALDO.test(t);
+  });
+  if (!renglonEsEncabezado) return null;
+
+  const cercanos = renglones.filter(
+    (otro) => otro.pagina === renglon.pagina && Math.abs(otro.y - renglon.y) <= 24,
+  );
+  const elementos = cercanos.flatMap((otro) => otro.elementos);
+  const textoBloque = normaliza(cercanos.map((otro) => otro.texto).join(" "));
+  const tieneOper = RE_OPER.test(textoBloque);
+  const tieneLiq = RE_LIQ.test(textoBloque);
+  if (!tieneOper || !tieneLiq) return null;
+
+  const cols: ColumnaDetectada[] = [];
+  for (const el of elementos) {
+    const t = normaliza(el.texto);
+    const clave: ColumnaImporte | null = RE_CARGO.test(t)
+      ? "cargo"
+      : RE_ABONO.test(t)
+        ? "abono"
+        : RE_SALDO.test(t)
+          ? "saldo"
+          : null;
+    if (clave && !cols.some((c) => c.clave === clave)) {
+      cols.push({ clave, x: el.x, xFin: el.x + el.ancho, etiqueta: t });
+    }
+  }
+  return cols.length === 3 ? cols : null;
 }
 
 function esFilaIgnorable(texto: string): boolean {
@@ -124,7 +170,7 @@ function extraerBbva(renglones: RenglonPdf[], texto: string): ResultadoAdaptador
   let actual: Borrador | null = null;
 
   for (const r of renglones) {
-    const posibles = columnasDeEncabezado(r);
+    const posibles = columnasDeBloqueEncabezado(r, renglones);
     if (posibles) {
       // Encabezado (se repite en cada página): reinicia el arrastre de descripciones.
       columnas = posibles;
@@ -420,7 +466,7 @@ export const adaptadorBbvaMx: AdaptadorBancario = {
     const t = normaliza(texto);
     let score = 0;
     if (/\bBBVA\b|\bBANCOMER\b/.test(t)) score += 2;
-    if (renglones.some((r) => columnasDeEncabezado(r) !== null)) score += 4;
+    if (renglones.some((r) => columnasDeBloqueEncabezado(r, renglones) !== null)) score += 4;
     if (/\d{1,2}\/(ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC)\b/.test(t)) score += 1;
     if (/ESTADO DE CUENTA|NO\.? DE CUENTA|CLABE/.test(t)) score += 1;
     if (detectarPeriodoBbva(texto)) score += 1;

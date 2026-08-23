@@ -40,6 +40,17 @@ function encabezado(pagina: number, y: number): ElementoPdf[] {
   ];
 }
 
+function encabezadoPartido(pagina: number, y: number): ElementoPdf[] {
+  return [
+    el(pagina, "OPER", X.oper, y + 10, 24),
+    el(pagina, "LIQ", X.liq, y + 10, 18),
+    el(pagina, "COD. DESCRIPCIÓN / REFERENCIA", X.desc, y, 160),
+    el(pagina, "CARGOS", X.cargo - 20, y, 40),
+    el(pagina, "ABONOS", X.abono - 20, y, 40),
+    el(pagina, "SALDO", X.saldo - 18, y, 36),
+  ];
+}
+
 function construir(opts: {
   periodo: string;
   filas: FilaFixture[];
@@ -136,6 +147,36 @@ describe("adaptador BBVA México · lectura posicional", () => {
     expect(r.calculado.saldo_inicial).toBe(100000);
     expect(r.calculado.saldo_final).toBe(93451);
     expect(r.calculado.diferencia).toBe(0);
+  });
+
+  it("reconoce el encabezado real aunque OPER/LIQ estén en otra línea visual", () => {
+    const elementos = fixtureAscendente();
+    const sinEncabezadoPrimeraPagina = elementos.filter(
+      (item) => !(item.pagina === 1 && item.y === 700),
+    );
+    sinEncabezadoPrimeraPagina.push(...encabezadoPartido(1, 700));
+    const deteccion = detectarAdaptador(sinEncabezadoPrimeraPagina);
+    const resultado = leerPdfBancario(sinEncabezadoPrimeraPagina);
+    expect(deteccion.adaptador.adaptador).toBe("bbva-mx");
+    expect(resultado.auto).toBe(true);
+    expect(resultado.movimientos).toHaveLength(5);
+  });
+
+  it("reconoce F. OPER / F. LIQ y encabezados fusionados por pdf.js", () => {
+    const elementos = fixtureAscendente().filter(
+      (item) => !(item.pagina === 1 && item.y === 700),
+    );
+    elementos.push(
+      el(1, "F. OPER   F. LIQ.", X.oper, 710, 58),
+      el(1, "COD. DESCRIPCIÓN / REFERENCIA", X.desc, 700, 160),
+      el(1, "CARGOS", X.cargo - 20, 700, 40),
+      el(1, "ABONOS", X.abono - 20, 700, 40),
+      el(1, "SALDO", X.saldo - 18, 700, 36),
+    );
+    const resultado = leerPdfBancario(elementos);
+    expect(resultado.adaptador).toBe("bbva-mx");
+    expect(resultado.auto).toBe(true);
+    expect(resultado.movimientos).toHaveLength(5);
   });
 
   it("respeta el año del periodo y nunca produce 2002, 2030 ni 2031", () => {

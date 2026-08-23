@@ -483,6 +483,15 @@ export async function parseBankFileWithText(file: File): Promise<ParsedBankFileR
           `El estado de cuenta ${deteccion.banco} no pudo comprobarse por completo (${deteccion.problemas.length} punto(s) a revisar). No se importó nada.\n${detalle}`,
         );
       }
+
+      // Un PDF que se identifica claramente como BBVA nunca debe volver al
+      // parser lineal: sin columnas demostrables se bloquea con diagnóstico,
+      // en lugar de intentar inferir cargo/abono por el texto.
+      if (/\b(?:BBVA|BANCOMER)\b/i.test(text)) {
+        throw new Error(
+          "El estado de cuenta BBVA fue reconocido, pero este formato no expone columnas verificables de cargos, abonos y saldo. No se importó nada. Descárgalo en CSV o Excel desde tu banca en línea.",
+        );
+      }
     }
 
     // 2) Fallback genérico: sigue fallando cerrado ante cualquier ambigüedad.
