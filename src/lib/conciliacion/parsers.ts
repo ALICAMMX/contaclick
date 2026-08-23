@@ -158,7 +158,7 @@ function parsePdfMovimientos(text: string): ParsedMovimiento[] {
     if (dm[1]) {
       const d = dm[1].padStart(2, "0");
       const mo = dm[2].padStart(2, "0");
-      const y = (dm[3] && dm[3].length === 4) ? dm[3] : dm[3] ? "20" + dm[3] : defaultYear;
+      const y = anioPlausible(dm[3], defaultYear);
       fecha = `${y}-${mo}-${d}`;
     } else if (dm[4] && dm[5]) {
       const d = dm[4].padStart(2, "0");
