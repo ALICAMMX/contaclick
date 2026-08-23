@@ -240,13 +240,15 @@ export function parsePdfMovimientos(text: string): ParsedMovimiento[] {
   for (let i = 0; i < pending.length; i++) {
     const row = pending[i];
     const neighbor = ascending ? pending[i - 1] : pending[i + 1];
-    if (row.saldo !== null && neighbor?.saldo !== null) {
-      const delta = ascending ? row.saldo - neighbor.saldo : row.saldo - neighbor.saldo;
+    // El vecino puede no existir (primera/última fila) o no traer saldo.
+    if (row.saldo != null && neighbor != null && neighbor.saldo != null) {
+      const delta = row.saldo - neighbor.saldo;
       if (Math.abs(Math.abs(delta) - row.monto) <= 0.02 && Math.abs(delta) > 0.001) {
         row.direccion = delta < 0 ? "cargo" : "abono";
       }
     }
   }
+
 
   const ambiguos = pending.filter((row) => row.direccion === null);
   if (ambiguos.length > 0) {
