@@ -47,20 +47,38 @@ const MovimientoSchema = z.object({
   }
 });
 
+/**
+ * Fila tal como la interpretó el lector, sin exigir sentido exclusivo: las
+ * contradicciones se reportan como incidencias en la vista previa, nunca se
+ * silencian ni tumban la lectura completa con un error técnico.
+ */
+const MovimientoLeidoSchema = z.object({
+  fecha: z.string().max(20),
+  descripcion: z.preprocess(normalizeBankDescription, z.string()),
+  referencia: z.preprocess(normalizeBankReference, z.string().nullable()),
+  cargo: z.number().finite().default(0),
+  abono: z.number().finite().default(0),
+  saldo: z.number().finite().nullable().default(null),
+  moneda: z.string().max(3).nullable().default("MXN"),
+});
+
+const ArchivoSchema = z.object({
+  sha256: z.string().regex(/^[0-9a-f]{64}$/, "Huella de archivo inválida."),
+  nombre: z.string().min(1).max(240),
+  bytes: z.number().int().min(0).max(200_000_000),
+  formato: z.enum(["csv", "xlsx", "pdf", "manual"]).default("csv"),
+});
+
 const UploadSchema = z.object({
   cliente_id: z.string().uuid(),
   cuenta_id: z.string().uuid().optional(),
   banco: z.string().min(1).max(60).optional(),
   alias: z.string().max(80).optional(),
   mask: z.string().max(40).optional(),
+  periodo_declarado: PeriodoSchema.optional(),
   /** Identidad del archivo importado: permite reimportación idempotente. */
-  archivo: z.object({
-    sha256: z.string().regex(/^[0-9a-f]{64}$/, "Huella de archivo inválida."),
-    nombre: z.string().min(1).max(240),
-    bytes: z.number().int().min(0).max(200_000_000),
-    formato: z.enum(["csv", "xlsx", "pdf", "manual"]).default("csv"),
-  }),
-  movimientos: z.array(MovimientoSchema).min(1).max(5000),
+  archivo: ArchivoSchema,
+  movimientos: z.array(MovimientoLeidoSchema).max(5000),
 });
 
 function normalizeUploadPayload(value: unknown) {
@@ -81,9 +99,55 @@ function normalizeUploadPayload(value: unknown) {
   return { ...payload, movimientos };
 }
 
-export function parseUploadMovimientosInput(data: unknown) {
+export function parsePrevisualizarImportacionInput(data: unknown) {
   return UploadSchema.parse(normalizeUploadPayload(data));
 }
+
+export function parseConfirmarImportacionInput(data: unknown) {
+  return z
+    .object({
+      cliente_id: z.string().uuid(),
+      importacion_id: z.string().uuid(),
+      archivo_sha256: z.string().regex(/^[0-9a-f]{64}$/),
+      parser_version: z.string().min(1).max(60),
+      filas_hash: z.string().regex(/^[0-9a-f]{64}$/),
+      /** Casilla expresa: sin ella la confirmación no procede. */
+      confirmacion_totales: z.literal(true, {
+        message: "Debes confirmar expresamente que los totales coinciden con tu estado de cuenta.",
+      }),
+    })
+    .parse(data);
+}
+
+export function parseRechazarImportacionInput(data: unknown) {
+  return z
+    .object({
+      cliente_id: z.string().uuid(),
+      importacion_id: z.string().uuid(),
+      motivo: z.string().trim().min(MOTIVO_MINIMO).max(600),
+    })
+    .parse(data);
+}
+
+export function parseImportacionIdInput(data: unknown) {
+  return z
+    .object({
+      cliente_id: z.string().uuid(),
+      importacion_id: z.string().uuid(),
+    })
+    .parse(data);
+}
+
+export function parseListarImportacionesInput(data: unknown) {
+  return z
+    .object({
+      cliente_id: z.string().uuid(),
+      periodo: PeriodoSchema.optional(),
+      limit: z.number().int().min(1).max(200).default(50),
+    })
+    .parse(data);
+}
+
 
 export function parseListMovimientosInput(data: unknown) {
   return z.object({

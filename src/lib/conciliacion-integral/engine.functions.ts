@@ -249,6 +249,7 @@ export const runConciliacionIntegral = createServerFn({ method: "POST" })
         .from("movimientos_bancarios")
         .select("id, fecha, descripcion, cargo, abono")
         .eq("cliente_id", data.cliente_id)
+        .not("validado_at", "is", null)
         .gte("fecha", desde)
         .lte("fecha", hasta),
     ]);

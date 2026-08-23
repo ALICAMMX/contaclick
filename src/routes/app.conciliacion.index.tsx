@@ -17,9 +17,11 @@ import { fmtFechaMx } from "@/lib/utils";
 import { useActiveCliente } from "@/lib/active-cliente";
 import { parseBankFileWithText, bankFileMatchesContribuyente, type ParsedMovimiento } from "@/lib/conciliacion/parsers";
 import {
-  uploadMovimientos, listMovimientos, runReconciliation,
+  previsualizarImportacion, confirmarImportacion, rechazarImportacion, diagnosticoImportacion,
+  listMovimientos, runReconciliation,
   getReconciliationStats, analyzeReconciliationAI, decidirGrupo, ignorarMovimiento,
 } from "@/lib/conciliacion/conciliacion.functions";
+import { ETIQUETA_ESTADO_IMPORTACION, type Incidencia } from "@/lib/conciliacion/importacion";
 import {
   ETIQUETA_ESTADO, ETIQUETA_ORIGEN, formateaCentavos, MOTIVO_MINIMO,
   type EstadoConciliacion,
@@ -47,7 +49,6 @@ function isValidIsoDate(s: string): boolean {
 
 function prepararMovimientos(list: ParsedMovimiento[]): ParsedMovimiento[] {
   return list
-    .filter((m) => isValidIsoDate(m.fecha))
     .map((m) => ({
       ...m,
       descripcion: String(m.descripcion ?? "").replace(/\s+/g, " ").trim().slice(0, 450) || "(sin descripción)",
@@ -89,7 +90,10 @@ function ConciliacionPage() {
   const cuentaFiltro = busqueda.cuenta ?? "__all__";
   const qc = useQueryClient();
 
-  const fnUpload = useServerFn(uploadMovimientos);
+  const fnPreview = useServerFn(previsualizarImportacion);
+  const fnConfirmar = useServerFn(confirmarImportacion);
+  const fnRechazar = useServerFn(rechazarImportacion);
+  const fnDiagnostico = useServerFn(diagnosticoImportacion);
   const fnList = useServerFn(listMovimientos);
   const fnRun = useServerFn(runReconciliation);
   const fnStats = useServerFn(getReconciliationStats);
@@ -109,6 +113,10 @@ function ConciliacionPage() {
   const [isParsing, setIsParsing] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiContent, setAiContent] = useState("");
+  const [preview, setPreview] = useState<any | null>(null);
+  const [aceptaTotales, setAceptaTotales] = useState(false);
+  const [motivoRechazo, setMotivoRechazo] = useState("");
+  const [modoRechazo, setModoRechazo] = useState(false);
   const [motivoDialog, setMotivoDialog] = useState<
     | { tipo: "rechazar" | "revertir"; grupoId: string }
     | { tipo: "ignorar"; movimientoId: string }
@@ -152,7 +160,8 @@ function ConciliacionPage() {
   const upload = useMutation({
     mutationFn: async () => {
       if (!cliente) throw new Error("Selecciona un expediente.");
-      if (!parsed.length || !archivo) throw new Error("Sube un archivo primero.");
+      if (!archivo) throw new Error("Sube un archivo primero.");
+      if (cuentaSel === "__nueva__" && !banco) throw new Error("Selecciona la cuenta bancaria del estado de cuenta.");
       const payload: Record<string, unknown> = {
         cliente_id: cliente.id,
         archivo,
@@ -164,18 +173,64 @@ function ConciliacionPage() {
         payload.alias = aliasNew || "Principal";
         if (maskNew) payload.mask = maskNew;
       }
-      return fnUpload({ data: payload as never });
+      return fnPreview({ data: payload as never });
     },
-    onSuccess: (res) => {
-      if (res.reimportacion) toast.info("Archivo ya importado", { description: res.mensaje });
-      else toast.success(res.mensaje);
-      setParsed([]);
-      setArchivo(null);
+    onSuccess: (res: any) => {
       setCuentaSel(res.cuenta_id);
-      invalidar();
+      setAceptaTotales(false);
+      setModoRechazo(false);
+      setMotivoRechazo("");
+      if (res.importacion?.estado === "validada") {
+        toast.info("Archivo ya validado", { description: res.mensaje });
+        setParsed([]); setArchivo(null); invalidar();
+        return;
+      }
+      setPreview(res);
     },
     onError: (e) => toast.error((e as Error).message),
   });
+
+  const confirmar = useMutation({
+    mutationFn: async () => {
+      const imp = preview?.importacion;
+      return fnConfirmar({ data: {
+        cliente_id: cliente!.id,
+        importacion_id: imp.id,
+        archivo_sha256: imp.archivo_sha256,
+        parser_version: imp.parser_version,
+        filas_hash: imp.filas_hash,
+        confirmacion_totales: true,
+      } as never });
+    },
+    onSuccess: (r: any) => {
+      toast.success(`Importación validada: ${r.movimientos_sellados ?? 0} movimientos quedaron disponibles para conciliar.`);
+      setPreview(null); setParsed([]); setArchivo(null); invalidar();
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  const rechazar = useMutation({
+    mutationFn: async () => fnRechazar({ data: {
+      cliente_id: cliente!.id,
+      importacion_id: preview?.importacion?.id,
+      motivo: motivoRechazo,
+    } as never }),
+    onSuccess: (r: any) => {
+      toast.success(`Importación rechazada. Se descartaron ${r.movimientos_eliminados ?? 0} movimientos provisionales.`);
+      setPreview(null); setParsed([]); setArchivo(null); invalidar();
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  async function copiarDiagnostico() {
+    try {
+      const d = await fnDiagnostico({ data: { cliente_id: cliente!.id, importacion_id: preview.importacion.id } as never });
+      await navigator.clipboard.writeText(JSON.stringify(d, null, 2));
+      toast.success("Diagnóstico copiado. No incluye nombres, cuentas ni descripciones.");
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
 
   const newCuenta = useMutation({
     mutationFn: async (input: { banco: string; alias: string; mask?: string }) => {
@@ -377,13 +432,18 @@ function ConciliacionPage() {
             {isParsing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <FileSpreadsheet className="h-4 w-4 mr-1" />}
             Elegir archivo
           </Button>
-          {parsed.length > 0 && (
+          {archivo && (
             <Button size="sm" onClick={() => upload.mutate()} disabled={upload.isPending}>
               {upload.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
-              Importar {parsed.length} movimientos
+              Revisar {parsed.length} movimientos
             </Button>
           )}
         </div>
+        <p className="text-xs text-muted-foreground flex items-start gap-2">
+          <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+          Para mayor precisión utiliza CSV o Excel descargado directamente de tu banca. Los PDF sólo se aceptan
+          cuando ContaClick puede comprobar fechas, sentido y saldos sin ambigüedad.
+        </p>
         {archivo && <p className="text-xs text-muted-foreground">Archivo: {archivo.nombre} · huella {archivo.sha256.slice(0, 12)}… Volver a importarlo no duplica movimientos.</p>}
         {parsingErr && (
           <p className="text-sm text-destructive flex items-start gap-2"><ShieldAlert className="h-4 w-4 mt-0.5 shrink-0" /> {parsingErr}</p>
@@ -452,6 +512,74 @@ function ConciliacionPage() {
           Resumen redactado con IA
         </Button>
       </div>
+
+      {/* ── Vista previa obligatoria de la importación bancaria ───────────── */}
+      <Dialog open={!!preview} onOpenChange={(o) => { if (!o && !confirmar.isPending && !rechazar.isPending) setPreview(null); }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Vista previa de la importación bancaria</DialogTitle>
+            <DialogDescription>
+              Estado: <strong>{ETIQUETA_ESTADO_IMPORTACION[(preview?.importacion?.estado ?? "procesando") as keyof typeof ETIQUETA_ESTADO_IMPORTACION]}</strong>.
+              Nada se concilia ni contabiliza hasta que confirmes.
+            </DialogDescription>
+          </DialogHeader>
+
+          {preview && <PreviewCuerpo preview={preview} />}
+
+          <p className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
+            Compara estos totales con tu estado de cuenta. La conciliación y las pólizas permanecerán bloqueadas
+            hasta confirmar que coinciden.
+          </p>
+
+          {modoRechazo && (
+            <textarea
+              value={motivoRechazo}
+              onChange={(e) => setMotivoRechazo(e.target.value)}
+              rows={3}
+              placeholder={`Explica por qué no coinciden (mínimo ${MOTIVO_MINIMO} caracteres).`}
+              className="w-full rounded-md border bg-background p-2 text-sm"
+            />
+          )}
+
+          {!preview?.importacion?.bloqueada && !modoRechazo && (
+            <label className="flex items-start gap-2 text-sm">
+              <input type="checkbox" className="mt-1" checked={aceptaTotales}
+                onChange={(e) => setAceptaTotales(e.target.checked)} />
+              Confirmo que revisé los totales mostrados y coinciden con mi estado de cuenta.
+            </label>
+          )}
+
+          <DialogFooter className="flex-wrap gap-2">
+            <Button variant="ghost" size="sm" onClick={copiarDiagnostico}>
+              <Info className="h-4 w-4 mr-1" /> Copiar diagnóstico
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setPreview(null)}
+              disabled={confirmar.isPending || rechazar.isPending}>
+              Cancelar
+            </Button>
+            {modoRechazo ? (
+              <Button variant="destructive" size="sm"
+                onClick={() => rechazar.mutate()}
+                disabled={motivoRechazo.trim().length < MOTIVO_MINIMO || rechazar.isPending}>
+                {rechazar.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <X className="h-4 w-4 mr-1" />}
+                No coinciden — Rechazar importación
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => setModoRechazo(true)}>
+                <X className="h-4 w-4 mr-1" /> No coinciden — Rechazar importación
+              </Button>
+            )}
+            {!modoRechazo && (
+              <Button size="sm"
+                onClick={() => confirmar.mutate()}
+                disabled={!aceptaTotales || !!preview?.importacion?.bloqueada || confirmar.isPending}>
+                {confirmar.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}
+                Los totales coinciden — Confirmar importación
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!motivoDialog} onOpenChange={(o) => { if (!o) { setMotivoDialog(null); setMotivo(""); } }}>
         <DialogContent>
@@ -590,6 +718,107 @@ function FilaGrupo({
         </p>
       )}
 
+    </div>
+  );
+}
+
+function pesos(c: number | null | undefined) {
+  if (c == null) return "—";
+  return formateaCentavos(Number(c));
+}
+
+function PreviewCuerpo({ preview }: { preview: any }) {
+  const imp = preview.importacion ?? {};
+  const r = (imp.resumen ?? {}) as any;
+  const incidencias: Incidencia[] = (imp.incidencias ?? []) as Incidencia[];
+  const bloqueos = incidencias.filter((i) => i.severidad === "bloqueo");
+  const avisos = incidencias.filter((i) => i.severidad === "aviso");
+
+  return (
+    <div className="space-y-4 text-sm">
+      <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
+        <Dato k="Banco y cuenta" v={preview.cuenta_etiqueta ?? "—"} />
+        <Dato k="Archivo" v={`${imp.archivo_nombre ?? "—"} (${String(imp.formato ?? "").toUpperCase()})`} />
+        <Dato k="Periodo declarado" v={imp.periodo_declarado ?? "No identificable"} />
+        <Dato k="Movimientos" v={String(r.movimientos ?? 0)} />
+        <Dato k="Fecha mínima" v={r.fecha_min ?? "—"} />
+        <Dato k="Fecha máxima" v={r.fecha_max ?? "—"} />
+        <Dato k="Cargos" v={`${r.cargos_num ?? 0} · ${pesos(r.cargos_centavos)}`} />
+        <Dato k="Abonos" v={`${r.abonos_num ?? 0} · ${pesos(r.abonos_centavos)}`} />
+        <Dato k="Saldo inicial" v={pesos(r.saldo_inicial_centavos)} />
+        <Dato k="Saldo final" v={pesos(r.saldo_final_centavos)} />
+        <Dato k="Movimientos ambiguos" v={String(r.ambiguos ?? 0)} />
+        <Dato k="Fechas fuera del periodo" v={String(r.fuera_periodo ?? 0)} />
+      </dl>
+
+      <div className={`rounded-md border p-3 ${r.ecuacion_evaluable && r.ecuacion_cuadra ? "border-emerald-500/30 bg-emerald-500/5" : "border-destructive/30 bg-destructive/5"}`}>
+        <div className="font-medium">Saldo inicial + abonos − cargos = saldo final</div>
+        <div className="text-xs text-muted-foreground">
+          {r.ecuacion_evaluable
+            ? `${pesos(r.saldo_inicial_centavos)} + ${pesos(r.abonos_centavos)} − ${pesos(r.cargos_centavos)} = ${pesos(r.saldo_final_centavos)} · diferencia ${pesos(r.diferencia_centavos ?? 0)}`
+            : "El archivo no trae saldo en todas las filas: la comprobación aritmética no puede hacerse."}
+        </div>
+      </div>
+
+      {bloqueos.length > 0 && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
+          <div className="font-medium text-destructive flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" /> {bloqueos.length} incidencia(s) impiden confirmar
+          </div>
+          <ul className="mt-1 list-disc pl-5 text-xs space-y-0.5">
+            {bloqueos.slice(0, 20).map((i, k) => <li key={k}>[{i.codigo}] {i.mensaje}</li>)}
+          </ul>
+          {bloqueos.length > 20 && <div className="text-xs text-muted-foreground mt-1">…y {bloqueos.length - 20} más.</div>}
+        </div>
+      )}
+
+      {avisos.length > 0 && (
+        <ul className="list-disc pl-5 text-xs text-muted-foreground space-y-0.5">
+          {avisos.map((i, k) => <li key={k}>[{i.codigo}] {i.mensaje}</li>)}
+        </ul>
+      )}
+
+      <PreviewMuestra filas={preview.muestra ?? []} />
+    </div>
+  );
+}
+
+function Dato({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="flex justify-between gap-3 border-b border-border/40 py-1">
+      <dt className="text-muted-foreground">{k}</dt>
+      <dd className="font-medium text-right">{v}</dd>
+    </div>
+  );
+}
+
+function PreviewMuestra({ filas }: { filas: any[] }) {
+  if (!filas.length) return null;
+  return (
+    <div className="overflow-x-auto rounded-md border">
+      <table className="w-full text-xs">
+        <thead className="bg-muted/40 text-muted-foreground">
+          <tr>
+            <th className="p-2 text-left">Fecha</th>
+            <th className="p-2 text-left">Descripción</th>
+            <th className="p-2 text-right">Cargo</th>
+            <th className="p-2 text-right">Abono</th>
+            <th className="p-2 text-right">Saldo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filas.map((f) => (
+            <tr key={f.fila} className="border-t border-border/40">
+              <td className="p-2">{f.fecha}</td>
+              <td className="p-2">{f.descripcion}</td>
+              <td className="p-2 text-right">{f.cargo ? f.cargo.toFixed(2) : "—"}</td>
+              <td className="p-2 text-right">{f.abono ? f.abono.toFixed(2) : "—"}</td>
+              <td className="p-2 text-right">{f.saldo == null ? "—" : Number(f.saldo).toFixed(2)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="p-2 text-[11px] text-muted-foreground">Muestra de las primeras {filas.length} filas interpretadas.</div>
     </div>
   );
 }
