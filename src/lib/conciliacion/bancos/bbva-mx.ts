@@ -111,6 +111,12 @@ function columnasDeBloqueEncabezado(
   const directa = columnasDeEncabezado(renglon);
   if (directa) return directa;
 
+  const renglonEsEncabezado = renglon.elementos.some((e) => {
+    const t = normaliza(e.texto);
+    return RE_OPER.test(t) || RE_LIQ.test(t) || RE_CARGO.test(t) || RE_ABONO.test(t) || RE_SALDO.test(t);
+  });
+  if (!renglonEsEncabezado) return null;
+
   const cercanos = renglones.filter(
     (otro) => otro.pagina === renglon.pagina && Math.abs(otro.y - renglon.y) <= 24,
   );
