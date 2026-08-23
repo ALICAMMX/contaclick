@@ -99,7 +99,13 @@ function ClientesPage() {
       qc.invalidateQueries({ queryKey: ["usage"] });
       if (active?.id === id) setCliente(null);
     },
+    onError: (e: unknown) => {
+      const msg =
+        e instanceof Error ? e.message : typeof e === "string" ? e : "No se pudo eliminar el expediente.";
+      toast.error(msg);
+    },
   });
+
 
   const expedientesById = useMemo(() => {
     const map = new Map<string, Expediente>();
