@@ -513,6 +513,74 @@ function ConciliacionPage() {
         </Button>
       </div>
 
+      {/* ── Vista previa obligatoria de la importación bancaria ───────────── */}
+      <Dialog open={!!preview} onOpenChange={(o) => { if (!o && !confirmar.isPending && !rechazar.isPending) setPreview(null); }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Vista previa de la importación bancaria</DialogTitle>
+            <DialogDescription>
+              Estado: <strong>{ETIQUETA_ESTADO_IMPORTACION[(preview?.importacion?.estado ?? "procesando") as keyof typeof ETIQUETA_ESTADO_IMPORTACION]}</strong>.
+              Nada se concilia ni contabiliza hasta que confirmes.
+            </DialogDescription>
+          </DialogHeader>
+
+          {preview && <PreviewCuerpo preview={preview} />}
+
+          <p className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
+            Compara estos totales con tu estado de cuenta. La conciliación y las pólizas permanecerán bloqueadas
+            hasta confirmar que coinciden.
+          </p>
+
+          {modoRechazo && (
+            <textarea
+              value={motivoRechazo}
+              onChange={(e) => setMotivoRechazo(e.target.value)}
+              rows={3}
+              placeholder={`Explica por qué no coinciden (mínimo ${MOTIVO_MINIMO} caracteres).`}
+              className="w-full rounded-md border bg-background p-2 text-sm"
+            />
+          )}
+
+          {!preview?.importacion?.bloqueada && !modoRechazo && (
+            <label className="flex items-start gap-2 text-sm">
+              <input type="checkbox" className="mt-1" checked={aceptaTotales}
+                onChange={(e) => setAceptaTotales(e.target.checked)} />
+              Confirmo que revisé los totales mostrados y coinciden con mi estado de cuenta.
+            </label>
+          )}
+
+          <DialogFooter className="flex-wrap gap-2">
+            <Button variant="ghost" size="sm" onClick={copiarDiagnostico}>
+              <Info className="h-4 w-4 mr-1" /> Copiar diagnóstico
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setPreview(null)}
+              disabled={confirmar.isPending || rechazar.isPending}>
+              Cancelar
+            </Button>
+            {modoRechazo ? (
+              <Button variant="destructive" size="sm"
+                onClick={() => rechazar.mutate()}
+                disabled={motivoRechazo.trim().length < MOTIVO_MINIMO || rechazar.isPending}>
+                {rechazar.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <X className="h-4 w-4 mr-1" />}
+                No coinciden — Rechazar importación
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => setModoRechazo(true)}>
+                <X className="h-4 w-4 mr-1" /> No coinciden — Rechazar importación
+              </Button>
+            )}
+            {!modoRechazo && (
+              <Button size="sm"
+                onClick={() => confirmar.mutate()}
+                disabled={!aceptaTotales || !!preview?.importacion?.bloqueada || confirmar.isPending}>
+                {confirmar.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}
+                Los totales coinciden — Confirmar importación
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!motivoDialog} onOpenChange={(o) => { if (!o) { setMotivoDialog(null); setMotivo(""); } }}>
         <DialogContent>
           <DialogHeader>
@@ -651,5 +719,84 @@ function FilaGrupo({
       )}
 
     </div>
+  );
+}
+
+function pesos(c: number | null | undefined) {
+  if (c == null) return "—";
+  return formateaCentavos(Number(c));
+}
+
+function PreviewCuerpo({ preview }: { preview: any }) {
+  const imp = preview.importacion ?? {};
+  const r = (imp.resumen ?? {}) as any;
+  const incidencias: Incidencia[] = (imp.incidencias ?? []) as Incidencia[];
+  const bloqueos = incidencias.filter((i) => i.severidad === "bloqueo");
+  const avisos = incidencias.filter((i) => i.severidad === "aviso");
+
+  return (
+    <div className="space-y-4 text-sm">
+      <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
+        <Dato k="Banco y cuenta" v={preview.cuenta_etiqueta ?? "—"} />
+        <Dato k="Archivo" v={`${imp.archivo_nombre ?? "—"} (${String(imp.formato ?? "").toUpperCase()})`} />
+        <Dato k="Periodo declarado" v={imp.periodo_declarado ?? "No identificable"} />
+        <Dato k="Movimientos" v={String(r.movimientos ?? 0)} />
+        <Dato k="Fecha mínima" v={r.fecha_min ?? "—"} />
+        <Dato k="Fecha máxima" v={r.fecha_max ?? "—"} />
+        <Dato k="Cargos" v={`${r.cargos_num ?? 0} · ${pesos(r.cargos_centavos)}`} />
+        <Dato k="Abonos" v={`${r.abonos_num ?? 0} · ${pesos(r.abonos_centavos)}`} />
+        <Dato k="Saldo inicial" v={pesos(r.saldo_inicial_centavos)} />
+        <Dato k="Saldo final" v={pesos(r.saldo_final_centavos)} />
+        <Dato k="Movimientos ambiguos" v={String(r.ambiguos ?? 0)} />
+        <Dato k="Fechas fuera del periodo" v={String(r.fuera_periodo ?? 0)} />
+      </dl>
+
+      <div className={`rounded-md border p-3 ${r.ecuacion_evaluable && r.ecuacion_cuadra ? "border-emerald-500/30 bg-emerald-500/5" : "border-destructive/30 bg-destructive/5"}`}>
+        <div className="font-medium">Saldo inicial + abonos − cargos = saldo final</div>
+        <div className="text-xs text-muted-foreground">
+          {r.ecuacion_evaluable
+            ? `${pesos(r.saldo_inicial_centavos)} + ${pesos(r.abonos_centavos)} − ${pesos(r.cargos_centavos)} = ${pesos(r.saldo_final_centavos)} · diferencia ${pesos(r.diferencia_centavos ?? 0)}`
+            : "El archivo no trae saldo en todas las filas: la comprobación aritmética no puede hacerse."}
+        </div>
+      </div>
+
+      {bloqueos.length > 0 && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
+          <div className="font-medium text-destructive flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" /> {bloqueos.length} incidencia(s) impiden confirmar
+          </div>
+          <ul className="mt-1 list-disc pl-5 text-xs space-y-0.5">
+            {bloqueos.slice(0, 20).map((i, k) => <li key={k}>[{i.codigo}] {i.mensaje}</li>)}
+          </ul>
+          {bloqueos.length > 20 && <div className="text-xs text-muted-foreground mt-1">…y {bloqueos.length - 20} más.</div>}
+        </div>
+      )}
+
+      {avisos.length > 0 && (
+        <ul className="list-disc pl-5 text-xs text-muted-foreground space-y-0.5">
+          {avisos.map((i, k) => <li key={k}>[{i.codigo}] {i.mensaje}</li>)}
+        </ul>
+      )}
+
+      <PreviewMuestra importacionId={imp.id} />
+    </div>
+  );
+}
+
+function Dato({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="flex justify-between gap-3 border-b border-border/40 py-1">
+      <dt className="text-muted-foreground">{k}</dt>
+      <dd className="font-medium text-right">{v}</dd>
+    </div>
+  );
+}
+
+function PreviewMuestra({ importacionId }: { importacionId?: string }) {
+  if (!importacionId) return null;
+  return (
+    <p className="text-xs text-muted-foreground">
+      Muestra de movimientos disponible en el listado del periodo una vez confirmada la importación.
+    </p>
   );
 }
