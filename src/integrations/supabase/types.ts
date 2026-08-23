@@ -2337,12 +2337,52 @@ export type Database = {
           },
         ]
       }
+      conciliacion_importacion_bitacora: {
+        Row: {
+          actor: string | null
+          cliente_id: string
+          created_at: string
+          despacho_id: string
+          detalle: Json
+          estado_anterior: string | null
+          estado_nuevo: string
+          id: string
+          importacion_id: string
+          motivo: string | null
+        }
+        Insert: {
+          actor?: string | null
+          cliente_id: string
+          created_at?: string
+          despacho_id: string
+          detalle?: Json
+          estado_anterior?: string | null
+          estado_nuevo: string
+          id?: string
+          importacion_id: string
+          motivo?: string | null
+        }
+        Update: {
+          actor?: string | null
+          cliente_id?: string
+          created_at?: string
+          despacho_id?: string
+          detalle?: Json
+          estado_anterior?: string | null
+          estado_nuevo?: string
+          id?: string
+          importacion_id?: string
+          motivo?: string | null
+        }
+        Relationships: []
+      }
       conciliacion_importaciones: {
         Row: {
           actor: string | null
           archivo_bytes: number
           archivo_nombre: string
           archivo_sha256: string
+          bloqueada: boolean
           candidatos_duplicado: number
           cliente_id: string
           created_at: string
@@ -2350,18 +2390,29 @@ export type Database = {
           despacho_id: string
           error: string | null
           estado: string
+          filas_hash: string | null
           filas_insertadas: number
           filas_reimportadas: number
           filas_totales: number
           formato: string
           id: string
+          incidencias: Json
+          motivo_rechazo: string | null
+          parser_version: string
+          periodo_declarado: string | null
           periodo_detectado: string | null
+          rechazada_at: string | null
+          rechazada_por: string | null
+          resumen: Json
+          validada_at: string | null
+          validada_por: string | null
         }
         Insert: {
           actor?: string | null
           archivo_bytes?: number
           archivo_nombre: string
           archivo_sha256: string
+          bloqueada?: boolean
           candidatos_duplicado?: number
           cliente_id: string
           created_at?: string
@@ -2369,18 +2420,29 @@ export type Database = {
           despacho_id: string
           error?: string | null
           estado?: string
+          filas_hash?: string | null
           filas_insertadas?: number
           filas_reimportadas?: number
           filas_totales?: number
           formato?: string
           id?: string
+          incidencias?: Json
+          motivo_rechazo?: string | null
+          parser_version?: string
+          periodo_declarado?: string | null
           periodo_detectado?: string | null
+          rechazada_at?: string | null
+          rechazada_por?: string | null
+          resumen?: Json
+          validada_at?: string | null
+          validada_por?: string | null
         }
         Update: {
           actor?: string | null
           archivo_bytes?: number
           archivo_nombre?: string
           archivo_sha256?: string
+          bloqueada?: boolean
           candidatos_duplicado?: number
           cliente_id?: string
           created_at?: string
@@ -2388,12 +2450,22 @@ export type Database = {
           despacho_id?: string
           error?: string | null
           estado?: string
+          filas_hash?: string | null
           filas_insertadas?: number
           filas_reimportadas?: number
           filas_totales?: number
           formato?: string
           id?: string
+          incidencias?: Json
+          motivo_rechazo?: string | null
+          parser_version?: string
+          periodo_declarado?: string | null
           periodo_detectado?: string | null
+          rechazada_at?: string | null
+          rechazada_por?: string | null
+          resumen?: Json
+          validada_at?: string | null
+          validada_por?: string | null
         }
         Relationships: [
           {
@@ -4050,6 +4122,8 @@ export type Database = {
           no_fiscal: boolean
           referencia: string | null
           saldo: number | null
+          validado_at: string | null
+          validado_por: string | null
         }
         Insert: {
           abono?: number
@@ -4073,6 +4147,8 @@ export type Database = {
           no_fiscal?: boolean
           referencia?: string | null
           saldo?: number | null
+          validado_at?: string | null
+          validado_por?: string | null
         }
         Update: {
           abono?: number
@@ -4096,6 +4172,8 @@ export type Database = {
           no_fiscal?: boolean
           referencia?: string | null
           saldo?: number | null
+          validado_at?: string | null
+          validado_por?: string | null
         }
         Relationships: [
           {
@@ -7378,6 +7456,20 @@ export type Database = {
         Args: { _motivo: string; _movimiento_id: string; _no_fiscal?: boolean }
         Returns: Json
       }
+      conciliacion_importacion_rechazar: {
+        Args: { _actor: string; _importacion_id: string; _motivo: string }
+        Returns: Json
+      }
+      conciliacion_importacion_validar: {
+        Args: {
+          _actor: string
+          _archivo_sha256: string
+          _filas_hash: string
+          _importacion_id: string
+          _parser_version: string
+        }
+        Returns: Json
+      }
       conciliacion_rechazar_grupo: {
         Args: { _grupo_id: string; _motivo: string }
         Returns: Json
@@ -7537,6 +7629,7 @@ export type Database = {
         }
         Returns: number
       }
+      movimiento_operable: { Args: { _mov: string }; Returns: boolean }
       pac_ajustar: {
         Args: { _delta: number; _key: string; _motivo: string }
         Returns: number
