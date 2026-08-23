@@ -114,6 +114,7 @@ function ConciliacionPage() {
   const [aiOpen, setAiOpen] = useState(false);
   const [aiContent, setAiContent] = useState("");
   const [preview, setPreview] = useState<any | null>(null);
+  const [deteccion, setDeteccion] = useState<any | null>(null);
   const [aceptaTotales, setAceptaTotales] = useState(false);
   const [motivoRechazo, setMotivoRechazo] = useState("");
   const [modoRechazo, setModoRechazo] = useState(false);
@@ -158,15 +159,19 @@ function ConciliacionPage() {
   };
 
   const upload = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (vars?: { movimientos?: ParsedMovimiento[]; archivo?: typeof archivo; deteccion?: any }) => {
       if (!cliente) throw new Error("Selecciona un expediente.");
-      if (!archivo) throw new Error("Sube un archivo primero.");
+      const arch = vars?.archivo ?? archivo;
+      const movs = vars?.movimientos ?? parsed;
+      if (!arch) throw new Error("Sube un archivo primero.");
       if (cuentaSel === "__nueva__" && !banco) throw new Error("Selecciona la cuenta bancaria del estado de cuenta.");
       const payload: Record<string, unknown> = {
         cliente_id: cliente.id,
-        archivo,
-        movimientos: prepararMovimientos(parsed),
+        archivo: arch,
+        movimientos: prepararMovimientos(movs),
       };
+      const det = vars?.deteccion ?? deteccion;
+      if (det) payload.deteccion = det;
       if (cuentaSel && cuentaSel !== "__nueva__") payload.cuenta_id = cuentaSel;
       else {
         payload.banco = banco;
@@ -182,7 +187,12 @@ function ConciliacionPage() {
       setMotivoRechazo("");
       if (res.importacion?.estado === "validada") {
         toast.info("Archivo ya validado", { description: res.mensaje });
-        setParsed([]); setArchivo(null); invalidar();
+        setParsed([]); setArchivo(null); setDeteccion(null); invalidar();
+        return;
+      }
+      // Adaptador bancario verificado + saldos cuadrados: se sella sin pasos extra.
+      if (res.auto && res.importacion?.estado === "pendiente_validacion" && !res.importacion?.bloqueada) {
+        confirmar.mutate({ importacion: res.importacion, mensaje: res.mensaje });
         return;
       }
       setPreview(res);
@@ -191,8 +201,8 @@ function ConciliacionPage() {
   });
 
   const confirmar = useMutation({
-    mutationFn: async () => {
-      const imp = preview?.importacion;
+    mutationFn: async (vars?: { importacion?: any; mensaje?: string }) => {
+      const imp = vars?.importacion ?? preview?.importacion;
       return fnConfirmar({ data: {
         cliente_id: cliente!.id,
         importacion_id: imp.id,
@@ -202,12 +212,16 @@ function ConciliacionPage() {
         confirmacion_totales: true,
       } as never });
     },
-    onSuccess: (r: any) => {
-      toast.success(`Importación validada: ${r.movimientos_sellados ?? 0} movimientos quedaron disponibles para conciliar.`);
-      setPreview(null); setParsed([]); setArchivo(null); invalidar();
+    onSuccess: (r: any, vars) => {
+      toast.success(
+        vars?.mensaje ??
+          `Importación validada: ${r.movimientos_sellados ?? 0} movimientos quedaron disponibles para conciliar.`,
+      );
+      setPreview(null); setParsed([]); setArchivo(null); setDeteccion(null); invalidar();
     },
     onError: (e) => toast.error((e as Error).message),
   });
+
 
   const rechazar = useMutation({
     mutationFn: async () => fnRechazar({ data: {
@@ -312,23 +326,41 @@ function ConciliacionPage() {
     setIsParsing(true);
     setParsingErr(null);
     try {
-      const [{ movimientos, text }, sha256] = await Promise.all([parseBankFileWithText(file), sha256Archivo(file)]);
+      const [{ movimientos, text, deteccion: det }, sha256] = await Promise.all([
+        parseBankFileWithText(file),
+        sha256Archivo(file),
+      ]);
       const titular = bankFileMatchesContribuyente(text, { rfc: cliente.rfc, razon_social: cliente.razon_social ?? "" });
       if (!titular.match) {
         setParsingErr(
           `El archivo no parece pertenecer a ${cliente.rfc}. ${titular.reason ?? ""} Verifica que sea el estado de cuenta del expediente activo.`,
         );
-        setParsed([]); setArchivo(null);
+        setParsed([]); setArchivo(null); setDeteccion(null);
         return;
       }
+      const arch = { sha256, nombre: file.name, bytes: file.size, formato: formatoDe(file.name) } as const;
+      const trazable = det
+        ? {
+            banco: det.banco, adaptador: det.adaptador, version: det.version, huella: det.huella,
+            periodo: det.periodo, periodo_inicio: det.periodo_inicio, periodo_fin: det.periodo_fin,
+            confianza: det.confianza, auto: det.auto, puntaje_deteccion: det.puntaje_deteccion,
+            calculado: det.calculado, totales_resumen: det.totales_resumen,
+            ambiguedades: det.problemas.length,
+            trazas: det.movimientos.map((m) => m.traza),
+          }
+        : null;
       setParsed(movimientos);
-      setArchivo({ sha256, nombre: file.name, bytes: file.size, formato: formatoDe(file.name) });
+      setArchivo({ ...arch });
+      setDeteccion(trazable);
+      // Adaptador bancario verificado: se importa sin pedir pasos adicionales.
+      if (det?.auto) upload.mutate({ movimientos, archivo: { ...arch }, deteccion: trazable });
     } catch (e) {
       setParsingErr((e as Error).message);
-      setParsed([]); setArchivo(null);
+      setParsed([]); setArchivo(null); setDeteccion(null);
     } finally {
       setIsParsing(false);
     }
+
   }
 
   function exportar() {
@@ -433,7 +465,7 @@ function ConciliacionPage() {
             Elegir archivo
           </Button>
           {archivo && (
-            <Button size="sm" onClick={() => upload.mutate()} disabled={upload.isPending}>
+            <Button size="sm" onClick={() => upload.mutate({})} disabled={upload.isPending}>
               {upload.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
               Revisar {parsed.length} movimientos
             </Button>
@@ -571,7 +603,7 @@ function ConciliacionPage() {
             )}
             {!modoRechazo && (
               <Button size="sm"
-                onClick={() => confirmar.mutate()}
+                onClick={() => confirmar.mutate({})}
                 disabled={!aceptaTotales || !!preview?.importacion?.bloqueada || confirmar.isPending}>
                 {confirmar.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}
                 Los totales coinciden — Confirmar importación

@@ -69,6 +69,49 @@ const ArchivoSchema = z.object({
   formato: z.enum(["csv", "xlsx", "pdf", "manual"]).default("csv"),
 });
 
+/** Trazabilidad posicional de una fila leída de un PDF bancario. */
+const TrazaSchema = z.object({
+  pagina: z.number().int().min(0).max(9999),
+  fila_visual: z.number().int().min(0).max(99999),
+  columna_importe: z.enum(["cargo", "abono"]),
+  x_columna: z.number().finite(),
+  x_saldo: z.number().finite().nullable().default(null),
+  texto_original: z.string().max(160).default(""),
+  fecha_operacion: z.string().max(20),
+  fecha_liquidacion: z.string().max(20).nullable().default(null),
+  evidencia_sentido: z.enum(["columna", "columna+saldo"]),
+});
+
+const DeteccionSchema = z.object({
+  banco: z.string().max(60),
+  adaptador: z.string().max(40),
+  version: z.string().max(60),
+  huella: z.string().max(40),
+  periodo: z.string().max(7).nullable().default(null),
+  periodo_inicio: z.string().max(10).nullable().default(null),
+  periodo_fin: z.string().max(10).nullable().default(null),
+  confianza: z.enum(["alta", "revision", "insuficiente"]),
+  auto: z.boolean().default(false),
+  puntaje_deteccion: z.number().finite().default(0),
+  calculado: z.object({
+    filas: z.number().finite(),
+    cargos: z.number().finite(),
+    abonos: z.number().finite(),
+    saldo_inicial: z.number().finite().nullable(),
+    saldo_final: z.number().finite().nullable(),
+    diferencia: z.number().finite(),
+    orden: z.string().max(20),
+  }),
+  totales_resumen: z.object({
+    cargos: z.number().finite().nullable(),
+    abonos: z.number().finite().nullable(),
+    saldo_inicial: z.number().finite().nullable(),
+    saldo_final: z.number().finite().nullable(),
+  }),
+  ambiguedades: z.number().int().min(0).default(0),
+  trazas: z.array(TrazaSchema).max(5000).default([]),
+});
+
 const UploadSchema = z.object({
   cliente_id: z.string().uuid(),
   cuenta_id: z.string().uuid().optional(),
@@ -79,7 +122,10 @@ const UploadSchema = z.object({
   /** Identidad del archivo importado: permite reimportación idempotente. */
   archivo: ArchivoSchema,
   movimientos: z.array(MovimientoLeidoSchema).max(5000),
+  /** Adaptador bancario que leyó el PDF por columnas (sólo trazabilidad). */
+  deteccion: DeteccionSchema.optional(),
 });
+
 
 function normalizeUploadPayload(value: unknown) {
   if (!value || typeof value !== "object") return value;

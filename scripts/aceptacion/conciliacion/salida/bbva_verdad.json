@@ -1,0 +1,62 @@
+{
+  "archivo": "/dev-server/scripts/aceptacion/conciliacion/salida/bbva_sintetico.pdf",
+  "periodo": {
+    "inicio": "2025-12-26",
+    "fin": "2026-01-25"
+  },
+  "saldo_inicial": 100000.0,
+  "saldo_final": 100351.5,
+  "cargos": 51899.0,
+  "abonos": 52250.5,
+  "movimientos": [
+    {
+      "fecha": "2025-12-30",
+      "descripcion": "SPEI ENVIADO STP BANCO DEMO",
+      "cargo": 19800.0,
+      "abono": 0,
+      "saldo": 80200.0
+    },
+    {
+      "fecha": "2025-12-30",
+      "descripcion": "SPEI ENVIADO SUSCRIPCION DIGITAL",
+      "cargo": 28700.0,
+      "abono": 0,
+      "saldo": 51500.0
+    },
+    {
+      "fecha": "2025-12-31",
+      "descripcion": "PAGO CUENTA DE TERCERO",
+      "cargo": 1049.0,
+      "abono": 0,
+      "saldo": 50451.0
+    },
+    {
+      "fecha": "2026-01-02",
+      "descripcion": "RETIRO CAJERO AUTOMATICO",
+      "cargo": 2000.0,
+      "abono": 0,
+      "saldo": 48451.0
+    },
+    {
+      "fecha": "2026-01-05",
+      "descripcion": "SPEI RECIBIDO CLIENTE FACTURA",
+      "cargo": 0,
+      "abono": 45000.0,
+      "saldo": 93451.0
+    },
+    {
+      "fecha": "2026-01-10",
+      "descripcion": "DEPOSITO EN EFECTIVO SUCURSAL",
+      "cargo": 0,
+      "abono": 7250.5,
+      "saldo": 100701.5
+    },
+    {
+      "fecha": "2026-01-15",
+      "descripcion": "COMISION MANEJO DE CUENTA",
+      "cargo": 350.0,
+      "abono": 0,
+      "saldo": 100351.5
+    }
+  ]
+}

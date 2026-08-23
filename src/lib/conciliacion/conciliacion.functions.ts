@@ -136,12 +136,21 @@ export const previsualizarImportacion = createServerFn({ method: "POST" })
       moneda: m.moneda,
     }));
 
-    const periodoDeclarado = data.periodo_declarado ?? periodoDominante(filas);
+    const periodoDeclarado = data.periodo_declarado ?? data.deteccion?.periodo ?? periodoDominante(filas);
     const analisis = analizarImportacion({
       movimientos: filas,
       periodo_declarado: periodoDeclarado,
       cuenta_seleccionada: true,
+      periodo_rango:
+        data.deteccion?.periodo_inicio && data.deteccion?.periodo_fin
+          ? { inicio: data.deteccion.periodo_inicio, fin: data.deteccion.periodo_fin }
+          : null,
     });
+    // Trazabilidad del lector: banco, adaptador, huella, saldos y filas.
+    const resumenConTraza = data.deteccion
+      ? { ...analisis.resumen, adaptador: { ...data.deteccion, validacion: data.deteccion.auto ? "automatica" : "humana" } }
+      : analisis.resumen;
+
     const filasHash = await sha256Hex(serializacionCanonica(filas));
 
     const { data: imp, error: impErr } = await supabase
@@ -257,7 +266,7 @@ export const previsualizarImportacion = createServerFn({ method: "POST" })
       .update({
         estado: "pendiente_validacion",
         bloqueada: analisis.bloqueada,
-        resumen: analisis.resumen as never,
+        resumen: resumenConTraza as never,
         incidencias: incidencias as never,
         filas_insertadas: insertadas,
         candidatos_duplicado: candidatos,
@@ -280,19 +289,35 @@ export const previsualizarImportacion = createServerFn({ method: "POST" })
         filas: filas.length,
         bloqueada: analisis.bloqueada,
         incidencias: incidenciasPorCodigo(incidencias),
+        adaptador: data.deteccion
+          ? {
+              banco: data.deteccion.banco,
+              adaptador: data.deteccion.adaptador,
+              version: data.deteccion.version,
+              huella: data.deteccion.huella,
+              confianza: data.deteccion.confianza,
+              auto: data.deteccion.auto,
+              diferencia: data.deteccion.calculado.diferencia,
+            }
+          : null,
       },
     });
 
+    const auto = !!data.deteccion?.auto && !analisis.bloqueada;
     return {
       cuenta_id: cuentaId,
       cuenta_etiqueta: cuentaEtiqueta,
       importacion: actualizada,
       muestra: muestraDe(filas),
       reimportacion: false,
+      auto,
       mensaje: analisis.bloqueada
         ? "La lectura tiene incidencias que impiden incorporar el archivo. Revisa el detalle."
-        : "Vista previa lista. Compara los totales con tu estado de cuenta antes de confirmar.",
+        : auto
+          ? `PDF ${data.deteccion!.banco} validado: ${filas.length} movimientos, ${data.deteccion!.calculado.cargos.toLocaleString("es-MX", { style: "currency", currency: "MXN" })} en cargos y ${data.deteccion!.calculado.abonos.toLocaleString("es-MX", { style: "currency", currency: "MXN" })} en abonos. Los saldos cuadran con el estado de cuenta.`
+          : "Vista previa lista. Compara los totales con tu estado de cuenta antes de confirmar.",
     };
+
   });
 
 // ─────────────────────────────────────────────────────────────────────────────
