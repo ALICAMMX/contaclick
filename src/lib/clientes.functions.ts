@@ -229,10 +229,26 @@ export const deleteCliente = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.from("clientes").delete().eq("id", data.id);
-    if (error) throw new Error(error.message);
-    return { ok: true };
+    // Escritura canónica: RPC SECURITY DEFINER que valida permisos y devuelve recibo.
+    const { data: recibo, error } = await context.supabase.rpc("cliente_eliminar", {
+      p_cliente_id: data.id,
+    });
+    if (error) throw new Error(error.message || "No se pudo eliminar el expediente.");
+    const r = recibo as { ok?: boolean; eliminado?: boolean; motivo?: string } | null;
+    if (!r?.ok) throw new Error("No se pudo eliminar el expediente. Intenta de nuevo.");
+    if (!r.eliminado) throw new Error(r.motivo ?? "El expediente ya no existe.");
+
+    // Verificación: la fila no debe seguir existiendo.
+    const { data: sigue } = await context.supabase
+      .from("clientes")
+      .select("id")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (sigue) throw new Error("El expediente no pudo eliminarse. Contacta al administrador del despacho.");
+
+    return { ok: true as const, id: data.id };
   });
+
 
 const UpsertFromCsfSchema = z.object({
   rfc: z.string().regex(RFC_REGEX, "RFC inválido").transform((s) => s.toUpperCase()),

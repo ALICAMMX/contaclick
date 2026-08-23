@@ -7355,6 +7355,7 @@ export type Database = {
         }
         Returns: Json
       }
+      cliente_eliminar: { Args: { p_cliente_id: string }; Returns: Json }
       conciliacion_confirmar_grupo: {
         Args: { _grupo_id: string; _motivo?: string }
         Returns: Json
