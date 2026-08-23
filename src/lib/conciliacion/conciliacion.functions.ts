@@ -486,6 +486,8 @@ export const runReconciliation = createServerFn({ method: "POST" })
         .from("movimientos_bancarios")
         .select("id, fecha, cargo, abono, descripcion, referencia, moneda, no_fiscal, ignorado_at, importe_centavos")
         .eq("cliente_id", clienteId)
+        // Candado: sólo movimientos cuya importación validó una persona.
+        .not("validado_at", "is", null)
         .gte("fecha", desde)
         .lt("fecha", hastaExclusivo),
       supabase
@@ -674,7 +676,8 @@ export const getReconciliationStats = createServerFn({ method: "POST" })
     let movQ = supabase
       .from("movimientos_bancarios")
       .select("id, cargo, abono, importe_centavos, no_fiscal, ignorado_at")
-      .eq("cliente_id", data.cliente_id);
+      .eq("cliente_id", data.cliente_id)
+      .not("validado_at", "is", null);
     let cfdiQ = supabase
       .from("cfdi_xml")
       .select("id, total, estatus_sat, tipo_cfdi, metodo_pago")

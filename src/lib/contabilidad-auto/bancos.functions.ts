@@ -54,6 +54,8 @@ export const listarMovimientosSinPoliza = createServerFn({ method: "POST" })
       .from("movimientos_bancarios")
       .select("id, fecha, descripcion, referencia, cargo, abono, cuenta_id")
       .eq("cliente_id", data.cliente_id)
+      // Sólo movimientos de importaciones validadas por una persona.
+      .not("validado_at", "is", null)
       .order("fecha", { ascending: false })
       .limit(data.limit);
     if (data.desde) q = q.gte("fecha", data.desde);
@@ -92,7 +94,7 @@ export const generarPolizasDesdeMovimientos = createServerFn({ method: "POST" })
 
     const { data: movs, error } = await supabase
       .from("movimientos_bancarios")
-      .select("id, fecha, descripcion, referencia, cargo, abono")
+      .select("id, fecha, descripcion, referencia, cargo, abono, validado_at, importacion_id")
       .eq("cliente_id", scope.cliente_id)
       .in("id", data.movimiento_ids);
     if (error) throw new Error(error.message);
@@ -121,6 +123,15 @@ export const generarPolizasDesdeMovimientos = createServerFn({ method: "POST" })
     let omitidos = 0;
 
     for (const m of movs ?? []) {
+      if (!(m as any).validado_at) {
+        omitidos++;
+        detalle.push({
+          movimiento_id: m.id,
+          accion: "omitida",
+          motivo: "La importación bancaria de origen aún no ha sido validada por una persona.",
+        });
+        continue;
+      }
       const cargo = cent(m.cargo);
       const abono = cent(m.abono);
       if (cargo === 0 && abono === 0) {
