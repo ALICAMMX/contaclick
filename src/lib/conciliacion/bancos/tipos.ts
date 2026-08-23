@@ -45,9 +45,14 @@ export type FilaBancaria = {
   referencia: string | null;
   cargo: number;
   abono: number;
+  /** Saldo usado para validar: liquidación si existe, si no operación. */
   saldo: number | null;
+  /** BBVA imprime dos columnas de saldo; se conservan por separado. */
+  saldo_operacion?: number | null;
+  saldo_liquidacion?: number | null;
   traza: TrazaFila;
 };
+
 
 export type CodigoProblema =
   | "PERIODO_NO_DETECTADO"

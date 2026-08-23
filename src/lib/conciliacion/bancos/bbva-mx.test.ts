@@ -311,3 +311,98 @@ describe("registro de adaptadores · fallback cerrado", () => {
     expect(r.problemas.map((p) => p.codigo)).toContain("FORMATO_NO_RECONOCIDO");
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REGRESIÓN DE LA VARIANTE HISTÓRICA BBVA (huella de formato 51f8a291)
+// Reproduce SÓLO la geometría observada en un estado de cuenta real: encabezado
+// de dos niveles con etiquetas fusionadas por pdf.js, cuatro columnas numéricas
+// alineadas a la derecha, dos columnas de saldo (operación y liquidación) y
+// saldos impresos de forma dispersa. No contiene datos de ningún contribuyente.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("BBVA · variante de dos niveles con saldos dispersos", () => {
+  const R = { cargo: 417.4, abono: 457.8, saldoOp: 512.9, saldoLiq: 594.5 };
+
+  /** Importe alineado por su borde DERECHO, como lo imprime el banco. */
+  const der = (pagina: number, valor: number, xDer: number, y: number): ElementoPdf => {
+    const texto = valor.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const ancho = texto.length * 4.6;
+    return el(pagina, texto, xDer - ancho, y, ancho);
+  };
+
+  type Fila = {
+    oper: string; liq: string; desc: string; desc2?: string;
+    cargo?: number; abono?: number; saldoOp?: number; saldoLiq?: number;
+  };
+
+  function documento(filas: Fila[]): ElementoPdf[] {
+    const out: ElementoPdf[] = [
+      el(1, "BBVA BANCOMER, S.A.", 40, 760, 120),
+      el(1, "Periodo DEL 25/12/2021 AL 24/01/2022", 40, 745, 200),
+      // Nivel 1 y nivel 2 del encabezado, con textos fusionados por pdf.js.
+      el(1, "FECHA", 40, 275, 34),
+      el(1, "SALDO", 520, 275, 34),
+      el(1, "OPER", 40, 265.5, 24),
+      el(1, "LIQ", 78, 265.5, 18),
+      el(1, "COD. DESCRIPCIÓN / REFERENCIA", 112, 265.5, 160),
+      el(1, "CARGOS ABONOS OPERACION", 380, 255.5, 150),
+      el(1, "LIQUIDACION", 560, 255.5, 60),
+    ];
+    let y = 239;
+    for (const f of filas) {
+      out.push(el(1, f.oper, 40, y, 24), el(1, f.liq, 78, y, 24), el(1, f.desc, 112, y, f.desc.length * 4.6));
+      if (f.cargo) out.push(der(1, f.cargo, R.cargo, y));
+      if (f.abono) out.push(der(1, f.abono, R.abono, y));
+      if (f.saldoOp != null) out.push(der(1, f.saldoOp, R.saldoOp, y));
+      if (f.saldoLiq != null) out.push(der(1, f.saldoLiq, R.saldoLiq, y));
+      y -= 11;
+      if (f.desc2) {
+        out.push(el(1, f.desc2, 118, y, f.desc2.length * 4.6));
+        y -= 11;
+      }
+    }
+    out.push(el(1, "Total de Movimientos", 112, y - 20, 100));
+    return out;
+  }
+
+  const FILAS: Fila[] = [
+    { oper: "27/DIC", liq: "27/DIC", desc: "PAGO CUENTA DE TERCERO", desc2: "REFERENCIA 0001234567", abono: 1000, saldoOp: 1486, saldoLiq: 1486 },
+    { oper: "28/DIC", liq: "29/DIC", desc: "SPEI ENVIADO PROVEEDOR", cargo: 486 },
+    { oper: "29/DIC", liq: "30/DIC", desc: "RETIRO CAJERO AUTOMATICO", cargo: 500, saldoOp: 500, saldoLiq: 986 },
+    { oper: "10/ENE", liq: "10/ENE", desc: "SPEI RECIBIDO CLIENTE", abono: 2000 },
+    { oper: "20/ENE", liq: "20/ENE", desc: "COMISION MANEJO DE CUENTA", cargo: 250, saldoOp: 2250, saldoLiq: 2250 },
+  ];
+
+  it("lee las 5 filas, separa ambas columnas de saldo y cuadra la ecuación", () => {
+    const r = leerBbvaDesdeElementos(documento(FILAS));
+    expect(r.adaptador).toBe("bbva-mx");
+    expect(r.movimientos).toHaveLength(5);
+    expect(r.problemas).toEqual([]);
+    expect(r.auto).toBe(true);
+    expect(Math.round(r.calculado.saldo_inicial! * 100)).toBe(48600);
+    expect(Math.round(r.calculado.saldo_final! * 100)).toBe(225000);
+    expect(Math.round(r.calculado.diferencia * 100)).toBe(0);
+    expect(r.movimientos.filter((m) => m.cargo > 0)).toHaveLength(3);
+    // La cadena aritmética usa el saldo de OPERACIÓN; el de liquidación se conserva.
+    expect(r.movimientos[2].saldo_operacion).toBe(500);
+    expect(r.movimientos[2].saldo_liquidacion).toBe(986);
+  });
+
+  it("no marca contradicción por 'PAGO CUENTA DE TERCERO', que BBVA usa en ambos sentidos", () => {
+    const r = leerBbvaDesdeElementos(documento(FILAS));
+    expect(r.problemas.map((p) => p.codigo)).not.toContain("CONTRADICCION_DESCRIPCION");
+    expect(r.movimientos[0].abono).toBe(1000);
+  });
+
+  it("no pierde el primer movimiento pegado al bloque de encabezado", () => {
+    const r = leerBbvaDesdeElementos(documento(FILAS));
+    expect(r.movimientos[0]).toMatchObject({ fecha: "2021-12-27", abono: 1000, cargo: 0 });
+    expect(r.movimientos[0].descripcion).toContain("REFERENCIA 0001234567");
+  });
+
+  it("deja de leer en 'Total de Movimientos'", () => {
+    const elementos = documento(FILAS);
+    elementos.push(el(1, "31/ENE", 40, 60, 24), el(1, "AVISO PUBLICITARIO", 112, 60, 90));
+    const r = leerBbvaDesdeElementos(elementos);
+    expect(r.movimientos).toHaveLength(5);
+  });
+});

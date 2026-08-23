@@ -1490,3 +1490,25 @@ hasta que se vuelva a importar el estado de cuenta.
 **Pruebas.** 19 casos deterministas de importación y parser, todos en verde.
 
 **ACEPTACION_REAL_PENDIENTE** — falta que el suscriptor recargue su PDF y confirme que los totales coinciden.
+
+## 2026-08-24 — Adaptador BBVA aceptado contra estado de cuenta real (dic 2021 – ene 2022)
+Huella de formato: `51f8a291`. No se conserva el PDF ni ningún dato del contribuyente.
+
+Defectos corregidos:
+1. **Se perdía el primer movimiento**: el corte del encabezado era por distancia
+   vertical fija (24 px) y se comía el primer renglón. Ahora el bloque de
+   encabezado termina en el primer renglón que trae fecha o importe.
+2. **Descripción vacía**: cuando el banco imprime `COD. DESCRIPCIÓN / REFERENCIA`
+   como un solo texto, no existen dos columnas; se tomaba `REFERENCIA` como
+   frontera y la zona de descripción quedaba vacía.
+3. **Cadena de saldos incorrecta**: BBVA imprime dos saldos (operación y
+   liquidación) y las filas van en orden de fecha de OPERACIÓN. La validación
+   aritmética ahora recorre el saldo de operación; el de liquidación se guarda
+   aparte y es el que se muestra como saldo del movimiento.
+4. **Falsa contradicción de sentido**: `PAGO CUENTA DE TERCERO` se usa igual para
+   enviar y recibir; se retiró del léxico de cargos.
+5. Totales impresos: se reconocen también `TOTAL DE CARGOS` / `TOTAL DE ABONOS`.
+
+Resultado verificado: adaptador `bbva-mx`, auto `true`, 40 movimientos,
+29 cargos, saldo inicial 48,600 centavos, saldo final 3,657,563 centavos,
+diferencia 0, ambiguos 0, importación no bloqueada. 57/57 pruebas.
