@@ -1512,3 +1512,6 @@ Defectos corregidos:
 Resultado verificado: adaptador `bbva-mx`, auto `true`, 40 movimientos,
 29 cargos, saldo inicial 48,600 centavos, saldo final 3,657,563 centavos,
 diferencia 0, ambiguos 0, importación no bloqueada. 57/57 pruebas.
+
+## 2026-08-25 — Workflows: "Carga de XML" fallaba en cada ejecución
+Los workflows guardados conservaban acciones sin implementación (validar_cfdi, auditor_express, actualizar_score_riesgo) y el motor fallaba cerrado en cada corrida. Ahora el grafo se depura al ejecutar (y se persiste la limpieza), se limpiaron los workflows existentes en base, y una condición sin datos verificables queda como *omitida* (detiene el flujo sin ejecutar nada) en vez de marcar la corrida como fallida.

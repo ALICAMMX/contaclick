@@ -8,7 +8,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 import { resolveActiveDespachoId } from "@/lib/despacho/resolve";
-import { accionImplementada, condicionImplementada, catalogEntry, nextRunFromFrecuencia, type WorkflowNode, type WorkflowEdge } from "./catalogo";
+import { accionImplementada, condicionImplementada, catalogEntry, nextRunFromFrecuencia, sanitizarGrafo, type WorkflowNode, type WorkflowEdge } from "./catalogo";
 
 type WorkflowRow = {
   id: string;
@@ -194,11 +194,24 @@ function orderNodes(wf: WorkflowRow): WorkflowNode[] {
 
 async function runWorkflowInternal(
   supabase: any,
-  wf: WorkflowRow,
+  wfOriginal: WorkflowRow,
   payload: any,
   userId: string | null,
 ): Promise<{ runId: string; status: "exito" | "fallido" | "parcial" }> {
   const startedAt = new Date();
+
+  // Los workflows guardados antes del catálogo actual pueden contener acciones
+  // sin implementación. Se depuran del grafo (y se persiste la limpieza) en vez
+  // de hacer fallar cada ejecución.
+  const limpio = sanitizarGrafo({ nodes: wfOriginal.nodes ?? [], edges: wfOriginal.edges ?? [] });
+  const wf: WorkflowRow = { ...wfOriginal, nodes: limpio.nodes, edges: limpio.edges };
+  if (limpio.omitidos.length) {
+    await supabase
+      .from("workflows")
+      .update({ nodes: limpio.nodes, edges: limpio.edges })
+      .eq("id", wf.id);
+  }
+
   const { data: runRow, error: runErr } = await supabase
     .from("workflow_runs")
     .insert({
@@ -218,6 +231,7 @@ async function runWorkflowInternal(
   const clienteId: string | null = runRow.cliente_id;
 
   const ordered = orderNodes(wf);
+
   let okCount = 0;
   let failCount = 0;
   let stoppedByCondition = false;
@@ -255,13 +269,13 @@ async function runWorkflowInternal(
     } else if (node.type === "condition") {
       const r = evaluarCondicion(node.kind, node.params ?? {}, lastOutput);
       if (!r.evaluable) {
-        // Fallo cerrado: no se declara resultado y nada continúa después.
+        // Fallo cerrado: sin datos verificables no se declara resultado y nada
+        // continúa después. No es un error del workflow: queda como omitido.
         output = { evaluacion: null, bloqueada: true, motivo: r.motivo };
-        err = r.motivo;
-        status = "fallido";
-        failCount++;
+        status = "omitido";
         stoppedByCondition = true;
       } else {
+
         output = { evaluacion: r.pasa };
         if (!r.pasa) stoppedByCondition = true;
         okCount++;

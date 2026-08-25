@@ -378,12 +378,13 @@ export const CONDICIONES_DISPONIBLES: CatalogEntry[] = Object.values(CONDITIONS)
 export const ACCIONES_DISPONIBLES: CatalogEntry[] = Object.values(ACTIONS).filter((a) => a.implementada !== false);
 
 /**
- * Quita de una plantilla los nodos cuya acción no está implementada y vuelve a
- * unir la cadena, para que las plantillas nunca creen automatizaciones falsas.
+ * Quita de un grafo los nodos cuya acción no está implementada y vuelve a unir
+ * la cadena, para que nunca se ejecuten (ni presenten) automatizaciones falsas.
  */
-export function sanitizarPlantilla(tpl: WorkflowTemplate): { nodes: WorkflowNode[]; edges: WorkflowEdge[]; omitidos: string[] } {
-  const omitidos = tpl.nodes.filter((n) => n.type === "action" && !accionImplementada(n.kind)).map((n) => n.id);
-  if (!omitidos.length) return { nodes: tpl.nodes, edges: tpl.edges, omitidos };
+export function sanitizarGrafo(tpl: { nodes: WorkflowNode[]; edges: WorkflowEdge[] }): { nodes: WorkflowNode[]; edges: WorkflowEdge[]; omitidos: string[] } {
+  const omitidos = (tpl.nodes ?? []).filter((n) => n.type === "action" && !accionImplementada(n.kind)).map((n) => n.id);
+  if (!omitidos.length) return { nodes: tpl.nodes ?? [], edges: tpl.edges ?? [], omitidos };
+
 
   const fuera = new Set(omitidos);
   const nodes = tpl.nodes.filter((n) => !fuera.has(n.id));
@@ -409,3 +410,8 @@ export function sanitizarPlantilla(tpl: WorkflowTemplate): { nodes: WorkflowNode
   return { nodes, edges, omitidos };
 }
 
+
+/** Compatibilidad: sanitiza una plantilla del catálogo. */
+export function sanitizarPlantilla(tpl: WorkflowTemplate) {
+  return sanitizarGrafo(tpl);
+}
