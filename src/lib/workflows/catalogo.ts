@@ -410,3 +410,8 @@ export function sanitizarGrafo(tpl: { nodes: WorkflowNode[]; edges: WorkflowEdge
   return { nodes, edges, omitidos };
 }
 
+
+/** Compatibilidad: sanitiza una plantilla del catálogo. */
+export function sanitizarPlantilla(tpl: WorkflowTemplate) {
+  return sanitizarGrafo(tpl);
+}
