@@ -8,7 +8,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 import { resolveActiveDespachoId } from "@/lib/despacho/resolve";
-import { accionImplementada, condicionImplementada, catalogEntry, nextRunFromFrecuencia, type WorkflowNode, type WorkflowEdge } from "./catalogo";
+import { accionImplementada, condicionImplementada, catalogEntry, nextRunFromFrecuencia, sanitizarGrafo, type WorkflowNode, type WorkflowEdge } from "./catalogo";
 
 type WorkflowRow = {
   id: string;
