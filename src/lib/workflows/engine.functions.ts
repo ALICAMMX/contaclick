@@ -269,13 +269,13 @@ async function runWorkflowInternal(
     } else if (node.type === "condition") {
       const r = evaluarCondicion(node.kind, node.params ?? {}, lastOutput);
       if (!r.evaluable) {
-        // Fallo cerrado: no se declara resultado y nada continúa después.
+        // Fallo cerrado: sin datos verificables no se declara resultado y nada
+        // continúa después. No es un error del workflow: queda como omitido.
         output = { evaluacion: null, bloqueada: true, motivo: r.motivo };
-        err = r.motivo;
-        status = "fallido";
-        failCount++;
+        status = "omitido";
         stoppedByCondition = true;
       } else {
+
         output = { evaluacion: r.pasa };
         if (!r.pasa) stoppedByCondition = true;
         okCount++;
