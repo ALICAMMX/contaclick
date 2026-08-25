@@ -194,11 +194,24 @@ function orderNodes(wf: WorkflowRow): WorkflowNode[] {
 
 async function runWorkflowInternal(
   supabase: any,
-  wf: WorkflowRow,
+  wfOriginal: WorkflowRow,
   payload: any,
   userId: string | null,
 ): Promise<{ runId: string; status: "exito" | "fallido" | "parcial" }> {
   const startedAt = new Date();
+
+  // Los workflows guardados antes del catálogo actual pueden contener acciones
+  // sin implementación. Se depuran del grafo (y se persiste la limpieza) en vez
+  // de hacer fallar cada ejecución.
+  const limpio = sanitizarGrafo({ nodes: wfOriginal.nodes ?? [], edges: wfOriginal.edges ?? [] });
+  const wf: WorkflowRow = { ...wfOriginal, nodes: limpio.nodes, edges: limpio.edges };
+  if (limpio.omitidos.length) {
+    await supabase
+      .from("workflows")
+      .update({ nodes: limpio.nodes, edges: limpio.edges })
+      .eq("id", wf.id);
+  }
+
   const { data: runRow, error: runErr } = await supabase
     .from("workflow_runs")
     .insert({
@@ -218,6 +231,7 @@ async function runWorkflowInternal(
   const clienteId: string | null = runRow.cliente_id;
 
   const ordered = orderNodes(wf);
+
   let okCount = 0;
   let failCount = 0;
   let stoppedByCondition = false;
