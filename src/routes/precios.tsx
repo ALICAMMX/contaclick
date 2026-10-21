@@ -17,6 +17,7 @@ import {
   type PlanId,
 } from "@/lib/payments/plans";
 import { CAPABILITIES } from "@/lib/capabilities/registry";
+import { nivelDeCapacidad } from "@/lib/capabilities/enfoque";
 
 export const Route = createFileRoute("/precios")({
   head: () => ({
@@ -78,7 +79,8 @@ function PreciosPage() {
       c.visibleEnMenu &&
       c.madurez !== "obsoleta" &&
       c.permiso !== "super_admin" &&
-      modulosVisibles.includes(c.modulo),
+      modulosVisibles.includes(c.modulo) &&
+      nivelDeCapacidad(c) !== "oculta",
   );
 
   return (

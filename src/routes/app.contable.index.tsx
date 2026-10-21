@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { computeRiesgoSAT } from "@/lib/riesgo/riesgo.functions";
 import { getCfdiMonthStats } from "@/lib/cfdi/cfdi.functions";
 import { CAPABILITIES, type Capability } from "@/lib/capabilities/registry";
+import { nivelDeCapacidad } from "@/lib/capabilities/enfoque";
 import { CapabilityCard } from "@/components/CapabilityCard";
 
 export const Route = createFileRoute("/app/contable/")({ component: ContableCatalog });
@@ -25,7 +26,11 @@ export const GRUPOS_CONTABLE = [
 
 // El catálogo se deriva del registro central: no existen listas paralelas.
 const TOOLS = CAPABILITIES.filter(
-  (c) => GRUPOS_CONTABLE.includes(c.grupo) && c.visibleEnMenu && c.madurez !== "obsoleta",
+  (c) =>
+    GRUPOS_CONTABLE.includes(c.grupo) &&
+    c.visibleEnMenu &&
+    c.madurez !== "obsoleta" &&
+    nivelDeCapacidad(c) !== "oculta",
 );
 
 const HECHO_ESTE_MES = new Set(["conciliacion-historial", "riesgo", "efos-validator"]);

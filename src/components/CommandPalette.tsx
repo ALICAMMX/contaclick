@@ -12,19 +12,23 @@ import {
 } from "@/components/ui/command";
 import { TOOLS } from "@/lib/tools/registry";
 import { getCapabilityByRoute } from "@/lib/capabilities/registry";
+import { rutaVisible } from "@/lib/capabilities/enfoque";
 
 type NavItem = { label: string; route: string; hint?: string };
 
-const MODULES: NavItem[] = [
-  { label: "Inicio", route: "/app", hint: "Hub principal" },
-  { label: "Dashboard del despacho", route: "/app/despacho", hint: "Resumen consolidado" },
+const MODULES_TODOS: NavItem[] = [
+  { label: "Inicio", route: "/app", hint: "Flujo del mes" },
+  { label: "Ruta guiada", route: "/app/inicio-guiado", hint: "Qué falta este mes" },
+  { label: "Cartera del despacho", route: "/app/despacho", hint: "Todos tus RFC" },
   { label: "Expedientes", route: "/app/clientes", hint: "Clientes / RFCs" },
-  { label: "Contable y Fiscal", route: "/app/contable", hint: "Catálogo módulo 1" },
-  { label: "Administrativo & RH", route: "/app/admin", hint: "Catálogo módulo 2" },
+  { label: "Cierre del mes", route: "/app/cierre", hint: "Sello del periodo" },
+  { label: "Administrativo & RH", route: "/app/admin/", hint: "Catálogo módulo 2" },
   { label: "Inteligencia Legal", route: "/app/legal", hint: "Catálogo legal" },
   { label: "Equipo", route: "/app/equipo" },
   { label: "Configuración", route: "/app/configuracion" },
 ];
+// Sólo lo que está dentro del enfoque del producto (ver capabilities/enfoque.ts).
+const MODULES = MODULES_TODOS.filter((m) => rutaVisible(m.route));
 
 // Herramientas/módulos nuevos que no viven bajo /app/tools y por eso no
 // estaban en el registry. Los listamos aquí para que aparezcan en ⌘K.
@@ -81,8 +85,10 @@ const EXTRA_TOOLS: { label: string; route: string; hint: string; category: strin
 // La paleta no puede ofrecer atajos a funciones que el registro oculta.
 const VISIBLE_EXTRA = EXTRA_TOOLS.filter((t) => {
   const c = getCapabilityByRoute(t.route);
-  return !c || (c.visibleEnMenu && c.madurez !== "obsoleta");
+  if (c && (!c.visibleEnMenu || c.madurez === "obsoleta")) return false;
+  return rutaVisible(t.route);
 });
+const VISIBLE_TOOLS = TOOLS.filter((t) => rutaVisible(t.route));
 
 export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const navigate = useNavigate();
@@ -108,7 +114,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
         </CommandGroup>
         <CommandSeparator />
         <CommandGroup heading="Herramientas individuales">
-          {TOOLS.map((t) => {
+          {VISIBLE_TOOLS.map((t) => {
             const Icon = t.icon;
             return (
               <CommandItem
@@ -124,7 +130,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
           })}
         </CommandGroup>
         <CommandSeparator />
-        <CommandGroup heading="Módulos nuevos y agentes IA">
+        <CommandGroup heading="Más pantallas">
           {VISIBLE_EXTRA.map((t) => (
             <CommandItem key={t.route} value={`${t.label} ${t.hint} ${t.category}`} onSelect={() => go(t.route)}>
               <ArrowRight className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
