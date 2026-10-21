@@ -26,6 +26,8 @@ import {
 } from "./motor";
 import { aPolizaExportable, validarLote, type LotePolizasExportable } from "./exportacion";
 import type { NivelEvidencia } from "./evidencia";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 
 const periodoSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Periodo con formato AAAA-MM");
 const motivoSchema = z.string().min(10, "Se exige un motivo de al menos 10 caracteres.").max(1000);
@@ -143,6 +145,316 @@ export const leerAsientosLegado = createServerFn({ method: "POST" })
   });
 
 // ─────────────────────── Generación canónica de borradores ───────────────────
+/**
+ * Generador ÚNICO de pólizas borrador desde CFDI. Lo usan /app/polizas y el
+ * Centro de Cierre; no existe otro camino que escriba pólizas desde CFDI.
+ */
+export async function generarBorradoresDelPeriodo(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  data: { cliente_id: string; periodo: string },
+) {
+  const scope = await assertClienteScope(supabase, userId, data.cliente_id);
+
+  const { data: cuentasRows, error: errCat } = await supabase
+    .from("catalogo_cuentas")
+    .select("codigo, nombre, naturaleza, tipo_sat, activa")
+    .eq("cliente_id", scope.cliente_id);
+  if (errCat) throw new Error(errCat.message);
+  let catalogo = (cuentasRows ?? []) as unknown as CuentaCatalogo[];
+  let catalogo_sembrado: string | null = null;
+  if (!catalogo.length) {
+    // Sin catálogo no se frena al contador: se siembra la plantilla IMCP
+    // (códigos agrupadores SAT) que corresponde a su régimen. Es editable.
+    catalogo_sembrado = await sembrarCatalogoBase(supabase, userId, scope.cliente_id);
+    const { data: recargado, error: errRe } = await supabase
+      .from("catalogo_cuentas")
+      .select("codigo, nombre, naturaleza, tipo_sat, activa")
+      .eq("cliente_id", scope.cliente_id);
+    if (errRe) throw new Error(errRe.message);
+    catalogo = (recargado ?? []) as unknown as CuentaCatalogo[];
+    if (!catalogo.length) {
+      throw new Error("El expediente no tiene catálogo de cuentas: impórtalo antes de generar pólizas.");
+    }
+  }
+  const { cuentas, faltantes } = elegirCuentasSistema(catalogo);
+  const version = await versionReglas(supabase, scope.cliente_id);
+
+  const { data: cfdis, error } = await supabase
+    .from("cfdi_xml")
+    .select("id, uuid, tipo_cfdi, metodo_pago, fecha, rfc_emisor, rfc_receptor, subtotal, descuento, iva_trasladado, ieps_trasladado, iva_retenido, isr_retenido, total, estatus_sat")
+    .eq("cliente_id", scope.cliente_id)
+    .eq("periodo", data.periodo)
+    .order("fecha", { ascending: true })
+    .limit(2000);
+  if (error) throw new Error(error.message);
+
+  const ids = (cfdis ?? []).map((c) => c.id);
+  const conceptosPorCfdi = new Map<string, ConceptoCfdi[]>();
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data: pagina, error: errCon } = await supabase
+      .from("cfdi_conceptos")
+      .select("cfdi_id, numero, clave_prod_serv, descripcion, importe, descuento")
+      .in("cfdi_id", ids.slice(i, i + 200));
+    if (errCon) throw new Error(errCon.message);
+    for (const c of pagina ?? []) {
+      const lista = conceptosPorCfdi.get(c.cfdi_id) ?? [];
+      lista.push({
+        numero: Number(c.numero ?? lista.length + 1),
+        clave_prod_serv: c.clave_prod_serv ?? null,
+        descripcion: c.descripcion ?? null,
+        importe_centavos: cent(c.importe),
+        descuento_centavos: cent(c.descuento),
+      });
+      conceptosPorCfdi.set(c.cfdi_id, lista);
+    }
+  }
+
+  // Complementos de pago del periodo: la evidencia de flujo de cada factura
+  // sale de aquí, y su importe se reparte sin duplicar cobros.
+  const complementoPorCfdi = new Map<string, { cfdi_pago_id: string; importe_centavos: number }>();
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data: docs } = await supabase
+      .from("cfdi_pago_documentos")
+      .select("cfdi_id, cfdi_padre_id, imp_pagado")
+      .in("cfdi_id", ids.slice(i, i + 200));
+    for (const d of docs ?? []) {
+      if (!d.cfdi_padre_id) continue;
+      const previo = complementoPorCfdi.get(d.cfdi_padre_id);
+      const suma = (previo?.importe_centavos ?? 0) + cent(d.imp_pagado);
+      complementoPorCfdi.set(d.cfdi_padre_id, { cfdi_pago_id: d.cfdi_id, importe_centavos: suma });
+    }
+  }
+
+  // Una sola póliza por CFDI, venga de donde venga (versiones anteriores de
+  // reglas, Contabilidad automática o el Cierre): si ya existe, se versiona
+  // ESA póliza en lugar de crear otra; si ya fue aprobada, no se toca.
+  const existentePorCfdi = await polizasExistentesPorCfdi(supabase, scope.cliente_id, ids);
+
+  const cache = new Map<string, ResolucionConcepto>();
+  const resolver = async (clave: string, rfc: string | null, desc: string, fecha: string) => {
+    const k = `${clave}|${rfc ?? ""}|${desc.slice(0, 40)}`;
+    const hit = cache.get(k);
+    if (hit) return hit;
+    const { data: res, error: errR } = await supabase.rpc("regla_concepto_resolver", {
+      _cliente_id: scope.cliente_id,
+      _clave_prod_serv: clave,
+      _rfc_contraparte: rfc,
+      _descripcion: desc,
+      _fecha: fecha,
+    } as never);
+    if (errR) throw new Error(errR.message);
+    const r = res as unknown as ResolucionConcepto;
+    cache.set(k, r);
+    return r;
+  };
+
+  const detalle: Array<{ uuid: string; accion: string; motivo?: string }> = [];
+  let generadas = 0;
+  let bloqueadas = 0;
+
+  for (const c of cfdis ?? []) {
+    if (c.estatus_sat !== "vigente") {
+      detalle.push({ uuid: c.uuid, accion: "omitida", motivo: `Estatus SAT “${c.estatus_sat ?? "desconocido"}”: sólo se contabiliza evidencia vigente.` });
+      continue;
+    }
+    const previa = existentePorCfdi.get(c.id);
+    if (previa?.aprobada) {
+      detalle.push({ uuid: c.uuid, accion: "sin_cambio", motivo: "Ya tiene una póliza aprobada." });
+      continue;
+    }
+    const esIngreso = String(c.rfc_emisor ?? "").toUpperCase() === scope.rfc.toUpperCase();
+    const contraparte = esIngreso ? c.rfc_receptor : c.rfc_emisor;
+    const conceptos = (conceptosPorCfdi.get(c.id) ?? []).sort((a, b) => a.numero - b.numero);
+    const fecha = String(c.fecha).slice(0, 10);
+
+    const resoluciones: Record<number, ResolucionConcepto> = {};
+    for (const con of conceptos) {
+      resoluciones[con.numero] = await resolver(
+        String(con.clave_prod_serv ?? "").trim() || "(sin clave)",
+        contraparte ?? null,
+        String(con.descripcion ?? ""),
+        fecha,
+      );
+    }
+
+    let conciliacion: {
+      confirmada: boolean;
+      movimiento_bancario_id?: string | null;
+      actor?: string | null;
+      fecha?: string | null;
+    } | null = null;
+    if (c.tipo_cfdi === "P") {
+      const { data: conc } = await supabase
+        .from("conciliaciones")
+        .select("movimiento_id, estatus, estado_grupo, confirmado_por, confirmado_at")
+        .eq("cliente_id", scope.cliente_id)
+        .eq("cfdi_id", c.id)
+        .order("confirmado_at", { ascending: false, nullsFirst: false })
+        .limit(1);
+      const fila = (conc ?? [])[0] as any;
+      // La conciliación sólo cuenta como evidencia de flujo cuando una
+      // persona la confirmó: una propuesta automática nunca reconoce pago.
+      const confirmada = fila?.estatus === "confirmado" || fila?.estado_grupo === "confirmado";
+      conciliacion = {
+        confirmada,
+        movimiento_bancario_id: confirmada ? (fila?.movimiento_id ?? null) : null,
+        actor: fila?.confirmado_por ?? null,
+        fecha: fila?.confirmado_at ?? null,
+      };
+    }
+
+    const borrador = construirBorradorCfdi({
+      cfdi: {
+        id: c.id,
+        uuid: c.uuid,
+        tipo_cfdi: c.tipo_cfdi ?? null,
+        metodo_pago: (c as any).metodo_pago ?? null,
+        fecha,
+        rfc_emisor: c.rfc_emisor ?? null,
+        rfc_receptor: c.rfc_receptor ?? null,
+        total_centavos: cent(c.total),
+        subtotal_centavos: cent(c.subtotal),
+        descuento_centavos: cent(c.descuento),
+        iva_trasladado_centavos: cent(c.iva_trasladado),
+        ieps_trasladado_centavos: cent(c.ieps_trasladado),
+        iva_retenido_centavos: cent(c.iva_retenido),
+        isr_retenido_centavos: cent(c.isr_retenido),
+      },
+      esIngreso,
+      conceptos,
+      resoluciones,
+      cuentas,
+      conciliacion,
+      complemento: complementoPorCfdi.get(c.id) ?? null,
+    });
+
+    if (!borrador.cuadra) {
+      bloqueadas += 1;
+      detalle.push({ uuid: c.uuid, accion: "bloqueada", motivo: borrador.bloqueos.join(" ") });
+      continue;
+    }
+
+    const { data: res, error: errRpc } = await supabase.rpc("poliza_generar_borrador", {
+      _cliente_id: scope.cliente_id,
+      _periodo: data.periodo,
+      _idempotency_key: previa?.llave ?? llaveIdempotencia("cfdi", c.id, version),
+      _tipo: borrador.tipo,
+      _fecha: fecha,
+      _concepto: borrador.concepto,
+      _origen: "auto_sat",
+      _renglones: borrador.renglones as never,
+    } as never);
+    if (errRpc) {
+      detalle.push({ uuid: c.uuid, accion: "error", motivo: errRpc.message });
+      continue;
+    }
+    generadas += 1;
+    const polizaId = (res as any)?.poliza_id ?? (res as any)?.id ?? null;
+    if (polizaId) {
+      const { error: errEv } = await supabase.rpc("poliza_marcar_evidencia", {
+        _poliza_id: polizaId,
+        _nivel: borrador.evidencia.nivel as NivelEvidencia,
+        _detalle: {
+          leyenda: borrador.evidencia.leyenda,
+          refuerzos: borrador.refuerzos,
+          incidencias: borrador.incidencias,
+          movimiento_bancario_id: borrador.evidencia.movimiento_bancario_id,
+          cfdi_pago_id: borrador.evidencia.cfdi_pago_id,
+        },
+      } as never);
+      // El nivel de evidencia es parte del contrato: si no puede registrarse,
+      // la póliza no debe publicarse con un nivel silenciosamente falso.
+      if (errEv) throw new Error(`No se pudo registrar la evidencia de cobro/pago: ${errEv.message}`);
+    }
+    detalle.push({
+      uuid: c.uuid,
+      accion: ((res as any)?.accion as string) ?? "creada",
+      motivo: borrador.conceptos_sin_resolver
+        ? `Faltan ${borrador.conceptos_sin_resolver} conceptos por asignar a una cuenta.`
+        : undefined,
+    });
+  }
+
+  await supabase.rpc("cierre_evaluar_polizas", {
+    _cliente_id: scope.cliente_id,
+    _periodo: data.periodo,
+  } as never);
+
+  return {
+    generadas,
+    bloqueadas,
+    revisados: (cfdis ?? []).length,
+    version_reglas: version,
+    cuentas_faltantes: faltantes,
+    catalogo_sembrado,
+    detalle,
+  };
+}
+
+/** Pólizas vivas (no rechazadas) que ya contabilizan cada CFDI. */
+async function polizasExistentesPorCfdi(
+  supabase: any,
+  clienteId: string,
+  cfdiIds: string[],
+): Promise<Map<string, { llave: string; aprobada: boolean }>> {
+  const out = new Map<string, { llave: string; aprobada: boolean }>();
+  for (let i = 0; i < cfdiIds.length; i += 200) {
+    const { data: filas, error } = await supabase
+      .from("poliza_renglones")
+      .select("cfdi_id, polizas!inner(id, estado, idempotency_key, created_at)")
+      .eq("cliente_id", clienteId)
+      .in("cfdi_id", cfdiIds.slice(i, i + 200));
+    if (error) throw new Error(error.message);
+    for (const f of (filas ?? []) as any[]) {
+      const p = f.polizas;
+      if (!f.cfdi_id || !p || p.estado === "rechazada") continue;
+      const llave = String(p.idempotency_key ?? "");
+      // Sólo pólizas generadas desde un CFDI (no capturas manuales ni bancos).
+      if (!/^(b2:cfdi:|cierre:)/.test(llave)) continue;
+      const aprobada = p.estado === "aprobada" || p.estado === "confirmada";
+      const prev = out.get(f.cfdi_id);
+      if (!prev || (aprobada && !prev.aprobada)) out.set(f.cfdi_id, { llave, aprobada });
+    }
+  }
+  return out;
+}
+
+/** Siembra la plantilla IMCP según el régimen del expediente. */
+async function sembrarCatalogoBase(supabase: any, userId: string, clienteId: string): Promise<string> {
+  const { PLANTILLAS_IMCP } = await import("@/lib/contabilidad-auto/imcp-catalog");
+  const { data: cli, error } = await supabase
+    .from("clientes")
+    .select("despacho_id, regimen_fiscal, tipo_persona")
+    .eq("id", clienteId)
+    .maybeSingle();
+  if (error || !cli) throw new Error(error?.message ?? "Expediente no encontrado");
+  const reg = String(cli.regimen_fiscal ?? "");
+  const clave =
+    cli.tipo_persona === "moral" || /\b60[13]\b/.test(reg)
+      ? "pm_general"
+      : /\b626\b/.test(reg)
+        ? "pf_resico"
+        : "pf_act_emp";
+  const plantilla = (PLANTILLAS_IMCP as any)[clave];
+  const rows = plantilla.cuentas.map((c: any) => ({
+    id: crypto.randomUUID(),
+    cliente_id: clienteId,
+    despacho_id: cli.despacho_id,
+    codigo: c.codigo,
+    nombre: c.nombre,
+    naturaleza: c.naturaleza === "D" ? "deudora" : "acreedora",
+    tipo_sat: c.agrupador_sat,
+    activa: true,
+    created_by: userId,
+  }));
+  const { error: errIns } = await supabase
+    .from("catalogo_cuentas")
+    .upsert(rows, { onConflict: "cliente_id,codigo", ignoreDuplicates: true });
+  if (errIns) throw new Error(errIns.message);
+  return plantilla.nombre as string;
+}
+
 export const generarBorradoresCanonicos = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) =>
@@ -150,218 +462,7 @@ export const generarBorradoresCanonicos = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const scope = await assertClienteScope(supabase, userId, data.cliente_id);
-
-    const { data: cuentasRows, error: errCat } = await supabase
-      .from("catalogo_cuentas")
-      .select("codigo, nombre, naturaleza, tipo_sat, activa")
-      .eq("cliente_id", scope.cliente_id);
-    if (errCat) throw new Error(errCat.message);
-    if (!cuentasRows?.length) {
-      throw new Error("El expediente no tiene catálogo de cuentas: impórtalo antes de generar pólizas.");
-    }
-    const { cuentas, faltantes } = elegirCuentasSistema(cuentasRows as unknown as CuentaCatalogo[]);
-    const version = await versionReglas(supabase, scope.cliente_id);
-
-    const { data: cfdis, error } = await supabase
-      .from("cfdi_xml")
-      .select("id, uuid, tipo_cfdi, metodo_pago, fecha, rfc_emisor, rfc_receptor, subtotal, descuento, iva_trasladado, ieps_trasladado, iva_retenido, isr_retenido, total, estatus_sat")
-      .eq("cliente_id", scope.cliente_id)
-      .eq("periodo", data.periodo)
-      .order("fecha", { ascending: true })
-      .limit(2000);
-    if (error) throw new Error(error.message);
-
-    const ids = (cfdis ?? []).map((c) => c.id);
-    const conceptosPorCfdi = new Map<string, ConceptoCfdi[]>();
-    for (let i = 0; i < ids.length; i += 200) {
-      const { data: pagina, error: errCon } = await supabase
-        .from("cfdi_conceptos")
-        .select("cfdi_id, numero, clave_prod_serv, descripcion, importe, descuento")
-        .in("cfdi_id", ids.slice(i, i + 200));
-      if (errCon) throw new Error(errCon.message);
-      for (const c of pagina ?? []) {
-        const lista = conceptosPorCfdi.get(c.cfdi_id) ?? [];
-        lista.push({
-          numero: Number(c.numero ?? lista.length + 1),
-          clave_prod_serv: c.clave_prod_serv ?? null,
-          descripcion: c.descripcion ?? null,
-          importe_centavos: cent(c.importe),
-          descuento_centavos: cent(c.descuento),
-        });
-        conceptosPorCfdi.set(c.cfdi_id, lista);
-      }
-    }
-
-    // Complementos de pago del periodo: la evidencia de flujo de cada factura
-    // sale de aquí, y su importe se reparte sin duplicar cobros.
-    const complementoPorCfdi = new Map<string, { cfdi_pago_id: string; importe_centavos: number }>();
-    for (let i = 0; i < ids.length; i += 200) {
-      const { data: docs } = await supabase
-        .from("cfdi_pago_documentos")
-        .select("cfdi_id, cfdi_padre_id, imp_pagado")
-        .in("cfdi_id", ids.slice(i, i + 200));
-      for (const d of docs ?? []) {
-        if (!d.cfdi_padre_id) continue;
-        const previo = complementoPorCfdi.get(d.cfdi_padre_id);
-        const suma = (previo?.importe_centavos ?? 0) + cent(d.imp_pagado);
-        complementoPorCfdi.set(d.cfdi_padre_id, { cfdi_pago_id: d.cfdi_id, importe_centavos: suma });
-      }
-    }
-
-    const cache = new Map<string, ResolucionConcepto>();
-    const resolver = async (clave: string, rfc: string | null, desc: string, fecha: string) => {
-      const k = `${clave}|${rfc ?? ""}|${desc.slice(0, 40)}`;
-      const hit = cache.get(k);
-      if (hit) return hit;
-      const { data: res, error: errR } = await supabase.rpc("regla_concepto_resolver", {
-        _cliente_id: scope.cliente_id,
-        _clave_prod_serv: clave,
-        _rfc_contraparte: rfc,
-        _descripcion: desc,
-        _fecha: fecha,
-      } as never);
-      if (errR) throw new Error(errR.message);
-      const r = res as unknown as ResolucionConcepto;
-      cache.set(k, r);
-      return r;
-    };
-
-    const detalle: Array<{ uuid: string; accion: string; motivo?: string }> = [];
-    let generadas = 0;
-    let bloqueadas = 0;
-
-    for (const c of cfdis ?? []) {
-      if (c.estatus_sat !== "vigente") {
-        detalle.push({ uuid: c.uuid, accion: "omitida", motivo: `Estatus SAT “${c.estatus_sat ?? "desconocido"}”: sólo se contabiliza evidencia vigente.` });
-        continue;
-      }
-      const esIngreso = String(c.rfc_emisor ?? "").toUpperCase() === scope.rfc.toUpperCase();
-      const contraparte = esIngreso ? c.rfc_receptor : c.rfc_emisor;
-      const conceptos = (conceptosPorCfdi.get(c.id) ?? []).sort((a, b) => a.numero - b.numero);
-      const fecha = String(c.fecha).slice(0, 10);
-
-      const resoluciones: Record<number, ResolucionConcepto> = {};
-      for (const con of conceptos) {
-        resoluciones[con.numero] = await resolver(
-          String(con.clave_prod_serv ?? "").trim() || "(sin clave)",
-          contraparte ?? null,
-          String(con.descripcion ?? ""),
-          fecha,
-        );
-      }
-
-      let conciliacion: {
-        confirmada: boolean;
-        movimiento_bancario_id?: string | null;
-        actor?: string | null;
-        fecha?: string | null;
-      } | null = null;
-      if (c.tipo_cfdi === "P") {
-        const { data: conc } = await supabase
-          .from("conciliaciones")
-          .select("movimiento_id, estatus, estado_grupo, confirmado_por, confirmado_at")
-          .eq("cliente_id", scope.cliente_id)
-          .eq("cfdi_id", c.id)
-          .order("confirmado_at", { ascending: false, nullsFirst: false })
-          .limit(1);
-        const fila = (conc ?? [])[0] as any;
-        // La conciliación sólo cuenta como evidencia de flujo cuando una
-        // persona la confirmó: una propuesta automática nunca reconoce pago.
-        const confirmada = fila?.estatus === "confirmado" || fila?.estado_grupo === "confirmado";
-        conciliacion = {
-          confirmada,
-          movimiento_bancario_id: confirmada ? (fila?.movimiento_id ?? null) : null,
-          actor: fila?.confirmado_por ?? null,
-          fecha: fila?.confirmado_at ?? null,
-        };
-      }
-
-      const borrador = construirBorradorCfdi({
-        cfdi: {
-          id: c.id,
-          uuid: c.uuid,
-          tipo_cfdi: c.tipo_cfdi ?? null,
-          metodo_pago: (c as any).metodo_pago ?? null,
-          fecha,
-          rfc_emisor: c.rfc_emisor ?? null,
-          rfc_receptor: c.rfc_receptor ?? null,
-          total_centavos: cent(c.total),
-          subtotal_centavos: cent(c.subtotal),
-          descuento_centavos: cent(c.descuento),
-          iva_trasladado_centavos: cent(c.iva_trasladado),
-          ieps_trasladado_centavos: cent(c.ieps_trasladado),
-          iva_retenido_centavos: cent(c.iva_retenido),
-          isr_retenido_centavos: cent(c.isr_retenido),
-        },
-        esIngreso,
-        conceptos,
-        resoluciones,
-        cuentas,
-        conciliacion,
-        complemento: complementoPorCfdi.get(c.id) ?? null,
-      });
-
-      if (!borrador.cuadra) {
-        bloqueadas += 1;
-        detalle.push({ uuid: c.uuid, accion: "bloqueada", motivo: borrador.bloqueos.join(" ") });
-        continue;
-      }
-
-      const { data: res, error: errRpc } = await supabase.rpc("poliza_generar_borrador", {
-        _cliente_id: scope.cliente_id,
-        _periodo: data.periodo,
-        _idempotency_key: llaveIdempotencia("cfdi", c.id, version),
-        _tipo: borrador.tipo,
-        _fecha: fecha,
-        _concepto: borrador.concepto,
-        _origen: "auto_sat",
-        _renglones: borrador.renglones as never,
-      } as never);
-      if (errRpc) {
-        detalle.push({ uuid: c.uuid, accion: "error", motivo: errRpc.message });
-        continue;
-      }
-      generadas += 1;
-      const polizaId = (res as any)?.poliza_id ?? (res as any)?.id ?? null;
-      if (polizaId) {
-        const { error: errEv } = await supabase.rpc("poliza_marcar_evidencia", {
-          _poliza_id: polizaId,
-          _nivel: borrador.evidencia.nivel as NivelEvidencia,
-          _detalle: {
-            leyenda: borrador.evidencia.leyenda,
-            refuerzos: borrador.refuerzos,
-            incidencias: borrador.incidencias,
-            movimiento_bancario_id: borrador.evidencia.movimiento_bancario_id,
-            cfdi_pago_id: borrador.evidencia.cfdi_pago_id,
-          },
-        } as never);
-        // El nivel de evidencia es parte del contrato: si no puede registrarse,
-        // la póliza no debe publicarse con un nivel silenciosamente falso.
-        if (errEv) throw new Error(`No se pudo registrar la evidencia de cobro/pago: ${errEv.message}`);
-      }
-      detalle.push({
-        uuid: c.uuid,
-        accion: ((res as any)?.accion as string) ?? "creada",
-        motivo: borrador.conceptos_sin_resolver
-          ? `Faltan ${borrador.conceptos_sin_resolver} conceptos por asignar a una cuenta.`
-          : undefined,
-      });
-    }
-
-    await supabase.rpc("cierre_evaluar_polizas", {
-      _cliente_id: scope.cliente_id,
-      _periodo: data.periodo,
-    } as never);
-
-    return {
-      generadas,
-      bloqueadas,
-      revisados: (cfdis ?? []).length,
-      version_reglas: version,
-      cuentas_faltantes: faltantes,
-      detalle,
-    };
+    return generarBorradoresDelPeriodo(supabase, userId, data);
   });
 
 // ─────────────────────────── Captura manual auditada ─────────────────────────

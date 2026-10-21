@@ -261,6 +261,8 @@ const UpsertFromCsfSchema = z.object({
   csf_ultima_emision: z.string().optional().nullable(), // ISO date
   tipo_relacion: z.enum(["cliente", "proveedor", "acreedor"]).default("cliente"),
   cliente_padre_id: z.string().uuid().optional().nullable(),
+  /** Expediente activo: si su RFC coincide, se actualiza ESE registro. */
+  cliente_id: z.string().uuid().optional().nullable(),
 });
 
 export const upsertClienteFromCsf = createServerFn({ method: "POST" })
@@ -283,7 +285,24 @@ export const upsertClienteFromCsf = createServerFn({ method: "POST" })
     if (data.cliente_padre_id) query = query.eq("cliente_padre_id", data.cliente_padre_id);
     else query = query.is("cliente_padre_id", null);
 
-    const { data: existing } = await query.maybeSingle();
+    let existing: any = null;
+    // 1) Expediente activo con el mismo RFC: se actualiza ese registro exacto,
+    //    nunca un homónimo ni uno nuevo.
+    if (data.cliente_id) {
+      const { assertClienteScope } = await import("@/lib/despacho/scope");
+      await assertClienteScope(supabase, userId, data.cliente_id);
+      const { data: activo } = await supabase
+        .from("clientes")
+        .select("*")
+        .eq("id", data.cliente_id)
+        .maybeSingle();
+      if (activo && String(activo.rfc ?? "").toUpperCase() === data.rfc) existing = activo;
+    }
+    // 2) Si no, búsqueda por (despacho, rfc, tipo_relacion, padre).
+    if (!existing) {
+      const { data: encontrado } = await query.maybeSingle();
+      existing = encontrado;
+    }
 
     if (!existing) {
       await assertCanCreateExpediente(supabase, userId, despachoId);
@@ -302,6 +321,13 @@ export const upsertClienteFromCsf = createServerFn({ method: "POST" })
     };
 
     if (existing) {
+      // Sólo se escriben los campos que la CSF realmente trae: si el lector no
+      // detectó el domicilio, NO se borra el que ya estaba capturado.
+      const cambios: Partial<typeof payload> & { razon_social: string } = { razon_social: payload.razon_social };
+      for (const k of Object.keys(payload) as (keyof typeof payload)[]) {
+        const v = payload[k];
+        if (k !== "razon_social" && v !== null && v !== undefined && v !== "") (cambios as any)[k] = v;
+      }
       const diffs: string[] = [];
       const labelMap: Record<string, string> = {
         razon_social: "Razón social",
@@ -318,10 +344,10 @@ export const upsertClienteFromCsf = createServerFn({ method: "POST" })
       }
       const { error } = await supabase
         .from("clientes")
-        .update(payload)
+        .update(cambios)
         .eq("id", existing.id);
       if (error) throw new Error(error.message);
-      const updated = { ...existing, ...payload };
+      const updated = { ...existing, ...cambios };
       return { accion: "actualizado" as const, cliente: updated, diferencias: diffs };
     }
 

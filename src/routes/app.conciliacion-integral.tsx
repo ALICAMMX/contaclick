@@ -52,6 +52,28 @@ function semaforoClass(g: string) {
   return "bg-yellow-500/10 text-yellow-700 dark:text-yellow-300 border-yellow-500/30";
 }
 
+/** Últimos 12 meses como AAAA-MM, del más reciente al más antiguo. */
+function ultimosPeriodos(n = 12): string[] {
+  const hoy = new Date();
+  const out: string[] = [];
+  for (let i = 0; i < n; i++) {
+    const d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+    out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  }
+  return out;
+}
+
+function rangoDias(periodo: string) {
+  const [y, m] = periodo.split("-").map(Number);
+  const ultimo = new Date(y, m, 0).getDate();
+  return { desde: `${periodo}-01`, hasta: `${periodo}-${String(ultimo).padStart(2, "0")}` };
+}
+
+function etiquetaPeriodo(p: string) {
+  const [y, m] = p.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString("es-MX", { month: "long", year: "numeric" });
+}
+
 function ConciliacionIntegralPage() {
   const { cliente } = useActiveCliente();
   const qc = useQueryClient();
@@ -63,15 +85,18 @@ function ConciliacionIntegralPage() {
   const [gravedadFiltro, setGravedadFiltro] = useState<string>("all");
   const [estatusFiltro, setEstatusFiltro] = useState<string>("abierta");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const periodos = ultimosPeriodos();
+  const [periodo, setPeriodo] = useState<string>(periodos[0]);
+  const rango = rangoDias(periodo);
 
   const dashboard = useQuery({
-    queryKey: ["ci-dashboard", cliente?.id ?? "all"],
-    queryFn: () => dashFn({ data: { cliente_id: cliente?.id } }),
+    queryKey: ["ci-dashboard", cliente?.id ?? "all", periodo],
+    queryFn: () => dashFn({ data: { cliente_id: cliente?.id, ...rango } }),
     staleTime: 30_000,
   });
 
   const incidencias = useQuery({
-    queryKey: ["ci-incidencias", cliente?.id ?? "all", tipoFiltro, gravedadFiltro, estatusFiltro],
+    queryKey: ["ci-incidencias", cliente?.id ?? "all", periodo, tipoFiltro, gravedadFiltro, estatusFiltro],
     queryFn: () =>
       listFn({
         data: {
@@ -79,6 +104,7 @@ function ConciliacionIntegralPage() {
           tipo: tipoFiltro !== "all" ? tipoFiltro : undefined,
           gravedad: gravedadFiltro !== "all" ? gravedadFiltro : undefined,
           estatus: estatusFiltro !== "all" ? estatusFiltro : undefined,
+          ...rango,
           limit: 200,
         },
       }),
@@ -88,10 +114,10 @@ function ConciliacionIntegralPage() {
   const run = useMutation({
     mutationFn: () => {
       if (!cliente) throw new Error("Selecciona un expediente primero");
-      return runFn({ data: { cliente_id: cliente.id, trigger: "manual" } });
+      return runFn({ data: { cliente_id: cliente.id, trigger: "manual", ...rango } });
     },
     onSuccess: (r) => {
-      toast.success(`Conciliación completada: ${r.total} incidencias · score ${r.score}`);
+      toast.success(`Revisión de ${etiquetaPeriodo(periodo)}: ${r.total} observaciones`);
       qc.invalidateQueries({ queryKey: ["ci-dashboard"] });
       qc.invalidateQueries({ queryKey: ["ci-incidencias"] });
       qc.invalidateQueries({ queryKey: ["ci-timeline"] });
@@ -100,6 +126,7 @@ function ConciliacionIntegralPage() {
   });
 
   const k = dashboard.data?.kpis;
+  const suf = dashboard.data?.suficiencia;
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -115,6 +142,14 @@ function ConciliacionIntegralPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Select value={periodo} onValueChange={setPeriodo}>
+            <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {periodos.map((p) => (
+                <SelectItem key={p} value={p}>{etiquetaPeriodo(p)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {cliente ? (
             <Badge variant="outline" className="font-mono text-xs">{cliente.rfc}</Badge>
           ) : (
@@ -140,11 +175,39 @@ function ConciliacionIntegralPage() {
 
         {/* DASHBOARD */}
         <TabsContent value="dashboard" className="space-y-4 mt-4">
+          {cliente && !suf && (
+            <Card className="p-4 text-sm text-muted-foreground">
+              Aún no se revisa {etiquetaPeriodo(periodo)}. Presiona <strong>Correr ahora</strong> para cruzar
+              CFDI, pólizas y banco de este mes.
+            </Card>
+          )}
+          {suf && (!suf.hay_contabilidad || !suf.hay_banco) && (
+            <Card className="p-4 text-sm border-amber-500/30 bg-amber-500/5 space-y-1">
+              <div className="font-medium">Revisión preliminar: faltan datos para una conclusión completa</div>
+              {!suf.hay_contabilidad && (
+                <div className="text-muted-foreground">
+                  · No hay pólizas registradas en el periodo, así que no se acusan "ingresos omitidos" ni "gastos sin registrar".
+                  Genera y aprueba las pólizas en <a className="underline" href="/app/polizas">Pólizas</a>.
+                </div>
+              )}
+              {!suf.hay_banco && (
+                <div className="text-muted-foreground">
+                  · No hay movimientos bancarios validados en el periodo; el cruce contra banco no se ejecutó.
+                  Carga el estado de cuenta en <a className="underline" href="/app/conciliacion">Conciliación bancaria</a>.
+                </div>
+              )}
+            </Card>
+          )}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Kpi label="Incidencias abiertas" value={String(k?.total_abiertas ?? 0)} icon={AlertTriangle} accent="text-foreground" />
             <Kpi label="Críticas" value={String(k?.criticas ?? 0)} icon={ShieldCheck} accent="text-red-600 dark:text-red-300" />
             <Kpi label="Monto observado" value={mxn(k?.monto_observado)} icon={Banknote} accent="text-foreground" />
-            <Kpi label="Impacto ISR estimado" value={mxn(k?.impacto_isr)} icon={TrendingUp} accent="text-amber-600 dark:text-amber-300" />
+            <Kpi
+              label="Impacto ISR estimado"
+              value={suf && !suf.isr_estimable ? "Requiere cálculo" : mxn(k?.impacto_isr)}
+              icon={TrendingUp}
+              accent="text-amber-600 dark:text-amber-300"
+            />
           </div>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <MiniKpi label="Ingresos omitidos" value={k?.ingresos_omitidos ?? 0} icon={FileText} />

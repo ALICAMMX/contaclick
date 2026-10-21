@@ -22,7 +22,42 @@ async function fetchPolizas(supabase: any, cliente_id: string, anio: number, mes
     .lte("fecha", fin)
     .order("fecha");
   if (error) throw new Error(error.message);
-  return (data ?? []).map((p: any) => ({ ...p, monto: montoDesdeRenglones(p) }));
+  const polizas = (data ?? []).map((p: any) => ({ ...p, monto: montoDesdeRenglones(p) }));
+
+  // Las pólizas canónicas ligan el CFDI en sus renglones (cfdi_id), no en la
+  // columna legada uuid_cfdi. Sin esto, la contabilidad electrónica saldría
+  // sin nodos CompNal / ComprNal.
+  const cfdiIds = [
+    ...new Set(
+      polizas.flatMap((p: any) => ((p.poliza_renglones ?? []) as any[]).map((r) => r.cfdi_id).filter(Boolean)),
+    ),
+  ] as string[];
+  const porId = new Map<string, any>();
+  for (let i = 0; i < cfdiIds.length; i += 200) {
+    const { data: cf } = await supabase
+      .from("cfdi_xml")
+      .select("id, uuid, rfc_emisor, rfc_receptor, total")
+      .in("id", cfdiIds.slice(i, i + 200));
+    for (const c of cf ?? []) porId.set(c.id, c);
+  }
+  const { data: cli } = await supabase.from("clientes").select("rfc").eq("id", cliente_id).maybeSingle();
+  const rfcPropio = String(cli?.rfc ?? "").toUpperCase();
+  return polizas.map((p: any) => {
+    const cfdiId = ((p.poliza_renglones ?? []) as any[]).find((r) => r.cfdi_id)?.cfdi_id;
+    const c = cfdiId ? porId.get(cfdiId) : null;
+    // RFC del CompNal = la contraparte (emisor si es gasto, receptor si es ingreso).
+    const contraparte = c
+      ? String(c.rfc_emisor ?? "").toUpperCase() === rfcPropio
+        ? c.rfc_receptor
+        : c.rfc_emisor
+      : null;
+    return {
+      ...p,
+      uuid_cfdi: p.uuid_cfdi ?? c?.uuid ?? null,
+      rfc_contraparte: contraparte ?? null,
+      monto_cfdi: c ? Number(c.total ?? 0) : null,
+    };
+  });
 }
 
 // ===== Anexo 24 — Pólizas (RFC, Anio, Mes, TipoSolicitud=AF por defecto) =====
@@ -71,7 +106,7 @@ export const exportarAnexo24Polizas = createServerFn({ method: "POST" })
         );
         if (p.uuid_cfdi) {
           lines.push(
-            `      <PLZ:CompNal UUID_CFDI="${xmlEsc(p.uuid_cfdi)}" MontoTotal="${Number(p.monto ?? 0).toFixed(2)}" RFC="${xmlEsc(cli.rfc)}"/>`,
+            `      <PLZ:CompNal UUID_CFDI="${xmlEsc(p.uuid_cfdi)}" MontoTotal="${Number(p.monto_cfdi ?? p.monto ?? 0).toFixed(2)}" RFC="${xmlEsc(p.rfc_contraparte ?? cli.rfc)}"/>`,
           );
         }
         lines.push(`    </PLZ:Transaccion>`);
@@ -462,7 +497,7 @@ export const exportarAnexo24AuxFolios = createServerFn({ method: "POST" })
         `  <AuxiliarFolios:DetAuxFol NumUnIdenPol="${xmlEsc(String(p.id).slice(0, 12))}" Fecha="${String(p.fecha).slice(0, 10)}">`,
       );
       lines.push(
-        `    <AuxiliarFolios:ComprNal UUID_CFDI="${xmlEsc(p.uuid_cfdi)}" RFC="${xmlEsc(cli.rfc)}" MontoTotal="${Number(p.monto ?? 0).toFixed(2)}"/>`,
+        `    <AuxiliarFolios:ComprNal UUID_CFDI="${xmlEsc(p.uuid_cfdi)}" RFC="${xmlEsc(p.rfc_contraparte ?? cli.rfc)}" MontoTotal="${Number(p.monto_cfdi ?? p.monto ?? 0).toFixed(2)}"/>`,
       );
       lines.push(`  </AuxiliarFolios:DetAuxFol>`);
     }

@@ -3,6 +3,9 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 import { montoDesdeRenglones, SELECT_RENGLONES_LEGADO } from "@/lib/polizas/adaptador";
+import { detectarIncidencias, kpisDe, type IncidenciaTipo, type PolizaIn } from "./detectar";
+
+export type { IncidenciaTipo } from "./detectar";
 
 function extractJsonObject(raw: string) {
   const text = String(raw ?? "").trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
@@ -19,32 +22,6 @@ const RunInput = z.object({
   hasta: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   trigger: z.string().optional(),
 });
-
-export type IncidenciaTipo =
-  | "ingreso_sat_sin_poliza"
-  | "gasto_sat_sin_poliza"
-  | "pago_banco_sin_cfdi"
-  | "cfdi_sin_movimiento"
-  | "diferencia_monto"
-  | "cfdi_duplicado"
-  | "cfdi_cancelado_no_ajustado";
-
-type Gravedad = "critica" | "media" | "baja";
-
-type IncidenciaDraft = {
-  tipo: IncidenciaTipo;
-  gravedad: Gravedad;
-  fecha: string | null;
-  monto: number;
-  cfdi_id?: string | null;
-  poliza_id?: string | null;
-  movimiento_id?: string | null;
-  ref_hash: string;
-  detalle: Record<string, unknown>;
-  recomendacion: string;
-  impacto_isr: number;
-  impacto_iva: number;
-};
 
 function fmtDate(d: Date) {
   return d.toISOString().slice(0, 10);
@@ -67,6 +44,8 @@ export const listarIncidencias = createServerFn({ method: "POST" })
       estatus: z.string().optional(),
       gravedad: z.string().optional(),
       tipo: z.string().optional(),
+      desde: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      hasta: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
       limit: z.number().int().min(1).max(500).default(200),
     }).parse(d),
   )
@@ -83,6 +62,8 @@ export const listarIncidencias = createServerFn({ method: "POST" })
     if (data.estatus) q = q.eq("estatus", data.estatus);
     if (data.gravedad) q = q.eq("gravedad", data.gravedad);
     if (data.tipo) q = q.eq("tipo", data.tipo);
+    if (data.desde) q = q.gte("fecha", data.desde);
+    if (data.hasta) q = q.lte("fecha", data.hasta);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
     return rows ?? [];
@@ -90,14 +71,53 @@ export const listarIncidencias = createServerFn({ method: "POST" })
 
 export const getDashboardConciliacion = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ cliente_id: z.string().uuid().optional() }).parse(d))
+  .inputValidator((d: unknown) =>
+    z.object({
+      cliente_id: z.string().uuid().optional(),
+      desde: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      hasta: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    }).parse(d),
+  )
   .handler(async ({ data, context }) => {
     const { supabase } = context;
     let q = supabase
       .from("conciliacion_incidencias")
       .select("tipo, gravedad, estatus, monto, impacto_isr, impacto_iva, cliente_id, clientes:cliente_id(razon_social)");
     if (data.cliente_id) q = q.eq("cliente_id", data.cliente_id);
+    // Sólo el periodo que el contador está revisando, nunca todo el histórico.
+    if (data.desde) q = q.gte("fecha", data.desde);
+    if (data.hasta) q = q.lte("fecha", data.hasta);
     const { data: rows } = await q;
+
+    // Suficiencia de datos de la última corrida de ESE rango.
+    let suficiencia: {
+      hay_contabilidad: boolean;
+      hay_banco: boolean;
+      isr_estimable: boolean;
+      tasa_isr: number | null;
+      corrida_at: string | null;
+    } | null = null;
+    if (data.cliente_id && data.desde && data.hasta) {
+      const { data: run } = await supabase
+        .from("conciliacion_integral_runs")
+        .select("kpis, created_at")
+        .eq("cliente_id", data.cliente_id)
+        .eq("desde", data.desde)
+        .eq("hasta", data.hasta)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const k = (run?.kpis ?? null) as any;
+      suficiencia = k?.suficiencia
+        ? {
+            hay_contabilidad: !!k.suficiencia.hay_contabilidad,
+            hay_banco: !!k.suficiencia.hay_banco,
+            isr_estimable: !!k.suficiencia.isr_estimable,
+            tasa_isr: k.suficiencia.tasa_isr ?? null,
+            corrida_at: (run?.created_at as string | null) ?? null,
+          }
+        : null;
+    }
     const all = rows ?? [];
     const open = all.filter((r) => r.estatus === "abierta" || r.estatus === "escalada");
     const sum = (k: string) => open.reduce((a, r: any) => a + Number(r[k] ?? 0), 0);
@@ -127,6 +147,7 @@ export const getDashboardConciliacion = createServerFn({ method: "POST" })
         pagos_sin_cfdi: byTipo("pago_banco_sin_cfdi"),
         duplicados: byTipo("cfdi_duplicado"),
       },
+      suficiencia,
       top_clientes: Array.from(porCliente.entries())
         .map(([id, v]) => ({ cliente_id: id, ...v }))
         .sort((a, b) => b.criticas - a.criticas || b.monto - a.monto)
@@ -224,7 +245,7 @@ export const runConciliacionIntegral = createServerFn({ method: "POST" })
 
     const { data: cli } = await supabase
       .from("clientes")
-      .select("id, rfc, razon_social, despacho_id")
+      .select("id, rfc, razon_social, despacho_id, regimen_fiscal, tipo_persona")
       .eq("id", data.cliente_id)
       .maybeSingle();
     if (!cli) throw new Error("Cliente no encontrado");
@@ -241,7 +262,7 @@ export const runConciliacionIntegral = createServerFn({ method: "POST" })
         .lte("fecha", `${hasta}T23:59:59`),
       supabase
         .from("polizas")
-        .select(`id, tipo, fecha, concepto, uuid_cfdi, movimiento_bancario_id, referencia, ${SELECT_RENGLONES_LEGADO}`)
+        .select(`id, tipo, fecha, estado, concepto, uuid_cfdi, movimiento_bancario_id, referencia, ${SELECT_RENGLONES_LEGADO}`)
         .eq("cliente_id", data.cliente_id)
         .gte("fecha", desde)
         .lte("fecha", hasta),
@@ -255,189 +276,45 @@ export const runConciliacionIntegral = createServerFn({ method: "POST" })
     ]);
 
     const cfdi = cfdis ?? [];
-    const pol = (polizas ?? []).map((p: any) => ({ ...p, monto: montoDesdeRenglones(p) }));
+    const pol: PolizaIn[] = (polizas ?? []).map((p: any) => ({
+      id: p.id,
+      fecha: p.fecha,
+      estado: p.estado ?? null,
+      uuid_cfdi: p.uuid_cfdi ?? null,
+      cfdi_ids: [
+        ...new Set(((p.poliza_renglones ?? []) as any[]).map((r) => r.cfdi_id).filter(Boolean) as string[]),
+      ],
+      monto: montoDesdeRenglones(p),
+    }));
     const mov = movs ?? [];
 
-    const polByUuid = new Map<string, any>();
-    for (const p of pol) if (p.uuid_cfdi) polByUuid.set(String(p.uuid_cfdi).toUpperCase(), p);
-
-    const polUsed = new Set<string>();
-    const cfdiUsed = new Set<string>();
-    const movUsed = new Set<string>();
-
-    const incidencias: IncidenciaDraft[] = [];
-
-    // 1. Duplicados de CFDI por UUID
-    const uuidCount = new Map<string, any[]>();
-    for (const c of cfdi) {
-      if (!c.uuid) continue;
-      const k = String(c.uuid).toUpperCase();
-      const arr = uuidCount.get(k) ?? [];
-      arr.push(c);
-      uuidCount.set(k, arr);
-    }
-    for (const [uuid, arr] of uuidCount) {
-      if (arr.length > 1) {
-        incidencias.push({
-          tipo: "cfdi_duplicado",
-          gravedad: "media",
-          fecha: arr[0].fecha?.slice(0, 10) ?? null,
-          monto: Number(arr[0].total ?? 0),
-          cfdi_id: arr[0].id,
-          ref_hash: `dup:${uuid}`,
-          detalle: { uuid, copias: arr.length },
-          recomendacion: "Eliminar duplicado en contabilidad y conservar único CFDI vigente.",
-          impacto_isr: 0,
-          impacto_iva: 0,
-        });
+    // Lo que el contador ya confirmó en la conciliación bancaria no se vuelve a acusar.
+    const movimientosConfirmados = new Set<string>();
+    const cfdiConfirmados = new Set<string>();
+    const movIds = mov.map((m) => m.id as string);
+    for (let i = 0; i < movIds.length; i += 200) {
+      const { data: conf } = await supabase
+        .from("conciliaciones")
+        .select("movimiento_id, cfdi_id")
+        .eq("cliente_id", data.cliente_id)
+        .eq("estado_grupo", "confirmado")
+        .in("movimiento_id", movIds.slice(i, i + 200));
+      for (const c of conf ?? []) {
+        if (c.movimiento_id) movimientosConfirmados.add(c.movimiento_id);
+        if (c.cfdi_id) cfdiConfirmados.add(c.cfdi_id);
       }
     }
 
-    // 2. CFDI cancelado pero contabilizado
-    for (const c of cfdi) {
-      if (c.estatus_sat === "cancelado") {
-        const uuid = String(c.uuid ?? "").toUpperCase();
-        const p = polByUuid.get(uuid);
-        if (p) {
-          incidencias.push({
-            tipo: "cfdi_cancelado_no_ajustado",
-            gravedad: "critica",
-            fecha: c.fecha?.slice(0, 10) ?? null,
-            monto: Number(c.total ?? 0),
-            cfdi_id: c.id,
-            poliza_id: p.id,
-            ref_hash: `canc:${uuid}`,
-            detalle: { uuid, poliza: p.id },
-            recomendacion: "Reversar póliza o emitir nota de ajuste; CFDI cancelado en SAT.",
-            impacto_isr: Number(c.subtotal ?? 0) * 0.3,
-            impacto_iva: Number(c.iva_trasladado ?? 0),
-          });
-        }
-      }
-    }
-
-    // 3. Match CFDI ↔ Póliza por UUID
-    for (const c of cfdi) {
-      const uuid = String(c.uuid ?? "").toUpperCase();
-      if (!uuid || c.estatus_sat === "cancelado") continue;
-      const p = polByUuid.get(uuid);
-      if (p) {
-        cfdiUsed.add(c.id);
-        polUsed.add(p.id);
-        const dif = Math.abs(Number(c.total ?? 0) - Number(p.monto ?? 0));
-        if (dif > 1) {
-          incidencias.push({
-            tipo: "diferencia_monto",
-            gravedad: dif > 1000 ? "critica" : "media",
-            fecha: c.fecha?.slice(0, 10) ?? null,
-            monto: dif,
-            cfdi_id: c.id,
-            poliza_id: p.id,
-            ref_hash: `dif:${uuid}`,
-            detalle: { uuid, cfdi: Number(c.total), poliza: Number(p.monto), diff: dif },
-            recomendacion: "Ajustar póliza para que coincida con el monto del CFDI vigente.",
-            impacto_isr: dif * 0.3,
-            impacto_iva: 0,
-          });
-        }
-      }
-    }
-
-    // 4. Match CFDI ↔ Póliza por monto+fecha (±3d) entre los no usados
-    const cfdiPend = cfdi.filter((c) => !cfdiUsed.has(c.id) && c.estatus_sat !== "cancelado");
-    const polPend = pol.filter((p) => !polUsed.has(p.id));
-    for (const c of cfdiPend) {
-      const cFecha = new Date(c.fecha as string).getTime();
-      const cTotal = Number(c.total ?? 0);
-      const hit = polPend.find((p) => {
-        if (polUsed.has(p.id)) return false;
-        const pf = new Date(p.fecha as string).getTime();
-        const dDays = Math.abs(cFecha - pf) / 86400000;
-        return dDays <= 3 && Math.abs(Number(p.monto ?? 0) - cTotal) <= 1;
-      });
-      if (hit) {
-        cfdiUsed.add(c.id);
-        polUsed.add(hit.id);
-      }
-    }
-
-    // 5. Ingresos / gastos SAT sin póliza
-    for (const c of cfdi) {
-      if (cfdiUsed.has(c.id) || c.estatus_sat === "cancelado") continue;
-      const esEmitido = String(c.rfc_emisor ?? "").toUpperCase() === rfcCli && c.tipo_cfdi === "I";
-      const esRecibido = String(c.rfc_receptor ?? "").toUpperCase() === rfcCli && c.tipo_cfdi === "I";
-      if (!esEmitido && !esRecibido) continue;
-      const total = Number(c.total ?? 0);
-      const subtotal = Number(c.subtotal ?? 0);
-      const iva = Number(c.iva_trasladado ?? 0);
-      const tipo: IncidenciaTipo = esEmitido ? "ingreso_sat_sin_poliza" : "gasto_sat_sin_poliza";
-      const gravedad: Gravedad = total > 50000 ? "critica" : total > 5000 ? "media" : "baja";
-      incidencias.push({
-        tipo,
-        gravedad,
-        fecha: (c.fecha as string)?.slice(0, 10) ?? null,
-        monto: total,
-        cfdi_id: c.id,
-        ref_hash: `${tipo}:${String(c.uuid ?? c.id).toUpperCase()}`,
-        detalle: { uuid: c.uuid, contraparte: esEmitido ? c.rfc_receptor : c.rfc_emisor },
-        recomendacion: esEmitido
-          ? "Registrar ingreso en contabilidad y conciliar con depósito bancario."
-          : "Registrar gasto deducible en contabilidad y validar soporte fiscal.",
-        impacto_isr: esEmitido ? subtotal * 0.3 : 0,
-        impacto_iva: esEmitido ? iva : -iva,
-      });
-    }
-
-    // 6. CFDI emitido sin movimiento bancario (PUE)
-    const abonos = mov.filter((m) => Number(m.abono ?? 0) > 0);
-    const cargos = mov.filter((m) => Number(m.cargo ?? 0) > 0);
-    for (const c of cfdi) {
-      if (c.tipo_cfdi !== "I") continue;
-      if (String(c.rfc_emisor ?? "").toUpperCase() !== rfcCli) continue;
-      if ((c.metodo_pago ?? "") !== "PUE") continue;
-      const total = Number(c.total ?? 0);
-      const cf = new Date(c.fecha as string).getTime();
-      const hit = abonos.find((m) => {
-        if (movUsed.has(m.id)) return false;
-        const mf = new Date(m.fecha as string).getTime();
-        return Math.abs(cf - mf) / 86400000 <= 7 && Math.abs(Number(m.abono ?? 0) - total) <= 1;
-      });
-      if (hit) {
-        movUsed.add(hit.id);
-      } else {
-        incidencias.push({
-          tipo: "cfdi_sin_movimiento",
-          gravedad: total > 50000 ? "critica" : "media",
-          fecha: (c.fecha as string)?.slice(0, 10) ?? null,
-          monto: total,
-          cfdi_id: c.id,
-          ref_hash: `nopay:${String(c.uuid ?? c.id).toUpperCase()}`,
-          detalle: { uuid: c.uuid, metodo: c.metodo_pago },
-          recomendacion: "Validar cobro: si no se cobró, emitir complemento o nota; si se cobró, conciliar.",
-          impacto_isr: 0,
-          impacto_iva: 0,
-        });
-      }
-    }
-
-    // 7. Pagos bancarios sin CFDI deducible
-    for (const m of cargos) {
-      if (movUsed.has(m.id)) continue;
-      const monto = Number(m.cargo ?? 0);
-      if (monto < 500) continue; // ignorar micro-cargos
-      incidencias.push({
-        tipo: "pago_banco_sin_cfdi",
-        gravedad: monto > 50000 ? "critica" : monto > 5000 ? "media" : "baja",
-        fecha: (m.fecha as string)?.slice(0, 10) ?? null,
-        monto,
-        movimiento_id: m.id,
-        ref_hash: `nocfdi:${m.id}`,
-        detalle: { descripcion: m.descripcion },
-        recomendacion: "Solicitar CFDI deducible al proveedor o documentar el pago.",
-        impacto_isr: monto * 0.3,
-        impacto_iva: monto * 0.16 / 1.16,
-      });
-    }
+    const { incidencias, suficiencia } = detectarIncidencias({
+      rfcCliente: rfcCli,
+      regimenFiscal: (cli as any).regimen_fiscal ?? null,
+      tipoPersona: ((cli as any).tipo_persona ?? null) as "fisica" | "moral" | null,
+      cfdi: cfdi as any,
+      polizas: pol,
+      movimientos: mov as any,
+      movimientosConfirmados,
+      cfdiConfirmados,
+    });
 
     // ---------- Score ----------
     const criticas = incidencias.filter((i) => i.gravedad === "critica").length;
@@ -447,16 +324,11 @@ export const runConciliacionIntegral = createServerFn({ method: "POST" })
     const monto_observado = incidencias.reduce((a, i) => a + i.monto, 0);
 
     const kpis = {
-      ingresos_omitidos: incidencias.filter((i) => i.tipo === "ingreso_sat_sin_poliza").length,
-      gastos_sin_registrar: incidencias.filter((i) => i.tipo === "gasto_sat_sin_poliza").length,
-      cfdi_sin_pago: incidencias.filter((i) => i.tipo === "cfdi_sin_movimiento").length,
-      pagos_sin_cfdi: incidencias.filter((i) => i.tipo === "pago_banco_sin_cfdi").length,
-      duplicados: incidencias.filter((i) => i.tipo === "cfdi_duplicado").length,
-      cancelados: incidencias.filter((i) => i.tipo === "cfdi_cancelado_no_ajustado").length,
-      diferencias: incidencias.filter((i) => i.tipo === "diferencia_monto").length,
+      ...kpisDe(incidencias),
       cfdi_total: cfdi.length,
       polizas_total: pol.length,
       mov_total: mov.length,
+      suficiencia,
     };
 
     // ---------- Guardar corrida ----------
@@ -506,6 +378,30 @@ export const runConciliacionIntegral = createServerFn({ method: "POST" })
       if (errInc) throw new Error(errInc.message);
     }
 
+    // ---------- Cerrar lo que ya no aplica ----------
+    // Una incidencia abierta del mismo rango que esta corrida ya no detecta se
+    // marca como resuelta: el tablero refleja la realidad actual, no un histórico
+    // acumulado de alarmas.
+    {
+      const vigentesHash = new Set(incidencias.map((i) => `${i.tipo}|${i.ref_hash}`));
+      const { data: abiertas } = await supabase
+        .from("conciliacion_incidencias")
+        .select("id, tipo, ref_hash")
+        .eq("cliente_id", data.cliente_id)
+        .eq("estatus", "abierta")
+        .gte("fecha", desde)
+        .lte("fecha", hasta);
+      const cerrar = (abiertas ?? [])
+        .filter((r: any) => !vigentesHash.has(`${r.tipo}|${r.ref_hash}`))
+        .map((r: any) => r.id as string);
+      for (let i = 0; i < cerrar.length; i += 200) {
+        await supabase
+          .from("conciliacion_incidencias")
+          .update({ estatus: "resuelta", resuelta_at: new Date().toISOString() })
+          .in("id", cerrar.slice(i, i + 200));
+      }
+    }
+
     // ---------- Snapshot histórico ----------
     await supabase.from("conciliacion_score_historico").insert({
       cliente_id: data.cliente_id,
@@ -527,6 +423,7 @@ export const runConciliacionIntegral = createServerFn({ method: "POST" })
       monto_observado,
       total: incidencias.length,
       kpis,
+      suficiencia,
     };
   });
 

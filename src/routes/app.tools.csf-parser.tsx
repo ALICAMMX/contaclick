@@ -452,6 +452,11 @@ function CsfParser() {
           csf_ultima_emision: toIsoDate(data.fechaEmision),
           tipo_relacion: tipo,
           cliente_padre_id: null,
+          // Si la CSF es del expediente activo, se actualiza ese mismo registro.
+          cliente_id:
+            tipo === "cliente" && cliente?.id && cliente.rfc?.toUpperCase() === data.rfc.toUpperCase()
+              ? cliente.id
+              : null,
         },
       });
       setResult({ ...(r as any), tipo_relacion: tipo });
@@ -475,6 +480,30 @@ function CsfParser() {
     if (!data) return;
     try {
       await save({ data: { cliente_id: cliente?.id ?? null, tool_key: "csf-parser", input: { fileName }, output: data as any, notes: data.rfc ?? null } });
+      // Si la CSF es del expediente activo, completa sus datos fiscales sin
+      // borrar nada (sólo campos detectados).
+      const esDelActivo =
+        !!cliente?.id && !!data.rfc && !!data.nombre &&
+        cliente.rfc?.toUpperCase() === data.rfc.toUpperCase();
+      if (esDelActivo && canManageExpedientes) {
+        await upsert({
+          data: {
+            rfc: data.rfc!,
+            razon_social: data.nombre!,
+            regimen_fiscal: data.regimenes.join(" · ") || null,
+            curp: data.curp ?? null,
+            tipo_persona: data.tipoPersona === "Física" ? "fisica" : data.tipoPersona === "Moral" ? "moral" : null,
+            domicilio_fiscal: data.domicilio ?? null,
+            codigo_postal: data.codigoPostal ?? null,
+            csf_ultima_emision: toIsoDate(data.fechaEmision),
+            tipo_relacion: "cliente",
+            cliente_padre_id: null,
+            cliente_id: cliente!.id,
+          },
+        });
+        toast.success("Constancia guardada y expediente actualizado");
+        return;
+      }
       toast.success("Constancia guardada en el historial");
     } catch (e: any) {
       toast.error(e?.message ?? "No se pudo guardar");

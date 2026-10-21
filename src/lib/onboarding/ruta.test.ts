@@ -72,6 +72,18 @@ describe("ruta guiada del expediente", () => {
     expect(siguientePaso(construirRuta(s))?.id).toBe("efirma");
   });
 
+  it("un mes sin CFDI no bloquea bancos ni cierre", () => {
+    const s: SnapshotRuta = {
+      ...vacio, regimenFiscal: "612", domicilioFiscal: "Calle 1", codigoPostal: "44100", cfdiPeriodo: 0,
+    };
+    expect(estado(s, "cfdi")).toBe("pendiente");
+    expect(estado(s, "bancos")).toBe("pendiente");
+    expect(estado(s, "cierre")).toBe("pendiente");
+    const cierre = construirRuta(s).find((p) => p.id === "cierre")!;
+    expect(cierre.bloqueadoPor).toBeUndefined();
+    expect(cierre.detalle).toMatch(/sin comprobantes/i);
+  });
+
   it("periodo sellado deja la ruta completa", () => {
     const s: SnapshotRuta = {
       ...vacio,

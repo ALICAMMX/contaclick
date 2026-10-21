@@ -154,8 +154,10 @@ export function construirRuta(s: SnapshotRuta): PasoRuta[] {
     desbloquea: ["Conciliación bancaria", "Diagnóstico de flujo", "Etapa de bancos del cierre"],
     ruta: "/app/conciliacion",
     accion: hayBanco ? "Ver conciliación" : "Subir estado de cuenta",
-    estado: hayBanco ? "listo" : hayCfdi ? "pendiente" : "bloqueado",
-    bloqueadoPor: hayCfdi ? undefined : "Primero trae los CFDI del mes (paso 4).",
+    // El banco NO depende de que existan CFDI: un mes sin facturas es válido y
+    // sus movimientos igual se concilian (o justifican) antes del cierre.
+    estado: hayBanco ? "listo" : csfListo ? "pendiente" : "bloqueado",
+    bloqueadoPor: csfListo ? undefined : "Falta leer la CSF (paso 1).",
     detalle: hayBanco
       ? `${s.movimientosPeriodo} movimientos en el periodo · ${s.cuentasBancarias} cuenta(s)`
       : s.cuentasBancarias > 0
@@ -174,15 +176,16 @@ export function construirRuta(s: SnapshotRuta): PasoRuta[] {
     desbloquea: ["Impuestos preliminares", "Manifiesto sellado del periodo", "Reportes y entregables"],
     ruta: "/app/cierre",
     accion: "Abrir Centro de Cierre",
-    estado: cerrado ? "listo" : pendientesHumanos > 0 ? "atencion" : hayCfdi ? "pendiente" : "bloqueado",
-    bloqueadoPor: hayCfdi ? undefined : "Primero trae los CFDI del mes (paso 4).",
+    // Un periodo sin comprobantes también se cierra (declaración en ceros).
+    estado: cerrado ? "listo" : pendientesHumanos > 0 ? "atencion" : csfListo ? "pendiente" : "bloqueado",
+    bloqueadoPor: csfListo ? undefined : "Falta leer la CSF (paso 1).",
     detalle: cerrado
       ? "Periodo sellado."
       : pendientesHumanos > 0
         ? `${s.decisionesPendientes} decisiones de deducibilidad y ${s.polizasBorrador} pólizas borrador esperan tu revisión.`
         : hayCfdi
           ? "Sin pendientes de criterio humano registrados."
-          : "Se habilita cuando haya comprobantes.",
+          : "Mes sin comprobantes: confirma que no hubo operaciones y cierra el periodo.",
   };
 
   return [paso1, paso2, paso3, paso4, paso5, paso6];
