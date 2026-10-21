@@ -1515,3 +1515,37 @@ diferencia 0, ambiguos 0, importación no bloqueada. 57/57 pruebas.
 
 ## 2026-08-25 — Workflows: "Carga de XML" fallaba en cada ejecución
 Los workflows guardados conservaban acciones sin implementación (validar_cfdi, auditor_express, actualizar_score_riesgo) y el motor fallaba cerrado en cada corrida. Ahora el grafo se depura al ejecutar (y se persiste la limpieza), se limpiaron los workflows existentes en base, y una condición sin datos verificables queda como *omitida* (detiene el flujo sin ejecutar nada) en vez de marcar la corrida como fallida.
+
+## 2026-10-21 — Acceso con Google: el navegador regresaba al inicio del sitio
+**Síntoma:** tras aprobar en Google, la sesión no aterrizaba en `/app`; el usuario
+quedaba en la página de inicio (y en la práctica no podía entrar).
+
+**Causa:** el botón lanzaba Google con `redirect_uri = window.location.origin`, es
+decir la raíz del sitio. Al volver, el navegador caía en `/`, y esa ruta no revisa
+la sesión en ningún momento, así que nadie llevaba al usuario al panel. El único
+detector de sesión viva estaba en `/auth` y consultaba `getSession()` una sola vez
+al montar, con lo que perdía la carrera contra la hidratación de la sesión.
+
+**Corrección:**
+1. Nueva ruta pública `/auth-callback` que *espera* la sesión (suscripción a
+   `onAuthStateChange` + sondeo hasta 12 s), adopta tokens si el intermediario los
+   devuelve en la URL, y entonces bootstrappea el workspace y navega con
+   `window.location.assign` (navegación dura, para no chocar con el reinicio de
+   caché de `__root.tsx`).
+2. La cuenta con 2FA pendiente se devuelve a `/auth`, que es la pantalla dueña del
+   código, en vez de abrir el panel con un nivel de aseguramiento menor.
+3. Si no llega sesión, la pantalla muestra un aviso con *Reintentar* y acceso por
+   contraseña. Nunca un rebote silencioso.
+4. `redirect_uri` pasa a `<origin>/auth-callback`; el destino original se guarda en
+   `sessionStorage` (`src/lib/auth-entry.ts`) y se sana con `safeNext` (sólo rutas
+   del mismo origen).
+5. Se corrigió el aviso que afirmaba "Google está deshabilitado temporalmente":
+   verificado contra el servidor, el proveedor sí está habilitado.
+
+**Verificación:** `build OK`; sesión autenticada real (`2020alicam@gmail.com`)
+restaurada y `/app` cargando sin errores de consola; `/auth-callback` sin sesión
+muestra el aviso con sus dos salidas; 8/8 pruebas de `src/lib/auth-entry.test.ts`.
+
+**No verificado aquí:** la pantalla de consentimiento de Google requiere una
+cuenta Google real, y el intermediario de acceso (`/~oauth/initiate`) lo sirve el
+alojamiento, no este entorno. Pendiente de confirmar en el sitio publicado.

@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthCallbackRouteImport } from './routes/auth-callback'
 import { Route as ContactoRouteImport } from './routes/contacto'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as FolletoHerramientasRouteImport } from './routes/folleto-herramientas'
@@ -145,6 +146,11 @@ const AppRoute = AppRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth-callback',
+  path: '/auth-callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContactoRoute = ContactoRouteImport.update({
@@ -759,6 +765,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
+  '/auth-callback': typeof AuthCallbackRoute
   '/contacto': typeof ContactoRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/folleto-herramientas': typeof FolletoHerramientasRoute
@@ -882,6 +889,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/auth-callback': typeof AuthCallbackRoute
   '/contacto': typeof ContactoRoute
   '/folleto-herramientas': typeof FolletoHerramientasRoute
   '/precios': typeof PreciosRoute
@@ -998,6 +1006,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
+  '/auth-callback': typeof AuthCallbackRoute
   '/contacto': typeof ContactoRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/folleto-herramientas': typeof FolletoHerramientasRoute
@@ -1124,6 +1133,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/auth'
+    | '/auth-callback'
     | '/contacto'
     | '/dashboard'
     | '/folleto-herramientas'
@@ -1247,6 +1257,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/auth-callback'
     | '/contacto'
     | '/folleto-herramientas'
     | '/precios'
@@ -1362,6 +1373,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/auth'
+    | '/auth-callback'
     | '/contacto'
     | '/dashboard'
     | '/folleto-herramientas'
@@ -1487,6 +1499,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   AuthRoute: typeof AuthRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
   ContactoRoute: typeof ContactoRoute
   DashboardRoute: typeof DashboardRouteWithChildren
   FolletoHerramientasRoute: typeof FolletoHerramientasRoute
@@ -1533,6 +1546,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth-callback': {
+      id: '/auth-callback'
+      path: '/auth-callback'
+      fullPath: '/auth-callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contacto': {
@@ -2663,6 +2683,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   AuthRoute: AuthRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
   ContactoRoute: ContactoRoute,
   DashboardRoute: DashboardRouteWithChildren,
   FolletoHerramientasRoute: FolletoHerramientasRoute,

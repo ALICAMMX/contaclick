@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Logo } from "@/components/Logo";
 import logoAsset from "@/assets/contaclick-logo-full.png.asset.json";
 import { ensureUserWorkspace, getEntryContext } from "@/lib/auth-bootstrap.functions";
+import { safeNext, rememberReturnPath } from "@/lib/auth-entry";
 import { ensureDemoAccount } from "@/lib/demo/demo-account.functions";
 import { seedDemo } from "@/lib/demo/demo.functions";
 import { PlayCircle, ArrowLeft } from "lucide-react";
@@ -29,10 +30,6 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-function safeNext(next: string | undefined, fallback: string): string {
-  if (!next || !next.startsWith("/") || next.startsWith("//")) return fallback;
-  return next;
-}
 
 type AuthFailure = {
   code?: string;
@@ -216,7 +213,7 @@ function AuthPage() {
               setFormMessage({ type: "success", text: "Ya tenías cuenta. Sesión iniciada." });
               return;
             }
-            const providerMessage = "Ese correo ya existe y fue creado con Google. Como Google está deshabilitado temporalmente, usa otro correo o restablece una contraseña para este correo.";
+            const providerMessage = "Ese correo ya existe y se creó con Google. Inicia sesión con el botón «Continuar con Google», o usa «Crear o restablecer contraseña» para definir una contraseña de acceso.";
             toast.error(
               providerMessage,
               { duration: 9000 },
@@ -440,9 +437,10 @@ function AuthPage() {
               onClick={async () => {
                 setFormMessage(null);
                 try {
+                  rememberReturnPath(search.next);
                   const { lovable } = await import("@/integrations/lovable/index");
                   const result = await lovable.auth.signInWithOAuth("google", {
-                    redirect_uri: window.location.origin,
+                    redirect_uri: `${window.location.origin}/auth-callback`,
                   });
                   if (result.error) throw result.error;
                   if (result.redirected) return;
