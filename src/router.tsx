@@ -27,8 +27,8 @@ function DefaultNotFound() {
 
 function DefaultError({ error, reset }: ErrorComponentProps) {
   console.error("[Router DefaultError]", error);
-  const message = error?.message || String(error);
-  const stack = error?.stack ?? "";
+  const message = (error as Error)?.message || String(error);
+  const stack = (error as Error)?.stack ?? "";
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-xl text-center">
