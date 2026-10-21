@@ -9,187 +9,132 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
-import { Route as TerminosRouteImport } from './routes/terminos'
-import { Route as SeguridadRouteImport } from './routes/seguridad'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as RegistroRouteImport } from './routes/registro'
-import { Route as PrivacidadRouteImport } from './routes/privacidad'
-import { Route as PreciosRouteImport } from './routes/precios'
-import { Route as PortalRouteImport } from './routes/portal'
-import { Route as FolletoHerramientasRouteImport } from './routes/folleto-herramientas'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as ContactoRouteImport } from './routes/contacto'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as PortalIndexRouteImport } from './routes/portal.index'
-import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
+import { Route as AppRouteImport } from './routes/app'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ContactoRouteImport } from './routes/contacto'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as FolletoHerramientasRouteImport } from './routes/folleto-herramientas'
+import { Route as PortalRouteImport } from './routes/portal'
+import { Route as PreciosRouteImport } from './routes/precios'
+import { Route as PrivacidadRouteImport } from './routes/privacidad'
+import { Route as RegistroRouteImport } from './routes/registro'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as SeguridadRouteImport } from './routes/seguridad'
+import { Route as TerminosRouteImport } from './routes/terminos'
+import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as AppIndexRouteImport } from './routes/app.index'
-import { Route as PortalSaludFiscalRouteImport } from './routes/portal.salud-fiscal'
-import { Route as PortalReportesRouteImport } from './routes/portal.reportes'
-import { Route as PortalMensajesRouteImport } from './routes/portal.mensajes'
-import { Route as PortalImpuestosRouteImport } from './routes/portal.impuestos'
-import { Route as PortalEstadoCuentaRouteImport } from './routes/portal.estado-cuenta'
-import { Route as PortalDocumentosRouteImport } from './routes/portal.documentos'
-import { Route as PortalCfdiRouteImport } from './routes/portal.cfdi'
-import { Route as InvitarTokenRouteImport } from './routes/invitar.$token'
-import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
-import { Route as DashboardReportesRouteImport } from './routes/dashboard.reportes'
-import { Route as DashboardConciliadorRouteImport } from './routes/dashboard.conciliador'
-import { Route as DashboardClientesRouteImport } from './routes/dashboard.clientes'
-import { Route as DashboardCfdiRouteImport } from './routes/dashboard.cfdi'
-import { Route as DashboardAuditorRouteImport } from './routes/dashboard.auditor'
-import { Route as DashboardAsistenteRouteImport } from './routes/dashboard.asistente'
-import { Route as AppWorkflowsRouteImport } from './routes/app.workflows'
-import { Route as AppTareasRouteImport } from './routes/app.tareas'
-import { Route as AppSatSyncRouteImport } from './routes/app.sat-sync'
-import { Route as AppSaludFiscalRouteImport } from './routes/app.salud-fiscal'
-import { Route as AppRiesgoRouteImport } from './routes/app.riesgo'
-import { Route as AppRfcsVinculadosRouteImport } from './routes/app.rfcs-vinculados'
-import { Route as AppReportesRouteImport } from './routes/app.reportes'
-import { Route as AppReporteEjecutivoRouteImport } from './routes/app.reporte-ejecutivo'
-import { Route as AppPolizasRouteImport } from './routes/app.polizas'
-import { Route as AppMensajesRouteImport } from './routes/app.mensajes'
-import { Route as AppLegalRouteImport } from './routes/app.legal'
-import { Route as AppInicioGuiadoRouteImport } from './routes/app.inicio-guiado'
-import { Route as AppExpedientesRouteImport } from './routes/app.expedientes'
-import { Route as AppEquipoRouteImport } from './routes/app.equipo'
-import { Route as AppDespachoRouteImport } from './routes/app.despacho'
-import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
-import { Route as AppContableRouteImport } from './routes/app.contable'
-import { Route as AppContabilidadAutoRouteImport } from './routes/app.contabilidad-auto'
-import { Route as AppConfiguracionRouteImport } from './routes/app.configuracion'
-import { Route as AppConciliacionIntegralRouteImport } from './routes/app.conciliacion-integral'
-import { Route as AppConciliacionRouteImport } from './routes/app.conciliacion'
-import { Route as AppCierreRouteImport } from './routes/app.cierre'
-import { Route as AppCheckoutRouteImport } from './routes/app.checkout'
-import { Route as AppCfdiRouteImport } from './routes/app.cfdi'
-import { Route as AppCalendarioRouteImport } from './routes/app.calendario'
-import { Route as AppBuzonRouteImport } from './routes/app.buzon'
-import { Route as AppAdministrativoRouteImport } from './routes/app.administrativo'
-import { Route as AppAdminSatSaldoRouteImport } from './routes/app.admin-sat-saldo'
-import { Route as AppAdminPanelRouteImport } from './routes/app.admin-panel'
 import { Route as AppAdminRouteImport } from './routes/app.admin'
-import { Route as AppToolsIndexRouteImport } from './routes/app.tools.index'
-import { Route as AppReportesIndexRouteImport } from './routes/app.reportes.index'
-import { Route as AppMensajesIndexRouteImport } from './routes/app.mensajes.index'
-import { Route as AppLegalIndexRouteImport } from './routes/app.legal.index'
-import { Route as AppContableIndexRouteImport } from './routes/app.contable.index'
-import { Route as AppConciliacionIndexRouteImport } from './routes/app.conciliacion.index'
-import { Route as AppClientesIndexRouteImport } from './routes/app.clientes.index'
-import { Route as AppCfdiIndexRouteImport } from './routes/app.cfdi.index'
-import { Route as AppAdminIndexRouteImport } from './routes/app.admin.index'
-import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
-import { Route as AppToolsXmlBulkReaderRouteImport } from './routes/app.tools.xml-bulk-reader'
-import { Route as AppToolsShadowPayrollRouteImport } from './routes/app.tools.shadow-payroll'
-import { Route as AppToolsSatRiskRouteImport } from './routes/app.tools.sat-risk'
-import { Route as AppToolsResicoCalculatorRouteImport } from './routes/app.tools.resico-calculator'
-import { Route as AppToolsOficioGeneratorRouteImport } from './routes/app.tools.oficio-generator'
-import { Route as AppToolsIsrIvaPmRouteImport } from './routes/app.tools.isr-iva-pm'
-import { Route as AppToolsIsrIvaCalculatorRouteImport } from './routes/app.tools.isr-iva-calculator'
-import { Route as AppToolsImportPricesRouteImport } from './routes/app.tools.import-prices'
-import { Route as AppToolsImportClientesRouteImport } from './routes/app.tools.import-clientes'
-import { Route as AppToolsFiscalAssistantRouteImport } from './routes/app.tools.fiscal-assistant'
-import { Route as AppToolsExpressAuditorRouteImport } from './routes/app.tools.express-auditor'
-import { Route as AppToolsEfosValidatorRouteImport } from './routes/app.tools.efos-validator'
-import { Route as AppToolsDeducibilityCheckerRouteImport } from './routes/app.tools.deducibility-checker'
-import { Route as AppToolsCsfParserRouteImport } from './routes/app.tools.csf-parser'
-import { Route as AppToolsCfdiVerifierRouteImport } from './routes/app.tools.cfdi-verifier'
-import { Route as AppToolsCfdiValidatorRouteImport } from './routes/app.tools.cfdi-validator'
-import { Route as AppToolsBankReconcilerRouteImport } from './routes/app.tools.bank-reconciler'
-import { Route as AppReportesResumenFiscalRouteImport } from './routes/app.reportes.resumen-fiscal'
-import { Route as AppLegalRedactorRouteImport } from './routes/app.legal.redactor'
-import { Route as AppLegalMarketplaceRouteImport } from './routes/app.legal.marketplace'
-import { Route as AppLegalLagunasRouteImport } from './routes/app.legal.lagunas'
-import { Route as AppLegalConsultaIaRouteImport } from './routes/app.legal.consulta-ia'
-import { Route as AppContableHerramientasRouteImport } from './routes/app.contable.herramientas'
-import { Route as AppContableAgentesRouteImport } from './routes/app.contable.agentes'
-import { Route as AppContableAgenteConciliacionRouteImport } from './routes/app.contable.agente-conciliacion'
-import { Route as AppContableAgenteCierreRouteImport } from './routes/app.contable.agente-cierre'
-import { Route as AppContableAgenteCfdiRouteImport } from './routes/app.contable.agente-cfdi'
-import { Route as AppContableAgenteAuditorRouteImport } from './routes/app.contable.agente-auditor'
-import { Route as AppConciliacionHistorialRouteImport } from './routes/app.conciliacion.historial'
-import { Route as AppClientesIdRouteImport } from './routes/app.clientes.$id'
-import { Route as AppCfdiIdRouteImport } from './routes/app.cfdi.$id'
-import { Route as AppAdminTramitesRouteImport } from './routes/app.admin.tramites'
-import { Route as AppAdminTesoreriaRouteImport } from './routes/app.admin.tesoreria'
-import { Route as AppAdminNominaRouteImport } from './routes/app.admin.nomina'
-import { Route as AppAdminLeyesIaRouteImport } from './routes/app.admin.leyes-ia'
-import { Route as AppAdminInventariosRouteImport } from './routes/app.admin.inventarios'
-import { Route as AppAdminCuponesRouteImport } from './routes/app.admin.cupones'
-import { Route as AppAdminCumplimientoRouteImport } from './routes/app.admin.cumplimiento'
-import { Route as AppAdminCorrespondenciaRouteImport } from './routes/app.admin.correspondencia'
-import { Route as AppAdminBuzonRouteImport } from './routes/app.admin.buzon'
-import { Route as AppAdminActivosRouteImport } from './routes/app.admin.activos'
-import { Route as ApiPublicMpWebhookRouteImport } from './routes/api/public/mp-webhook'
+import { Route as AppAdminPanelRouteImport } from './routes/app.admin-panel'
+import { Route as AppAdminSatSaldoRouteImport } from './routes/app.admin-sat-saldo'
+import { Route as AppAdministrativoRouteImport } from './routes/app.administrativo'
+import { Route as AppBuzonRouteImport } from './routes/app.buzon'
+import { Route as AppCalendarioRouteImport } from './routes/app.calendario'
+import { Route as AppCfdiRouteImport } from './routes/app.cfdi'
+import { Route as AppCheckoutRouteImport } from './routes/app.checkout'
+import { Route as AppCierreRouteImport } from './routes/app.cierre'
+import { Route as AppConciliacionRouteImport } from './routes/app.conciliacion'
+import { Route as AppConciliacionIntegralRouteImport } from './routes/app.conciliacion-integral'
+import { Route as AppConfiguracionRouteImport } from './routes/app.configuracion'
+import { Route as AppContabilidadAutoRouteImport } from './routes/app.contabilidad-auto'
+import { Route as AppContableRouteImport } from './routes/app.contable'
+import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
+import { Route as AppDespachoRouteImport } from './routes/app.despacho'
+import { Route as AppEquipoRouteImport } from './routes/app.equipo'
+import { Route as AppExpedientesRouteImport } from './routes/app.expedientes'
+import { Route as AppInicioGuiadoRouteImport } from './routes/app.inicio-guiado'
+import { Route as AppLegalRouteImport } from './routes/app.legal'
+import { Route as AppMensajesRouteImport } from './routes/app.mensajes'
+import { Route as AppPolizasRouteImport } from './routes/app.polizas'
+import { Route as AppReporteEjecutivoRouteImport } from './routes/app.reporte-ejecutivo'
+import { Route as AppReportesRouteImport } from './routes/app.reportes'
+import { Route as AppRfcsVinculadosRouteImport } from './routes/app.rfcs-vinculados'
+import { Route as AppRiesgoRouteImport } from './routes/app.riesgo'
+import { Route as AppSaludFiscalRouteImport } from './routes/app.salud-fiscal'
+import { Route as AppSatSyncRouteImport } from './routes/app.sat-sync'
+import { Route as AppTareasRouteImport } from './routes/app.tareas'
+import { Route as AppWorkflowsRouteImport } from './routes/app.workflows'
+import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
+import { Route as DashboardAsistenteRouteImport } from './routes/dashboard.asistente'
+import { Route as DashboardAuditorRouteImport } from './routes/dashboard.auditor'
+import { Route as DashboardCfdiRouteImport } from './routes/dashboard.cfdi'
+import { Route as DashboardClientesRouteImport } from './routes/dashboard.clientes'
+import { Route as DashboardConciliadorRouteImport } from './routes/dashboard.conciliador'
+import { Route as DashboardReportesRouteImport } from './routes/dashboard.reportes'
+import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
+import { Route as InvitarTokenRouteImport } from './routes/invitar.$token'
+import { Route as PortalIndexRouteImport } from './routes/portal.index'
+import { Route as PortalCfdiRouteImport } from './routes/portal.cfdi'
+import { Route as PortalDocumentosRouteImport } from './routes/portal.documentos'
+import { Route as PortalEstadoCuentaRouteImport } from './routes/portal.estado-cuenta'
+import { Route as PortalImpuestosRouteImport } from './routes/portal.impuestos'
+import { Route as PortalMensajesRouteImport } from './routes/portal.mensajes'
+import { Route as PortalReportesRouteImport } from './routes/portal.reportes'
+import { Route as PortalSaludFiscalRouteImport } from './routes/portal.salud-fiscal'
 import { Route as ApiPublicContactRouteImport } from './routes/api/public/contact'
-import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
-import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
-import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
-import { Route as ApiPublicHooksWorkflowCronRouteImport } from './routes/api/public/hooks/workflow-cron'
-import { Route as ApiPublicHooksSatSyncRouteImport } from './routes/api/public/hooks/sat-sync'
-import { Route as ApiPublicHooksSatProgramacionesRouteImport } from './routes/api/public/hooks/sat-programaciones'
+import { Route as ApiPublicMpWebhookRouteImport } from './routes/api/public/mp-webhook'
+import { Route as AppAdminIndexRouteImport } from './routes/app.admin.index'
+import { Route as AppAdminActivosRouteImport } from './routes/app.admin.activos'
+import { Route as AppAdminBuzonRouteImport } from './routes/app.admin.buzon'
+import { Route as AppAdminCorrespondenciaRouteImport } from './routes/app.admin.correspondencia'
+import { Route as AppAdminCumplimientoRouteImport } from './routes/app.admin.cumplimiento'
+import { Route as AppAdminCuponesRouteImport } from './routes/app.admin.cupones'
+import { Route as AppAdminInventariosRouteImport } from './routes/app.admin.inventarios'
+import { Route as AppAdminLeyesIaRouteImport } from './routes/app.admin.leyes-ia'
+import { Route as AppAdminNominaRouteImport } from './routes/app.admin.nomina'
+import { Route as AppAdminTesoreriaRouteImport } from './routes/app.admin.tesoreria'
+import { Route as AppAdminTramitesRouteImport } from './routes/app.admin.tramites'
+import { Route as AppCfdiIndexRouteImport } from './routes/app.cfdi.index'
+import { Route as AppCfdiIdRouteImport } from './routes/app.cfdi.$id'
+import { Route as AppClientesIndexRouteImport } from './routes/app.clientes.index'
+import { Route as AppClientesIdRouteImport } from './routes/app.clientes.$id'
+import { Route as AppConciliacionIndexRouteImport } from './routes/app.conciliacion.index'
+import { Route as AppConciliacionHistorialRouteImport } from './routes/app.conciliacion.historial'
+import { Route as AppContableIndexRouteImport } from './routes/app.contable.index'
+import { Route as AppContableAgenteAuditorRouteImport } from './routes/app.contable.agente-auditor'
+import { Route as AppContableAgenteCfdiRouteImport } from './routes/app.contable.agente-cfdi'
+import { Route as AppContableAgenteCierreRouteImport } from './routes/app.contable.agente-cierre'
+import { Route as AppContableAgenteConciliacionRouteImport } from './routes/app.contable.agente-conciliacion'
+import { Route as AppContableAgentesRouteImport } from './routes/app.contable.agentes'
+import { Route as AppContableHerramientasRouteImport } from './routes/app.contable.herramientas'
+import { Route as AppLegalIndexRouteImport } from './routes/app.legal.index'
+import { Route as AppLegalConsultaIaRouteImport } from './routes/app.legal.consulta-ia'
+import { Route as AppLegalLagunasRouteImport } from './routes/app.legal.lagunas'
+import { Route as AppLegalMarketplaceRouteImport } from './routes/app.legal.marketplace'
+import { Route as AppLegalRedactorRouteImport } from './routes/app.legal.redactor'
+import { Route as AppMensajesIndexRouteImport } from './routes/app.mensajes.index'
+import { Route as AppReportesIndexRouteImport } from './routes/app.reportes.index'
+import { Route as AppReportesResumenFiscalRouteImport } from './routes/app.reportes.resumen-fiscal'
+import { Route as AppToolsIndexRouteImport } from './routes/app.tools.index'
+import { Route as AppToolsBankReconcilerRouteImport } from './routes/app.tools.bank-reconciler'
+import { Route as AppToolsCfdiValidatorRouteImport } from './routes/app.tools.cfdi-validator'
+import { Route as AppToolsCfdiVerifierRouteImport } from './routes/app.tools.cfdi-verifier'
+import { Route as AppToolsCsfParserRouteImport } from './routes/app.tools.csf-parser'
+import { Route as AppToolsDeducibilityCheckerRouteImport } from './routes/app.tools.deducibility-checker'
+import { Route as AppToolsEfosValidatorRouteImport } from './routes/app.tools.efos-validator'
+import { Route as AppToolsExpressAuditorRouteImport } from './routes/app.tools.express-auditor'
+import { Route as AppToolsFiscalAssistantRouteImport } from './routes/app.tools.fiscal-assistant'
+import { Route as AppToolsImportClientesRouteImport } from './routes/app.tools.import-clientes'
+import { Route as AppToolsImportPricesRouteImport } from './routes/app.tools.import-prices'
+import { Route as AppToolsIsrIvaCalculatorRouteImport } from './routes/app.tools.isr-iva-calculator'
+import { Route as AppToolsIsrIvaPmRouteImport } from './routes/app.tools.isr-iva-pm'
+import { Route as AppToolsOficioGeneratorRouteImport } from './routes/app.tools.oficio-generator'
+import { Route as AppToolsResicoCalculatorRouteImport } from './routes/app.tools.resico-calculator'
+import { Route as AppToolsSatRiskRouteImport } from './routes/app.tools.sat-risk'
+import { Route as AppToolsShadowPayrollRouteImport } from './routes/app.tools.shadow-payroll'
+import { Route as AppToolsXmlBulkReaderRouteImport } from './routes/app.tools.xml-bulk-reader'
+import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as ApiPublicGoogleCallbackRouteImport } from './routes/api/public/google.callback'
+import { Route as ApiPublicHooksSatProgramacionesRouteImport } from './routes/api/public/hooks/sat-programaciones'
+import { Route as ApiPublicHooksSatSyncRouteImport } from './routes/api/public/hooks/sat-sync'
+import { Route as ApiPublicHooksWorkflowCronRouteImport } from './routes/api/public/hooks/workflow-cron'
+import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
+import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
+import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 
-const UnsubscribeRoute = UnsubscribeRouteImport.update({
-  id: '/unsubscribe',
-  path: '/unsubscribe',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TerminosRoute = TerminosRouteImport.update({
-  id: '/terminos',
-  path: '/terminos',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SeguridadRoute = SeguridadRouteImport.update({
-  id: '/seguridad',
-  path: '/seguridad',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RegistroRoute = RegistroRouteImport.update({
-  id: '/registro',
-  path: '/registro',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrivacidadRoute = PrivacidadRouteImport.update({
-  id: '/privacidad',
-  path: '/privacidad',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PreciosRoute = PreciosRouteImport.update({
-  id: '/precios',
-  path: '/precios',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PortalRoute = PortalRouteImport.update({
-  id: '/portal',
-  path: '/portal',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FolletoHerramientasRoute = FolletoHerramientasRouteImport.update({
-  id: '/folleto-herramientas',
-  path: '/folleto-herramientas',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ContactoRoute = ContactoRouteImport.update({
-  id: '/contacto',
-  path: '/contacto',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRoute = AppRouteImport.update({
@@ -197,244 +142,69 @@ const AppRoute = AppRouteImport.update({
   path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PortalIndexRoute = PortalIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => PortalRoute,
+const ContactoRoute = ContactoRouteImport.update({
+  id: '/contacto',
+  path: '/contacto',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const DashboardIndexRoute = DashboardIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => DashboardRoute,
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FolletoHerramientasRoute = FolletoHerramientasRouteImport.update({
+  id: '/folleto-herramientas',
+  path: '/folleto-herramientas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PortalRoute = PortalRouteImport.update({
+  id: '/portal',
+  path: '/portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PreciosRoute = PreciosRouteImport.update({
+  id: '/precios',
+  path: '/precios',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacidadRoute = PrivacidadRouteImport.update({
+  id: '/privacidad',
+  path: '/privacidad',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegistroRoute = RegistroRouteImport.update({
+  id: '/registro',
+  path: '/registro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SeguridadRoute = SeguridadRouteImport.update({
+  id: '/seguridad',
+  path: '/seguridad',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TerminosRoute = TerminosRouteImport.update({
+  id: '/terminos',
+  path: '/terminos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UnsubscribeRoute = UnsubscribeRouteImport.update({
+  id: '/unsubscribe',
+  path: '/unsubscribe',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AppRoute,
-} as any)
-const PortalSaludFiscalRoute = PortalSaludFiscalRouteImport.update({
-  id: '/salud-fiscal',
-  path: '/salud-fiscal',
-  getParentRoute: () => PortalRoute,
-} as any)
-const PortalReportesRoute = PortalReportesRouteImport.update({
-  id: '/reportes',
-  path: '/reportes',
-  getParentRoute: () => PortalRoute,
-} as any)
-const PortalMensajesRoute = PortalMensajesRouteImport.update({
-  id: '/mensajes',
-  path: '/mensajes',
-  getParentRoute: () => PortalRoute,
-} as any)
-const PortalImpuestosRoute = PortalImpuestosRouteImport.update({
-  id: '/impuestos',
-  path: '/impuestos',
-  getParentRoute: () => PortalRoute,
-} as any)
-const PortalEstadoCuentaRoute = PortalEstadoCuentaRouteImport.update({
-  id: '/estado-cuenta',
-  path: '/estado-cuenta',
-  getParentRoute: () => PortalRoute,
-} as any)
-const PortalDocumentosRoute = PortalDocumentosRouteImport.update({
-  id: '/documentos',
-  path: '/documentos',
-  getParentRoute: () => PortalRoute,
-} as any)
-const PortalCfdiRoute = PortalCfdiRouteImport.update({
-  id: '/cfdi',
-  path: '/cfdi',
-  getParentRoute: () => PortalRoute,
-} as any)
-const InvitarTokenRoute = InvitarTokenRouteImport.update({
-  id: '/invitar/$token',
-  path: '/invitar/$token',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
-  id: '/email/unsubscribe',
-  path: '/email/unsubscribe',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardReportesRoute = DashboardReportesRouteImport.update({
-  id: '/reportes',
-  path: '/reportes',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const DashboardConciliadorRoute = DashboardConciliadorRouteImport.update({
-  id: '/conciliador',
-  path: '/conciliador',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const DashboardClientesRoute = DashboardClientesRouteImport.update({
-  id: '/clientes',
-  path: '/clientes',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const DashboardCfdiRoute = DashboardCfdiRouteImport.update({
-  id: '/cfdi',
-  path: '/cfdi',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const DashboardAuditorRoute = DashboardAuditorRouteImport.update({
-  id: '/auditor',
-  path: '/auditor',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const DashboardAsistenteRoute = DashboardAsistenteRouteImport.update({
-  id: '/asistente',
-  path: '/asistente',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const AppWorkflowsRoute = AppWorkflowsRouteImport.update({
-  id: '/workflows',
-  path: '/workflows',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppTareasRoute = AppTareasRouteImport.update({
-  id: '/tareas',
-  path: '/tareas',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppSatSyncRoute = AppSatSyncRouteImport.update({
-  id: '/sat-sync',
-  path: '/sat-sync',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppSaludFiscalRoute = AppSaludFiscalRouteImport.update({
-  id: '/salud-fiscal',
-  path: '/salud-fiscal',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppRiesgoRoute = AppRiesgoRouteImport.update({
-  id: '/riesgo',
-  path: '/riesgo',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppRfcsVinculadosRoute = AppRfcsVinculadosRouteImport.update({
-  id: '/rfcs-vinculados',
-  path: '/rfcs-vinculados',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppReportesRoute = AppReportesRouteImport.update({
-  id: '/reportes',
-  path: '/reportes',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppReporteEjecutivoRoute = AppReporteEjecutivoRouteImport.update({
-  id: '/reporte-ejecutivo',
-  path: '/reporte-ejecutivo',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppPolizasRoute = AppPolizasRouteImport.update({
-  id: '/polizas',
-  path: '/polizas',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppMensajesRoute = AppMensajesRouteImport.update({
-  id: '/mensajes',
-  path: '/mensajes',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppLegalRoute = AppLegalRouteImport.update({
-  id: '/legal',
-  path: '/legal',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppInicioGuiadoRoute = AppInicioGuiadoRouteImport.update({
-  id: '/inicio-guiado',
-  path: '/inicio-guiado',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppExpedientesRoute = AppExpedientesRouteImport.update({
-  id: '/expedientes',
-  path: '/expedientes',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppEquipoRoute = AppEquipoRouteImport.update({
-  id: '/equipo',
-  path: '/equipo',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppDespachoRoute = AppDespachoRouteImport.update({
-  id: '/despacho',
-  path: '/despacho',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppDashboardRoute = AppDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppContableRoute = AppContableRouteImport.update({
-  id: '/contable',
-  path: '/contable',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppContabilidadAutoRoute = AppContabilidadAutoRouteImport.update({
-  id: '/contabilidad-auto',
-  path: '/contabilidad-auto',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppConfiguracionRoute = AppConfiguracionRouteImport.update({
-  id: '/configuracion',
-  path: '/configuracion',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppConciliacionIntegralRoute = AppConciliacionIntegralRouteImport.update({
-  id: '/conciliacion-integral',
-  path: '/conciliacion-integral',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppConciliacionRoute = AppConciliacionRouteImport.update({
-  id: '/conciliacion',
-  path: '/conciliacion',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppCierreRoute = AppCierreRouteImport.update({
-  id: '/cierre',
-  path: '/cierre',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppCheckoutRoute = AppCheckoutRouteImport.update({
-  id: '/checkout',
-  path: '/checkout',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppCfdiRoute = AppCfdiRouteImport.update({
-  id: '/cfdi',
-  path: '/cfdi',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppCalendarioRoute = AppCalendarioRouteImport.update({
-  id: '/calendario',
-  path: '/calendario',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppBuzonRoute = AppBuzonRouteImport.update({
-  id: '/buzon',
-  path: '/buzon',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppAdministrativoRoute = AppAdministrativoRouteImport.update({
-  id: '/administrativo',
-  path: '/administrativo',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppAdminSatSaldoRoute = AppAdminSatSaldoRouteImport.update({
-  id: '/admin-sat-saldo',
-  path: '/admin-sat-saldo',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppAdminPanelRoute = AppAdminPanelRouteImport.update({
-  id: '/admin-panel',
-  path: '/admin-panel',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAdminRoute = AppAdminRouteImport.update({
@@ -442,194 +212,335 @@ const AppAdminRoute = AppAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AppRoute,
 } as any)
-const AppToolsIndexRoute = AppToolsIndexRouteImport.update({
-  id: '/tools/',
-  path: '/tools/',
+const AppAdminPanelRoute = AppAdminPanelRouteImport.update({
+  id: '/admin-panel',
+  path: '/admin-panel',
   getParentRoute: () => AppRoute,
 } as any)
-const AppReportesIndexRoute = AppReportesIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppReportesRoute,
-} as any)
-const AppMensajesIndexRoute = AppMensajesIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppMensajesRoute,
-} as any)
-const AppLegalIndexRoute = AppLegalIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppLegalRoute,
-} as any)
-const AppContableIndexRoute = AppContableIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppContableRoute,
-} as any)
-const AppConciliacionIndexRoute = AppConciliacionIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppConciliacionRoute,
-} as any)
-const AppClientesIndexRoute = AppClientesIndexRouteImport.update({
-  id: '/clientes/',
-  path: '/clientes/',
+const AppAdminSatSaldoRoute = AppAdminSatSaldoRouteImport.update({
+  id: '/admin-sat-saldo',
+  path: '/admin-sat-saldo',
   getParentRoute: () => AppRoute,
 } as any)
-const AppCfdiIndexRoute = AppCfdiIndexRouteImport.update({
+const AppAdministrativoRoute = AppAdministrativoRouteImport.update({
+  id: '/administrativo',
+  path: '/administrativo',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppBuzonRoute = AppBuzonRouteImport.update({
+  id: '/buzon',
+  path: '/buzon',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCalendarioRoute = AppCalendarioRouteImport.update({
+  id: '/calendario',
+  path: '/calendario',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCfdiRoute = AppCfdiRouteImport.update({
+  id: '/cfdi',
+  path: '/cfdi',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCheckoutRoute = AppCheckoutRouteImport.update({
+  id: '/checkout',
+  path: '/checkout',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCierreRoute = AppCierreRouteImport.update({
+  id: '/cierre',
+  path: '/cierre',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppConciliacionRoute = AppConciliacionRouteImport.update({
+  id: '/conciliacion',
+  path: '/conciliacion',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppConciliacionIntegralRoute = AppConciliacionIntegralRouteImport.update({
+  id: '/conciliacion-integral',
+  path: '/conciliacion-integral',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppConfiguracionRoute = AppConfiguracionRouteImport.update({
+  id: '/configuracion',
+  path: '/configuracion',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppContabilidadAutoRoute = AppContabilidadAutoRouteImport.update({
+  id: '/contabilidad-auto',
+  path: '/contabilidad-auto',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppContableRoute = AppContableRouteImport.update({
+  id: '/contable',
+  path: '/contable',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDashboardRoute = AppDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDespachoRoute = AppDespachoRouteImport.update({
+  id: '/despacho',
+  path: '/despacho',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEquipoRoute = AppEquipoRouteImport.update({
+  id: '/equipo',
+  path: '/equipo',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppExpedientesRoute = AppExpedientesRouteImport.update({
+  id: '/expedientes',
+  path: '/expedientes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppInicioGuiadoRoute = AppInicioGuiadoRouteImport.update({
+  id: '/inicio-guiado',
+  path: '/inicio-guiado',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLegalRoute = AppLegalRouteImport.update({
+  id: '/legal',
+  path: '/legal',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMensajesRoute = AppMensajesRouteImport.update({
+  id: '/mensajes',
+  path: '/mensajes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPolizasRoute = AppPolizasRouteImport.update({
+  id: '/polizas',
+  path: '/polizas',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReporteEjecutivoRoute = AppReporteEjecutivoRouteImport.update({
+  id: '/reporte-ejecutivo',
+  path: '/reporte-ejecutivo',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReportesRoute = AppReportesRouteImport.update({
+  id: '/reportes',
+  path: '/reportes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRfcsVinculadosRoute = AppRfcsVinculadosRouteImport.update({
+  id: '/rfcs-vinculados',
+  path: '/rfcs-vinculados',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRiesgoRoute = AppRiesgoRouteImport.update({
+  id: '/riesgo',
+  path: '/riesgo',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSaludFiscalRoute = AppSaludFiscalRouteImport.update({
+  id: '/salud-fiscal',
+  path: '/salud-fiscal',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSatSyncRoute = AppSatSyncRouteImport.update({
+  id: '/sat-sync',
+  path: '/sat-sync',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTareasRoute = AppTareasRouteImport.update({
+  id: '/tareas',
+  path: '/tareas',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppWorkflowsRoute = AppWorkflowsRouteImport.update({
+  id: '/workflows',
+  path: '/workflows',
+  getParentRoute: () => AppRoute,
+} as any)
+const DashboardIndexRoute = DashboardIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AppCfdiRoute,
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardAsistenteRoute = DashboardAsistenteRouteImport.update({
+  id: '/asistente',
+  path: '/asistente',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardAuditorRoute = DashboardAuditorRouteImport.update({
+  id: '/auditor',
+  path: '/auditor',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardCfdiRoute = DashboardCfdiRouteImport.update({
+  id: '/cfdi',
+  path: '/cfdi',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardClientesRoute = DashboardClientesRouteImport.update({
+  id: '/clientes',
+  path: '/clientes',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardConciliadorRoute = DashboardConciliadorRouteImport.update({
+  id: '/conciliador',
+  path: '/conciliador',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardReportesRoute = DashboardReportesRouteImport.update({
+  id: '/reportes',
+  path: '/reportes',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
+  id: '/email/unsubscribe',
+  path: '/email/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InvitarTokenRoute = InvitarTokenRouteImport.update({
+  id: '/invitar/$token',
+  path: '/invitar/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PortalIndexRoute = PortalIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalCfdiRoute = PortalCfdiRouteImport.update({
+  id: '/cfdi',
+  path: '/cfdi',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalDocumentosRoute = PortalDocumentosRouteImport.update({
+  id: '/documentos',
+  path: '/documentos',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalEstadoCuentaRoute = PortalEstadoCuentaRouteImport.update({
+  id: '/estado-cuenta',
+  path: '/estado-cuenta',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalImpuestosRoute = PortalImpuestosRouteImport.update({
+  id: '/impuestos',
+  path: '/impuestos',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalMensajesRoute = PortalMensajesRouteImport.update({
+  id: '/mensajes',
+  path: '/mensajes',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalReportesRoute = PortalReportesRouteImport.update({
+  id: '/reportes',
+  path: '/reportes',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalSaludFiscalRoute = PortalSaludFiscalRouteImport.update({
+  id: '/salud-fiscal',
+  path: '/salud-fiscal',
+  getParentRoute: () => PortalRoute,
+} as any)
+const ApiPublicContactRoute = ApiPublicContactRouteImport.update({
+  id: '/api/public/contact',
+  path: '/api/public/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicMpWebhookRoute = ApiPublicMpWebhookRouteImport.update({
+  id: '/api/public/mp-webhook',
+  path: '/api/public/mp-webhook',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AppAdminIndexRoute = AppAdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppAdminRoute,
 } as any)
-const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
-  id: '/lovable/email/suppression',
-  path: '/lovable/email/suppression',
-  getParentRoute: () => rootRouteImport,
+const AppAdminActivosRoute = AppAdminActivosRouteImport.update({
+  id: '/activos',
+  path: '/activos',
+  getParentRoute: () => AppAdminRoute,
 } as any)
-const AppToolsXmlBulkReaderRoute = AppToolsXmlBulkReaderRouteImport.update({
-  id: '/tools/xml-bulk-reader',
-  path: '/tools/xml-bulk-reader',
+const AppAdminBuzonRoute = AppAdminBuzonRouteImport.update({
+  id: '/buzon',
+  path: '/buzon',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminCorrespondenciaRoute = AppAdminCorrespondenciaRouteImport.update({
+  id: '/correspondencia',
+  path: '/correspondencia',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminCumplimientoRoute = AppAdminCumplimientoRouteImport.update({
+  id: '/cumplimiento',
+  path: '/cumplimiento',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminCuponesRoute = AppAdminCuponesRouteImport.update({
+  id: '/cupones',
+  path: '/cupones',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminInventariosRoute = AppAdminInventariosRouteImport.update({
+  id: '/inventarios',
+  path: '/inventarios',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminLeyesIaRoute = AppAdminLeyesIaRouteImport.update({
+  id: '/leyes-ia',
+  path: '/leyes-ia',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminNominaRoute = AppAdminNominaRouteImport.update({
+  id: '/nomina',
+  path: '/nomina',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminTesoreriaRoute = AppAdminTesoreriaRouteImport.update({
+  id: '/tesoreria',
+  path: '/tesoreria',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminTramitesRoute = AppAdminTramitesRouteImport.update({
+  id: '/tramites',
+  path: '/tramites',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppCfdiIndexRoute = AppCfdiIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppCfdiRoute,
+} as any)
+const AppCfdiIdRoute = AppCfdiIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppCfdiRoute,
+} as any)
+const AppClientesIndexRoute = AppClientesIndexRouteImport.update({
+  id: '/clientes/',
+  path: '/clientes/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppToolsShadowPayrollRoute = AppToolsShadowPayrollRouteImport.update({
-  id: '/tools/shadow-payroll',
-  path: '/tools/shadow-payroll',
+const AppClientesIdRoute = AppClientesIdRouteImport.update({
+  id: '/clientes/$id',
+  path: '/clientes/$id',
   getParentRoute: () => AppRoute,
 } as any)
-const AppToolsSatRiskRoute = AppToolsSatRiskRouteImport.update({
-  id: '/tools/sat-risk',
-  path: '/tools/sat-risk',
-  getParentRoute: () => AppRoute,
+const AppConciliacionIndexRoute = AppConciliacionIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppConciliacionRoute,
 } as any)
-const AppToolsResicoCalculatorRoute =
-  AppToolsResicoCalculatorRouteImport.update({
-    id: '/tools/resico-calculator',
-    path: '/tools/resico-calculator',
-    getParentRoute: () => AppRoute,
+const AppConciliacionHistorialRoute =
+  AppConciliacionHistorialRouteImport.update({
+    id: '/historial',
+    path: '/historial',
+    getParentRoute: () => AppConciliacionRoute,
   } as any)
-const AppToolsOficioGeneratorRoute = AppToolsOficioGeneratorRouteImport.update({
-  id: '/tools/oficio-generator',
-  path: '/tools/oficio-generator',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppToolsIsrIvaPmRoute = AppToolsIsrIvaPmRouteImport.update({
-  id: '/tools/isr-iva-pm',
-  path: '/tools/isr-iva-pm',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppToolsIsrIvaCalculatorRoute =
-  AppToolsIsrIvaCalculatorRouteImport.update({
-    id: '/tools/isr-iva-calculator',
-    path: '/tools/isr-iva-calculator',
-    getParentRoute: () => AppRoute,
-  } as any)
-const AppToolsImportPricesRoute = AppToolsImportPricesRouteImport.update({
-  id: '/tools/import-prices',
-  path: '/tools/import-prices',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppToolsImportClientesRoute = AppToolsImportClientesRouteImport.update({
-  id: '/tools/import-clientes',
-  path: '/tools/import-clientes',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppToolsFiscalAssistantRoute = AppToolsFiscalAssistantRouteImport.update({
-  id: '/tools/fiscal-assistant',
-  path: '/tools/fiscal-assistant',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppToolsExpressAuditorRoute = AppToolsExpressAuditorRouteImport.update({
-  id: '/tools/express-auditor',
-  path: '/tools/express-auditor',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppToolsEfosValidatorRoute = AppToolsEfosValidatorRouteImport.update({
-  id: '/tools/efos-validator',
-  path: '/tools/efos-validator',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppToolsDeducibilityCheckerRoute =
-  AppToolsDeducibilityCheckerRouteImport.update({
-    id: '/tools/deducibility-checker',
-    path: '/tools/deducibility-checker',
-    getParentRoute: () => AppRoute,
-  } as any)
-const AppToolsCsfParserRoute = AppToolsCsfParserRouteImport.update({
-  id: '/tools/csf-parser',
-  path: '/tools/csf-parser',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppToolsCfdiVerifierRoute = AppToolsCfdiVerifierRouteImport.update({
-  id: '/tools/cfdi-verifier',
-  path: '/tools/cfdi-verifier',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppToolsCfdiValidatorRoute = AppToolsCfdiValidatorRouteImport.update({
-  id: '/tools/cfdi-validator',
-  path: '/tools/cfdi-validator',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppToolsBankReconcilerRoute = AppToolsBankReconcilerRouteImport.update({
-  id: '/tools/bank-reconciler',
-  path: '/tools/bank-reconciler',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppReportesResumenFiscalRoute =
-  AppReportesResumenFiscalRouteImport.update({
-    id: '/resumen-fiscal',
-    path: '/resumen-fiscal',
-    getParentRoute: () => AppReportesRoute,
-  } as any)
-const AppLegalRedactorRoute = AppLegalRedactorRouteImport.update({
-  id: '/redactor',
-  path: '/redactor',
-  getParentRoute: () => AppLegalRoute,
-} as any)
-const AppLegalMarketplaceRoute = AppLegalMarketplaceRouteImport.update({
-  id: '/marketplace',
-  path: '/marketplace',
-  getParentRoute: () => AppLegalRoute,
-} as any)
-const AppLegalLagunasRoute = AppLegalLagunasRouteImport.update({
-  id: '/lagunas',
-  path: '/lagunas',
-  getParentRoute: () => AppLegalRoute,
-} as any)
-const AppLegalConsultaIaRoute = AppLegalConsultaIaRouteImport.update({
-  id: '/consulta-ia',
-  path: '/consulta-ia',
-  getParentRoute: () => AppLegalRoute,
-} as any)
-const AppContableHerramientasRoute = AppContableHerramientasRouteImport.update({
-  id: '/herramientas',
-  path: '/herramientas',
-  getParentRoute: () => AppContableRoute,
-} as any)
-const AppContableAgentesRoute = AppContableAgentesRouteImport.update({
-  id: '/agentes',
-  path: '/agentes',
-  getParentRoute: () => AppContableRoute,
-} as any)
-const AppContableAgenteConciliacionRoute =
-  AppContableAgenteConciliacionRouteImport.update({
-    id: '/agente-conciliacion',
-    path: '/agente-conciliacion',
-    getParentRoute: () => AppContableRoute,
-  } as any)
-const AppContableAgenteCierreRoute = AppContableAgenteCierreRouteImport.update({
-  id: '/agente-cierre',
-  path: '/agente-cierre',
-  getParentRoute: () => AppContableRoute,
-} as any)
-const AppContableAgenteCfdiRoute = AppContableAgenteCfdiRouteImport.update({
-  id: '/agente-cfdi',
-  path: '/agente-cfdi',
+const AppContableIndexRoute = AppContableIndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => AppContableRoute,
 } as any)
 const AppContableAgenteAuditorRoute =
@@ -638,109 +549,174 @@ const AppContableAgenteAuditorRoute =
     path: '/agente-auditor',
     getParentRoute: () => AppContableRoute,
   } as any)
-const AppConciliacionHistorialRoute =
-  AppConciliacionHistorialRouteImport.update({
-    id: '/historial',
-    path: '/historial',
-    getParentRoute: () => AppConciliacionRoute,
+const AppContableAgenteCfdiRoute = AppContableAgenteCfdiRouteImport.update({
+  id: '/agente-cfdi',
+  path: '/agente-cfdi',
+  getParentRoute: () => AppContableRoute,
+} as any)
+const AppContableAgenteCierreRoute = AppContableAgenteCierreRouteImport.update({
+  id: '/agente-cierre',
+  path: '/agente-cierre',
+  getParentRoute: () => AppContableRoute,
+} as any)
+const AppContableAgenteConciliacionRoute =
+  AppContableAgenteConciliacionRouteImport.update({
+    id: '/agente-conciliacion',
+    path: '/agente-conciliacion',
+    getParentRoute: () => AppContableRoute,
   } as any)
-const AppClientesIdRoute = AppClientesIdRouteImport.update({
-  id: '/clientes/$id',
-  path: '/clientes/$id',
+const AppContableAgentesRoute = AppContableAgentesRouteImport.update({
+  id: '/agentes',
+  path: '/agentes',
+  getParentRoute: () => AppContableRoute,
+} as any)
+const AppContableHerramientasRoute = AppContableHerramientasRouteImport.update({
+  id: '/herramientas',
+  path: '/herramientas',
+  getParentRoute: () => AppContableRoute,
+} as any)
+const AppLegalIndexRoute = AppLegalIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppLegalRoute,
+} as any)
+const AppLegalConsultaIaRoute = AppLegalConsultaIaRouteImport.update({
+  id: '/consulta-ia',
+  path: '/consulta-ia',
+  getParentRoute: () => AppLegalRoute,
+} as any)
+const AppLegalLagunasRoute = AppLegalLagunasRouteImport.update({
+  id: '/lagunas',
+  path: '/lagunas',
+  getParentRoute: () => AppLegalRoute,
+} as any)
+const AppLegalMarketplaceRoute = AppLegalMarketplaceRouteImport.update({
+  id: '/marketplace',
+  path: '/marketplace',
+  getParentRoute: () => AppLegalRoute,
+} as any)
+const AppLegalRedactorRoute = AppLegalRedactorRouteImport.update({
+  id: '/redactor',
+  path: '/redactor',
+  getParentRoute: () => AppLegalRoute,
+} as any)
+const AppMensajesIndexRoute = AppMensajesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppMensajesRoute,
+} as any)
+const AppReportesIndexRoute = AppReportesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppReportesRoute,
+} as any)
+const AppReportesResumenFiscalRoute =
+  AppReportesResumenFiscalRouteImport.update({
+    id: '/resumen-fiscal',
+    path: '/resumen-fiscal',
+    getParentRoute: () => AppReportesRoute,
+  } as any)
+const AppToolsIndexRoute = AppToolsIndexRouteImport.update({
+  id: '/tools/',
+  path: '/tools/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppCfdiIdRoute = AppCfdiIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AppCfdiRoute,
+const AppToolsBankReconcilerRoute = AppToolsBankReconcilerRouteImport.update({
+  id: '/tools/bank-reconciler',
+  path: '/tools/bank-reconciler',
+  getParentRoute: () => AppRoute,
 } as any)
-const AppAdminTramitesRoute = AppAdminTramitesRouteImport.update({
-  id: '/tramites',
-  path: '/tramites',
-  getParentRoute: () => AppAdminRoute,
+const AppToolsCfdiValidatorRoute = AppToolsCfdiValidatorRouteImport.update({
+  id: '/tools/cfdi-validator',
+  path: '/tools/cfdi-validator',
+  getParentRoute: () => AppRoute,
 } as any)
-const AppAdminTesoreriaRoute = AppAdminTesoreriaRouteImport.update({
-  id: '/tesoreria',
-  path: '/tesoreria',
-  getParentRoute: () => AppAdminRoute,
+const AppToolsCfdiVerifierRoute = AppToolsCfdiVerifierRouteImport.update({
+  id: '/tools/cfdi-verifier',
+  path: '/tools/cfdi-verifier',
+  getParentRoute: () => AppRoute,
 } as any)
-const AppAdminNominaRoute = AppAdminNominaRouteImport.update({
-  id: '/nomina',
-  path: '/nomina',
-  getParentRoute: () => AppAdminRoute,
+const AppToolsCsfParserRoute = AppToolsCsfParserRouteImport.update({
+  id: '/tools/csf-parser',
+  path: '/tools/csf-parser',
+  getParentRoute: () => AppRoute,
 } as any)
-const AppAdminLeyesIaRoute = AppAdminLeyesIaRouteImport.update({
-  id: '/leyes-ia',
-  path: '/leyes-ia',
-  getParentRoute: () => AppAdminRoute,
+const AppToolsDeducibilityCheckerRoute =
+  AppToolsDeducibilityCheckerRouteImport.update({
+    id: '/tools/deducibility-checker',
+    path: '/tools/deducibility-checker',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppToolsEfosValidatorRoute = AppToolsEfosValidatorRouteImport.update({
+  id: '/tools/efos-validator',
+  path: '/tools/efos-validator',
+  getParentRoute: () => AppRoute,
 } as any)
-const AppAdminInventariosRoute = AppAdminInventariosRouteImport.update({
-  id: '/inventarios',
-  path: '/inventarios',
-  getParentRoute: () => AppAdminRoute,
+const AppToolsExpressAuditorRoute = AppToolsExpressAuditorRouteImport.update({
+  id: '/tools/express-auditor',
+  path: '/tools/express-auditor',
+  getParentRoute: () => AppRoute,
 } as any)
-const AppAdminCuponesRoute = AppAdminCuponesRouteImport.update({
-  id: '/cupones',
-  path: '/cupones',
-  getParentRoute: () => AppAdminRoute,
+const AppToolsFiscalAssistantRoute = AppToolsFiscalAssistantRouteImport.update({
+  id: '/tools/fiscal-assistant',
+  path: '/tools/fiscal-assistant',
+  getParentRoute: () => AppRoute,
 } as any)
-const AppAdminCumplimientoRoute = AppAdminCumplimientoRouteImport.update({
-  id: '/cumplimiento',
-  path: '/cumplimiento',
-  getParentRoute: () => AppAdminRoute,
+const AppToolsImportClientesRoute = AppToolsImportClientesRouteImport.update({
+  id: '/tools/import-clientes',
+  path: '/tools/import-clientes',
+  getParentRoute: () => AppRoute,
 } as any)
-const AppAdminCorrespondenciaRoute = AppAdminCorrespondenciaRouteImport.update({
-  id: '/correspondencia',
-  path: '/correspondencia',
-  getParentRoute: () => AppAdminRoute,
+const AppToolsImportPricesRoute = AppToolsImportPricesRouteImport.update({
+  id: '/tools/import-prices',
+  path: '/tools/import-prices',
+  getParentRoute: () => AppRoute,
 } as any)
-const AppAdminBuzonRoute = AppAdminBuzonRouteImport.update({
-  id: '/buzon',
-  path: '/buzon',
-  getParentRoute: () => AppAdminRoute,
+const AppToolsIsrIvaCalculatorRoute =
+  AppToolsIsrIvaCalculatorRouteImport.update({
+    id: '/tools/isr-iva-calculator',
+    path: '/tools/isr-iva-calculator',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppToolsIsrIvaPmRoute = AppToolsIsrIvaPmRouteImport.update({
+  id: '/tools/isr-iva-pm',
+  path: '/tools/isr-iva-pm',
+  getParentRoute: () => AppRoute,
 } as any)
-const AppAdminActivosRoute = AppAdminActivosRouteImport.update({
-  id: '/activos',
-  path: '/activos',
-  getParentRoute: () => AppAdminRoute,
+const AppToolsOficioGeneratorRoute = AppToolsOficioGeneratorRouteImport.update({
+  id: '/tools/oficio-generator',
+  path: '/tools/oficio-generator',
+  getParentRoute: () => AppRoute,
 } as any)
-const ApiPublicMpWebhookRoute = ApiPublicMpWebhookRouteImport.update({
-  id: '/api/public/mp-webhook',
-  path: '/api/public/mp-webhook',
+const AppToolsResicoCalculatorRoute =
+  AppToolsResicoCalculatorRouteImport.update({
+    id: '/tools/resico-calculator',
+    path: '/tools/resico-calculator',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppToolsSatRiskRoute = AppToolsSatRiskRouteImport.update({
+  id: '/tools/sat-risk',
+  path: '/tools/sat-risk',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppToolsShadowPayrollRoute = AppToolsShadowPayrollRouteImport.update({
+  id: '/tools/shadow-payroll',
+  path: '/tools/shadow-payroll',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppToolsXmlBulkReaderRoute = AppToolsXmlBulkReaderRouteImport.update({
+  id: '/tools/xml-bulk-reader',
+  path: '/tools/xml-bulk-reader',
+  getParentRoute: () => AppRoute,
+} as any)
+const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
+  id: '/lovable/email/suppression',
+  path: '/lovable/email/suppression',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicContactRoute = ApiPublicContactRouteImport.update({
-  id: '/api/public/contact',
-  path: '/api/public/contact',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LovableEmailTransactionalSendRoute =
-  LovableEmailTransactionalSendRouteImport.update({
-    id: '/lovable/email/transactional/send',
-    path: '/lovable/email/transactional/send',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const LovableEmailTransactionalPreviewRoute =
-  LovableEmailTransactionalPreviewRouteImport.update({
-    id: '/lovable/email/transactional/preview',
-    path: '/lovable/email/transactional/preview',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const LovableEmailQueueProcessRoute =
-  LovableEmailQueueProcessRouteImport.update({
-    id: '/lovable/email/queue/process',
-    path: '/lovable/email/queue/process',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksWorkflowCronRoute =
-  ApiPublicHooksWorkflowCronRouteImport.update({
-    id: '/api/public/hooks/workflow-cron',
-    path: '/api/public/hooks/workflow-cron',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksSatSyncRoute = ApiPublicHooksSatSyncRouteImport.update({
-  id: '/api/public/hooks/sat-sync',
-  path: '/api/public/hooks/sat-sync',
+const ApiPublicGoogleCallbackRoute = ApiPublicGoogleCallbackRouteImport.update({
+  id: '/api/public/google/callback',
+  path: '/api/public/google/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicHooksSatProgramacionesRoute =
@@ -749,11 +725,35 @@ const ApiPublicHooksSatProgramacionesRoute =
     path: '/api/public/hooks/sat-programaciones',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicGoogleCallbackRoute = ApiPublicGoogleCallbackRouteImport.update({
-  id: '/api/public/google/callback',
-  path: '/api/public/google/callback',
+const ApiPublicHooksSatSyncRoute = ApiPublicHooksSatSyncRouteImport.update({
+  id: '/api/public/hooks/sat-sync',
+  path: '/api/public/hooks/sat-sync',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksWorkflowCronRoute =
+  ApiPublicHooksWorkflowCronRouteImport.update({
+    id: '/api/public/hooks/workflow-cron',
+    path: '/api/public/hooks/workflow-cron',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const LovableEmailQueueProcessRoute =
+  LovableEmailQueueProcessRouteImport.update({
+    id: '/lovable/email/queue/process',
+    path: '/lovable/email/queue/process',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const LovableEmailTransactionalPreviewRoute =
+  LovableEmailTransactionalPreviewRouteImport.update({
+    id: '/lovable/email/transactional/preview',
+    path: '/lovable/email/transactional/preview',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const LovableEmailTransactionalSendRoute =
+  LovableEmailTransactionalSendRouteImport.update({
+    id: '/lovable/email/transactional/send',
+    path: '/lovable/email/transactional/send',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -1514,88 +1514,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/unsubscribe': {
-      id: '/unsubscribe'
-      path: '/unsubscribe'
-      fullPath: '/unsubscribe'
-      preLoaderRoute: typeof UnsubscribeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/terminos': {
-      id: '/terminos'
-      path: '/terminos'
-      fullPath: '/terminos'
-      preLoaderRoute: typeof TerminosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/seguridad': {
-      id: '/seguridad'
-      path: '/seguridad'
-      fullPath: '/seguridad'
-      preLoaderRoute: typeof SeguridadRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/registro': {
-      id: '/registro'
-      path: '/registro'
-      fullPath: '/registro'
-      preLoaderRoute: typeof RegistroRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacidad': {
-      id: '/privacidad'
-      path: '/privacidad'
-      fullPath: '/privacidad'
-      preLoaderRoute: typeof PrivacidadRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/precios': {
-      id: '/precios'
-      path: '/precios'
-      fullPath: '/precios'
-      preLoaderRoute: typeof PreciosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/portal': {
-      id: '/portal'
-      path: '/portal'
-      fullPath: '/portal'
-      preLoaderRoute: typeof PortalRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/folleto-herramientas': {
-      id: '/folleto-herramientas'
-      path: '/folleto-herramientas'
-      fullPath: '/folleto-herramientas'
-      preLoaderRoute: typeof FolletoHerramientasRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/contacto': {
-      id: '/contacto'
-      path: '/contacto'
-      fullPath: '/contacto'
-      preLoaderRoute: typeof ContactoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app': {
@@ -1605,340 +1528,95 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/portal/': {
-      id: '/portal/'
-      path: '/'
-      fullPath: '/portal/'
-      preLoaderRoute: typeof PortalIndexRouteImport
-      parentRoute: typeof PortalRoute
+    '/contacto': {
+      id: '/contacto'
+      path: '/contacto'
+      fullPath: '/contacto'
+      preLoaderRoute: typeof ContactoRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/dashboard/': {
-      id: '/dashboard/'
-      path: '/'
-      fullPath: '/dashboard/'
-      preLoaderRoute: typeof DashboardIndexRouteImport
-      parentRoute: typeof DashboardRoute
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/folleto-herramientas': {
+      id: '/folleto-herramientas'
+      path: '/folleto-herramientas'
+      fullPath: '/folleto-herramientas'
+      preLoaderRoute: typeof FolletoHerramientasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portal': {
+      id: '/portal'
+      path: '/portal'
+      fullPath: '/portal'
+      preLoaderRoute: typeof PortalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/precios': {
+      id: '/precios'
+      path: '/precios'
+      fullPath: '/precios'
+      preLoaderRoute: typeof PreciosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacidad': {
+      id: '/privacidad'
+      path: '/privacidad'
+      fullPath: '/privacidad'
+      preLoaderRoute: typeof PrivacidadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/registro': {
+      id: '/registro'
+      path: '/registro'
+      fullPath: '/registro'
+      preLoaderRoute: typeof RegistroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/seguridad': {
+      id: '/seguridad'
+      path: '/seguridad'
+      fullPath: '/seguridad'
+      preLoaderRoute: typeof SeguridadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terminos': {
+      id: '/terminos'
+      path: '/terminos'
+      fullPath: '/terminos'
+      preLoaderRoute: typeof TerminosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/unsubscribe': {
+      id: '/unsubscribe'
+      path: '/unsubscribe'
+      fullPath: '/unsubscribe'
+      preLoaderRoute: typeof UnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/app/': {
       id: '/app/'
       path: '/'
       fullPath: '/app/'
       preLoaderRoute: typeof AppIndexRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/portal/salud-fiscal': {
-      id: '/portal/salud-fiscal'
-      path: '/salud-fiscal'
-      fullPath: '/portal/salud-fiscal'
-      preLoaderRoute: typeof PortalSaludFiscalRouteImport
-      parentRoute: typeof PortalRoute
-    }
-    '/portal/reportes': {
-      id: '/portal/reportes'
-      path: '/reportes'
-      fullPath: '/portal/reportes'
-      preLoaderRoute: typeof PortalReportesRouteImport
-      parentRoute: typeof PortalRoute
-    }
-    '/portal/mensajes': {
-      id: '/portal/mensajes'
-      path: '/mensajes'
-      fullPath: '/portal/mensajes'
-      preLoaderRoute: typeof PortalMensajesRouteImport
-      parentRoute: typeof PortalRoute
-    }
-    '/portal/impuestos': {
-      id: '/portal/impuestos'
-      path: '/impuestos'
-      fullPath: '/portal/impuestos'
-      preLoaderRoute: typeof PortalImpuestosRouteImport
-      parentRoute: typeof PortalRoute
-    }
-    '/portal/estado-cuenta': {
-      id: '/portal/estado-cuenta'
-      path: '/estado-cuenta'
-      fullPath: '/portal/estado-cuenta'
-      preLoaderRoute: typeof PortalEstadoCuentaRouteImport
-      parentRoute: typeof PortalRoute
-    }
-    '/portal/documentos': {
-      id: '/portal/documentos'
-      path: '/documentos'
-      fullPath: '/portal/documentos'
-      preLoaderRoute: typeof PortalDocumentosRouteImport
-      parentRoute: typeof PortalRoute
-    }
-    '/portal/cfdi': {
-      id: '/portal/cfdi'
-      path: '/cfdi'
-      fullPath: '/portal/cfdi'
-      preLoaderRoute: typeof PortalCfdiRouteImport
-      parentRoute: typeof PortalRoute
-    }
-    '/invitar/$token': {
-      id: '/invitar/$token'
-      path: '/invitar/$token'
-      fullPath: '/invitar/$token'
-      preLoaderRoute: typeof InvitarTokenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/email/unsubscribe': {
-      id: '/email/unsubscribe'
-      path: '/email/unsubscribe'
-      fullPath: '/email/unsubscribe'
-      preLoaderRoute: typeof EmailUnsubscribeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard/reportes': {
-      id: '/dashboard/reportes'
-      path: '/reportes'
-      fullPath: '/dashboard/reportes'
-      preLoaderRoute: typeof DashboardReportesRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/dashboard/conciliador': {
-      id: '/dashboard/conciliador'
-      path: '/conciliador'
-      fullPath: '/dashboard/conciliador'
-      preLoaderRoute: typeof DashboardConciliadorRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/dashboard/clientes': {
-      id: '/dashboard/clientes'
-      path: '/clientes'
-      fullPath: '/dashboard/clientes'
-      preLoaderRoute: typeof DashboardClientesRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/dashboard/cfdi': {
-      id: '/dashboard/cfdi'
-      path: '/cfdi'
-      fullPath: '/dashboard/cfdi'
-      preLoaderRoute: typeof DashboardCfdiRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/dashboard/auditor': {
-      id: '/dashboard/auditor'
-      path: '/auditor'
-      fullPath: '/dashboard/auditor'
-      preLoaderRoute: typeof DashboardAuditorRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/dashboard/asistente': {
-      id: '/dashboard/asistente'
-      path: '/asistente'
-      fullPath: '/dashboard/asistente'
-      preLoaderRoute: typeof DashboardAsistenteRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/app/workflows': {
-      id: '/app/workflows'
-      path: '/workflows'
-      fullPath: '/app/workflows'
-      preLoaderRoute: typeof AppWorkflowsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/tareas': {
-      id: '/app/tareas'
-      path: '/tareas'
-      fullPath: '/app/tareas'
-      preLoaderRoute: typeof AppTareasRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/sat-sync': {
-      id: '/app/sat-sync'
-      path: '/sat-sync'
-      fullPath: '/app/sat-sync'
-      preLoaderRoute: typeof AppSatSyncRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/salud-fiscal': {
-      id: '/app/salud-fiscal'
-      path: '/salud-fiscal'
-      fullPath: '/app/salud-fiscal'
-      preLoaderRoute: typeof AppSaludFiscalRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/riesgo': {
-      id: '/app/riesgo'
-      path: '/riesgo'
-      fullPath: '/app/riesgo'
-      preLoaderRoute: typeof AppRiesgoRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/rfcs-vinculados': {
-      id: '/app/rfcs-vinculados'
-      path: '/rfcs-vinculados'
-      fullPath: '/app/rfcs-vinculados'
-      preLoaderRoute: typeof AppRfcsVinculadosRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/reportes': {
-      id: '/app/reportes'
-      path: '/reportes'
-      fullPath: '/app/reportes'
-      preLoaderRoute: typeof AppReportesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/reporte-ejecutivo': {
-      id: '/app/reporte-ejecutivo'
-      path: '/reporte-ejecutivo'
-      fullPath: '/app/reporte-ejecutivo'
-      preLoaderRoute: typeof AppReporteEjecutivoRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/polizas': {
-      id: '/app/polizas'
-      path: '/polizas'
-      fullPath: '/app/polizas'
-      preLoaderRoute: typeof AppPolizasRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/mensajes': {
-      id: '/app/mensajes'
-      path: '/mensajes'
-      fullPath: '/app/mensajes'
-      preLoaderRoute: typeof AppMensajesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/legal': {
-      id: '/app/legal'
-      path: '/legal'
-      fullPath: '/app/legal'
-      preLoaderRoute: typeof AppLegalRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/inicio-guiado': {
-      id: '/app/inicio-guiado'
-      path: '/inicio-guiado'
-      fullPath: '/app/inicio-guiado'
-      preLoaderRoute: typeof AppInicioGuiadoRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/expedientes': {
-      id: '/app/expedientes'
-      path: '/expedientes'
-      fullPath: '/app/expedientes'
-      preLoaderRoute: typeof AppExpedientesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/equipo': {
-      id: '/app/equipo'
-      path: '/equipo'
-      fullPath: '/app/equipo'
-      preLoaderRoute: typeof AppEquipoRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/despacho': {
-      id: '/app/despacho'
-      path: '/despacho'
-      fullPath: '/app/despacho'
-      preLoaderRoute: typeof AppDespachoRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/dashboard': {
-      id: '/app/dashboard'
-      path: '/dashboard'
-      fullPath: '/app/dashboard'
-      preLoaderRoute: typeof AppDashboardRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/contable': {
-      id: '/app/contable'
-      path: '/contable'
-      fullPath: '/app/contable'
-      preLoaderRoute: typeof AppContableRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/contabilidad-auto': {
-      id: '/app/contabilidad-auto'
-      path: '/contabilidad-auto'
-      fullPath: '/app/contabilidad-auto'
-      preLoaderRoute: typeof AppContabilidadAutoRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/configuracion': {
-      id: '/app/configuracion'
-      path: '/configuracion'
-      fullPath: '/app/configuracion'
-      preLoaderRoute: typeof AppConfiguracionRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/conciliacion-integral': {
-      id: '/app/conciliacion-integral'
-      path: '/conciliacion-integral'
-      fullPath: '/app/conciliacion-integral'
-      preLoaderRoute: typeof AppConciliacionIntegralRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/conciliacion': {
-      id: '/app/conciliacion'
-      path: '/conciliacion'
-      fullPath: '/app/conciliacion'
-      preLoaderRoute: typeof AppConciliacionRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/cierre': {
-      id: '/app/cierre'
-      path: '/cierre'
-      fullPath: '/app/cierre'
-      preLoaderRoute: typeof AppCierreRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/checkout': {
-      id: '/app/checkout'
-      path: '/checkout'
-      fullPath: '/app/checkout'
-      preLoaderRoute: typeof AppCheckoutRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/cfdi': {
-      id: '/app/cfdi'
-      path: '/cfdi'
-      fullPath: '/app/cfdi'
-      preLoaderRoute: typeof AppCfdiRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/calendario': {
-      id: '/app/calendario'
-      path: '/calendario'
-      fullPath: '/app/calendario'
-      preLoaderRoute: typeof AppCalendarioRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/buzon': {
-      id: '/app/buzon'
-      path: '/buzon'
-      fullPath: '/app/buzon'
-      preLoaderRoute: typeof AppBuzonRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/administrativo': {
-      id: '/app/administrativo'
-      path: '/administrativo'
-      fullPath: '/app/administrativo'
-      preLoaderRoute: typeof AppAdministrativoRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/admin-sat-saldo': {
-      id: '/app/admin-sat-saldo'
-      path: '/admin-sat-saldo'
-      fullPath: '/app/admin-sat-saldo'
-      preLoaderRoute: typeof AppAdminSatSaldoRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/admin-panel': {
-      id: '/app/admin-panel'
-      path: '/admin-panel'
-      fullPath: '/app/admin-panel'
-      preLoaderRoute: typeof AppAdminPanelRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/admin': {
@@ -1948,354 +1626,347 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminRouteImport
       parentRoute: typeof AppRoute
     }
-    '/app/tools/': {
-      id: '/app/tools/'
-      path: '/tools'
-      fullPath: '/app/tools/'
-      preLoaderRoute: typeof AppToolsIndexRouteImport
+    '/app/admin-panel': {
+      id: '/app/admin-panel'
+      path: '/admin-panel'
+      fullPath: '/app/admin-panel'
+      preLoaderRoute: typeof AppAdminPanelRouteImport
       parentRoute: typeof AppRoute
     }
-    '/app/reportes/': {
-      id: '/app/reportes/'
-      path: '/'
-      fullPath: '/app/reportes/'
-      preLoaderRoute: typeof AppReportesIndexRouteImport
-      parentRoute: typeof AppReportesRoute
+    '/app/admin-sat-saldo': {
+      id: '/app/admin-sat-saldo'
+      path: '/admin-sat-saldo'
+      fullPath: '/app/admin-sat-saldo'
+      preLoaderRoute: typeof AppAdminSatSaldoRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/app/mensajes/': {
-      id: '/app/mensajes/'
-      path: '/'
-      fullPath: '/app/mensajes/'
-      preLoaderRoute: typeof AppMensajesIndexRouteImport
-      parentRoute: typeof AppMensajesRoute
+    '/app/administrativo': {
+      id: '/app/administrativo'
+      path: '/administrativo'
+      fullPath: '/app/administrativo'
+      preLoaderRoute: typeof AppAdministrativoRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/app/legal/': {
-      id: '/app/legal/'
-      path: '/'
-      fullPath: '/app/legal/'
-      preLoaderRoute: typeof AppLegalIndexRouteImport
-      parentRoute: typeof AppLegalRoute
+    '/app/buzon': {
+      id: '/app/buzon'
+      path: '/buzon'
+      fullPath: '/app/buzon'
+      preLoaderRoute: typeof AppBuzonRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/app/contable/': {
-      id: '/app/contable/'
-      path: '/'
-      fullPath: '/app/contable/'
-      preLoaderRoute: typeof AppContableIndexRouteImport
-      parentRoute: typeof AppContableRoute
+    '/app/calendario': {
+      id: '/app/calendario'
+      path: '/calendario'
+      fullPath: '/app/calendario'
+      preLoaderRoute: typeof AppCalendarioRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/app/conciliacion/': {
-      id: '/app/conciliacion/'
-      path: '/'
-      fullPath: '/app/conciliacion/'
-      preLoaderRoute: typeof AppConciliacionIndexRouteImport
-      parentRoute: typeof AppConciliacionRoute
+    '/app/cfdi': {
+      id: '/app/cfdi'
+      path: '/cfdi'
+      fullPath: '/app/cfdi'
+      preLoaderRoute: typeof AppCfdiRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/app/clientes/': {
-      id: '/app/clientes/'
+    '/app/checkout': {
+      id: '/app/checkout'
+      path: '/checkout'
+      fullPath: '/app/checkout'
+      preLoaderRoute: typeof AppCheckoutRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/cierre': {
+      id: '/app/cierre'
+      path: '/cierre'
+      fullPath: '/app/cierre'
+      preLoaderRoute: typeof AppCierreRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/conciliacion': {
+      id: '/app/conciliacion'
+      path: '/conciliacion'
+      fullPath: '/app/conciliacion'
+      preLoaderRoute: typeof AppConciliacionRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/conciliacion-integral': {
+      id: '/app/conciliacion-integral'
+      path: '/conciliacion-integral'
+      fullPath: '/app/conciliacion-integral'
+      preLoaderRoute: typeof AppConciliacionIntegralRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/configuracion': {
+      id: '/app/configuracion'
+      path: '/configuracion'
+      fullPath: '/app/configuracion'
+      preLoaderRoute: typeof AppConfiguracionRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/contabilidad-auto': {
+      id: '/app/contabilidad-auto'
+      path: '/contabilidad-auto'
+      fullPath: '/app/contabilidad-auto'
+      preLoaderRoute: typeof AppContabilidadAutoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/contable': {
+      id: '/app/contable'
+      path: '/contable'
+      fullPath: '/app/contable'
+      preLoaderRoute: typeof AppContableRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/dashboard': {
+      id: '/app/dashboard'
+      path: '/dashboard'
+      fullPath: '/app/dashboard'
+      preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/despacho': {
+      id: '/app/despacho'
+      path: '/despacho'
+      fullPath: '/app/despacho'
+      preLoaderRoute: typeof AppDespachoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/equipo': {
+      id: '/app/equipo'
+      path: '/equipo'
+      fullPath: '/app/equipo'
+      preLoaderRoute: typeof AppEquipoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/expedientes': {
+      id: '/app/expedientes'
+      path: '/expedientes'
+      fullPath: '/app/expedientes'
+      preLoaderRoute: typeof AppExpedientesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/inicio-guiado': {
+      id: '/app/inicio-guiado'
+      path: '/inicio-guiado'
+      fullPath: '/app/inicio-guiado'
+      preLoaderRoute: typeof AppInicioGuiadoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/legal': {
+      id: '/app/legal'
+      path: '/legal'
+      fullPath: '/app/legal'
+      preLoaderRoute: typeof AppLegalRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/mensajes': {
+      id: '/app/mensajes'
+      path: '/mensajes'
+      fullPath: '/app/mensajes'
+      preLoaderRoute: typeof AppMensajesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/polizas': {
+      id: '/app/polizas'
+      path: '/polizas'
+      fullPath: '/app/polizas'
+      preLoaderRoute: typeof AppPolizasRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/reporte-ejecutivo': {
+      id: '/app/reporte-ejecutivo'
+      path: '/reporte-ejecutivo'
+      fullPath: '/app/reporte-ejecutivo'
+      preLoaderRoute: typeof AppReporteEjecutivoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/reportes': {
+      id: '/app/reportes'
+      path: '/reportes'
+      fullPath: '/app/reportes'
+      preLoaderRoute: typeof AppReportesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/rfcs-vinculados': {
+      id: '/app/rfcs-vinculados'
+      path: '/rfcs-vinculados'
+      fullPath: '/app/rfcs-vinculados'
+      preLoaderRoute: typeof AppRfcsVinculadosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/riesgo': {
+      id: '/app/riesgo'
+      path: '/riesgo'
+      fullPath: '/app/riesgo'
+      preLoaderRoute: typeof AppRiesgoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/salud-fiscal': {
+      id: '/app/salud-fiscal'
+      path: '/salud-fiscal'
+      fullPath: '/app/salud-fiscal'
+      preLoaderRoute: typeof AppSaludFiscalRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/sat-sync': {
+      id: '/app/sat-sync'
+      path: '/sat-sync'
+      fullPath: '/app/sat-sync'
+      preLoaderRoute: typeof AppSatSyncRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/tareas': {
+      id: '/app/tareas'
+      path: '/tareas'
+      fullPath: '/app/tareas'
+      preLoaderRoute: typeof AppTareasRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/workflows': {
+      id: '/app/workflows'
+      path: '/workflows'
+      fullPath: '/app/workflows'
+      preLoaderRoute: typeof AppWorkflowsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/dashboard/': {
+      id: '/dashboard/'
+      path: '/'
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof DashboardIndexRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/asistente': {
+      id: '/dashboard/asistente'
+      path: '/asistente'
+      fullPath: '/dashboard/asistente'
+      preLoaderRoute: typeof DashboardAsistenteRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/auditor': {
+      id: '/dashboard/auditor'
+      path: '/auditor'
+      fullPath: '/dashboard/auditor'
+      preLoaderRoute: typeof DashboardAuditorRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/cfdi': {
+      id: '/dashboard/cfdi'
+      path: '/cfdi'
+      fullPath: '/dashboard/cfdi'
+      preLoaderRoute: typeof DashboardCfdiRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/clientes': {
+      id: '/dashboard/clientes'
       path: '/clientes'
-      fullPath: '/app/clientes/'
-      preLoaderRoute: typeof AppClientesIndexRouteImport
-      parentRoute: typeof AppRoute
+      fullPath: '/dashboard/clientes'
+      preLoaderRoute: typeof DashboardClientesRouteImport
+      parentRoute: typeof DashboardRoute
     }
-    '/app/cfdi/': {
-      id: '/app/cfdi/'
+    '/dashboard/conciliador': {
+      id: '/dashboard/conciliador'
+      path: '/conciliador'
+      fullPath: '/dashboard/conciliador'
+      preLoaderRoute: typeof DashboardConciliadorRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/reportes': {
+      id: '/dashboard/reportes'
+      path: '/reportes'
+      fullPath: '/dashboard/reportes'
+      preLoaderRoute: typeof DashboardReportesRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/email/unsubscribe': {
+      id: '/email/unsubscribe'
+      path: '/email/unsubscribe'
+      fullPath: '/email/unsubscribe'
+      preLoaderRoute: typeof EmailUnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invitar/$token': {
+      id: '/invitar/$token'
+      path: '/invitar/$token'
+      fullPath: '/invitar/$token'
+      preLoaderRoute: typeof InvitarTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portal/': {
+      id: '/portal/'
       path: '/'
-      fullPath: '/app/cfdi/'
-      preLoaderRoute: typeof AppCfdiIndexRouteImport
-      parentRoute: typeof AppCfdiRoute
+      fullPath: '/portal/'
+      preLoaderRoute: typeof PortalIndexRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/cfdi': {
+      id: '/portal/cfdi'
+      path: '/cfdi'
+      fullPath: '/portal/cfdi'
+      preLoaderRoute: typeof PortalCfdiRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/documentos': {
+      id: '/portal/documentos'
+      path: '/documentos'
+      fullPath: '/portal/documentos'
+      preLoaderRoute: typeof PortalDocumentosRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/estado-cuenta': {
+      id: '/portal/estado-cuenta'
+      path: '/estado-cuenta'
+      fullPath: '/portal/estado-cuenta'
+      preLoaderRoute: typeof PortalEstadoCuentaRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/impuestos': {
+      id: '/portal/impuestos'
+      path: '/impuestos'
+      fullPath: '/portal/impuestos'
+      preLoaderRoute: typeof PortalImpuestosRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/mensajes': {
+      id: '/portal/mensajes'
+      path: '/mensajes'
+      fullPath: '/portal/mensajes'
+      preLoaderRoute: typeof PortalMensajesRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/reportes': {
+      id: '/portal/reportes'
+      path: '/reportes'
+      fullPath: '/portal/reportes'
+      preLoaderRoute: typeof PortalReportesRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/salud-fiscal': {
+      id: '/portal/salud-fiscal'
+      path: '/salud-fiscal'
+      fullPath: '/portal/salud-fiscal'
+      preLoaderRoute: typeof PortalSaludFiscalRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/api/public/contact': {
+      id: '/api/public/contact'
+      path: '/api/public/contact'
+      fullPath: '/api/public/contact'
+      preLoaderRoute: typeof ApiPublicContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/mp-webhook': {
+      id: '/api/public/mp-webhook'
+      path: '/api/public/mp-webhook'
+      fullPath: '/api/public/mp-webhook'
+      preLoaderRoute: typeof ApiPublicMpWebhookRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/app/admin/': {
       id: '/app/admin/'
       path: '/'
       fullPath: '/app/admin/'
       preLoaderRoute: typeof AppAdminIndexRouteImport
-      parentRoute: typeof AppAdminRoute
-    }
-    '/lovable/email/suppression': {
-      id: '/lovable/email/suppression'
-      path: '/lovable/email/suppression'
-      fullPath: '/lovable/email/suppression'
-      preLoaderRoute: typeof LovableEmailSuppressionRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/app/tools/xml-bulk-reader': {
-      id: '/app/tools/xml-bulk-reader'
-      path: '/tools/xml-bulk-reader'
-      fullPath: '/app/tools/xml-bulk-reader'
-      preLoaderRoute: typeof AppToolsXmlBulkReaderRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/tools/shadow-payroll': {
-      id: '/app/tools/shadow-payroll'
-      path: '/tools/shadow-payroll'
-      fullPath: '/app/tools/shadow-payroll'
-      preLoaderRoute: typeof AppToolsShadowPayrollRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/tools/sat-risk': {
-      id: '/app/tools/sat-risk'
-      path: '/tools/sat-risk'
-      fullPath: '/app/tools/sat-risk'
-      preLoaderRoute: typeof AppToolsSatRiskRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/tools/resico-calculator': {
-      id: '/app/tools/resico-calculator'
-      path: '/tools/resico-calculator'
-      fullPath: '/app/tools/resico-calculator'
-      preLoaderRoute: typeof AppToolsResicoCalculatorRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/tools/oficio-generator': {
-      id: '/app/tools/oficio-generator'
-      path: '/tools/oficio-generator'
-      fullPath: '/app/tools/oficio-generator'
-      preLoaderRoute: typeof AppToolsOficioGeneratorRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/tools/isr-iva-pm': {
-      id: '/app/tools/isr-iva-pm'
-      path: '/tools/isr-iva-pm'
-      fullPath: '/app/tools/isr-iva-pm'
-      preLoaderRoute: typeof AppToolsIsrIvaPmRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/tools/isr-iva-calculator': {
-      id: '/app/tools/isr-iva-calculator'
-      path: '/tools/isr-iva-calculator'
-      fullPath: '/app/tools/isr-iva-calculator'
-      preLoaderRoute: typeof AppToolsIsrIvaCalculatorRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/tools/import-prices': {
-      id: '/app/tools/import-prices'
-      path: '/tools/import-prices'
-      fullPath: '/app/tools/import-prices'
-      preLoaderRoute: typeof AppToolsImportPricesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/tools/import-clientes': {
-      id: '/app/tools/import-clientes'
-      path: '/tools/import-clientes'
-      fullPath: '/app/tools/import-clientes'
-      preLoaderRoute: typeof AppToolsImportClientesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/tools/fiscal-assistant': {
-      id: '/app/tools/fiscal-assistant'
-      path: '/tools/fiscal-assistant'
-      fullPath: '/app/tools/fiscal-assistant'
-      preLoaderRoute: typeof AppToolsFiscalAssistantRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/tools/express-auditor': {
-      id: '/app/tools/express-auditor'
-      path: '/tools/express-auditor'
-      fullPath: '/app/tools/express-auditor'
-      preLoaderRoute: typeof AppToolsExpressAuditorRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/tools/efos-validator': {
-      id: '/app/tools/efos-validator'
-      path: '/tools/efos-validator'
-      fullPath: '/app/tools/efos-validator'
-      preLoaderRoute: typeof AppToolsEfosValidatorRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/tools/deducibility-checker': {
-      id: '/app/tools/deducibility-checker'
-      path: '/tools/deducibility-checker'
-      fullPath: '/app/tools/deducibility-checker'
-      preLoaderRoute: typeof AppToolsDeducibilityCheckerRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/tools/csf-parser': {
-      id: '/app/tools/csf-parser'
-      path: '/tools/csf-parser'
-      fullPath: '/app/tools/csf-parser'
-      preLoaderRoute: typeof AppToolsCsfParserRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/tools/cfdi-verifier': {
-      id: '/app/tools/cfdi-verifier'
-      path: '/tools/cfdi-verifier'
-      fullPath: '/app/tools/cfdi-verifier'
-      preLoaderRoute: typeof AppToolsCfdiVerifierRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/tools/cfdi-validator': {
-      id: '/app/tools/cfdi-validator'
-      path: '/tools/cfdi-validator'
-      fullPath: '/app/tools/cfdi-validator'
-      preLoaderRoute: typeof AppToolsCfdiValidatorRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/tools/bank-reconciler': {
-      id: '/app/tools/bank-reconciler'
-      path: '/tools/bank-reconciler'
-      fullPath: '/app/tools/bank-reconciler'
-      preLoaderRoute: typeof AppToolsBankReconcilerRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/reportes/resumen-fiscal': {
-      id: '/app/reportes/resumen-fiscal'
-      path: '/resumen-fiscal'
-      fullPath: '/app/reportes/resumen-fiscal'
-      preLoaderRoute: typeof AppReportesResumenFiscalRouteImport
-      parentRoute: typeof AppReportesRoute
-    }
-    '/app/legal/redactor': {
-      id: '/app/legal/redactor'
-      path: '/redactor'
-      fullPath: '/app/legal/redactor'
-      preLoaderRoute: typeof AppLegalRedactorRouteImport
-      parentRoute: typeof AppLegalRoute
-    }
-    '/app/legal/marketplace': {
-      id: '/app/legal/marketplace'
-      path: '/marketplace'
-      fullPath: '/app/legal/marketplace'
-      preLoaderRoute: typeof AppLegalMarketplaceRouteImport
-      parentRoute: typeof AppLegalRoute
-    }
-    '/app/legal/lagunas': {
-      id: '/app/legal/lagunas'
-      path: '/lagunas'
-      fullPath: '/app/legal/lagunas'
-      preLoaderRoute: typeof AppLegalLagunasRouteImport
-      parentRoute: typeof AppLegalRoute
-    }
-    '/app/legal/consulta-ia': {
-      id: '/app/legal/consulta-ia'
-      path: '/consulta-ia'
-      fullPath: '/app/legal/consulta-ia'
-      preLoaderRoute: typeof AppLegalConsultaIaRouteImport
-      parentRoute: typeof AppLegalRoute
-    }
-    '/app/contable/herramientas': {
-      id: '/app/contable/herramientas'
-      path: '/herramientas'
-      fullPath: '/app/contable/herramientas'
-      preLoaderRoute: typeof AppContableHerramientasRouteImport
-      parentRoute: typeof AppContableRoute
-    }
-    '/app/contable/agentes': {
-      id: '/app/contable/agentes'
-      path: '/agentes'
-      fullPath: '/app/contable/agentes'
-      preLoaderRoute: typeof AppContableAgentesRouteImport
-      parentRoute: typeof AppContableRoute
-    }
-    '/app/contable/agente-conciliacion': {
-      id: '/app/contable/agente-conciliacion'
-      path: '/agente-conciliacion'
-      fullPath: '/app/contable/agente-conciliacion'
-      preLoaderRoute: typeof AppContableAgenteConciliacionRouteImport
-      parentRoute: typeof AppContableRoute
-    }
-    '/app/contable/agente-cierre': {
-      id: '/app/contable/agente-cierre'
-      path: '/agente-cierre'
-      fullPath: '/app/contable/agente-cierre'
-      preLoaderRoute: typeof AppContableAgenteCierreRouteImport
-      parentRoute: typeof AppContableRoute
-    }
-    '/app/contable/agente-cfdi': {
-      id: '/app/contable/agente-cfdi'
-      path: '/agente-cfdi'
-      fullPath: '/app/contable/agente-cfdi'
-      preLoaderRoute: typeof AppContableAgenteCfdiRouteImport
-      parentRoute: typeof AppContableRoute
-    }
-    '/app/contable/agente-auditor': {
-      id: '/app/contable/agente-auditor'
-      path: '/agente-auditor'
-      fullPath: '/app/contable/agente-auditor'
-      preLoaderRoute: typeof AppContableAgenteAuditorRouteImport
-      parentRoute: typeof AppContableRoute
-    }
-    '/app/conciliacion/historial': {
-      id: '/app/conciliacion/historial'
-      path: '/historial'
-      fullPath: '/app/conciliacion/historial'
-      preLoaderRoute: typeof AppConciliacionHistorialRouteImport
-      parentRoute: typeof AppConciliacionRoute
-    }
-    '/app/clientes/$id': {
-      id: '/app/clientes/$id'
-      path: '/clientes/$id'
-      fullPath: '/app/clientes/$id'
-      preLoaderRoute: typeof AppClientesIdRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/cfdi/$id': {
-      id: '/app/cfdi/$id'
-      path: '/$id'
-      fullPath: '/app/cfdi/$id'
-      preLoaderRoute: typeof AppCfdiIdRouteImport
-      parentRoute: typeof AppCfdiRoute
-    }
-    '/app/admin/tramites': {
-      id: '/app/admin/tramites'
-      path: '/tramites'
-      fullPath: '/app/admin/tramites'
-      preLoaderRoute: typeof AppAdminTramitesRouteImport
-      parentRoute: typeof AppAdminRoute
-    }
-    '/app/admin/tesoreria': {
-      id: '/app/admin/tesoreria'
-      path: '/tesoreria'
-      fullPath: '/app/admin/tesoreria'
-      preLoaderRoute: typeof AppAdminTesoreriaRouteImport
-      parentRoute: typeof AppAdminRoute
-    }
-    '/app/admin/nomina': {
-      id: '/app/admin/nomina'
-      path: '/nomina'
-      fullPath: '/app/admin/nomina'
-      preLoaderRoute: typeof AppAdminNominaRouteImport
-      parentRoute: typeof AppAdminRoute
-    }
-    '/app/admin/leyes-ia': {
-      id: '/app/admin/leyes-ia'
-      path: '/leyes-ia'
-      fullPath: '/app/admin/leyes-ia'
-      preLoaderRoute: typeof AppAdminLeyesIaRouteImport
-      parentRoute: typeof AppAdminRoute
-    }
-    '/app/admin/inventarios': {
-      id: '/app/admin/inventarios'
-      path: '/inventarios'
-      fullPath: '/app/admin/inventarios'
-      preLoaderRoute: typeof AppAdminInventariosRouteImport
-      parentRoute: typeof AppAdminRoute
-    }
-    '/app/admin/cupones': {
-      id: '/app/admin/cupones'
-      path: '/cupones'
-      fullPath: '/app/admin/cupones'
-      preLoaderRoute: typeof AppAdminCuponesRouteImport
-      parentRoute: typeof AppAdminRoute
-    }
-    '/app/admin/cumplimiento': {
-      id: '/app/admin/cumplimiento'
-      path: '/cumplimiento'
-      fullPath: '/app/admin/cumplimiento'
-      preLoaderRoute: typeof AppAdminCumplimientoRouteImport
-      parentRoute: typeof AppAdminRoute
-    }
-    '/app/admin/correspondencia': {
-      id: '/app/admin/correspondencia'
-      path: '/correspondencia'
-      fullPath: '/app/admin/correspondencia'
-      preLoaderRoute: typeof AppAdminCorrespondenciaRouteImport
-      parentRoute: typeof AppAdminRoute
-    }
-    '/app/admin/buzon': {
-      id: '/app/admin/buzon'
-      path: '/buzon'
-      fullPath: '/app/admin/buzon'
-      preLoaderRoute: typeof AppAdminBuzonRouteImport
       parentRoute: typeof AppAdminRoute
     }
     '/app/admin/activos': {
@@ -2305,53 +1976,354 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminActivosRouteImport
       parentRoute: typeof AppAdminRoute
     }
-    '/api/public/mp-webhook': {
-      id: '/api/public/mp-webhook'
-      path: '/api/public/mp-webhook'
-      fullPath: '/api/public/mp-webhook'
-      preLoaderRoute: typeof ApiPublicMpWebhookRouteImport
+    '/app/admin/buzon': {
+      id: '/app/admin/buzon'
+      path: '/buzon'
+      fullPath: '/app/admin/buzon'
+      preLoaderRoute: typeof AppAdminBuzonRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/app/admin/correspondencia': {
+      id: '/app/admin/correspondencia'
+      path: '/correspondencia'
+      fullPath: '/app/admin/correspondencia'
+      preLoaderRoute: typeof AppAdminCorrespondenciaRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/app/admin/cumplimiento': {
+      id: '/app/admin/cumplimiento'
+      path: '/cumplimiento'
+      fullPath: '/app/admin/cumplimiento'
+      preLoaderRoute: typeof AppAdminCumplimientoRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/app/admin/cupones': {
+      id: '/app/admin/cupones'
+      path: '/cupones'
+      fullPath: '/app/admin/cupones'
+      preLoaderRoute: typeof AppAdminCuponesRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/app/admin/inventarios': {
+      id: '/app/admin/inventarios'
+      path: '/inventarios'
+      fullPath: '/app/admin/inventarios'
+      preLoaderRoute: typeof AppAdminInventariosRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/app/admin/leyes-ia': {
+      id: '/app/admin/leyes-ia'
+      path: '/leyes-ia'
+      fullPath: '/app/admin/leyes-ia'
+      preLoaderRoute: typeof AppAdminLeyesIaRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/app/admin/nomina': {
+      id: '/app/admin/nomina'
+      path: '/nomina'
+      fullPath: '/app/admin/nomina'
+      preLoaderRoute: typeof AppAdminNominaRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/app/admin/tesoreria': {
+      id: '/app/admin/tesoreria'
+      path: '/tesoreria'
+      fullPath: '/app/admin/tesoreria'
+      preLoaderRoute: typeof AppAdminTesoreriaRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/app/admin/tramites': {
+      id: '/app/admin/tramites'
+      path: '/tramites'
+      fullPath: '/app/admin/tramites'
+      preLoaderRoute: typeof AppAdminTramitesRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/app/cfdi/': {
+      id: '/app/cfdi/'
+      path: '/'
+      fullPath: '/app/cfdi/'
+      preLoaderRoute: typeof AppCfdiIndexRouteImport
+      parentRoute: typeof AppCfdiRoute
+    }
+    '/app/cfdi/$id': {
+      id: '/app/cfdi/$id'
+      path: '/$id'
+      fullPath: '/app/cfdi/$id'
+      preLoaderRoute: typeof AppCfdiIdRouteImport
+      parentRoute: typeof AppCfdiRoute
+    }
+    '/app/clientes/': {
+      id: '/app/clientes/'
+      path: '/clientes'
+      fullPath: '/app/clientes/'
+      preLoaderRoute: typeof AppClientesIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/clientes/$id': {
+      id: '/app/clientes/$id'
+      path: '/clientes/$id'
+      fullPath: '/app/clientes/$id'
+      preLoaderRoute: typeof AppClientesIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/conciliacion/': {
+      id: '/app/conciliacion/'
+      path: '/'
+      fullPath: '/app/conciliacion/'
+      preLoaderRoute: typeof AppConciliacionIndexRouteImport
+      parentRoute: typeof AppConciliacionRoute
+    }
+    '/app/conciliacion/historial': {
+      id: '/app/conciliacion/historial'
+      path: '/historial'
+      fullPath: '/app/conciliacion/historial'
+      preLoaderRoute: typeof AppConciliacionHistorialRouteImport
+      parentRoute: typeof AppConciliacionRoute
+    }
+    '/app/contable/': {
+      id: '/app/contable/'
+      path: '/'
+      fullPath: '/app/contable/'
+      preLoaderRoute: typeof AppContableIndexRouteImport
+      parentRoute: typeof AppContableRoute
+    }
+    '/app/contable/agente-auditor': {
+      id: '/app/contable/agente-auditor'
+      path: '/agente-auditor'
+      fullPath: '/app/contable/agente-auditor'
+      preLoaderRoute: typeof AppContableAgenteAuditorRouteImport
+      parentRoute: typeof AppContableRoute
+    }
+    '/app/contable/agente-cfdi': {
+      id: '/app/contable/agente-cfdi'
+      path: '/agente-cfdi'
+      fullPath: '/app/contable/agente-cfdi'
+      preLoaderRoute: typeof AppContableAgenteCfdiRouteImport
+      parentRoute: typeof AppContableRoute
+    }
+    '/app/contable/agente-cierre': {
+      id: '/app/contable/agente-cierre'
+      path: '/agente-cierre'
+      fullPath: '/app/contable/agente-cierre'
+      preLoaderRoute: typeof AppContableAgenteCierreRouteImport
+      parentRoute: typeof AppContableRoute
+    }
+    '/app/contable/agente-conciliacion': {
+      id: '/app/contable/agente-conciliacion'
+      path: '/agente-conciliacion'
+      fullPath: '/app/contable/agente-conciliacion'
+      preLoaderRoute: typeof AppContableAgenteConciliacionRouteImport
+      parentRoute: typeof AppContableRoute
+    }
+    '/app/contable/agentes': {
+      id: '/app/contable/agentes'
+      path: '/agentes'
+      fullPath: '/app/contable/agentes'
+      preLoaderRoute: typeof AppContableAgentesRouteImport
+      parentRoute: typeof AppContableRoute
+    }
+    '/app/contable/herramientas': {
+      id: '/app/contable/herramientas'
+      path: '/herramientas'
+      fullPath: '/app/contable/herramientas'
+      preLoaderRoute: typeof AppContableHerramientasRouteImport
+      parentRoute: typeof AppContableRoute
+    }
+    '/app/legal/': {
+      id: '/app/legal/'
+      path: '/'
+      fullPath: '/app/legal/'
+      preLoaderRoute: typeof AppLegalIndexRouteImport
+      parentRoute: typeof AppLegalRoute
+    }
+    '/app/legal/consulta-ia': {
+      id: '/app/legal/consulta-ia'
+      path: '/consulta-ia'
+      fullPath: '/app/legal/consulta-ia'
+      preLoaderRoute: typeof AppLegalConsultaIaRouteImport
+      parentRoute: typeof AppLegalRoute
+    }
+    '/app/legal/lagunas': {
+      id: '/app/legal/lagunas'
+      path: '/lagunas'
+      fullPath: '/app/legal/lagunas'
+      preLoaderRoute: typeof AppLegalLagunasRouteImport
+      parentRoute: typeof AppLegalRoute
+    }
+    '/app/legal/marketplace': {
+      id: '/app/legal/marketplace'
+      path: '/marketplace'
+      fullPath: '/app/legal/marketplace'
+      preLoaderRoute: typeof AppLegalMarketplaceRouteImport
+      parentRoute: typeof AppLegalRoute
+    }
+    '/app/legal/redactor': {
+      id: '/app/legal/redactor'
+      path: '/redactor'
+      fullPath: '/app/legal/redactor'
+      preLoaderRoute: typeof AppLegalRedactorRouteImport
+      parentRoute: typeof AppLegalRoute
+    }
+    '/app/mensajes/': {
+      id: '/app/mensajes/'
+      path: '/'
+      fullPath: '/app/mensajes/'
+      preLoaderRoute: typeof AppMensajesIndexRouteImport
+      parentRoute: typeof AppMensajesRoute
+    }
+    '/app/reportes/': {
+      id: '/app/reportes/'
+      path: '/'
+      fullPath: '/app/reportes/'
+      preLoaderRoute: typeof AppReportesIndexRouteImport
+      parentRoute: typeof AppReportesRoute
+    }
+    '/app/reportes/resumen-fiscal': {
+      id: '/app/reportes/resumen-fiscal'
+      path: '/resumen-fiscal'
+      fullPath: '/app/reportes/resumen-fiscal'
+      preLoaderRoute: typeof AppReportesResumenFiscalRouteImport
+      parentRoute: typeof AppReportesRoute
+    }
+    '/app/tools/': {
+      id: '/app/tools/'
+      path: '/tools'
+      fullPath: '/app/tools/'
+      preLoaderRoute: typeof AppToolsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/tools/bank-reconciler': {
+      id: '/app/tools/bank-reconciler'
+      path: '/tools/bank-reconciler'
+      fullPath: '/app/tools/bank-reconciler'
+      preLoaderRoute: typeof AppToolsBankReconcilerRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/tools/cfdi-validator': {
+      id: '/app/tools/cfdi-validator'
+      path: '/tools/cfdi-validator'
+      fullPath: '/app/tools/cfdi-validator'
+      preLoaderRoute: typeof AppToolsCfdiValidatorRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/tools/cfdi-verifier': {
+      id: '/app/tools/cfdi-verifier'
+      path: '/tools/cfdi-verifier'
+      fullPath: '/app/tools/cfdi-verifier'
+      preLoaderRoute: typeof AppToolsCfdiVerifierRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/tools/csf-parser': {
+      id: '/app/tools/csf-parser'
+      path: '/tools/csf-parser'
+      fullPath: '/app/tools/csf-parser'
+      preLoaderRoute: typeof AppToolsCsfParserRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/tools/deducibility-checker': {
+      id: '/app/tools/deducibility-checker'
+      path: '/tools/deducibility-checker'
+      fullPath: '/app/tools/deducibility-checker'
+      preLoaderRoute: typeof AppToolsDeducibilityCheckerRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/tools/efos-validator': {
+      id: '/app/tools/efos-validator'
+      path: '/tools/efos-validator'
+      fullPath: '/app/tools/efos-validator'
+      preLoaderRoute: typeof AppToolsEfosValidatorRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/tools/express-auditor': {
+      id: '/app/tools/express-auditor'
+      path: '/tools/express-auditor'
+      fullPath: '/app/tools/express-auditor'
+      preLoaderRoute: typeof AppToolsExpressAuditorRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/tools/fiscal-assistant': {
+      id: '/app/tools/fiscal-assistant'
+      path: '/tools/fiscal-assistant'
+      fullPath: '/app/tools/fiscal-assistant'
+      preLoaderRoute: typeof AppToolsFiscalAssistantRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/tools/import-clientes': {
+      id: '/app/tools/import-clientes'
+      path: '/tools/import-clientes'
+      fullPath: '/app/tools/import-clientes'
+      preLoaderRoute: typeof AppToolsImportClientesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/tools/import-prices': {
+      id: '/app/tools/import-prices'
+      path: '/tools/import-prices'
+      fullPath: '/app/tools/import-prices'
+      preLoaderRoute: typeof AppToolsImportPricesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/tools/isr-iva-calculator': {
+      id: '/app/tools/isr-iva-calculator'
+      path: '/tools/isr-iva-calculator'
+      fullPath: '/app/tools/isr-iva-calculator'
+      preLoaderRoute: typeof AppToolsIsrIvaCalculatorRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/tools/isr-iva-pm': {
+      id: '/app/tools/isr-iva-pm'
+      path: '/tools/isr-iva-pm'
+      fullPath: '/app/tools/isr-iva-pm'
+      preLoaderRoute: typeof AppToolsIsrIvaPmRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/tools/oficio-generator': {
+      id: '/app/tools/oficio-generator'
+      path: '/tools/oficio-generator'
+      fullPath: '/app/tools/oficio-generator'
+      preLoaderRoute: typeof AppToolsOficioGeneratorRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/tools/resico-calculator': {
+      id: '/app/tools/resico-calculator'
+      path: '/tools/resico-calculator'
+      fullPath: '/app/tools/resico-calculator'
+      preLoaderRoute: typeof AppToolsResicoCalculatorRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/tools/sat-risk': {
+      id: '/app/tools/sat-risk'
+      path: '/tools/sat-risk'
+      fullPath: '/app/tools/sat-risk'
+      preLoaderRoute: typeof AppToolsSatRiskRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/tools/shadow-payroll': {
+      id: '/app/tools/shadow-payroll'
+      path: '/tools/shadow-payroll'
+      fullPath: '/app/tools/shadow-payroll'
+      preLoaderRoute: typeof AppToolsShadowPayrollRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/tools/xml-bulk-reader': {
+      id: '/app/tools/xml-bulk-reader'
+      path: '/tools/xml-bulk-reader'
+      fullPath: '/app/tools/xml-bulk-reader'
+      preLoaderRoute: typeof AppToolsXmlBulkReaderRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/lovable/email/suppression': {
+      id: '/lovable/email/suppression'
+      path: '/lovable/email/suppression'
+      fullPath: '/lovable/email/suppression'
+      preLoaderRoute: typeof LovableEmailSuppressionRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/contact': {
-      id: '/api/public/contact'
-      path: '/api/public/contact'
-      fullPath: '/api/public/contact'
-      preLoaderRoute: typeof ApiPublicContactRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lovable/email/transactional/send': {
-      id: '/lovable/email/transactional/send'
-      path: '/lovable/email/transactional/send'
-      fullPath: '/lovable/email/transactional/send'
-      preLoaderRoute: typeof LovableEmailTransactionalSendRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lovable/email/transactional/preview': {
-      id: '/lovable/email/transactional/preview'
-      path: '/lovable/email/transactional/preview'
-      fullPath: '/lovable/email/transactional/preview'
-      preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lovable/email/queue/process': {
-      id: '/lovable/email/queue/process'
-      path: '/lovable/email/queue/process'
-      fullPath: '/lovable/email/queue/process'
-      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/workflow-cron': {
-      id: '/api/public/hooks/workflow-cron'
-      path: '/api/public/hooks/workflow-cron'
-      fullPath: '/api/public/hooks/workflow-cron'
-      preLoaderRoute: typeof ApiPublicHooksWorkflowCronRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/sat-sync': {
-      id: '/api/public/hooks/sat-sync'
-      path: '/api/public/hooks/sat-sync'
-      fullPath: '/api/public/hooks/sat-sync'
-      preLoaderRoute: typeof ApiPublicHooksSatSyncRouteImport
+    '/api/public/google/callback': {
+      id: '/api/public/google/callback'
+      path: '/api/public/google/callback'
+      fullPath: '/api/public/google/callback'
+      preLoaderRoute: typeof ApiPublicGoogleCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/sat-programaciones': {
@@ -2361,11 +2333,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksSatProgramacionesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/google/callback': {
-      id: '/api/public/google/callback'
-      path: '/api/public/google/callback'
-      fullPath: '/api/public/google/callback'
-      preLoaderRoute: typeof ApiPublicGoogleCallbackRouteImport
+    '/api/public/hooks/sat-sync': {
+      id: '/api/public/hooks/sat-sync'
+      path: '/api/public/hooks/sat-sync'
+      fullPath: '/api/public/hooks/sat-sync'
+      preLoaderRoute: typeof ApiPublicHooksSatSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/workflow-cron': {
+      id: '/api/public/hooks/workflow-cron'
+      path: '/api/public/hooks/workflow-cron'
+      fullPath: '/api/public/hooks/workflow-cron'
+      preLoaderRoute: typeof ApiPublicHooksWorkflowCronRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/queue/process': {
+      id: '/lovable/email/queue/process'
+      path: '/lovable/email/queue/process'
+      fullPath: '/lovable/email/queue/process'
+      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/transactional/preview': {
+      id: '/lovable/email/transactional/preview'
+      path: '/lovable/email/transactional/preview'
+      fullPath: '/lovable/email/transactional/preview'
+      preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/transactional/send': {
+      id: '/lovable/email/transactional/send'
+      path: '/lovable/email/transactional/send'
+      fullPath: '/lovable/email/transactional/send'
+      preLoaderRoute: typeof LovableEmailTransactionalSendRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
