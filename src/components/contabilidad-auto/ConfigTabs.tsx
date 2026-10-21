@@ -444,9 +444,9 @@ export function ExportarTab({ clienteId }: { clienteId: string }) {
   return (
     <Card className="p-4 space-y-4">
       <div>
-        <h3 className="font-semibold">Exportar pólizas confirmadas</h3>
+        <h3 className="font-semibold">Exportar pólizas aprobadas</h3>
         <p className="text-sm text-muted-foreground">
-          Genera archivos del período seleccionado. Solo se exportan las pólizas en estado <strong>confirmada</strong>.
+          Genera archivos del período seleccionado. Solo se exportan las pólizas <strong>aprobadas</strong>.
         </p>
       </div>
 

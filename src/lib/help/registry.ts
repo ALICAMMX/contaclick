@@ -219,7 +219,7 @@ export const HELP_REGISTRY: Record<string, HelpContent> = {
       alimenta: [
         { tool: "Salud Fiscal", ruta: "/app/salud-fiscal", motivo: "El score de conciliación se usa en los subscores de CFDI y Bancos." },
         { tool: "Centro de Tareas", ruta: "/app/tareas", motivo: "Las incidencias accionadas crean tareas con prioridad por gravedad." },
-        { tool: "Contabilidad Automática", ruta: "/app/contabilidad-auto", motivo: "Incidencias tipo 'sin póliza' se pueden resolver generando pólizas desde ahí." },
+        { tool: "Pólizas", ruta: "/app/polizas", motivo: "Incidencias tipo 'sin póliza' se pueden resolver generando pólizas desde ahí." },
       ],
       datosMinimos: [
         "≥ 1 mes de CFDI sincronizados",
@@ -623,7 +623,7 @@ export const HELP_REGISTRY: Record<string, HelpContent> = {
         { tool: "Credenciales PAC", motivo: "El despacho debe tener configurado SW Sapien con saldo disponible (Super-Admin)." },
       ],
       alimenta: [
-        { tool: "Contabilidad Automática", ruta: "/app/contabilidad-auto", motivo: "Los CFDI descargados son el insumo principal del motor de pólizas." },
+        { tool: "Pólizas", ruta: "/app/polizas", motivo: "Los CFDI descargados son el insumo principal del motor de pólizas." },
         { tool: "Conciliación Integral", ruta: "/app/conciliacion-integral", motivo: "Lado SAT del cruce contra contabilidad y bancos." },
         { tool: "Salud Fiscal", ruta: "/app/salud-fiscal", motivo: "Alimenta subscores de CFDI, cumplimiento y patrones de operación." },
         { tool: "Riesgo SAT", ruta: "/app/riesgo", motivo: "12 criterios del Plan Maestro se calculan sobre CFDI sincronizados." },
@@ -894,7 +894,7 @@ export const HELP_REGISTRY: Record<string, HelpContent> = {
       necesita: [{ tool: "Expediente activo", ruta: "/app/clientes", motivo: "Los XML se asocian al cliente seleccionado." }],
       alimenta: [
         { tool: "Conciliación Integral", ruta: "/app/conciliacion-integral", motivo: "CFDI cargados entran al cruce contra contabilidad y bancos." },
-        { tool: "Contabilidad Automática", ruta: "/app/contabilidad-auto", motivo: "Insumo para generar pólizas borrador." },
+        { tool: "Pólizas", ruta: "/app/polizas", motivo: "Insumo para generar pólizas borrador." },
       ],
       datosMinimos: ["Archivos .xml CFDI con UUID válido"],
     },
@@ -922,7 +922,7 @@ export const HELP_REGISTRY: Record<string, HelpContent> = {
       ],
       alimenta: [
         { tool: "Conciliación Integral", ruta: "/app/conciliacion-integral", motivo: "Lado bancario del cruce triple." },
-        { tool: "Contabilidad Automática", ruta: "/app/contabilidad-auto", motivo: "Pestaña Bancos genera pólizas desde movimientos no conciliados." },
+        { tool: "Pólizas", ruta: "/app/polizas", motivo: "Pestaña Bancos genera pólizas desde movimientos no conciliados." },
       ],
       datosMinimos: ["Estado de cuenta del banco en formato compatible"],
     },
@@ -1363,7 +1363,7 @@ export const HELP_REGISTRY: Record<string, HelpContent> = {
         { tool: "CFDI de adquisición", motivo: "Para soportar el MOI." },
       ],
       alimenta: [
-        { tool: "Contabilidad Automática", ruta: "/app/contabilidad-auto", motivo: "La depreciación mensual genera póliza de provisión." },
+        { tool: "Pólizas", ruta: "/app/polizas", motivo: "La depreciación mensual genera póliza de provisión." },
         { tool: "Reporte Ejecutivo", ruta: "/app/reporte-ejecutivo", motivo: "El valor en libros aparece en el balance del cliente." },
       ],
       datosMinimos: ["Descripción", "Fecha de adquisición", "MOI", "Tipo de activo"],
@@ -1396,7 +1396,7 @@ export const HELP_REGISTRY: Record<string, HelpContent> = {
         { tool: "CFDI de compras", motivo: "Para alimentar entradas con costo unitario real." },
       ],
       alimenta: [
-        { tool: "Contabilidad Automática", ruta: "/app/contabilidad-auto", motivo: "Salidas generan póliza de costo de ventas." },
+        { tool: "Pólizas", ruta: "/app/polizas", motivo: "Salidas generan póliza de costo de ventas." },
         { tool: "Conciliación Integral", ruta: "/app/conciliacion-integral", motivo: "Salidas vs CFDI emitidos validan congruencia operación-fiscal." },
       ],
       datosMinimos: ["Catálogo de SKU con costo inicial", "Movimientos de entrada y salida"],
@@ -1533,7 +1533,7 @@ export const HELP_REGISTRY: Record<string, HelpContent> = {
       ],
       alimenta: [
         { tool: "Conciliación bancaria", ruta: "/app/conciliacion", motivo: "Cruza CFDI vs movimientos del banco." },
-        { tool: "Contabilidad Automática", ruta: "/app/contabilidad-auto", motivo: "Genera pólizas a partir de cada CFDI." },
+        { tool: "Pólizas", ruta: "/app/polizas", motivo: "Genera pólizas a partir de cada CFDI." },
         { tool: "Salud Fiscal", ruta: "/app/salud-fiscal", motivo: "Métricas y score se calculan de aquí." },
         { tool: "Resumen Fiscal del mes", ruta: "/app/reportes/resumen-fiscal", motivo: "ISR/IVA del periodo se obtienen de estos CFDI." },
       ],

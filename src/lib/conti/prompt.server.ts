@@ -21,7 +21,7 @@ const SLUG_TO_ROUTE: Record<string, string> = {
   "salud-fiscal": "/app/salud-fiscal",
   "conciliacion-integral": "/app/conciliacion-integral",
   polizas: "/app/polizas",
-  "contabilidad-auto": "/app/contabilidad-auto",
+  "contabilidad-auto": "/app/polizas",
   "riesgo-sat": "/app/riesgo",
   "reporte-ejecutivo": "/app/reporte-ejecutivo",
   "sat-sync": "/app/sat-sync",

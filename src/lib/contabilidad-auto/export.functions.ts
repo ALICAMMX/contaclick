@@ -79,7 +79,7 @@ export const exportarAnexo24Polizas = createServerFn({ method: "POST" })
     if (!cli?.rfc) throw new Error("Cliente sin RFC configurado");
 
     const polizas = await fetchPolizas(supabase, data.cliente_id, data.anio, data.mes);
-    if (polizas.length === 0) throw new Error("No hay pólizas confirmadas en el período");
+    if (polizas.length === 0) throw new Error("No hay pólizas aprobadas en el período");
 
     const lines: string[] = [];
     lines.push(`<?xml version="1.0" encoding="UTF-8"?>`);
@@ -135,7 +135,7 @@ export const exportarContpaqi = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase } = context;
     const polizas = await fetchPolizas(supabase, data.cliente_id, data.anio, data.mes);
-    if (polizas.length === 0) throw new Error("No hay pólizas confirmadas en el período");
+    if (polizas.length === 0) throw new Error("No hay pólizas aprobadas en el período");
 
     const tipoMap: Record<string, string> = { ingreso: "1", egreso: "2", diario: "3" };
     const lines: string[] = [];
@@ -179,7 +179,7 @@ export const exportarAspelCoi = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const polizas = await fetchPolizas(context.supabase, data.cliente_id, data.anio, data.mes);
-    if (polizas.length === 0) throw new Error("No hay pólizas confirmadas en el período");
+    if (polizas.length === 0) throw new Error("No hay pólizas aprobadas en el período");
     const tipoMap: Record<string, string> = { ingreso: "Ig", egreso: "Eg", diario: "Dr" };
     const lines: string[] = [];
     let cons = 0;

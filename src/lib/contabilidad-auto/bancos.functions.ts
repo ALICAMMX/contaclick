@@ -66,12 +66,29 @@ export const listarMovimientosSinPoliza = createServerFn({ method: "POST" })
     const ids = (rows ?? []).map((r) => r.id);
     let yaPolizados = new Set<string>();
     if (ids.length) {
-      const { data: pol } = await supabase
-        .from("polizas")
-        .select("movimiento_bancario_id")
-        .eq("cliente_id", data.cliente_id)
-        .in("movimiento_bancario_id", ids);
-      yaPolizados = new Set((pol ?? []).map((p: any) => p.movimiento_bancario_id).filter(Boolean));
+      // El contrato canónico liga el movimiento en los RENGLONES de la póliza
+      // (la columna polizas.movimiento_bancario_id es legada). Se revisan ambos
+      // y se ignoran las pólizas rechazadas.
+      const [{ data: ren }, { data: pol }] = await Promise.all([
+        supabase
+          .from("poliza_renglones")
+          .select("movimiento_bancario_id, polizas!inner(estado)")
+          .eq("cliente_id", data.cliente_id)
+          .in("movimiento_bancario_id", ids),
+        supabase
+          .from("polizas")
+          .select("movimiento_bancario_id, estado")
+          .eq("cliente_id", data.cliente_id)
+          .in("movimiento_bancario_id", ids),
+      ]);
+      yaPolizados = new Set(
+        [
+          ...((ren ?? []) as any[]).filter((r) => r.polizas?.estado !== "rechazada"),
+          ...((pol ?? []) as any[]).filter((p) => p.estado !== "rechazada"),
+        ]
+          .map((r) => r.movimiento_bancario_id)
+          .filter(Boolean),
+      );
     }
     return (rows ?? []).filter((r) => !yaPolizados.has(r.id));
   });

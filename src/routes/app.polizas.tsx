@@ -36,6 +36,8 @@ import {
 } from "@/lib/polizas/polizas.functions";
 import { CatalogoPanel } from "@/components/polizas/CatalogoPanel";
 import { ReglasConceptoPanel } from "@/components/polizas/ReglasConceptoPanel";
+import { BancosTab } from "@/components/contabilidad-auto/BancosTab";
+import { ExportarTab } from "@/components/contabilidad-auto/ConfigTabs";
 
 export const Route = createFileRoute("/app/polizas")({
   head: () => ({
@@ -91,6 +93,7 @@ function PolizasPage() {
       if (r.cuentas_faltantes?.length) {
         toast.warning(`Faltan cuentas de sistema en el catálogo: ${r.cuentas_faltantes.join(", ")}.`);
       }
+      if (r.catalogo_sembrado) toast.info(`Se cargó el catálogo base "${r.catalogo_sembrado}". Puedes ajustarlo en Catálogo de cuentas.`);
       toast.success(`${r.generadas} pólizas en borrador · ${r.bloqueadas} bloqueadas de ${r.revisados} CFDI revisados.`);
     },
     onError: (e: any) => toast.error(e?.message ?? "No se pudo generar."),
@@ -145,7 +148,7 @@ function PolizasPage() {
             <BookOpen className="h-5 w-5 text-primary" /> Pólizas contables
           </h1>
           <p className="text-sm text-muted-foreground">
-            Fuente única: renglones canónicos en centavos. Ninguna póliza se aprueba sola.
+            Los CFDI del periodo se convierten en pólizas borrador; tú las revisas, apruebas y exportas a tu sistema contable.
           </p>
         </div>
         <div className="flex items-end gap-2">
@@ -162,6 +165,8 @@ function PolizasPage() {
           <TabsTrigger value="polizas">Pólizas del periodo</TabsTrigger>
           <TabsTrigger value="conceptos">Reglas por concepto</TabsTrigger>
           <TabsTrigger value="catalogo">Catálogo de cuentas</TabsTrigger>
+          <TabsTrigger value="bancos">Movimientos sin CFDI</TabsTrigger>
+          <TabsTrigger value="exportar">Exportar a CONTPAQi / Aspel / SAT</TabsTrigger>
         </TabsList>
 
         <TabsContent value="polizas" className="space-y-4 pt-4">
@@ -300,6 +305,14 @@ function PolizasPage() {
 
         <TabsContent value="catalogo" className="pt-4">
           <CatalogoPanel clienteId={clienteId} />
+        </TabsContent>
+
+        <TabsContent value="bancos" className="pt-4">
+          <BancosTab clienteId={clienteId} />
+        </TabsContent>
+
+        <TabsContent value="exportar" className="pt-4">
+          <ExportarTab clienteId={clienteId} />
         </TabsContent>
       </Tabs>
     </div>

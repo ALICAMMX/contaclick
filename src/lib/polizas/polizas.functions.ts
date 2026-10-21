@@ -9,7 +9,7 @@
 // regenerar, aprobar y rechazar pasan por `poliza_generar_borrador`,
 // `poliza_aprobar` y `poliza_rechazar` (SECURITY DEFINER).
 //
-// /app/polizas, /app/contabilidad-auto y el Centro de Cierre leen esto mismo.
+// /app/polizas y el Centro de Cierre leen y escriben esto mismo (generarBorradoresDelPeriodo).
 // ─────────────────────────────────────────────────────────────────────────────
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";

@@ -35,7 +35,7 @@ const heroSlides = [
     titleTail: "Nosotros lo hacemos por ti.",
     copy: "Conectamos con el SAT, descargamos los CFDI emitidos y recibidos de tus clientes, los clasificamos y generamos pólizas listas para CONTPAQi y Anexo 24.",
     ctaPrimary: { label: "Ver descarga SAT", to: "/app/sat-sync" },
-    ctaSecondary: { label: "Contabilidad automática", to: "/app/contabilidad-auto" },
+    ctaSecondary: { label: "Pólizas desde CFDI", to: "/app/polizas" },
   },
   {
     src: heroImg3,
