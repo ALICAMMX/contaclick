@@ -1,3 +1,4 @@
+import type { ErrorComponentProps } from "@tanstack/react-router";
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter, Link } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
@@ -24,7 +25,7 @@ function DefaultNotFound() {
   );
 }
 
-function DefaultError({ error, reset }: { error: Error; reset: () => void }) {
+function DefaultError({ error, reset }: ErrorComponentProps) {
   console.error("[Router DefaultError]", error);
   const message = error?.message || String(error);
   const stack = error?.stack ?? "";
