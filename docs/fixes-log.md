@@ -1,3 +1,11 @@
+## 2026-10-21 — Estabilización y simplificación (rama claude/simplificar-y-estabilizar)
+- **Descarga SAT no corría sola:** el cron `sat-sync-hourly` apuntaba a `abogaclick.com.mx`, que era la URL de respaldo de la migración 20260625071214. Se re-apunta al dominio de ContaClick (migración 20261021180000). La descarga diaria nueva cubre ahora 30 días. La simulación demo sólo aplica a expedientes `es_demo`.
+- **Pólizas duplicadas:** había tres generadores con llaves distintas. Ahora `/app/polizas` y el Cierre usan `generarBorradoresDelPeriodo`, que versiona la póliza que ya existe para cada CFDI. `/app/contabilidad-auto` redirige a `/app/polizas`, que tiene ahora las pestañas de Bancos y Exportar. El catálogo IMCP se siembra por RPC si falta.
+- **Contabilidad electrónica sin CompNal:** las pólizas canónicas no llenan `uuid_cfdi`. La exportación ahora toma el UUID y el RFC de la contraparte de los renglones.
+- **Falsas alarmas en la conciliación integral:** la revisión ahora se hace por periodo. Ya no acusa "sin póliza" si no hay pólizas, cruza los cargos contra los CFDI recibidos, respeta lo que ya se confirmó, cierra y reabre incidencias de forma automática, y estima el ISR según el régimen (para PF con tarifa progresiva no se estima).
+- **Ruta guiada:** un mes sin CFDI ya no bloquea el banco ni el cierre. La CSF actualiza el expediente activo y nunca borra el domicilio.
+- **Menú:** el inicio muestra las 6 pantallas del flujo del mes. Lo que está fuera del foco se oculta desde `src/lib/capabilities/enfoque.ts`.
+
 ## 2026-08-23 — Estados de cuenta: cargos importados como depósitos, fechas corruptas y duplicados
 - **Síntoma:** retiros, compras y SPEI enviados de PDFs bancarios aparecían como ingresos; fechas dobles de BBVA como `02/ENE 02/ENE` producían años 2002/2030/2031; archivos distintos con movimientos solapados podían duplicar operaciones.
 - **Causa:** el parser genérico asumía abono cuando no reconocía explícitamente un cargo, confundía la segunda fecha de liquidación con parte del año y el importador sólo marcaba duplicados en lugar de omitir coincidencias exactas.
