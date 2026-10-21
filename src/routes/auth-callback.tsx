@@ -86,7 +86,7 @@ function AuthCallbackPage() {
     if (runningRef.current) return;
     runningRef.current = true;
 
-    const sub = supabase.auth.onAuthStateChange((event) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT") {
         setDetail("La sesión se cerró antes de terminar.");
         setPhase("failed");
