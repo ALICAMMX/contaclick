@@ -125,13 +125,17 @@ export const generarPolizasDesdeMovimientos = createServerFn({ method: "POST" })
 
     // Conciliaciones confirmadas por una persona: única fuente de evidencia
     // bancaria. Sin ellas el movimiento se contabiliza sin reconocer flujo.
-    const { data: concs } = await supabase
+    // Columnas reales de `conciliaciones`: movimiento_id y estado_grupo.
+    const { data: concs, error: errConcs } = await supabase
       .from("conciliaciones")
-      .select("movimiento_bancario_id, estado")
+      .select("movimiento_id, estado_grupo, confirmado_por")
       .eq("cliente_id", scope.cliente_id)
-      .in("movimiento_bancario_id", data.movimiento_ids);
+      .in("movimiento_id", data.movimiento_ids);
+    if (errConcs) throw new Error(errConcs.message);
     const confirmados = new Set(
-      (concs ?? []).filter((c: any) => c.estado === "confirmada").map((c: any) => c.movimiento_bancario_id),
+      (concs ?? [])
+        .filter((c: any) => c.estado_grupo === "confirmado" && c.confirmado_por)
+        .map((c: any) => c.movimiento_id),
     );
 
     const cent = (n: unknown) => Math.round((Number(n) || 0) * 100);

@@ -709,6 +709,15 @@ export async function calcularEstado(
   const ent = await getEntitlements(supabase, scope.despacho_id);
 
   const { resolverCredencialEFirma } = await import("@/lib/sat/credencial.server");
+  // Sólo se SIMULA (sin contactar al SAT ni consumir saldo) cuando el
+  // expediente mismo es de demostración. Un RFC real dentro de un despacho de
+  // prueba descarga de verdad y nunca recibe CFDI inventados.
+  const { data: demoRow } = await supabase
+    .from("clientes")
+    .select("es_demo")
+    .eq("id", scope.cliente_id)
+    .maybeSingle();
+  const simular = ent.es_sandbox && (demoRow as any)?.es_demo === true;
 
   const [{ data: cfg }, { data: cli }, { data: sa }] = await Promise.all([
     supabase
@@ -717,7 +726,7 @@ export async function calcularEstado(
       .eq("cliente_id", scope.cliente_id)
       .eq("despacho_id", scope.despacho_id)
       .maybeSingle(),
-    supabase.from("clientes").select("rfc, es_demo").eq("id", scope.cliente_id).maybeSingle(),
+    supabase.from("clientes").select("rfc").eq("id", scope.cliente_id).maybeSingle(),
     supabase.from("user_roles").select("user_id").eq("user_id", userId).eq("role", "super_admin").limit(1),
   ]);
 
@@ -788,9 +797,7 @@ export async function calcularEstado(
           maximo: rango.maximo,
         },
     cuota: { usado, limite, ilimitado, restante },
-    // Sólo se SIMULA cuando el expediente mismo es de demostración. Un RFC real
-    // dentro de un despacho de prueba nunca recibe CFDI inventados.
-    es_sandbox: ent.es_sandbox && (cli as any)?.es_demo === true,
+    es_sandbox: simular,
     credencial_activa: credencialActiva,
     credencial,
     efirma_vence_at: efirmaVenceAt,
@@ -819,7 +826,7 @@ export async function calcularEstado(
     ilimitado,
     restante,
     periodo: ent.periodo,
-    esSandbox: ent.es_sandbox,
+    esSandbox: simular,
   };
 
   // El motivo mostrado distingue "nunca conectada" de "conectada pero no usable".
@@ -838,7 +845,7 @@ export async function calcularEstado(
       : dec;
 
   const previo = conMotivo(decidirEstadoSat(entrada));
-  if (!previo.puede_ejecutar || ent.es_sandbox || !meta.consumeSaldoProveedor) {
+  if (!previo.puede_ejecutar || simular || !meta.consumeSaldoProveedor) {
     return { ...base, ...previo };
   }
 

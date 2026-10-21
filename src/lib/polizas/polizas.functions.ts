@@ -166,7 +166,7 @@ export async function generarBorradoresDelPeriodo(
   if (!catalogo.length) {
     // Sin catálogo no se frena al contador: se siembra la plantilla IMCP
     // (códigos agrupadores SAT) que corresponde a su régimen. Es editable.
-    catalogo_sembrado = await sembrarCatalogoBase(supabase, userId, scope.cliente_id);
+    catalogo_sembrado = await sembrarCatalogoBase(supabase, scope.cliente_id);
     const { data: recargado, error: errRe } = await supabase
       .from("catalogo_cuentas")
       .select("codigo, nombre, naturaleza, tipo_sat, activa")
@@ -174,22 +174,30 @@ export async function generarBorradoresDelPeriodo(
     if (errRe) throw new Error(errRe.message);
     catalogo = (recargado ?? []) as unknown as CuentaCatalogo[];
     if (!catalogo.length) {
-      throw new Error("El expediente no tiene catálogo de cuentas: impórtalo antes de generar pólizas.");
+      throw new Error(
+        "El expediente no tiene catálogo de cuentas y no se pudo cargar el catálogo base. Impórtalo en Pólizas → Catálogo de cuentas.",
+      );
     }
   }
   const { cuentas, faltantes } = elegirCuentasSistema(catalogo);
   const version = await versionReglas(supabase, scope.cliente_id);
 
-  const { data: cfdis, error } = await supabase
-    .from("cfdi_xml")
-    .select("id, uuid, tipo_cfdi, metodo_pago, fecha, rfc_emisor, rfc_receptor, subtotal, descuento, iva_trasladado, ieps_trasladado, iva_retenido, isr_retenido, total, estatus_sat")
-    .eq("cliente_id", scope.cliente_id)
-    .eq("periodo", data.periodo)
-    .order("fecha", { ascending: true })
-    .limit(2000);
-  if (error) throw new Error(error.message);
+  // Paginación exhaustiva: un periodo puede superar el tope por página.
+  const cfdis: any[] = [];
+  for (let desde = 0; ; desde += 500) {
+    const { data: pagina, error } = await supabase
+      .from("cfdi_xml")
+      .select("id, uuid, tipo_cfdi, metodo_pago, fecha, rfc_emisor, rfc_receptor, subtotal, descuento, iva_trasladado, ieps_trasladado, iva_retenido, isr_retenido, total, estatus_sat")
+      .eq("cliente_id", scope.cliente_id)
+      .eq("periodo", data.periodo)
+      .order("fecha", { ascending: true })
+      .range(desde, desde + 499);
+    if (error) throw new Error(error.message);
+    cfdis.push(...(pagina ?? []));
+    if ((pagina ?? []).length < 500) break;
+  }
 
-  const ids = (cfdis ?? []).map((c) => c.id);
+  const ids = cfdis.map((c) => c.id);
   const conceptosPorCfdi = new Map<string, ConceptoCfdi[]>();
   for (let i = 0; i < ids.length; i += 200) {
     const { data: pagina, error: errCon } = await supabase
@@ -253,7 +261,7 @@ export async function generarBorradoresDelPeriodo(
   let generadas = 0;
   let bloqueadas = 0;
 
-  for (const c of cfdis ?? []) {
+  for (const c of cfdis) {
     if (c.estatus_sat !== "vigente") {
       detalle.push({ uuid: c.uuid, accion: "omitida", motivo: `Estatus SAT “${c.estatus_sat ?? "desconocido"}”: sólo se contabiliza evidencia vigente.` });
       continue;
@@ -266,7 +274,9 @@ export async function generarBorradoresDelPeriodo(
     const esIngreso = String(c.rfc_emisor ?? "").toUpperCase() === scope.rfc.toUpperCase();
     const contraparte = esIngreso ? c.rfc_receptor : c.rfc_emisor;
     const conceptos = (conceptosPorCfdi.get(c.id) ?? []).sort((a, b) => a.numero - b.numero);
-    const fecha = String(c.fecha).slice(0, 10);
+    // La póliza debe caer dentro del periodo fiscal (hora del centro). Si la
+    // fecha UTC del CFDI cae en el mes vecino, se ajusta al borde del periodo.
+    const fecha = ajustarAlPeriodo(String(c.fecha).slice(0, 10), data.periodo);
 
     const resoluciones: Record<number, ResolucionConcepto> = {};
     for (const con of conceptos) {
@@ -376,20 +386,30 @@ export async function generarBorradoresDelPeriodo(
     });
   }
 
-  await supabase.rpc("cierre_evaluar_polizas", {
+  const { error: errEval } = await supabase.rpc("cierre_evaluar_polizas", {
     _cliente_id: scope.cliente_id,
     _periodo: data.periodo,
   } as never);
+  if (errEval) throw new Error(errEval.message);
 
   return {
     generadas,
     bloqueadas,
-    revisados: (cfdis ?? []).length,
+    revisados: cfdis.length,
     version_reglas: version,
     cuentas_faltantes: faltantes,
     catalogo_sembrado,
     detalle,
   };
+}
+
+/** Lleva una fecha AAAA-MM-DD al rango del periodo AAAA-MM. */
+export function ajustarAlPeriodo(fecha: string, periodo: string): string {
+  if (fecha.slice(0, 7) === periodo) return fecha;
+  const [y, m] = periodo.split("-").map(Number);
+  if (fecha < `${periodo}-01`) return `${periodo}-01`;
+  const ultimo = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return `${periodo}-${String(ultimo).padStart(2, "0")}`;
 }
 
 /** Pólizas vivas (no rechazadas) que ya contabilizan cada CFDI. */
@@ -420,39 +440,46 @@ async function polizasExistentesPorCfdi(
   return out;
 }
 
-/** Siembra la plantilla IMCP según el régimen del expediente. */
-async function sembrarCatalogoBase(supabase: any, userId: string, clienteId: string): Promise<string> {
+/**
+ * Siembra la plantilla IMCP según el régimen del expediente. Escribe por el
+ * RPC `catalogo_importar_lote` (la tabla no admite INSERT directo).
+ */
+async function sembrarCatalogoBase(
+  supabase: SupabaseClient<Database>,
+  clienteId: string,
+): Promise<string | null> {
   const { PLANTILLAS_IMCP } = await import("@/lib/contabilidad-auto/imcp-catalog");
-  const { data: cli, error } = await supabase
+  const { huellaImportacion } = await import("@/lib/catalogo/importar");
+  const { data: cli } = await supabase
     .from("clientes")
-    .select("despacho_id, regimen_fiscal, tipo_persona")
+    .select("regimen_fiscal, tipo_persona")
     .eq("id", clienteId)
     .maybeSingle();
-  if (error || !cli) throw new Error(error?.message ?? "Expediente no encontrado");
-  const reg = String(cli.regimen_fiscal ?? "");
+  const reg = String(cli?.regimen_fiscal ?? "");
   const clave =
-    cli.tipo_persona === "moral" || /\b60[13]\b/.test(reg)
+    cli?.tipo_persona === "moral" || /\b60[13]\b/.test(reg)
       ? "pm_general"
       : /\b626\b/.test(reg)
         ? "pf_resico"
         : "pf_act_emp";
-  const plantilla = (PLANTILLAS_IMCP as any)[clave];
-  const rows = plantilla.cuentas.map((c: any) => ({
-    id: crypto.randomUUID(),
-    cliente_id: clienteId,
-    despacho_id: cli.despacho_id,
+  const plantilla = PLANTILLAS_IMCP[clave];
+  const filas = plantilla.cuentas.map((c) => ({
     codigo: c.codigo,
     nombre: c.nombre,
-    naturaleza: c.naturaleza === "D" ? "deudora" : "acreedora",
-    tipo_sat: c.agrupador_sat,
+    naturaleza: (c.naturaleza === "D" ? "deudora" : "acreedora") as "deudora" | "acreedora",
+    nivel: c.nivel,
+    agrupador_sat: c.agrupador_sat,
     activa: true,
-    created_by: userId,
   }));
-  const { error: errIns } = await supabase
-    .from("catalogo_cuentas")
-    .upsert(rows, { onConflict: "cliente_id,codigo", ignoreDuplicates: true });
-  if (errIns) throw new Error(errIns.message);
-  return plantilla.nombre as string;
+  const { error } = await supabase.rpc("catalogo_importar_lote", {
+    _cliente_id: clienteId,
+    _modo: "agregar",
+    _cuentas: filas as never,
+    _huella: `imcp:${clave}:${huellaImportacion(filas as never)}`.slice(0, 120),
+  } as never);
+  // Si no se pudo sembrar, el llamador da el mensaje amigable de siempre.
+  if (error) return null;
+  return plantilla.nombre;
 }
 
 export const generarBorradoresCanonicos = createServerFn({ method: "POST" })

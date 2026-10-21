@@ -253,26 +253,50 @@ export const runConciliacionIntegral = createServerFn({ method: "POST" })
     const despachoId = cli.despacho_id as string;
     const rfcCli = (cli.rfc as string).toUpperCase();
 
-    const [{ data: cfdis }, { data: polizas }, { data: movs }] = await Promise.all([
-      supabase
-        .from("cfdi_xml")
-        .select("id, uuid, tipo_cfdi, fecha, total, subtotal, iva_trasladado, rfc_emisor, rfc_receptor, estatus_sat, metodo_pago")
-        .eq("cliente_id", data.cliente_id)
-        .gte("fecha", desde)
-        .lte("fecha", `${hasta}T23:59:59`),
-      supabase
-        .from("polizas")
-        .select(`id, tipo, fecha, estado, concepto, uuid_cfdi, movimiento_bancario_id, referencia, ${SELECT_RENGLONES_LEGADO}`)
-        .eq("cliente_id", data.cliente_id)
-        .gte("fecha", desde)
-        .lte("fecha", hasta),
-      supabase
-        .from("movimientos_bancarios")
-        .select("id, fecha, descripcion, cargo, abono")
-        .eq("cliente_id", data.cliente_id)
-        .not("validado_at", "is", null)
-        .gte("fecha", desde)
-        .lte("fecha", hasta),
+    // Lectura exhaustiva y estricta: si una consulta falla o se trunca, la
+    // corrida se detiene en lugar de cerrar incidencias reales por error.
+    async function todas<T>(armar: (desde: number, hasta: number) => any): Promise<T[]> {
+      const out: T[] = [];
+      for (let desdeFila = 0; ; desdeFila += 1000) {
+        const { data: pagina, error } = await armar(desdeFila, desdeFila + 999);
+        if (error) throw new Error(error.message);
+        out.push(...((pagina ?? []) as T[]));
+        if ((pagina ?? []).length < 1000) break;
+      }
+      return out;
+    }
+    const [cfdis, polizas, movs] = await Promise.all([
+      todas<any>((a, b) =>
+        supabase
+          .from("cfdi_xml")
+          .select("id, uuid, tipo_cfdi, fecha, total, subtotal, iva_trasladado, rfc_emisor, rfc_receptor, estatus_sat, metodo_pago")
+          .eq("cliente_id", data.cliente_id)
+          .gte("fecha", desde)
+          .lte("fecha", `${hasta}T23:59:59`)
+          .order("id")
+          .range(a, b),
+      ),
+      todas<any>((a, b) =>
+        supabase
+          .from("polizas")
+          .select(`id, tipo, fecha, estado, concepto, uuid_cfdi, movimiento_bancario_id, referencia, ${SELECT_RENGLONES_LEGADO}`)
+          .eq("cliente_id", data.cliente_id)
+          .gte("fecha", desde)
+          .lte("fecha", hasta)
+          .order("id")
+          .range(a, b),
+      ),
+      todas<any>((a, b) =>
+        supabase
+          .from("movimientos_bancarios")
+          .select("id, fecha, descripcion, cargo, abono")
+          .eq("cliente_id", data.cliente_id)
+          .not("validado_at", "is", null)
+          .gte("fecha", desde)
+          .lte("fecha", hasta)
+          .order("id")
+          .range(a, b),
+      ),
     ]);
 
     const cfdi = cfdis ?? [];
@@ -291,17 +315,25 @@ export const runConciliacionIntegral = createServerFn({ method: "POST" })
     // Lo que el contador ya confirmó en la conciliación bancaria no se vuelve a acusar.
     const movimientosConfirmados = new Set<string>();
     const cfdiConfirmados = new Set<string>();
-    const movIds = mov.map((m) => m.id as string);
-    for (let i = 0; i < movIds.length; i += 200) {
-      const { data: conf } = await supabase
-        .from("conciliaciones")
-        .select("movimiento_id, cfdi_id")
-        .eq("cliente_id", data.cliente_id)
-        .eq("estado_grupo", "confirmado")
-        .in("movimiento_id", movIds.slice(i, i + 200));
-      for (const c of conf ?? []) {
-        if (c.movimiento_id) movimientosConfirmados.add(c.movimiento_id);
-        if (c.cfdi_id) cfdiConfirmados.add(c.cfdi_id);
+    // Se busca por ambos lados: un CFDI de fin de mes pudo conciliarse con un
+    // depósito del mes siguiente, fuera de este rango.
+    const porLado: { col: "movimiento_id" | "cfdi_id"; ids: string[] }[] = [
+      { col: "movimiento_id", ids: mov.map((m) => m.id as string) },
+      { col: "cfdi_id", ids: cfdi.map((c) => c.id as string) },
+    ];
+    for (const lado of porLado) {
+      for (let i = 0; i < lado.ids.length; i += 200) {
+        const { data: conf, error: errConf } = await supabase
+          .from("conciliaciones")
+          .select("movimiento_id, cfdi_id")
+          .eq("cliente_id", data.cliente_id)
+          .eq("estado_grupo", "confirmado")
+          .in(lado.col, lado.ids.slice(i, i + 200));
+        if (errConf) throw new Error(errConf.message);
+        for (const c of conf ?? []) {
+          if (c.movimiento_id) movimientosConfirmados.add(c.movimiento_id);
+          if (c.cfdi_id) cfdiConfirmados.add(c.cfdi_id);
+        }
       }
     }
 
@@ -384,21 +416,36 @@ export const runConciliacionIntegral = createServerFn({ method: "POST" })
     // acumulado de alarmas.
     {
       const vigentesHash = new Set(incidencias.map((i) => `${i.tipo}|${i.ref_hash}`));
-      const { data: abiertas } = await supabase
+      const { data: delRango, error: errRango } = await supabase
         .from("conciliacion_incidencias")
-        .select("id, tipo, ref_hash")
+        .select("id, tipo, ref_hash, estatus, resuelta_por")
         .eq("cliente_id", data.cliente_id)
-        .eq("estatus", "abierta")
+        .in("estatus", ["abierta", "resuelta"])
         .gte("fecha", desde)
         .lte("fecha", hasta);
-      const cerrar = (abiertas ?? [])
-        .filter((r: any) => !vigentesHash.has(`${r.tipo}|${r.ref_hash}`))
-        .map((r: any) => r.id as string);
+      if (errRango) throw new Error(errRango.message);
+      const filas = (delRango ?? []) as any[];
+      const cerrar = filas
+        .filter((r) => r.estatus === "abierta" && !vigentesHash.has(`${r.tipo}|${r.ref_hash}`))
+        .map((r) => r.id as string);
+      // Lo que el motor cerró solo (sin persona) y vuelve a detectarse, se reabre.
+      // Lo que una persona resolvió o marcó como falso positivo no se toca.
+      const reabrir = filas
+        .filter((r) => r.estatus === "resuelta" && !r.resuelta_por && vigentesHash.has(`${r.tipo}|${r.ref_hash}`))
+        .map((r) => r.id as string);
       for (let i = 0; i < cerrar.length; i += 200) {
-        await supabase
+        const { error: e1 } = await supabase
           .from("conciliacion_incidencias")
-          .update({ estatus: "resuelta", resuelta_at: new Date().toISOString() })
+          .update({ estatus: "resuelta", resuelta_at: new Date().toISOString(), resuelta_por: null })
           .in("id", cerrar.slice(i, i + 200));
+        if (e1) throw new Error(e1.message);
+      }
+      for (let i = 0; i < reabrir.length; i += 200) {
+        const { error: e2 } = await supabase
+          .from("conciliacion_incidencias")
+          .update({ estatus: "abierta", resuelta_at: null })
+          .in("id", reabrir.slice(i, i + 200));
+        if (e2) throw new Error(e2.message);
       }
     }
 

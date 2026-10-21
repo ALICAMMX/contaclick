@@ -234,7 +234,8 @@ export async function assertSatRunPermitido(opts: {
   await assertCuota(opts.supabase, ent, "sat_solicitudes", opts.previstas);
 
   // Demo/sandbox y proveedores sin saldo contratado (SAT directo) no reservan.
-  if (opts.esMock || ent.es_sandbox || opts.usaSaldoProveedor === false) {
+  // `esMock` ya viene resuelto por expediente (despacho sandbox + expediente demo).
+  if (opts.esMock || opts.usaSaldoProveedor === false) {
     return { ent, reservaKey: null };
   }
 

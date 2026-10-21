@@ -290,8 +290,13 @@ export const upsertClienteFromCsf = createServerFn({ method: "POST" })
     //    nunca un homónimo ni uno nuevo.
     if (data.cliente_id) {
       const { assertClienteScope } = await import("@/lib/despacho/scope");
-      await assertClienteScope(supabase, userId, data.cliente_id);
-      const { data: activo } = await supabase
+      // Si el alcance no se puede verificar (p. ej. expediente sin despacho),
+      // se cae a la búsqueda normal por RFC en lugar de fallar.
+      const permitido = await assertClienteScope(supabase, userId, data.cliente_id).then(
+        () => true,
+        () => false,
+      );
+      const { data: activo } = !permitido ? { data: null } : await supabase
         .from("clientes")
         .select("*")
         .eq("id", data.cliente_id)
