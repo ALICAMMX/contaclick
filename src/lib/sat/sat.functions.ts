@@ -208,7 +208,9 @@ export const conectarSat = createServerFn({ method: "POST" })
         clasificar_pagos: true,
         proveedor: "sat_directo",
         frecuencia: "diaria",
-        periodo: "mes_actual",
+        // Últimos 30 días: cubre los CFDI que el proveedor timbra tarde (los
+        // primeros días de cada mes) sin duplicar nada (idempotencia por UUID).
+        periodo: "30d",
         activo: true,
         proxima_corrida_at: new Date().toISOString(), // disparar en el próximo tick del cron
       });

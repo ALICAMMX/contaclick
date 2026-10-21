@@ -717,7 +717,7 @@ export async function calcularEstado(
       .eq("cliente_id", scope.cliente_id)
       .eq("despacho_id", scope.despacho_id)
       .maybeSingle(),
-    supabase.from("clientes").select("rfc").eq("id", scope.cliente_id).maybeSingle(),
+    supabase.from("clientes").select("rfc, es_demo").eq("id", scope.cliente_id).maybeSingle(),
     supabase.from("user_roles").select("user_id").eq("user_id", userId).eq("role", "super_admin").limit(1),
   ]);
 
@@ -788,7 +788,9 @@ export async function calcularEstado(
           maximo: rango.maximo,
         },
     cuota: { usado, limite, ilimitado, restante },
-    es_sandbox: ent.es_sandbox,
+    // Sólo se SIMULA cuando el expediente mismo es de demostración. Un RFC real
+    // dentro de un despacho de prueba nunca recibe CFDI inventados.
+    es_sandbox: ent.es_sandbox && (cli as any)?.es_demo === true,
     credencial_activa: credencialActiva,
     credencial,
     efirma_vence_at: efirmaVenceAt,
