@@ -1,0 +1,16 @@
+[Unit]
+Description=ContaClick (pruebas)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/contaclick-pruebas/app
+EnvironmentFile=/etc/contaclick/pruebas.env
+ExecStart=/usr/bin/node .output/server/index.mjs
+Restart=always
+RestartSec=5
+User=www-data
+MemoryMax=1G
+
+[Install]
+WantedBy=multi-user.target

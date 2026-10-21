@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
+import { aiFetch, aiApiKey } from "@/lib/ai/gateway";
 
 export const PLANTILLAS_CORRESPONDENCIA = [
   { key: "minuta_reunion", titulo: "Minuta de reunión con cliente", desc: "Captura puntos tratados, acuerdos y responsables." },
@@ -54,11 +55,11 @@ export const generarCorrespondencia = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) => Schema.parse(d))
   .handler(async ({ data }): Promise<CorrespondenciaResult> => {
-    const apiKey = process.env.LOVABLE_API_KEY;
+    const apiKey = aiApiKey();
     if (!apiKey) return { content: "", error: "El servicio de IA no está configurado." };
 
     try {
-      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const res = await aiFetch("chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({

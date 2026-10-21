@@ -14,6 +14,7 @@ import {
   motivoEvidenciaPendiente,
   type ResultadoEvidencia,
 } from "@/lib/sat/evidencia-reconciliacion";
+import { aiFetch, aiApiKey } from "@/lib/ai/gateway";
 
 
 
@@ -646,7 +647,7 @@ export const analyzeCfdiAI = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) => AnalyzeSchema.parse(d))
   .handler(async ({ data, context }) => {
-    const apiKey = process.env.LOVABLE_API_KEY;
+    const apiKey = aiApiKey();
     if (!apiKey) return { error: "IA no configurada", content: "" };
 
     const { data: cfdi, error } = await context.supabase
@@ -666,7 +667,7 @@ Datos:
 ${JSON.stringify(cfdi, null, 2)}`;
 
     try {
-      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const res = await aiFetch("chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({

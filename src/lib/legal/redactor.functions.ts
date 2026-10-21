@@ -3,6 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 import { z } from "zod";
 import { checkRateLimit, rateLimitMessage } from "@/lib/security/rate-limit";
+import { aiFetch, aiApiKey } from "@/lib/ai/gateway";
 
 export const TIPOS_ESCRITO = [
   { key: "recurso_revocacion", nombre: "Recurso de Revocación", fundamento: "Arts. 116, 117, 121 CFF", autoridad: "Administración Desconcentrada Jurídica del SAT" },
@@ -82,11 +83,11 @@ export const generarEscrito = createServerFn({ method: "POST" })
     const rl = await checkRateLimit(context.supabase, "redactor_legal", 20, 600);
     if (!rl.allowed) return { content: "", error: rateLimitMessage("redactor legal", rl.resetAt), tipo: data.tipo };
 
-    const apiKey = process.env.LOVABLE_API_KEY;
+    const apiKey = aiApiKey();
     if (!apiKey) return { content: "", error: "El servicio de IA no está configurado.", tipo: data.tipo };
 
     try {
-      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const res = await aiFetch("chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({

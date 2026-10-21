@@ -22,6 +22,7 @@ import {
   serializarResultado,
 } from "@/lib/conti/motores";
 import { validarRespuestaConti } from "@/lib/conti/validador";
+import { aiFetch, aiApiKey } from "@/lib/ai/gateway";
 
 const MsgSchema = z.object({
   role: z.enum(["user", "assistant"]),
@@ -52,7 +53,7 @@ export const sendBotAyuda = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((input: unknown) => SendSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const apiKey = process.env.LOVABLE_API_KEY;
+    const apiKey = aiApiKey();
     const modoPedido = data.modo as ContiModo;
     if (!apiKey)
       return {
@@ -170,7 +171,7 @@ export const sendBotAyuda = createServerFn({ method: "POST" })
       }
 
       const llamar = async (mensajes: any[]) => {
-        const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        const res = await aiFetch("chat/completions", {
           method: "POST",
           headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
           body: JSON.stringify({ model, messages: mensajes, tools: HERRAMIENTAS_CONTI, tool_choice: "auto" }),

@@ -3,13 +3,14 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 import { z } from "zod";
 import { checkRateLimit, rateLimitMessage } from "@/lib/security/rate-limit";
+import { aiFetch, aiApiKey } from "@/lib/ai/gateway";
 
 const EMBED_MODEL = "openai/text-embedding-3-small"; // 1536 dims para simplificar índice
 const EMBED_DIMS = 1536;
 const CHAT_MODEL = "google/gemini-3-flash-preview";
 
 async function embed(text: string, apiKey: string): Promise<number[]> {
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+  const res = await aiFetch("embeddings", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({ model: EMBED_MODEL, input: text, dimensions: EMBED_DIMS }),
@@ -100,7 +101,7 @@ export const indexarLey = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) => IndexSchema.parse(d))
   .handler(async ({ data, context }) => {
-    const apiKey = process.env.LOVABLE_API_KEY;
+    const apiKey = aiApiKey();
     if (!apiKey) return { ok: false, error: "IA no configurada", articulos: 0, embeddings: 0 };
     const { supabase } = context;
 
@@ -177,7 +178,7 @@ export const consultarLey = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) => ConsultaSchema.parse(d))
   .handler(async ({ data, context }) => {
-    const apiKey = process.env.LOVABLE_API_KEY;
+    const apiKey = aiApiKey();
     if (!apiKey) return { respuesta: "", citas: [] as LeyCita[], error: "IA no configurada" };
 
     const { supabase } = context;
@@ -220,7 +221,7 @@ export const consultarLey = createServerFn({ method: "POST" })
 5. Al final incluye "Fundamento aplicable:" con la lista de artículos citados.`;
 
     try {
-      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const res = await aiFetch("chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({

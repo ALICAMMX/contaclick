@@ -32,6 +32,7 @@ import {
   parseRechazarImportacionInput,
   parseRunReconciliationInput,
 } from "@/lib/conciliacion/conciliacion.validators";
+import { aiFetch, aiApiKey } from "@/lib/ai/gateway";
 
 /** Rango mensual semiabierto [inicio, inicio del mes siguiente) en fechas locales. */
 function rangoFechas(periodo: string): { desde: string; hastaExclusivo: string } {
@@ -803,7 +804,7 @@ export const analyzeReconciliationAI = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator(parseClienteInput)
   .handler(async ({ data, context }) => {
-    const apiKey = process.env.LOVABLE_API_KEY;
+    const apiKey = aiApiKey();
     if (!apiKey) return { error: "IA no configurada", content: "" };
 
     const { supabase } = context;
@@ -830,7 +831,7 @@ Grupos de conciliación: ${JSON.stringify(grupos?.slice(0, 30))}
 Responde en español, formato markdown, conciso.`;
 
     try {
-      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const res = await aiFetch("chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({

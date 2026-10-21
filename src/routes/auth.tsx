@@ -438,6 +438,17 @@ function AuthPage() {
                 setFormMessage(null);
                 try {
                   rememberReturnPath(search.next);
+                  // Fuera de Lovable (VPS) el inicio con Google lo hace Supabase Auth
+                  // directamente. Se activa con VITE_AUTH_PROVIDER=supabase.
+                  if (import.meta.env.VITE_AUTH_PROVIDER === "supabase") {
+                    const { supabase } = await import("@/integrations/supabase/client");
+                    const { error } = await supabase.auth.signInWithOAuth({
+                      provider: "google",
+                      options: { redirectTo: `${window.location.origin}/auth-callback` },
+                    });
+                    if (error) throw error;
+                    return; // el navegador se va a Google y regresa a /auth-callback
+                  }
                   const { lovable } = await import("@/integrations/lovable/index");
                   const result = await lovable.auth.signInWithOAuth("google", {
                     redirect_uri: `${window.location.origin}/auth-callback`,

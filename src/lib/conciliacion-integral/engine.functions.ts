@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 import { montoDesdeRenglones, SELECT_RENGLONES_LEGADO } from "@/lib/polizas/adaptador";
 import { detectarIncidencias, kpisDe, type IncidenciaTipo, type PolizaIn } from "./detectar";
+import { aiFetch, aiApiKey } from "@/lib/ai/gateway";
 
 export type { IncidenciaTipo } from "./detectar";
 
@@ -481,7 +482,7 @@ export const explicarIncidencia = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) => ExplainInput.parse(d))
   .handler(async ({ data, context }) => {
-    const apiKey = process.env.LOVABLE_API_KEY;
+    const apiKey = aiApiKey();
     if (!apiKey) return { error: "IA no configurada", explicacion: "" };
     const { supabase } = context;
     const { data: inc } = await supabase
@@ -497,7 +498,7 @@ Cliente: ${(inc as any).clientes?.razon_social ?? ""} ${(inc as any).clientes?.r
 Detalle JSON: ${JSON.stringify(inc.detalle)}. Recomendación base: ${inc.recomendacion ?? ""}.
 Responde SOLO JSON: {"explicacion":"...", "accion":"..."}`;
     try {
-      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const res = await aiFetch("chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({

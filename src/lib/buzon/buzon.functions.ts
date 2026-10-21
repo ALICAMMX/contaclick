@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
+import { aiFetch, aiApiKey } from "@/lib/ai/gateway";
 
 const ORIGENES = ["SAT", "IMSS", "INFONAVIT", "Estatal", "Otro"] as const;
 
@@ -61,8 +62,8 @@ type IAAnalisis = {
 };
 
 async function analizarPDFConIA(pdfDataUrl: string, asunto: string, origen: string): Promise<IAAnalisis> {
-  const apiKey = process.env.LOVABLE_API_KEY;
-  if (!apiKey) return { error: "IA no disponible (LOVABLE_API_KEY ausente)" };
+  const apiKey = aiApiKey();
+  if (!apiKey) return { error: "IA no configurada en el servidor" };
 
   const systemPrompt = `Eres un litigante fiscal mexicano senior. Analizas notificaciones de ${origen} (SAT, IMSS, INFONAVIT, autoridades estatales). Devuelves SIEMPRE un JSON válido con esta estructura exacta:
 {
@@ -82,7 +83,7 @@ NO incluyas texto fuera del JSON. NO uses markdown. NO inventes folios ni datos 
   ];
 
   try {
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const res = await aiFetch("chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({

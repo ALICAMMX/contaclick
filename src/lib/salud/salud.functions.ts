@@ -10,6 +10,7 @@ import {
   type FaltanteSalud,
   type SemaforoSalud,
 } from "./cobertura";
+import { aiFetch, aiApiKey } from "@/lib/ai/gateway";
 
 function extractJsonObject(raw: string) {
   const text = String(raw ?? "").trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
@@ -390,7 +391,7 @@ export const analizarSaludConIA = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) => AIInput.parse(d))
   .handler(async ({ data, context }) => {
-    const apiKey = process.env.LOVABLE_API_KEY;
+    const apiKey = aiApiKey();
     if (!apiKey) return { error: "IA no configurada", resumen: "", hallazgos: [] as SaludHallazgo[] };
     const { supabase } = context;
     const { data: snap } = await supabase.from("salud_fiscal_snapshots")
@@ -401,7 +402,7 @@ export const analizarSaludConIA = createServerFn({ method: "POST" })
     const prompt = `Eres analista fiscal mexicano. Genera un diagnóstico ejecutivo en español (máx 6 líneas) y 3 hallazgos accionables JSON. Datos: ${JSON.stringify(snap)}.
 Responde SOLO JSON: {"resumen":"...", "hallazgos":[{"tipo":"patron|inconsistencia|oportunidad","titulo":"...","detalle":"..."}]}`;
     try {
-      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const res = await aiFetch("chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({

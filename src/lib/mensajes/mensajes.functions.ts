@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
+import { aiFetch, aiApiKey } from "@/lib/ai/gateway";
 
 export type PlantillaKey =
   | "recordatorio_impuestos"
@@ -62,7 +63,7 @@ export const redactarMensajeAI = createServerFn({ method: "POST" })
     }).parse(d),
   )
   .handler(async ({ data }) => {
-    const apiKey = process.env.LOVABLE_API_KEY;
+    const apiKey = aiApiKey();
     if (!apiKey) return { error: "IA no configurada", content: "" };
 
     const guia = data.canal === "whatsapp"
@@ -72,7 +73,7 @@ export const redactarMensajeAI = createServerFn({ method: "POST" })
     const prompt = `Redacta un mensaje en tono ${data.tono} para enviar a un cliente.\n\n${guia}\n\nContexto:\n${data.contexto}\n\nResponde solo con el mensaje listo para enviar, en español de México.`;
 
     try {
-      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const res = await aiFetch("chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({

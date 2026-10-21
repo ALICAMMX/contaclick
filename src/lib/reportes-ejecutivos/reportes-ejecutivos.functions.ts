@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
 import { montoDesdeRenglones, SELECT_RENGLONES_LEGADO } from "@/lib/polizas/adaptador";
 import { assertClienteScope, assertRecordScope } from "@/lib/despacho/scope";
+import { aiFetch, aiApiKey } from "@/lib/ai/gateway";
 
 
 function extractJsonObject(raw: string) {
@@ -228,7 +229,7 @@ export const generarReporte = createServerFn({ method: "POST" })
     const datos = await recolectarDatos(sb, data.cliente_id, periodo);
 
     // Llamado IA para hallazgos, oportunidades, resumen y recomendaciones
-    const apiKey = process.env.LOVABLE_API_KEY;
+    const apiKey = aiApiKey();
     let hallazgos: Array<{ titulo: string; detalle: string; severidad?: string }> = [];
     let oportunidades: Array<{ titulo: string; detalle: string; impacto?: number }> = [];
     let resumen = "";
@@ -256,7 +257,7 @@ Responde SOLO JSON válido, completo, sin markdown y sin cortar textos. Redacta 
   "ahorro_estimado_pesos": numero
 }`;
       try {
-        const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        const res = await aiFetch("chat/completions", {
           method: "POST",
           headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -489,7 +490,7 @@ export const simularEscenario = createServerFn({ method: "POST" })
     await assertClienteScope(context.supabase as any, context.userId, data.cliente_id);
     const datos = await recolectarDatos(sb, data.cliente_id, periodo);
 
-    const apiKey = process.env.LOVABLE_API_KEY;
+    const apiKey = aiApiKey();
     let resultado: Record<string, number> = { isr_actual: datos.resumen_fiscal.isr_estimado, iva_actual: datos.resumen_fiscal.iva_neto, utilidad_actual: datos.resumen_financiero.utilidad };
     let narrativa = "Simulación calculada con datos base.";
 
@@ -498,7 +499,7 @@ export const simularEscenario = createServerFn({ method: "POST" })
 Responde SOLO JSON:
 {"resultado":{"isr_simulado":num,"iva_simulado":num,"utilidad_simulada":num,"flujo_simulado":num,"delta_isr":num,"delta_iva":num},"narrativa":"explicación 3-4 líneas no técnica"}`;
       try {
-        const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        const res = await aiFetch("chat/completions", {
           method: "POST",
           headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
           body: JSON.stringify({

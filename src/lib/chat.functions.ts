@@ -6,6 +6,7 @@ import { resolveActiveDespachoId } from "@/lib/despacho/resolve";
 import { assertWithinLimit, recordIaUsage, UsageLimitError } from "@/lib/usage/limits";
 import { checkRateLimit, rateLimitMessage } from "@/lib/security/rate-limit";
 import { aplicarContrato } from "@/lib/conti/contrato";
+import { aiFetch, aiApiKey } from "@/lib/ai/gateway";
 
 
 const Schema = z.object({
@@ -21,7 +22,7 @@ export const sendChat = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((input: unknown) => Schema.parse(input))
   .handler(async ({ data, context }) => {
-    const apiKey = process.env.LOVABLE_API_KEY;
+    const apiKey = aiApiKey();
     if (!apiKey) {
       return { error: "El asistente no está configurado.", content: "" };
     }
@@ -44,7 +45,7 @@ export const sendChat = createServerFn({ method: "POST" })
     const model = "google/gemini-3-flash-preview";
 
     try {
-      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const res = await aiFetch("chat/completions", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,

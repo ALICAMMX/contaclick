@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/client-auth-middleware";
+import { aiFetch, aiApiKey } from "@/lib/ai/gateway";
 
 const PeriodSchema = z.object({
   cliente_id: z.string().uuid(),
@@ -312,7 +313,7 @@ export const summarizeReporteAI = createServerFn({ method: "POST" })
   .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ reporte_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const apiKey = process.env.LOVABLE_API_KEY;
+    const apiKey = aiApiKey();
     if (!apiKey) return { error: "IA no configurada", content: "" };
     const { data: rep } = await context.supabase.from("reportes").select("tipo, resultado, parametros").eq("id", data.reporte_id).single();
     if (!rep) return { error: "Reporte no encontrado", content: "" };
@@ -328,7 +329,7 @@ Reporte: ${JSON.stringify(rep.resultado).slice(0, 8000)}
 Responde en español, formato markdown, máximo 220 palabras.`;
 
     try {
-      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const res = await aiFetch("chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
