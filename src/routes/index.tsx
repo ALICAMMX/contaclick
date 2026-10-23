@@ -60,7 +60,7 @@ export const Route = createFileRoute("/")({
           "Analiza CFDI, concilia bancos y detecta riesgos fiscales con inteligencia artificial. La plataforma SaaS moderna para despachos contables en México.",
       },
       { property: "og:title", content: "ContaClick IA — IA para contadores en México" },
-      { property: "og:description", content: "Descarga del SAT, conciliación bancaria, pólizas y cierre mensual para despachos. Complementa a CONTPAQi y Aspel." },
+      { property: "og:description", content: "Descarga del SAT, conciliación bancaria, pólizas y cierre mensual para despachos contables con muchos RFC." },
     ],
   }),
   component: Landing,

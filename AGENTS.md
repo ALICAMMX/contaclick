@@ -1,7 +1,9 @@
 # ContaClick — reglas para agentes de código (Codex, Claude, etc.)
 
 ## Qué es el producto
-ContaClick **complementa** a CONTPAQi, Aspel y Siigo. No los sustituye. Su trabajo es el flujo mensual de un despacho con muchos RFC:
+ContaClick resuelve el flujo mensual de un despacho contable con muchos RFC. En textos para el usuario no se presenta como "complemento" de otros sistemas contables ni se compara con ellos; sólo se mencionan los formatos de exportación (CONTPAQi, Aspel COI, XML del SAT) donde se exporta.
+
+El flujo:
 
 1. Descargar CFDI del SAT con e.firma (`/app/sat-sync`)
 2. Revisar comprobantes (`/app/cfdi`)

@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // ENFOQUE DEL PRODUCTO — qué se muestra y qué se oculta, sin borrar código.
 //
-// ContaClick complementa a CONTPAQi / Aspel / Siigo: descarga del SAT,
+// ContaClick resuelve el trabajo mensual del despacho: descarga del SAT,
 // revisión de CFDI, conciliación bancaria, pólizas exportables y cierre del
 // mes para despachos con muchos RFC. Lo que no sirve a ese flujo se oculta de
 // menús, inicio y buscador. Las rutas siguen existiendo (nadie pierde datos)
