@@ -21,8 +21,20 @@ async function getServerEntry(): Promise<ServerEntry> {
 // Content Security Policy + cabeceras de seguridad.
 // Limita orígenes de scripts/estilos/imágenes/conexiones para mitigar XSS
 // (un script inyectado no podría exfiltrar tokens a un dominio externo).
-const SUPABASE_ORIGIN = "https://kootsuhxbtzqfmnokjsx.supabase.co";
-const SUPABASE_WS = "wss://kootsuhxbtzqfmnokjsx.supabase.co";
+// El origen de Supabase sale de la configuración del entorno (pruebas,
+// producción, VPS). Si no hay ninguna, se usa el proyecto de producción.
+function supabaseOrigin(): string {
+  const desdeProceso = typeof process !== "undefined" ? process.env?.SUPABASE_URL : undefined;
+  const desdeBuild = (import.meta as { env?: Record<string, string | undefined> }).env?.VITE_SUPABASE_URL;
+  const url = (desdeProceso || desdeBuild || "https://kootsuhxbtzqfmnokjsx.supabase.co").trim();
+  try {
+    return new URL(url).origin;
+  } catch {
+    return "https://kootsuhxbtzqfmnokjsx.supabase.co";
+  }
+}
+const SUPABASE_ORIGIN = supabaseOrigin();
+const SUPABASE_WS = SUPABASE_ORIGIN.replace(/^https:/, "wss:");
 
 function buildCsp(): string {
   const directives: Record<string, string[]> = {
