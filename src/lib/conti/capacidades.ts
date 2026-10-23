@@ -14,6 +14,7 @@ import {
   getCapabilityByRoute,
   type Capability,
 } from "@/lib/capabilities/registry";
+import { nivelDeCapacidad } from "@/lib/capabilities/enfoque";
 
 export type HechoCapacidad = {
   id: string;
@@ -45,7 +46,7 @@ export function advertenciaPorMadurez(c: Capability): string | null {
 }
 
 export function hechosCapacidades(): HechoCapacidad[] {
-  return CAPABILITIES.filter((c) => c.madurez !== "obsoleta").map((c) => ({
+  return CAPABILITIES.filter((c) => c.madurez !== "obsoleta" && nivelDeCapacidad(c) !== "oculta").map((c) => ({
     id: c.id,
     nombre: c.nombre,
     ruta: c.ruta,
@@ -94,7 +95,7 @@ export function validarRecomendacion(ruta: string): {
   if (!c) return { existe: false, bloqueada: true, advertencia: null, nombre: null };
   return {
     existe: true,
-    bloqueada: c.madurez === "obsoleta" || c.madurez === "proximamente",
+    bloqueada: c.madurez === "obsoleta" || c.madurez === "proximamente" || nivelDeCapacidad(c) === "oculta",
     advertencia: advertenciaPorMadurez(c),
     nombre: c.nombre,
   };

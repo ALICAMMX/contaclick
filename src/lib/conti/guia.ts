@@ -14,6 +14,7 @@ import {
   type Capability,
   type Madurez,
 } from "@/lib/capabilities/registry";
+import { nivelDeCapacidad } from "@/lib/capabilities/enfoque";
 import { HELP_REGISTRY } from "@/lib/help/registry";
 import { advertenciaPorMadurez } from "./capacidades";
 
@@ -58,7 +59,7 @@ function ayudaDe(cap: Capability) {
 
 export function pasoGuia(capabilityId: string): PasoGuia | null {
   const cap = getCapability(capabilityId);
-  if (!cap || cap.madurez === "obsoleta") return null;
+  if (!cap || cap.madurez === "obsoleta" || nivelDeCapacidad(cap) === "oculta") return null;
   const ayuda = ayudaDe(cap);
 
   const prerequisites = (ayuda?.dependencias.necesita ?? [])
@@ -108,7 +109,7 @@ export type Navegacion = {
 
 export function navegacionPara(ruta: string): Navegacion | null {
   const c = getCapabilityByRoute(ruta);
-  if (!c || c.madurez === "obsoleta") return null;
+  if (!c || c.madurez === "obsoleta" || nivelDeCapacidad(c) === "oculta") return null;
   return { capabilityId: c.id, nombre: c.nombre, ruta: c.ruta, madurez: c.madurez };
 }
 
