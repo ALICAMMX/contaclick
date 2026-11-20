@@ -21,6 +21,13 @@ import {
   type MovimientoEntrada,
 } from "@/lib/conciliacion/motor";
 import {
+  ALGORITMO_MULTIPLE_VERSION,
+  PARAMETROS_MULTIPLE,
+  conciliarMultiple,
+  llaveCombinacion,
+  type PagoComplemento,
+} from "@/lib/conciliacion/motor-multiple";
+import {
   parseClienteInput,
   parseConfirmarImportacionInput,
   parseDecisionGrupoInput,
@@ -509,6 +516,150 @@ export const listMovimientos = createServerFn({ method: "POST" })
   });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Bloque 2 — lectura del insumo extra y escritura por el escritor v2
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Suma o resta días a una fecha AAAA-MM-DD. */
+function moverDias(fecha: string, dias: number): string {
+  const d = new Date(`${fecha}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + dias);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Lee todas las páginas de una consulta (tope de 1000 filas por página). */
+async function todasLasFilas<T>(consulta: (desde: number, hasta: number) => PromiseLike<{ data: T[] | null; error: any }>): Promise<T[]> {
+  const out: T[] = [];
+  for (let desde = 0; ; desde += 1000) {
+    const { data, error } = await consulta(desde, desde + 999);
+    if (error) throw new Error(error.message);
+    out.push(...(data ?? []));
+    if (!data || data.length < 1000) break;
+  }
+  return out;
+}
+
+async function correrBloqueMultiple(args: {
+  supabase: any;
+  supabaseAdmin: any;
+  clienteId: string;
+  rfc: string;
+  periodo: string;
+  actor: string;
+  movimientos: MovimientoEntrada[];
+  usadosMov: Set<string>;
+  usadosCfdi: Set<string>;
+}) {
+  const { supabase, supabaseAdmin, clienteId, rfc, periodo } = args;
+  const { desde, hastaExclusivo } = rangoFechas(periodo);
+  const margenAtras = PARAMETROS_MULTIPLE.dias_atras;
+  const desdeCfdi = moverDias(desde, -margenAtras);
+  const hastaCfdi = moverDias(hastaExclusivo, PARAMETROS_MULTIPLE.dias_adelante);
+
+  const cfdis = await todasLasFilas<any>((a, b) =>
+    supabase
+      .from("cfdi_xml")
+      .select("id, uuid, fecha, total, direccion, tipo_cfdi, metodo_pago, estatus_sat, moneda, rfc_emisor, rfc_receptor, nombre_emisor, nombre_receptor")
+      .eq("cliente_id", clienteId)
+      .gte("fecha", desdeCfdi)
+      .lt("fecha", hastaCfdi)
+      .order("id")
+      .range(a, b),
+  );
+
+  const idsP = cfdis.filter((c) => String(c.tipo_cfdi ?? "").toUpperCase() === "P").map((c) => c.id as string);
+  const pagosFilas: any[] = [];
+  for (let i = 0; i < idsP.length; i += 200) {
+    const lote = idsP.slice(i, i + 200);
+    const { data: p, error } = await supabase
+      .from("cfdi_pagos")
+      .select("cfdi_id, fecha_pago, monto, moneda_p, num_operacion")
+      .in("cfdi_id", lote);
+    if (error) throw new Error(error.message);
+    pagosFilas.push(...(p ?? []));
+  }
+
+  // Grupos rechazados por una persona: no se vuelven a proponer igual.
+  const miembrosRechazados = await todasLasFilas<any>((a, b) =>
+    supabase
+      .from("conciliaciones")
+      .select("grupo_id, movimiento_id, cfdi_id")
+      .eq("cliente_id", clienteId)
+      .in("estado_grupo", ["rechazado", "ignorado"])
+      .not("grupo_id", "is", null)
+      .order("id")
+      .range(a, b),
+  );
+  const porGrupo = new Map<string, { movs: Set<string>; cfdis: Set<string> }>();
+  for (const m of miembrosRechazados) {
+    const g = porGrupo.get(m.grupo_id) ?? { movs: new Set(), cfdis: new Set() };
+    if (m.movimiento_id) g.movs.add(m.movimiento_id);
+    if (m.cfdi_id) g.cfdis.add(m.cfdi_id);
+    porGrupo.set(m.grupo_id, g);
+  }
+  const combinacionesRechazadas = [...porGrupo.values()].map((g) => llaveCombinacion([...g.movs], [...g.cfdis]));
+
+  const cfdiEntrada: CfdiEntrada[] = cfdis.map((c) => {
+    const emitido = c.direccion === "emitido" || (!c.direccion && String(c.rfc_emisor ?? "").toUpperCase() === rfc);
+    return {
+      id: c.id,
+      uuid: c.uuid ?? null,
+      fecha: String(c.fecha).slice(0, 10),
+      total_centavos: aCentavos(c.total),
+      direccion: emitido ? "emitido" : "recibido",
+      tipo_cfdi: c.tipo_cfdi ?? null,
+      metodo_pago: c.metodo_pago ?? null,
+      estatus_sat: c.estatus_sat ?? null,
+      moneda: c.moneda ?? "MXN",
+      rfc_contraparte: (emitido ? c.rfc_receptor : c.rfc_emisor) ?? null,
+      nombre_contraparte: (emitido ? c.nombre_receptor : c.nombre_emisor) ?? null,
+    };
+  });
+  const pagos: PagoComplemento[] = pagosFilas.map((p) => ({
+    cfdi_id: p.cfdi_id,
+    fecha: String(p.fecha_pago ?? "").slice(0, 10),
+    monto_centavos: aCentavos(p.monto),
+    moneda: p.moneda_p ?? "MXN",
+    num_operacion: p.num_operacion ?? null,
+  }));
+
+  const resultado = conciliarMultiple({
+    movimientos: args.movimientos,
+    cfdi: cfdiEntrada,
+    pagos,
+    movimientos_bloqueados: [...args.usadosMov],
+    cfdi_bloqueados: [...args.usadosCfdi],
+    combinaciones_rechazadas: combinacionesRechazadas,
+  });
+  if (resultado.grupos.length === 0) return { grupos_propuestos: 0, metricas: resultado.metricas };
+
+  const huella = resultado.grupos.map((g) => g.idempotency_key).sort().join(";");
+  const { data: rpc, error } = await supabaseAdmin.rpc("conciliacion_ejecutar_corrida_v2", {
+    _cliente_id: clienteId,
+    _periodo: periodo,
+    _actor: args.actor,
+    _idempotency_key: `${ALGORITMO_MULTIPLE_VERSION}:${periodo}:${huella.length}:${huella.slice(0, 900)}`,
+    _input_hash: huella.slice(0, 200),
+    _algoritmo_version: `${ALGORITMO_VERSION}+${ALGORITMO_MULTIPLE_VERSION}`,
+    _parametros: PARAMETROS_MULTIPLE,
+    _grupos: resultado.grupos.map((g) => ({
+      tipo: g.tipo,
+      estado: g.estado,
+      nivel_propuesta: g.nivel_propuesta,
+      probabilidad_bp: g.probabilidad_bp,
+      importe_banco_centavos: g.importe_banco_centavos,
+      importe_cfdi_centavos: g.importe_cfdi_centavos,
+      evidencia: g.evidencia,
+      motivo: g.motivo,
+      idempotency_key: g.idempotency_key,
+      miembros: g.miembros,
+    })),
+    _dias_atras: margenAtras + 10,
+  });
+  if (error) throw new Error(error.message);
+  return { grupos_propuestos: resultado.grupos.length, metricas: resultado.metricas, corrida: rpc ?? null };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Motor: la función servidora sólo arma el insumo y persiste por RPC
 // ─────────────────────────────────────────────────────────────────────────────
 export const runReconciliation = createServerFn({ method: "POST" })
@@ -630,12 +781,27 @@ export const runReconciliation = createServerFn({ method: "POST" })
     });
     if (rpcErr) throw new Error(rpcErr.message);
 
+    // ── Bloque 2: empates múltiples y complementos de pago ──────────────────
+    // Trabaja sólo con lo que el uno a uno dejó libre. Las facturas pueden ser
+    // de meses anteriores (crédito comercial), así que se leen con margen.
+    const multiple = await correrBloqueMultiple({
+      supabase,
+      supabaseAdmin,
+      clienteId,
+      rfc,
+      periodo: data.periodo,
+      actor: context.userId,
+      movimientos,
+      usadosMov: new Set([...entrada.movimientos_bloqueados!, ...resultado.grupos.map((g) => g.movimiento_id)]),
+      usadosCfdi: new Set([...entrada.cfdi_bloqueados!, ...resultado.grupos.map((g) => g.cfdi_id)]),
+    });
 
     return {
       periodo: data.periodo,
       version: resultado.version,
       input_hash: inputHash,
       corrida: rpc ?? null,
+      multiple,
       metricas: resultado.metricas,
       movimientos_sin_candidato: resultado.movimientos_sin_candidato.length,
       cfdi_sin_movimiento: resultado.cfdi_sin_movimiento.length,

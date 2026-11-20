@@ -294,9 +294,16 @@ function ConciliacionPage() {
     () => new Map((datos?.cfdi ?? []).map((c: any) => [c.id as string, c])),
     [datos?.cfdi],
   );
+  // Un grupo puede tener varios miembros (un depósito que paga varias
+  // facturas, una factura cobrada en varios movimientos).
   const miembroPorGrupo = useMemo(() => {
-    const map = new Map<string, { movimiento_id: string | null; cfdi_id: string | null }>();
-    for (const m of datos?.miembros ?? []) if (m.grupo_id) map.set(m.grupo_id as string, m as never);
+    const map = new Map<string, Miembro[]>();
+    for (const m of datos?.miembros ?? []) {
+      if (!m.grupo_id) continue;
+      const lista = map.get(m.grupo_id as string) ?? [];
+      lista.push(m as never);
+      map.set(m.grupo_id as string, lista);
+    }
     return map;
   }, [datos?.miembros]);
   const movPorId = useMemo(
@@ -306,8 +313,9 @@ function ConciliacionPage() {
   const grupoPorMovimiento = useMemo(() => {
     const map = new Map<string, any>();
     for (const g of datos?.grupos ?? []) {
-      const miembro = miembroPorGrupo.get(g.id as string);
-      if (miembro?.movimiento_id) map.set(miembro.movimiento_id, g);
+      for (const miembro of miembroPorGrupo.get(g.id as string) ?? []) {
+        if (miembro.movimiento_id) map.set(miembro.movimiento_id, g);
+      }
     }
     return map;
   }, [datos?.grupos, miembroPorGrupo]);
@@ -365,16 +373,16 @@ function ConciliacionPage() {
 
   function exportar() {
     const filas = (datos?.grupos ?? []).map((g: any) => {
-      const miembro = miembroPorGrupo.get(g.id);
-      const mov = miembro?.movimiento_id ? movPorId.get(miembro.movimiento_id) : null;
-      const cfdi = miembro?.cfdi_id ? cfdiPorId.get(miembro.cfdi_id) : null;
+      const miembros = miembroPorGrupo.get(g.id) ?? [];
+      const movs = [...new Set(miembros.map((m) => m.movimiento_id).filter(Boolean))].map((id) => movPorId.get(id as string)).filter(Boolean);
+      const cfdis = [...new Set(miembros.map((m) => m.cfdi_id).filter(Boolean))].map((id) => cfdiPorId.get(id as string)).filter(Boolean);
       return {
         Estado: ETIQUETA_ESTADO[g.estado as EstadoConciliacion],
         Origen: ETIQUETA_ORIGEN[g.origen as "motor" | "humano"],
-        Fecha: mov?.fecha ?? "",
-        Movimiento: mov?.descripcion ?? "",
+        Fecha: movs.map((m: any) => m.fecha).join(", "),
+        Movimiento: movs.map((m: any) => m.descripcion).join(" | "),
         "Importe banco": formateaCentavos(Number(g.importe_banco_centavos ?? 0)),
-        "Folio fiscal": cfdi?.uuid ?? "",
+        "Folio fiscal": cfdis.map((c: any) => c.uuid).join(", "),
         "Importe CFDI": formateaCentavos(Number(g.importe_cfdi_centavos ?? 0)),
         Diferencia: formateaCentavos(Number(g.diferencia_centavos ?? 0)),
         "Confirmado por": g.confirmado_por ? "Persona identificada" : "",
@@ -484,7 +492,7 @@ function ConciliacionPage() {
 
       <Bloque titulo={`Propuestos · ${propuestos.length}`} descripcion="El motor encontró un candidato, pero la evidencia no basta para darlo por bueno. Requiere tu decisión.">
         {propuestos.map((g: any) => (
-          <FilaGrupo key={g.id} grupo={g} miembro={miembroPorGrupo.get(g.id)} movPorId={movPorId} cfdiPorId={cfdiPorId}
+          <FilaGrupo key={g.id} grupo={g} miembros={miembroPorGrupo.get(g.id) ?? []} movPorId={movPorId} cfdiPorId={cfdiPorId}
             acciones={
               <>
                 <Button size="sm" onClick={() => decidir.mutate({ grupo_id: g.id, accion: "confirmar" })} disabled={decidir.isPending}>
@@ -500,7 +508,7 @@ function ConciliacionPage() {
 
       <Bloque titulo={`Confirmados · ${confirmados.length}`} descripcion="Sólo estos alimentan la etapa Bancos del cierre, y únicamente cuando la confirmación es humana.">
         {confirmados.map((g: any) => (
-          <FilaGrupo key={g.id} grupo={g} miembro={miembroPorGrupo.get(g.id)} movPorId={movPorId} cfdiPorId={cfdiPorId}
+          <FilaGrupo key={g.id} grupo={g} miembros={miembroPorGrupo.get(g.id) ?? []} movPorId={movPorId} cfdiPorId={cfdiPorId}
             acciones={
               <Button size="sm" variant="outline" onClick={() => { setMotivo(""); setMotivoDialog({ tipo: "revertir", grupoId: g.id }); }}>
                 <Undo2 className="h-4 w-4 mr-1" /> Revertir
@@ -528,7 +536,7 @@ function ConciliacionPage() {
 
       <Bloque titulo={`Rechazados e ignorados · ${descartados.length + ignoradosMov.length}`} descripcion="No cuentan como conciliados y no bloquean nuevas propuestas.">
         {descartados.map((g: any) => (
-          <FilaGrupo key={g.id} grupo={g} miembro={miembroPorGrupo.get(g.id)} movPorId={movPorId} cfdiPorId={cfdiPorId} acciones={null} />
+          <FilaGrupo key={g.id} grupo={g} miembros={miembroPorGrupo.get(g.id) ?? []} movPorId={movPorId} cfdiPorId={cfdiPorId} acciones={null} />
         ))}
         {ignoradosMov.map((m: any) => (
           <div key={m.id} className="rounded-md border p-3 text-sm">
@@ -690,17 +698,27 @@ function Bloque({ titulo, descripcion, children }: { titulo: string; descripcion
   );
 }
 
+type Miembro = { movimiento_id: string | null; cfdi_id: string | null; asignado_centavos?: number | null };
+
+const ETIQUETA_TIPO: Record<string, string> = {
+  uno_a_uno: "",
+  uno_a_varios: "Un movimiento · varias facturas",
+  varios_a_uno: "Varios movimientos · una factura",
+};
+
 function FilaGrupo({
-  grupo, miembro, movPorId, cfdiPorId, acciones,
+  grupo, miembros, movPorId, cfdiPorId, acciones,
 }: {
   grupo: any;
-  miembro?: { movimiento_id: string | null; cfdi_id: string | null };
+  miembros: Miembro[];
   movPorId: Map<string, any>;
   cfdiPorId: Map<string, any>;
   acciones: React.ReactNode;
 }) {
-  const mov = miembro?.movimiento_id ? movPorId.get(miembro.movimiento_id) : null;
-  const cfdi = miembro?.cfdi_id ? cfdiPorId.get(miembro.cfdi_id) : null;
+  const movIds = [...new Set(miembros.map((m) => m.movimiento_id).filter(Boolean))] as string[];
+  const cfdiIds = [...new Set(miembros.map((m) => m.cfdi_id).filter(Boolean))] as string[];
+  const movs = movIds.map((id) => movPorId.get(id)).filter(Boolean);
+  const cfdisG = cfdiIds.map((id) => cfdiPorId.get(id)).filter(Boolean);
   const ev = (grupo.evidencia ?? {}) as Record<string, unknown>;
   const estado = grupo.estado as EstadoConciliacion;
 
@@ -708,18 +726,26 @@ function FilaGrupo({
     <div className="rounded-md border p-3 space-y-2">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="text-sm">
-          <div className="font-medium">
-            {mov ? `${fmtFechaMx(mov.fecha)} · ${mov.descripcion}` : "Movimiento fuera del listado cargado"}
-          </div>
+          {ETIQUETA_TIPO[grupo.tipo] ? (
+            <div className="text-xs font-medium text-primary">{ETIQUETA_TIPO[grupo.tipo]}</div>
+          ) : null}
+          {movs.length > 0 ? (
+            movs.map((m: any) => (
+              <div key={m.id} className="font-medium">{fmtFechaMx(m.fecha)} · {m.descripcion} · {formateaCentavos(Number(m.importe_centavos ?? 0))}</div>
+            ))
+          ) : (
+            <div className="font-medium">Movimiento fuera del listado cargado</div>
+          )}
           <div className="text-xs text-muted-foreground">
             Banco {formateaCentavos(Number(grupo.importe_banco_centavos ?? 0))} · Comprobante {formateaCentavos(Number(grupo.importe_cfdi_centavos ?? 0))}
             {" · "}Diferencia {formateaCentavos(Number(grupo.diferencia_centavos ?? 0))}
           </div>
-          {cfdi && (
-            <div className="text-xs text-muted-foreground">
-              Folio fiscal {cfdi.uuid ?? "—"} · {cfdi.nombre_emisor ?? cfdi.nombre_receptor ?? "—"}
+          {cfdisG.map((c: any) => (
+            <div key={c.id} className="text-xs text-muted-foreground">
+              Folio fiscal {c.uuid ?? "—"} · {c.nombre_emisor ?? c.nombre_receptor ?? "—"}
+              {cfdisG.length > 1 ? ` · ${formateaCentavos(Math.round(Number(c.total ?? 0) * 100))}` : ""}
             </div>
-          )}
+          ))}
         </div>
         <div className="flex items-center gap-2">
           <span className={`text-xs px-2 py-0.5 rounded-full border ${COLOR_ESTADO[estado]}`}>{ETIQUETA_ESTADO[estado]}</span>
