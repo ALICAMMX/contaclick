@@ -19,8 +19,7 @@ import { parseBankFileWithText, bankFileMatchesContribuyente, type ParsedMovimie
 import {
   previsualizarImportacion, confirmarImportacion, rechazarImportacion, diagnosticoImportacion,
   listMovimientos, runReconciliation,
-  getReconciliationStats, analyzeReconciliationAI, decidirGrupo, ignorarMovimiento,
-} from "@/lib/conciliacion/conciliacion.functions";
+  getReconciliationStats, analyzeReconciliationAI, decidirGrupo, ignorarMovimiento, sugerirClasificaciones, restaurarMovimiento } from "@/lib/conciliacion/conciliacion.functions";
 import { ETIQUETA_ESTADO_IMPORTACION, type Incidencia } from "@/lib/conciliacion/importacion";
 import {
   ETIQUETA_ESTADO, ETIQUETA_ORIGEN, formateaCentavos, MOTIVO_MINIMO,
@@ -28,6 +27,8 @@ import {
 } from "@/lib/conciliacion/contrato";
 import { listCuentas, createCuenta, BANCOS } from "@/lib/cuentas/cuentas.functions";
 import { exportXlsx, buildFilename } from "@/lib/export/xlsx";
+import { SinFactura } from "@/components/conciliacion/SinFactura";
+import { ETIQUETA_CATEGORIA, type Categoria } from "@/lib/conciliacion/clasificador";
 
 const BusquedaSchema = z.object({
   periodo: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).optional(),
@@ -152,11 +153,31 @@ function ConciliacionPage() {
     } }),
   });
 
+  const fnSugerir = useServerFn(sugerirClasificaciones);
+  const fnRestaurar = useServerFn(restaurarMovimiento);
+  const sinFactura = useQuery({
+    enabled: !hydrating && !!cliente,
+    queryKey: ["recon-sin-factura", cliente?.id, periodo],
+    queryFn: () => fnSugerir({ data: { cliente_id: cliente!.id, periodo } }),
+  });
+  const conSugerencia = useMemo(
+    () => new Set((sinFactura.data?.sugerencias ?? []).map((x: any) => x.movimiento_id as string)),
+    [sinFactura.data],
+  );
+
   const invalidar = () => {
     qc.invalidateQueries({ queryKey: ["recon-stats", cliente?.id] });
     qc.invalidateQueries({ queryKey: ["recon-list", cliente?.id] });
     qc.invalidateQueries({ queryKey: ["cuentas", cliente?.id] });
+    qc.invalidateQueries({ queryKey: ["recon-sin-factura", cliente?.id] });
   };
+
+  const restaurar = useMutation({
+    mutationFn: async (movimiento_id: string) =>
+      fnRestaurar({ data: { cliente_id: cliente!.id, movimiento_id, motivo: "Devuelto a pendientes por el contador." } }),
+    onSuccess: () => { toast.success("El movimiento volvió a pendientes."); invalidar(); },
+    onError: (e) => toast.error((e as Error).message),
+  });
 
   const upload = useMutation({
     mutationFn: async (vars?: { movimientos?: ParsedMovimiento[]; archivo?: typeof archivo; deteccion?: any }) => {
@@ -325,7 +346,7 @@ function ConciliacionPage() {
   const propuestos = porEstado("propuesto");
   const descartados = [...porEstado("rechazado"), ...porEstado("ignorado")];
   const sinCandidato = (datos?.movimientos ?? []).filter(
-    (m: any) => !grupoPorMovimiento.has(m.id) && !m.no_fiscal && !m.ignorado_at,
+    (m: any) => !grupoPorMovimiento.has(m.id) && !m.no_fiscal && !m.ignorado_at && !conSugerencia.has(m.id),
   );
   const ignoradosMov = (datos?.movimientos ?? []).filter((m: any) => m.no_fiscal || m.ignorado_at);
 
@@ -517,7 +538,11 @@ function ConciliacionPage() {
         ))}
       </Bloque>
 
-      <Bloque titulo={`Sin candidato · ${sinCandidato.length}`} descripcion="Movimientos evaluables que ningún comprobante del periodo explica.">
+      <Bloque titulo={`Sin factura por clasificar · ${conSugerencia.size}`} descripcion="Comisiones, traspasos entre cuentas propias, impuestos, IMSS, nómina y préstamos. El sistema sugiere la categoría; tú confirmas.">
+        <SinFactura clienteId={cliente.id} periodo={periodo} movPorId={movPorId} onCambio={invalidar} />
+      </Bloque>
+
+      <Bloque titulo={`Sin candidato · ${sinCandidato.length}`} descripcion="Movimientos que ninguna factura explica y que no parecen comisión, traspaso ni impuesto. Un depósito aquí puede ser un ingreso sin factura.">
         {sinCandidato.map((m: any) => (
           <div key={m.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3 text-sm">
             <div>
@@ -541,7 +566,16 @@ function ConciliacionPage() {
         {ignoradosMov.map((m: any) => (
           <div key={m.id} className="rounded-md border p-3 text-sm">
             <div className="font-medium">{fmtFechaMx(m.fecha)} · {m.descripcion}</div>
-            <div className="text-xs text-muted-foreground">Marcado como no conciliable. Motivo: {m.ignorado_motivo ?? "—"}</div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="text-xs text-muted-foreground">
+                {m.categoria_sin_cfdi
+                  ? `Sin factura: ${ETIQUETA_CATEGORIA[m.categoria_sin_cfdi as Categoria] ?? m.categoria_sin_cfdi}`
+                  : `Marcado como no conciliable. Motivo: ${m.ignorado_motivo ?? "—"}`}
+              </div>
+              <Button size="sm" variant="ghost" onClick={() => restaurar.mutate(m.id)} disabled={restaurar.isPending}>
+                <Undo2 className="h-4 w-4 mr-1" /> Devolver a pendientes
+              </Button>
+            </div>
           </div>
         ))}
       </Bloque>

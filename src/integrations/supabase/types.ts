@@ -2769,6 +2769,42 @@ export type Database = {
           },
         ]
       }
+      conciliacion_reglas: {
+        Row: {
+          activa: boolean
+          categoria: string
+          cliente_id: string | null
+          created_at: string
+          creado_por: string
+          despacho_id: string
+          direccion: string | null
+          id: string
+          patron: string
+        }
+        Insert: {
+          activa?: boolean
+          categoria: string
+          cliente_id?: string | null
+          created_at?: string
+          creado_por: string
+          despacho_id: string
+          direccion?: string | null
+          id?: string
+          patron: string
+        }
+        Update: {
+          activa?: boolean
+          categoria?: string
+          cliente_id?: string | null
+          created_at?: string
+          creado_por?: string
+          despacho_id?: string
+          direccion?: string | null
+          id?: string
+          patron?: string
+        }
+        Relationships: []
+      }
       conciliaciones: {
         Row: {
           asignado_centavos: number
@@ -4101,6 +4137,8 @@ export type Database = {
       }
       movimientos_bancarios: {
         Row: {
+          categoria_sin_cfdi: string | null
+          categoria_origen: string | null
           abono: number
           cargo: number
           cliente_id: string
@@ -4126,6 +4164,8 @@ export type Database = {
           validado_por: string | null
         }
         Insert: {
+          categoria_sin_cfdi?: string | null
+          categoria_origen?: string | null
           abono?: number
           cargo?: number
           cliente_id: string
@@ -4151,6 +4191,8 @@ export type Database = {
           validado_por?: string | null
         }
         Update: {
+          categoria_sin_cfdi?: string | null
+          categoria_origen?: string | null
           abono?: number
           cargo?: number
           cliente_id?: string

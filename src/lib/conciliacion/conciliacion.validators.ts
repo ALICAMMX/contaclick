@@ -254,3 +254,34 @@ export function parseIgnorarMovimientoInput(data: unknown) {
     no_fiscal: z.boolean().default(true),
   }).parse(data);
 }
+
+const CategoriaSchema = z.enum([
+  "comision_bancaria", "iva_comision", "traspaso_propio", "pago_impuestos", "pago_imss_infonavit",
+  "nomina", "intereses_ganados", "isr_retenido_banco", "prestamo", "aportacion_retiro_socios",
+  "retiro_efectivo", "otro_sin_cfdi",
+]);
+
+export function parseSugerirClasificacionesInput(data: unknown) {
+  return z.object({ cliente_id: z.string().uuid(), periodo: PeriodoSchema }).parse(data);
+}
+
+export function parseClasificarMovimientosInput(data: unknown) {
+  return z.object({
+    cliente_id: z.string().uuid(),
+    items: z.array(z.object({
+      movimiento_id: z.string().uuid(),
+      categoria: CategoriaSchema,
+      origen: z.enum(["humano", "regla_aprendida", "regla_sistema", "traspaso_detectado"]).default("humano"),
+    })).min(1).max(300),
+    recordar: z.object({
+      patron: z.string().trim().min(4).max(80),
+      direccion: z.enum(["abono", "cargo"]).nullable(),
+      categoria: CategoriaSchema,
+      todo_el_despacho: z.boolean().default(false),
+    }).nullable().optional(),
+  }).parse(data);
+}
+
+export function parseRestaurarMovimientoInput(data: unknown) {
+  return z.object({ cliente_id: z.string().uuid(), movimiento_id: z.string().uuid(), motivo: MotivoSchema }).parse(data);
+}

@@ -38,7 +38,11 @@ import {
   parsePrevisualizarImportacionInput,
   parseRechazarImportacionInput,
   parseRunReconciliationInput,
+  parseSugerirClasificacionesInput,
+  parseClasificarMovimientosInput,
+  parseRestaurarMovimientoInput,
 } from "@/lib/conciliacion/conciliacion.validators";
+import { clasificarMovimientos, patronDe, type Categoria, type ReglaAprendida } from "@/lib/conciliacion/clasificador";
 import { aiFetch, aiApiKey } from "@/lib/ai/gateway";
 
 /** Rango mensual semiabierto [inicio, inicio del mes siguiente) en fechas locales. */
@@ -466,7 +470,7 @@ export const listMovimientos = createServerFn({ method: "POST" })
     let q = supabase
       .from("movimientos_bancarios")
       .select(
-        "id, fecha, descripcion, referencia, cargo, abono, saldo, cuenta_id, importe_centavos, moneda, no_fiscal, ignorado_motivo, ignorado_at, duplicado_candidato_de, fila_origen",
+        "id, fecha, descripcion, referencia, cargo, abono, saldo, cuenta_id, importe_centavos, moneda, no_fiscal, ignorado_motivo, ignorado_at, duplicado_candidato_de, fila_origen, categoria_sin_cfdi",
       )
       .eq("cliente_id", data.cliente_id)
       .gte("fecha", desde)
@@ -1019,4 +1023,140 @@ Responde en español, formato markdown, conciso.`;
       console.error("analyzeReconciliationAI", e);
       return { error: "Error de red.", content: "" };
     }
+  });
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Movimientos sin factura: sugerir categoría, confirmar en bloque, aprender
+// ─────────────────────────────────────────────────────────────────────────────
+export const sugerirClasificaciones = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator(parseSugerirClasificacionesInput)
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const scope = await assertClienteScope(supabase as any, context.userId, data.cliente_id);
+    const { desde, hastaExclusivo } = rangoFechas(data.periodo);
+
+    const movs = await todasLasFilas<any>((a, b) =>
+      supabase
+        .from("movimientos_bancarios")
+        .select("id, fecha, descripcion, referencia, cargo, abono, importe_centavos, cuenta_id, ignorado_at, no_fiscal, validado_at")
+        .eq("cliente_id", scope.cliente_id)
+        .gte("fecha", desde)
+        .lt("fecha", hastaExclusivo)
+        .is("ignorado_at", null)
+        .not("validado_at", "is", null)
+        .order("id")
+        .range(a, b),
+    );
+    const activos = await todasLasFilas<any>((a, b) =>
+      supabase
+        .from("conciliaciones")
+        .select("movimiento_id")
+        .eq("cliente_id", scope.cliente_id)
+        .in("estado_grupo", ["propuesto", "confirmado"])
+        .not("movimiento_id", "is", null)
+        .order("id")
+        .range(a, b),
+    );
+    const enGrupo = new Set(activos.map((k) => k.movimiento_id as string));
+    const pendientes = movs.filter((m) => !enGrupo.has(m.id) && !m.no_fiscal);
+
+    const { data: reglas, error: rErr } = await supabase
+      .from("conciliacion_reglas")
+      .select("id, patron, direccion, categoria, cliente_id")
+      .eq("activa", true)
+      .or(`cliente_id.is.null,cliente_id.eq.${scope.cliente_id}`);
+    if (rErr) throw new Error(rErr.message);
+    const { data: cuentas, error: cErr } = await supabase
+      .from("cuentas_bancarias")
+      .select("numero_cuenta_mask")
+      .eq("cliente_id", scope.cliente_id);
+    if (cErr) throw new Error(cErr.message);
+
+    const sugerencias = clasificarMovimientos({
+      movimientos: pendientes.map((m) => ({
+        id: m.id,
+        fecha: String(m.fecha).slice(0, 10),
+        importe_centavos: Number(m.importe_centavos ?? 0),
+        direccion: Number(m.abono ?? 0) > 0 ? "abono" : "cargo",
+        descripcion: m.descripcion ?? null,
+        referencia: m.referencia ?? null,
+        cuenta_id: m.cuenta_id ?? null,
+      })),
+      reglas_aprendidas: (reglas ?? []).map((r: any) => ({
+        id: r.id,
+        patron: r.patron,
+        direccion: r.direccion ?? null,
+        categoria: r.categoria as Categoria,
+      })) as ReglaAprendida[],
+      rfc_cliente: scope.rfc ?? null,
+      terminaciones_propias: (cuentas ?? []).map((c: any) => String(c.numero_cuenta_mask ?? "").replace(/\D/g, "").slice(-4)),
+    });
+
+    const descPorId = new Map(pendientes.map((m) => [m.id as string, m.descripcion as string | null]));
+    return {
+      periodo: data.periodo,
+      sugerencias: sugerencias.map((s) => ({ ...s, patron_sugerido: patronDe(descPorId.get(s.movimiento_id) ?? null) })),
+      pendientes_sin_sugerencia: pendientes.length - sugerencias.length,
+    };
+  });
+
+export const confirmarClasificaciones = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator(parseClasificarMovimientosInput)
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const scope = await assertClienteScope(supabase as any, context.userId, data.cliente_id);
+
+    // Todos los movimientos deben pertenecer al expediente autorizado.
+    const ids = data.items.map((i) => i.movimiento_id);
+    const { data: filas, error } = await supabase.from("movimientos_bancarios").select("id, cliente_id").in("id", ids);
+    if (error) throw new Error(error.message);
+    if ((filas ?? []).length !== ids.length || (filas ?? []).some((f: any) => f.cliente_id !== scope.cliente_id)) {
+      throw new Error("Algún movimiento no pertenece al expediente. La operación fue rechazada.");
+    }
+
+    const fallidos: { movimiento_id: string; error: string }[] = [];
+    let hechos = 0;
+    for (const it of data.items) {
+      const { error: e } = await (supabase as any).rpc("conciliacion_clasificar_movimiento", {
+        _movimiento_id: it.movimiento_id,
+        _categoria: it.categoria,
+        _origen: it.origen,
+      });
+      if (e) fallidos.push({ movimiento_id: it.movimiento_id, error: e.message });
+      else hechos += 1;
+    }
+
+    let regla_id: string | null = null;
+    if (data.recordar) {
+      const { data: r, error: e } = await (supabase as any).rpc("conciliacion_aprender_regla", {
+        _cliente_id: scope.cliente_id,
+        _patron: data.recordar.patron,
+        _direccion: data.recordar.direccion,
+        _categoria: data.recordar.categoria,
+        _todo_el_despacho: data.recordar.todo_el_despacho,
+      });
+      if (e) throw new Error(e.message);
+      regla_id = (r as any)?.regla_id ?? null;
+    }
+    return { clasificados: hechos, fallidos, regla_id };
+  });
+
+export const restaurarMovimiento = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator(parseRestaurarMovimientoInput)
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const scope = await assertClienteScope(supabase as any, context.userId, data.cliente_id);
+    const { data: mov, error } = await supabase.from("movimientos_bancarios").select("id, cliente_id").eq("id", data.movimiento_id).maybeSingle();
+    if (error || !mov) throw new Error("Movimiento bancario no encontrado.");
+    if (mov.cliente_id !== scope.cliente_id) throw new Error("El movimiento pertenece a otro expediente. La operación fue rechazada.");
+    const { data: res, error: e } = await (supabase as any).rpc("conciliacion_restaurar_movimiento", {
+      _movimiento_id: data.movimiento_id,
+      _motivo: data.motivo,
+    });
+    if (e) throw new Error(e.message);
+    return res ?? { ok: true };
   });
