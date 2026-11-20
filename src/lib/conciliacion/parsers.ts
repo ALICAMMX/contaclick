@@ -111,6 +111,46 @@ async function extractPdfElementos(
   return { elementos, texto: clean, escaneado: false };
 }
 
+/**
+ * Texto de cada página con las columnas alineadas por su posición horizontal.
+ * Es lo que se manda a la lectura con IA: conservar la alineación ayuda a
+ * distinguir las columnas de cargo, abono y saldo.
+ */
+export async function extraerPaginasPdfAlineadas(file: File): Promise<{ paginas: string[]; escaneado: boolean }> {
+  const pdfjs = await loadPdfjs();
+  const buf = await file.arrayBuffer();
+  const doc = await pdfjs.getDocument({ data: new Uint8Array(buf) }).promise;
+  const paginas: string[] = [];
+  let caracteres = 0;
+  for (let i = 1; i <= Math.min(doc.numPages, 40); i++) {
+    const page = await doc.getPage(i);
+    const content = await page.getTextContent();
+    const items = (content.items as any[]).filter((it) => typeof it.str === "string" && it.str.trim());
+    const filas = new Map<number, { x: number; s: string }[]>();
+    for (const it of items) {
+      const y = Math.round((it.transform?.[5] ?? 0) / 2) * 2;
+      const x = it.transform?.[4] ?? 0;
+      if (!filas.has(y)) filas.set(y, []);
+      filas.get(y)!.push({ x, s: String(it.str) });
+    }
+    const lineas: string[] = [];
+    for (const y of [...filas.keys()].sort((a, b) => b - a)) {
+      let linea = "";
+      for (const p of filas.get(y)!.sort((a, b) => a.x - b.x)) {
+        const col = Math.max(0, Math.round(p.x / 4.5));
+        if (linea.length < col) linea = linea.padEnd(col, " ");
+        else if (linea.length) linea += " ";
+        linea += p.s.trim();
+      }
+      if (linea.trim()) lineas.push(linea.replace(/\s+$/, ""));
+    }
+    const texto = lineas.join("\n").slice(0, 19000);
+    caracteres += texto.replace(/\s/g, "").length;
+    paginas.push(texto);
+  }
+  return { paginas, escaneado: caracteres < 200 };
+}
+
 /** Extrae texto de un PDF; si viene vacío (escaneado) hace OCR. */
 async function extractPdfText(file: File): Promise<string> {
   return (await extractPdfElementos(file)).texto;

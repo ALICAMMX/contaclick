@@ -15,7 +15,8 @@ import { HerramientaHelp } from "@/components/HerramientaHelp";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { fmtFechaMx } from "@/lib/utils";
 import { useActiveCliente } from "@/lib/active-cliente";
-import { parseBankFileWithText, bankFileMatchesContribuyente, type ParsedMovimiento } from "@/lib/conciliacion/parsers";
+import { parseBankFileWithText, bankFileMatchesContribuyente, extraerPaginasPdfAlineadas, type ParsedMovimiento } from "@/lib/conciliacion/parsers";
+import { leerEstadoCuentaIA } from "@/lib/conciliacion/lectura-ia.functions";
 import {
   previsualizarImportacion, confirmarImportacion, rechazarImportacion, diagnosticoImportacion,
   listMovimientos, runReconciliation,
@@ -112,6 +113,8 @@ function ConciliacionPage() {
   const [archivo, setArchivo] = useState<{ sha256: string; nombre: string; bytes: number; formato: "csv" | "xlsx" | "pdf" | "manual" } | null>(null);
   const [parsingErr, setParsingErr] = useState<string | null>(null);
   const [isParsing, setIsParsing] = useState(false);
+  // PDF que el lector automático no pudo comprobar: se ofrece leerlo con IA.
+  const [pdfParaIA, setPdfParaIA] = useState<File | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiContent, setAiContent] = useState("");
   const [preview, setPreview] = useState<any | null>(null);
@@ -354,6 +357,7 @@ function ConciliacionPage() {
     if (!cliente) { toast.error("Selecciona un expediente."); return; }
     setIsParsing(true);
     setParsingErr(null);
+    setPdfParaIA(null);
     try {
       const [{ movimientos, text, deteccion: det }, sha256] = await Promise.all([
         parseBankFileWithText(file),
@@ -386,11 +390,44 @@ function ConciliacionPage() {
     } catch (e) {
       setParsingErr((e as Error).message);
       setParsed([]); setArchivo(null); setDeteccion(null);
+      setPdfParaIA(/\.pdf$/i.test(file.name) || file.type === "application/pdf" ? file : null);
     } finally {
       setIsParsing(false);
     }
 
   }
+
+  const fnLeerIA = useServerFn(leerEstadoCuentaIA);
+  const leerConIA = useMutation({
+    mutationFn: async (file: File) => {
+      if (!cliente) throw new Error("Selecciona un expediente.");
+      const { paginas, escaneado } = await extraerPaginasPdfAlineadas(file);
+      if (escaneado) throw new Error("El PDF está escaneado (es una imagen): no tiene texto que leer. Pide el estado de cuenta descargado de la banca en línea.");
+      const r = await fnLeerIA({ data: { cliente_id: cliente.id, archivo_nombre: file.name, paginas } });
+      if (!r.ok) throw new Error(r.error);
+      if (!r.verificado) {
+        const detalle = r.problemas.slice(0, 6).map((p) => `· ${p.motivo}`).join("\n");
+        throw new Error(`La IA leyó el estado de cuenta, pero los saldos no cuadran, así que no se importó nada.\n${detalle}`);
+      }
+      const sha256 = await sha256Archivo(file);
+      const arch = { sha256, nombre: file.name, bytes: file.size, formato: formatoDe(file.name) } as const;
+      return { r, arch };
+    },
+    onSuccess: ({ r, arch }) => {
+      setParsingErr(null);
+      setPdfParaIA(null);
+      setParsed(r.movimientos);
+      setArchivo({ ...arch });
+      setDeteccion(null);
+      toast.success(
+        `Leídos ${r.movimientos.length} movimientos${r.banco ? ` de ${r.banco}` : ""}. Los saldos cuadran` +
+          (r.correcciones.length ? ` (${r.correcciones.length} sentido(s) corregidos por el saldo).` : ".") +
+          " Revisa la vista previa antes de validar.",
+      );
+      upload.mutate({ movimientos: r.movimientos, archivo: { ...arch } });
+    },
+    onError: (e) => setParsingErr((e as Error).message),
+  });
 
   function exportar() {
     const filas = (datos?.grupos ?? []).map((g: any) => {
@@ -507,7 +544,19 @@ function ConciliacionPage() {
         </p>
         {archivo && <p className="text-xs text-muted-foreground">Archivo: {archivo.nombre} · huella {archivo.sha256.slice(0, 12)}… Volver a importarlo no duplica movimientos.</p>}
         {parsingErr && (
-          <p className="text-sm text-destructive flex items-start gap-2"><ShieldAlert className="h-4 w-4 mt-0.5 shrink-0" /> {parsingErr}</p>
+          <p className="text-sm text-destructive flex items-start gap-2 whitespace-pre-line"><ShieldAlert className="h-4 w-4 mt-0.5 shrink-0" /> {parsingErr}</p>
+        )}
+        {pdfParaIA && (
+          <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-sm space-y-2">
+            <p>
+              Podemos leer este PDF con IA. Sólo se importa si los saldos cuadran renglón por renglón con el saldo
+              inicial y el final del estado de cuenta; después revisas la vista previa como siempre.
+            </p>
+            <Button size="sm" onClick={() => leerConIA.mutate(pdfParaIA)} disabled={leerConIA.isPending}>
+              {leerConIA.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1" />}
+              {leerConIA.isPending ? "Leyendo el estado de cuenta…" : "Leer con IA"}
+            </Button>
+          </div>
         )}
       </section>
 
