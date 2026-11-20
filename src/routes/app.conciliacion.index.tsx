@@ -1,11 +1,11 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import {
   Banknote, Upload, Sparkles, AlertTriangle, CheckCircle2, FileSpreadsheet,
-  Loader2, Wand2, X, Download, ShieldAlert, EyeOff, Undo2, Info,
+  Loader2, Wand2, X, Download, ShieldAlert, EyeOff, Undo2, Info, FileText,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -485,6 +485,7 @@ function ConciliacionPage() {
             ))}
           </select>
           <Button variant="outline" size="sm" onClick={exportar}><Download className="h-4 w-4 mr-1" /> Exportar</Button>
+          <Button variant="outline" size="sm" asChild><Link to="/app/conciliacion/reporte" search={{ periodo }}><FileText className="h-4 w-4 mr-1" /> Reporte</Link></Button>
           <Button size="sm" onClick={() => run.mutate()} disabled={run.isPending}>
             {run.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Wand2 className="h-4 w-4 mr-1" />}
             Ejecutar motor

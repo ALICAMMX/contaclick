@@ -27,6 +27,7 @@ import {
   llaveCombinacion,
   type PagoComplemento,
 } from "@/lib/conciliacion/motor-multiple";
+import { construirReporte } from "@/lib/conciliacion/reporte";
 import {
   parseClienteInput,
   parseConfirmarImportacionInput,
@@ -1159,4 +1160,82 @@ export const restaurarMovimiento = createServerFn({ method: "POST" })
     });
     if (e) throw new Error(e.message);
     return res ?? { ok: true };
+  });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reporte formal de conciliación del periodo y bandeja de excepciones.
+// Sólo lee; el cálculo vive en el módulo puro `reporte.ts`.
+// ─────────────────────────────────────────────────────────────────────────────
+export const reporteConciliacion = createServerFn({ method: "POST" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .inputValidator((d: unknown) => {
+    const x = parseClienteInput(d);
+    if (!x.periodo) throw new Error("Indica el periodo del reporte.");
+    return { cliente_id: x.cliente_id, periodo: x.periodo };
+  })
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    await assertClienteScope(supabase as any, context.userId, data.cliente_id);
+    const { desde, hastaExclusivo } = rangoFechas(data.periodo);
+
+    const [movimientos, cfdis, grupos, miembros, { data: cuentas, error: errCuentas }, { data: cliente }] = await Promise.all([
+      todasLasFilas<any>((a, b) =>
+        supabase
+          .from("movimientos_bancarios")
+          .select("id, fecha, descripcion, referencia, cargo, abono, saldo, cuenta_id, no_fiscal, ignorado_at, ignorado_motivo, categoria_sin_cfdi, fila_origen")
+          .eq("cliente_id", data.cliente_id)
+          .not("validado_at", "is", null)
+          .gte("fecha", desde)
+          .lt("fecha", hastaExclusivo)
+          .order("fecha", { ascending: true })
+          .order("fila_origen", { ascending: true })
+          .range(a, b),
+      ),
+      todasLasFilas<any>((a, b) =>
+        supabase
+          .from("cfdi_xml")
+          .select("id, uuid, fecha, total, direccion, tipo_cfdi, metodo_pago, estatus_sat, nombre_emisor, nombre_receptor")
+          .eq("cliente_id", data.cliente_id)
+          .gte("fecha", desde)
+          .lt("fecha", hastaExclusivo)
+          .order("fecha", { ascending: true })
+          .range(a, b),
+      ),
+      todasLasFilas<any>((a, b) =>
+        supabase
+          .from("conciliacion_grupos")
+          .select("id, estado, diferencia_centavos")
+          .eq("cliente_id", data.cliente_id)
+          .eq("periodo", data.periodo)
+          .range(a, b),
+      ),
+      todasLasFilas<any>((a, b) =>
+        supabase
+          .from("conciliaciones")
+          .select("grupo_id, movimiento_id, cfdi_id")
+          .eq("cliente_id", data.cliente_id)
+          .eq("periodo", data.periodo)
+          .range(a, b),
+      ),
+      supabase.from("cuentas_bancarias").select("id, banco, alias, numero_cuenta_mask").eq("cliente_id", data.cliente_id),
+      supabase.from("clientes").select("rfc, razon_social").eq("id", data.cliente_id).maybeSingle(),
+    ]);
+    if (errCuentas) throw new Error(errCuentas.message);
+
+    const reporte = construirReporte({
+      periodo: data.periodo,
+      cuentas: cuentas ?? [],
+      movimientos,
+      cfdi: cfdis.map((c) => ({
+        ...c,
+        contraparte: c.direccion === "emitido" ? c.nombre_receptor : c.nombre_emisor,
+      })),
+      grupos,
+      miembros,
+    });
+    return {
+      ...reporte,
+      cliente: { rfc: (cliente as any)?.rfc ?? null, razon_social: (cliente as any)?.razon_social ?? null },
+      generado_at: new Date().toISOString(),
+    };
   });
