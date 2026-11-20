@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1795152869851,
+      "tag": "0000_tighten_planes_and_cfdi_storage_policies",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795152907863,
+      "tag": "0001_planes_super_admin_read",
+      "breakpoints": true
+    }
+  ]
+}

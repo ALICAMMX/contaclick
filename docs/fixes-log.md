@@ -1549,3 +1549,7 @@ muestra el aviso con sus dos salidas; 8/8 pruebas de `src/lib/auth-entry.test.ts
 **No verificado aquí:** la pantalla de consentimiento de Google requiere una
 cuenta Google real, y el intermediario de acceso (`/~oauth/initiate`) lo sirve el
 alojamiento, no este entorno. Pendiente de confirmar en el sitio publicado.
+
+## 2026-11-20 — Seguridad: catálogo de planes y archivero de CFDI originales
+- **Planes**: la regla de lectura dejaba a cualquiera (incluso sin sesión) leer todo el catálogo. Ahora un usuario con sesión sólo ve el plan de su propio despacho (dueño o miembro); los super-admin ven todos. Verificado: sin sesión = 0 planes; super-admin ve el plan de los 13 despachos con plan.
+- **CFDI originales**: se eliminó una regla de almacenamiento sobrante (`USING (... AND false)`) que nunca daba acceso pero aparecía como riesgo. El archivero sigue privado; sólo el servidor lo lee tras validar sesión y pertenencia.
